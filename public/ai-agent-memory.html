@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agent Memory — 记忆与上下文管理</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --card: #1a1d27;
+  --border: #2a2d3a;
+  --text: #c9d1d9;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --orange: #d29922;
+  --red: #f85149;
+  --purple: #a371f7;
+  --cyan: #39c5cf;
+  --sidebar-w: 260px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+  line-height: 1.7;
+  font-size: 15px;
+}
+.sidebar {
+  position: fixed; left: 0; top: 0; width: var(--sidebar-w); height: 100vh;
+  background: var(--card); border-right: 1px solid var(--border);
+  padding: 24px 16px; overflow-y: auto; z-index: 100;
+}
+.sidebar h2 { font-size: 16px; color: var(--accent); margin-bottom: 16px; }
+.sidebar ul { list-style: none; }
+.sidebar li { margin-bottom: 4px; }
+.sidebar a {
+  color: var(--text); text-decoration: none; font-size: 13px;
+  display: block; padding: 5px 8px; border-radius: 4px;
+  transition: background .15s;
+}
+.sidebar a:hover { background: rgba(88,166,255,.1); color: var(--accent); }
+.sidebar .toc-h2 { padding-left: 8px; font-weight: 600; }
+.sidebar .toc-h3 { padding-left: 20px; font-size: 12px; opacity: .8; }
+.main { margin-left: var(--sidebar-w); padding: 32px 48px 80px; max-width: 960px; }
+
+/* Typography */
+h1 { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 8px; }
+h2 { font-size: 22px; font-weight: 700; color: #fff; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+h3 { font-size: 17px; font-weight: 600; color: var(--accent); margin: 28px 0 12px; }
+p { margin-bottom: 14px; }
+a { color: var(--accent); }
+ul, ol { margin: 0 0 14px 20px; }
+li { margin-bottom: 4px; }
+
+/* Components */
+.feynman {
+  background: linear-gradient(135deg, rgba(163,113,247,.08) 0%, rgba(88,166,255,.05) 100%);
+  border-left: 4px solid var(--purple); border-radius: 8px;
+  padding: 18px 22px; margin: 20px 0;
+}
+.feynman::before { content: "🧠 费曼理解 "; font-weight: 700; color: var(--purple); }
+.diagram {
+  overflow-x: auto; margin: 20px 0; padding: 8px 0;
+  background: var(--card); border-radius: 10px; border: 1px solid var(--border);
+}
+.diagram svg { display: block; margin: 0 auto; min-width: 580px; height: auto; }
+.compare {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;
+}
+.info-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 18px 20px; margin: 16px 0;
+}
+.info-card h4 { color: var(--accent); margin-bottom: 8px; }
+.qa { background: var(--card); border-radius: 10px; padding: 18px 22px; margin: 14px 0; }
+.qa h4 { color: var(--cyan); margin-bottom: 6px; }
+.qa h4::before { content: "❓ "; }
+.qa p:last-child { margin-bottom: 0; }
+details.socratic {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 18px; margin: 12px 0; cursor: pointer;
+}
+details.socratic summary { font-weight: 600; color: var(--accent); outline: none; }
+details.socratic[open] { background: rgba(88,166,255,.04); }
+details.socratic .qa-detail { margin-top: 12px; }
+
+/* Comparison table */
+table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+th, td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; }
+th { background: rgba(88,166,255,.1); color: var(--accent); font-weight: 600; }
+tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+
+/* Syntax highlighting */
+pre { background: #161b22; border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 16px 0; font-size: 13px; line-height: 1.6; }
+code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; }
+pre code .kw { color: #ff7b72; }  /* keyword */
+pre code .fn { color: #d2a8ff; }  /* function */
+pre code .str { color: #a5d6ff; } /* string */
+pre code .num { color: #79c0ff; } /* number */
+pre code .cm { color: #8b949e; font-style: italic; } /* comment */
+pre code .tp { color: #ffa657; }  /* type */
+pre code .op { color: #ff7b72; }  /* operator */
+pre code .var { color: #ffa657; } /* variable */
+pre code .pl { color: #79c0ff; }  /* placeholder/import */
+
+/* Tags */
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 4px; }
+.tag-blue { background: rgba(88,166,255,.15); color: var(--accent); }
+.tag-green { background: rgba(63,185,80,.15); color: var(--green); }
+.tag-orange { background: rgba(210,153,34,.15); color: var(--orange); }
+.tag-red { background: rgba(248,81,73,.15); color: var(--red); }
+.tag-purple { background: rgba(163,113,247,.15); color: var(--purple); }
+.tag-cyan { background: rgba(57,197,207,.15); color: var(--cyan); }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 60px 20px; color: #8b949e; }
+.empty-state h3 { color: var(--text); margin-bottom: 8px; }
+
+@media(max-width:768px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; padding: 20px 16px 60px; }
+  .compare { grid-template-columns: 1fr; }
+  .diagram svg { min-width: 420px; }
+  h1 { font-size: 22px; }
+  h2 { font-size: 18px; }
+}
+@media(max-width:480px) {
+  .diagram svg { min-width: 340px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="sidebar" id="sidebar">
+  <h2>📖 目录</h2>
+  <ul id="toc">
+    <li><a href="#sec1" class="toc-h2">1. 为什么需要记忆系统</a></li>
+    <li><a href="#sec2" class="toc-h2">2. 短期记忆——上下文窗口</a></li>
+    <li><a href="#sec2-1" class="toc-h3">滑动窗口 · 摘要压缩 · 混合策略</a></li>
+    <li><a href="#sec3" class="toc-h2">3. 长期记忆——外部存储</a></li>
+    <li><a href="#sec3-1" class="toc-h3">RAG vs Agent 原生记忆</a></li>
+    <li><a href="#sec4" class="toc-h2">4. 持久记忆——跨会话</a></li>
+    <li><a href="#sec5" class="toc-h2">5. 消息历史管理策略</a></li>
+    <li><a href="#sec6" class="toc-h2">6. 记忆一致性</a></li>
+    <li><a href="#sec7" class="toc-h2">7. 开源方案对比</a></li>
+    <li><a href="#sec8" class="toc-h2">8. 实战：装修助手</a></li>
+    <li><a href="#sec9" class="toc-h2">9. QA</a></li>
+    <li><a href="#sec10" class="toc-h2">10. 口播总结</a></li>
+  </ul>
+</nav>
+
+<div class="main">
+
+<h1>🧠 AI Agent Memory — 记忆与上下文管理</h1>
+<p style="color:#8b949e;font-size:14px;margin-bottom:32px;">
+深入理解 Agent 记忆系统的三层架构、上下文窗口策略、持久化方案与一致性保证
+</p>
+
+<!-- ==================== 1 ==================== -->
+<h2 id="sec1">1. 为什么需要记忆系统</h2>
+
+<p>没有记忆的 AI Agent 就像一位健忘的厨师：每次你走进厨房，他都不记得你刚刚点过的菜，也不记得冰箱里还剩什么食材。让我们用一个费曼式的厨房类比来拆解记忆的必要性。</p>
+
+<div class="feynman">
+如果把 Agent 比作厨师，<strong>工作台</strong>就是短期记忆——上面摆着正在处理的食材和菜谱，空间有限，一次只能放 6～8 样东西。<strong>冰箱</strong>是长期记忆——储存了大量食材（知识），取用稍慢但容量很大。<strong>笔记本</strong>是持久记忆——记录顾客偏好、历史订单，跨会话保留。<br><br>
+缺少任何一个环节：没有工作台 → 无法即时操作；没有冰箱 → 知识匮乏；没有笔记本 → 每次从零开始。
+</div>
+
+<p>大规模语言模型（LLM）的上下文窗口天然有限——GPT-4 的 128K tokens 看似很大，但在多轮对话、代码仓库级上下文中仍然捉襟见肘。记忆系统正是为了弥补这个缺口而设计的。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="min-width:580px;">
+  <defs>
+    <linearGradient id="g-sense" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#1f6feb"/></linearGradient>
+    <linearGradient id="g-short" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#d29922"/><stop offset="100%" stop-color="#9e6a03"/></linearGradient>
+    <linearGradient id="g-long" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#238636"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity=".4"/></filter>
+  </defs>
+  <!-- Background -->
+  <rect x="0" y="0" width="800" height="400" rx="10" fill="#1a1d27"/>
+  <!-- Title -->
+  <text x="400" y="32" text-anchor="middle" fill="#c9d1d9" font-size="16" font-weight="700">三层记忆架构</text>
+
+  <!-- Layer 1: Sensory -->
+  <rect x="60" y="55" width="200" height="110" rx="10" fill="url(#g-sense)" filter="url(#shadow)" opacity=".9"/>
+  <text x="160" y="88" text-anchor="middle" fill="#fff" font-size="16" font-weight="700">感觉记忆</text>
+  <text x="160" y="110" text-anchor="middle" fill="rgba(255,255,255,.85)" font-size="12">Sensory Memory</text>
+  <text x="160" y="132" text-anchor="middle" fill="#fff" font-size="13">⚡ <tspan fill="#fff" font-weight="600">毫秒级</tspan></text>
+  <text x="160" y="152" text-anchor="middle" fill="rgba(255,255,255,.75)" font-size="11">容量：极大（原始感知）</text>
+  <!-- Arrow 1 -->
+  <line x1="260" y1="110" x2="310" y2="110" stroke="#8b949e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="285" y="102" text-anchor="middle" fill="#8b949e" font-size="10">注意</text>
+
+  <!-- Layer 2: Short-term -->
+  <rect x="315" y="55" width="200" height="110" rx="10" fill="url(#g-short)" filter="url(#shadow)" opacity=".9"/>
+  <text x="415" y="88" text-anchor="middle" fill="#fff" font-size="16" font-weight="700">短期记忆</text>
+  <text x="415" y="110" text-anchor="middle" fill="rgba(255,255,255,.85)" font-size="12">Short-Term / Working Memory</text>
+  <text x="415" y="132" text-anchor="middle" fill="#fff" font-size="13">⏱️ <tspan fill="#fff" font-weight="600">秒～分钟级</tspan></text>
+  <text x="415" y="152" text-anchor="middle" fill="rgba(255,255,255,.75)" font-size="11">容量：~7±2 组块（有限）</text>
+  <!-- Arrow 2 -->
+  <line x1="515" y1="110" x2="565" y2="110" stroke="#8b949e" stroke-width="2"/>
+  <text x="540" y="102" text-anchor="middle" fill="#8b949e" font-size="10">编码</text>
+
+  <!-- Layer 3: Long-term -->
+  <rect x="570" y="55" width="200" height="110" rx="10" fill="url(#g-long)" filter="url(#shadow)" opacity=".9"/>
+  <text x="670" y="88" text-anchor="middle" fill="#fff" font-size="16" font-weight="700">长期记忆</text>
+  <text x="670" y="110" text-anchor="middle" fill="rgba(255,255,255,.85)" font-size="12">Long-Term Memory</text>
+  <text x="670" y="132" text-anchor="middle" fill="#fff" font-size="13">💾 <tspan fill="#fff" font-weight="600">持久（天～年）</tspan></text>
+  <text x="670" y="152" text-anchor="middle" fill="rgba(255,255,255,.75)" font-size="11">容量：理论上无限</text>
+
+  <!-- Bottom explanation area -->
+  <rect x="60" y="190" width="710" height="180" rx="8" fill="rgba(255,255,255,.03)" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="400" y="218" text-anchor="middle" fill="#8b949e" font-size="12">对应到 AI Agent 中的角色</text>
+
+  <!-- Mapping boxes -->
+  <rect x="80" y="235" width="180" height="50" rx="6" fill="rgba(88,166,255,.1)" stroke="#58a6ff" stroke-width="1"/>
+  <text x="170" y="257" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="600">感觉 → Token 输入流</text>
+  <text x="170" y="275" text-anchor="middle" fill="#8b949e" font-size="11">原始用户输入 + 传感器</text>
+
+  <rect x="310" y="235" width="180" height="50" rx="6" fill="rgba(210,153,34,.1)" stroke="#d29922" stroke-width="1"/>
+  <text x="400" y="257" text-anchor="middle" fill="#d29922" font-size="12" font-weight="600">短期 → 上下文窗口</text>
+  <text x="400" y="275" text-anchor="middle" fill="#8b949e" font-size="11">当前对话 / 滑动窗口</text>
+
+  <rect x="540" y="235" width="180" height="50" rx="6" fill="rgba(63,185,80,.1)" stroke="#3fb950" stroke-width="1"/>
+  <text x="630" y="257" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">长期 → 向量数据库</text>
+  <text x="630" y="275" text-anchor="middle" fill="#8b949e" font-size="11">嵌入 + 检索 + 持久化</text>
+
+  <!-- Capacity indicators -->
+  <rect x="80" y="300" width="650" height="50" rx="6" fill="none" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="400" y="320" text-anchor="middle" fill="#8b949e" font-size="11">容量与持久性对比</text>
+  <!-- bars -->
+  <rect x="80" y="328" width="80" height="10" rx="4" fill="#58a6ff" opacity=".6"/>
+  <text x="170" y="337" fill="#58a6ff" font-size="10">高容量·短持久</text>
+  <rect x="320" y="328" width="60" height="10" rx="4" fill="#d29922" opacity=".6"/>
+  <text x="390" y="337" fill="#d29922" font-size="10">低容量·中持久</text>
+  <rect x="560" y="328" width="100" height="10" rx="4" fill="#3fb950" opacity=".6"/>
+  <text x="670" y="337" fill="#3fb950" font-size="10">高容量·长持久</text>
+</svg>
+</div>
+
+<!-- ==================== 2 ==================== -->
+<h2 id="sec2">2. 短期记忆——上下文窗口管理</h2>
+
+<p>上下文窗口（Context Window）是 Agent 当前能"看到"的所有信息。它直接决定了模型的理解质量和响应连贯性。以下是三种主流策略：</p>
+
+<h3 id="sec2-1">三种上下文管理策略</h3>
+
+<table>
+  <tr><th>策略</th><th>原理</th><th>优点</th><th>缺点</th><th>适用场景</th></tr>
+  <tr>
+    <td><span class="tag tag-red">截断</span></td>
+    <td>超出窗口时丢弃最早的消息</td>
+    <td>实现简单，开销为零</td>
+    <td>丢失早期上下文，对话断裂</td>
+    <td>短对话、一次性任务</td>
+  </tr>
+  <tr>
+    <td><span class="tag tag-blue">摘要压缩</span></td>
+    <td>定期将旧消息压缩为摘要</td>
+    <td>保留要点，节省 token</td>
+    <td>丢失细节，摘要可能偏差</td>
+    <td>长对话、知识密集型</td>
+  </tr>
+  <tr>
+    <td><span class="tag tag-green">混合策略</span></td>
+    <td>滑动窗口 + 摘要 + 检索</td>
+    <td>兼顾即时性和完整性</td>
+    <td>实现复杂，延迟略高</td>
+    <td>生产级 Agent 系统</td>
+  </tr>
+</table>
+
+<div class="diagram">
+<svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" style="min-width:580px;">
+  <defs>
+    <linearGradient id="g-red" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f85149" stop-opacity=".8"/><stop offset="100%" stop-color="#da3633" stop-opacity=".9"/></linearGradient>
+    <linearGradient id="g-blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#58a6ff" stop-opacity=".8"/><stop offset="100%" stop-color="#1f6feb" stop-opacity=".9"/></linearGradient>
+    <linearGradient id="g-green" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3fb950" stop-opacity=".8"/><stop offset="100%" stop-color="#238636" stop-opacity=".9"/></linearGradient>
+  </defs>
+  <rect x="0" y="0" width="800" height="340" rx="10" fill="#1a1d27"/>
+  <text x="400" y="28" text-anchor="middle" fill="#c9d1d9" font-size="15" font-weight="700">三种上下文管理策略并排对比</text>
+
+  <!-- Column 1: Truncation -->
+  <rect x="20" y="45" width="240" height="275" rx="8" fill="rgba(248,81,73,.05)" stroke="#f85149" stroke-width="1"/>
+  <text x="140" y="70" text-anchor="middle" fill="#f85149" font-size="14" font-weight="700">🔪 截断策略</text>
+  <line x1="40" y1="80" x2="240" y2="80" stroke="#f85149" stroke-width=".5" opacity=".4"/>
+  <!-- messages -->
+  <rect x="35" y="92" width="210" height="22" rx="4" fill="#f85149" opacity=".3"/>
+  <text x="140" y="107" text-anchor="middle" fill="#f85149" font-size="10">M1 今天天气不错</text>
+  <rect x="35" y="118" width="210" height="22" rx="4" fill="#f85149" opacity=".3"/>
+  <text x="140" y="133" text-anchor="middle" fill="#f85149" font-size="10">M2 帮我查一下航班</text>
+  <rect x="35" y="144" width="210" height="22" rx="4" fill="#f85149" opacity=".3"/>
+  <text x="140" y="159" text-anchor="middle" fill="#f85149" font-size="10">M3 明天上海天气</text>
+  <rect x="35" y="170" width="210" height="22" rx="4" fill="#f85149" opacity=".2"/>
+  <text x="140" y="185" text-anchor="middle" fill="#f85149" font-size="10">M4 订一间酒店</text>
+  <!-- X through M1 -->
+  <line x1="50" y1="96" x2="230" y2="108" stroke="#f85149" stroke-width="2" opacity=".7"/>
+  <line x1="230" y1="96" x2="50" y2="108" stroke="#f85149" stroke-width="2" opacity=".7"/>
+  <text x="140" y="210" text-anchor="middle" fill="#f85149" font-size="11">❌ M1 被丢弃</text>
+  <text x="140" y="235" text-anchor="middle" fill="#f85149" font-size="10">窗口满 → 丢弃最早</text>
+  <text x="140" y="260" text-anchor="middle" fill="#8b949e" font-size="10">Token 开销：最低</text>
+  <text x="140" y="280" text-anchor="middle" fill="#8b949e" font-size="10">信息损失：最高</text>
+
+  <!-- Column 2: Summary -->
+  <rect x="280" y="45" width="240" height="275" rx="8" fill="rgba(88,166,255,.05)" stroke="#58a6ff" stroke-width="1"/>
+  <text x="400" y="70" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="700">📝 摘要压缩</text>
+  <line x1="300" y1="80" x2="500" y2="80" stroke="#58a6ff" stroke-width=".5" opacity=".4"/>
+  <rect x="295" y="92" width="210" height="22" rx="4" fill="#58a6ff" opacity=".3"/>
+  <text x="400" y="107" text-anchor="middle" fill="#58a6ff" font-size="10">M1 今天天气不错</text>
+  <rect x="295" y="118" width="210" height="22" rx="4" fill="#58a6ff" opacity=".3"/>
+  <text x="400" y="133" text-anchor="middle" fill="#58a6ff" font-size="10">M2 帮我查一下航班</text>
+  <rect x="295" y="144" width="210" height="32" rx="4" fill="#58a6ff" opacity=".5"/>
+  <text x="400" y="158" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">📋 总结：用户问了天气</text>
+  <text x="400" y="173" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">和航班信息</text>
+  <text x="400" y="204" text-anchor="middle" fill="#58a6ff" font-size="11">✅ 摘要保留要点</text>
+  <text x="400" y="230" text-anchor="middle" fill="#58a6ff" font-size="10">每 N 轮触发压缩</text>
+  <text x="400" y="260" text-anchor="middle" fill="#8b949e" font-size="10">Token 开销：中等</text>
+  <text x="400" y="280" text-anchor="middle" fill="#8b949e" font-size="10">信息损失：部分细节丢失</text>
+
+  <!-- Arrow from summary to compressed -->
+  <path d="M 380 148 Q 370 140 360 148" stroke="#58a6ff" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+  <text x="355" y="145" text-anchor="end" fill="#58a6ff" font-size="9">LLM 压缩</text>
+
+  <!-- Column 3: Hybrid -->
+  <rect x="540" y="45" width="240" height="275" rx="8" fill="rgba(63,185,80,.05)" stroke="#3fb950" stroke-width="1"/>
+  <text x="660" y="70" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">🔀 混合策略</text>
+  <line x1="560" y1="80" x2="760" y2="80" stroke="#3fb950" stroke-width=".5" opacity=".4"/>
+  <rect x="555" y="92" width="100" height="22" rx="4" fill="#3fb950" opacity=".4"/>
+  <text x="605" y="107" text-anchor="middle" fill="#3fb950" font-size="10">最近 3 轮</text>
+  <rect x="665" y="92" width="100" height="22" rx="4" fill="#3fb950" opacity=".2"/>
+  <text x="715" y="107" text-anchor="middle" fill="#3fb950" font-size="10">历史摘要</text>
+  <rect x="555" y="122" width="100" height="22" rx="4" fill="#3fb950" opacity=".4"/>
+  <text x="605" y="137" text-anchor="middle" fill="#3fb950" font-size="10">最近 2 轮</text>
+  <rect x="665" y="122" width="100" height="22" rx="4" fill="#3fb950" opacity=".2"/>
+  <text x="715" y="137" text-anchor="middle" fill="#3fb950" font-size="10">检索结果</text>
+  <rect x="555" y="152" width="100" height="22" rx="4" fill="#3fb950" opacity=".4"/>
+  <text x="605" y="167" text-anchor="middle" fill="#3fb950" font-size="10">当前轮</text>
+  <rect x="665" y="152" width="100" height="22" rx="4" fill="#3fb950" opacity=".2"/>
+  <text x="715" y="167" text-anchor="middle" fill="#3fb950" font-size="10">系统指令</text>
+
+  <text x="660" y="204" text-anchor="middle" fill="#3fb950" font-size="11">✅ 即时 + 历史 + 知识</text>
+  <text x="660" y="230" text-anchor="middle" fill="#3fb950" font-size="10">滑动窗口 + 摘要 + RAG</text>
+  <text x="660" y="260" text-anchor="middle" fill="#8b949e" font-size="10">Token 开销：较高</text>
+  <text x="660" y="280" text-anchor="middle" fill="#8b949e" font-size="10">信息损失：最低</text>
+</svg>
+</div>
+
+<h3>Go 实现：滑动窗口 + 摘要混合存储</h3>
+<pre><code><span class="kw">package</span> <span class="fn">memory</span>
+
+<span class="kw">import</span> (
+  <span class="str">"context"</span>
+  <span class="str">"fmt"</span>
+  <span class="str">"sync"</span>
+  <span class="str">"time"</span>
+)
+
+<span class="cm">// Message 表示单条对话消息</span>
+<span class="kw">type</span> <span class="tp">Message</span> <span class="kw">struct</span> {
+  Role     <span class="tp">string</span>    <span class="cm">// "user" | "assistant" | "system"</span>
+  Content  <span class="tp">string</span>
+  Tokens   <span class="tp">int</span>
+  Time     <span class="tp">time</span>.<span class="tp">Time</span>
+}
+
+<span class="cm">// Summary 表示压缩后的对话摘要</span>
+<span class="kw">type</span> <span class="tp">Summary</span> <span class="kw">struct</span> {
+  Content  <span class="tp">string</span>
+  Tokens   <span class="tp">int</span>
+  Scope    <span class="tp">string</span>  <span class="cm">// "session" | "topic"</span>
+}
+
+<span class="cm">// HybridStore 混合存储：滑动窗口 + 摘要</span>
+<span class="kw">type</span> <span class="tp">HybridStore</span> <span class="kw">struct</span> {
+  mu          <span class="tp">sync</span>.<span class="tp">RWMutex</span>
+  window      []<span class="tp">Message</span>
+  summaries   []<span class="tp">Summary</span>
+  maxWindow   <span class="tp">int</span>          <span class="cm">// 窗口最大消息数</span>
+  maxTokens   <span class="tp">int</span>          <span class="cm">// 窗口最大 token 数</span>
+  summaryFn   <span class="kw">func</span>(ctx <span class="tp">context</span>.<span class="tp">Context</span>, msgs []<span class="tp">Message</span>) (<span class="tp">string</span>, <span class="tp">error</span>)
+}
+
+<span class="kw">func</span> <span class="fn">NewHybridStore</span>(maxWindow, maxTokens <span class="tp">int</span>) <span class="op">*</span><span class="tp">HybridStore</span> {
+  <span class="kw">return</span> <span class="op">&amp;</span><span class="tp">HybridStore</span>{
+    window:    <span class="fn">make</span>([]<span class="tp">Message</span>, <span class="num">0</span>, maxWindow),
+    maxWindow: maxWindow,
+    maxTokens: maxTokens,
+  }
+}
+
+<span class="cm">// Add 添加新消息，必要时触发摘要压缩</span>
+<span class="kw">func</span> (s <span class="op">*</span><span class="tp">HybridStore</span>) <span class="fn">Add</span>(ctx <span class="tp">context</span>.<span class="tp">Context</span>, msg <span class="tp">Message</span>) <span class="tp">error</span> {
+  s.mu.<span class="fn">Lock</span>()
+  <span class="kw">defer</span> s.mu.<span class="fn">Unlock</span>()
+
+  s.window = <span class="fn">append</span>(s.window, msg)
+  totalTokens := <span class="num">0</span>
+  <span class="kw">for</span> _, m := <span class="kw">range</span> s.window {
+    totalTokens <span class="op">+=</span> m.Tokens
+  }
+
+  <span class="cm">// 触发压缩条件：消息数或 token 数超限</span>
+  <span class="kw">if</span> <span class="fn">len</span>(s.window) <span class="op">&gt;</span> s.maxWindow <span class="op">||</span> totalTokens <span class="op">&gt;</span> s.maxTokens {
+    <span class="kw">return</span> s.<span class="fn">compress</span>(ctx)
+  }
+  <span class="kw">return</span> <span class="kw">nil</span>
+}
+
+<span class="cm">// compress 将窗口前半部分压缩为摘要</span>
+<span class="kw">func</span> (s <span class="op">*</span><span class="tp">HybridStore</span>) <span class="fn">compress</span>(ctx <span class="tp">context</span>.<span class="tp">Context</span>) <span class="tp">error</span> {
+  mid := <span class="fn">len</span>(s.window) <span class="op">/</span> <span class="num">2</span>
+  oldPart := s.window[:mid]
+  newPart := s.window[mid:]
+
+  summaryText, err := s.summaryFn(ctx, oldPart)
+  <span class="kw">if</span> err <span class="op">!=</span> <span class="kw">nil</span> {
+    <span class="kw">return</span> <span class="fn">fmt</span>.<span class="fn">Errorf</span>(<span class="str">"compress failed: %w"</span>, err)
+  }
+
+  s.summaries = <span class="fn">append</span>(s.summaries, <span class="tp">Summary</span>{
+    Content: summaryText,
+    Tokens:  <span class="fn">len</span>(summaryText) <span class="op">/</span> <span class="num">4</span>,  <span class="cm">// 近似估算</span>
+    Scope:   <span class="str">"session"</span>,
+  })
+  s.window = newPart
+  <span class="kw">return</span> <span class="kw">nil</span>
+}
+
+<span class="cm">// BuildContext 构建最终发送给 LLM 的上下文</span>
+<span class="kw">func</span> (s <span class="op">*</span><span class="tp">HybridStore</span>) <span class="fn">BuildContext</span>() []<span class="tp">Message</span> {
+  s.mu.<span class="fn">RLock</span>()
+  <span class="kw">defer</span> s.mu.<span class="fn">RUnlock</span>()
+
+  <span class="cm">// 摘要在前，窗口在后</span>
+  result := <span class="fn">make</span>([]<span class="tp">Message</span>, <span class="num">0</span>)
+  <span class="kw">for</span> _, sum := <span class="kw">range</span> s.summaries {
+    result = <span class="fn">append</span>(result, <span class="tp">Message</span>{
+      Role:    <span class="str">"system"</span>,
+      Content: <span class="str">"[摘要] "</span> <span class="op">+</span> sum.Content,
+    })
+  }
+  result = <span class="fn">append</span>(result, s.window...)
+  <span class="kw">return</span> result
+}
+</code></pre>
+
+<!-- ==================== 3 ==================== -->
+<h2 id="sec3">3. 长期记忆——外部存储</h2>
+
+<p>当信息超出上下文窗口的承载能力时，我们需要外部存储系统来"记住"它们。长期记忆的核心挑战在于：<strong>如何在海量信息中快速找到相关的部分</strong>。</p>
+
+<h3>存储方案对比</h3>
+
+<table>
+  <tr><th>方案</th><th>原理</th><th>查询方式</th><th>延迟</th><th>场景</th></tr>
+  <tr><td>🔷 向量数据库</td><td>嵌入向量 + 近似最近邻</td><td>语义相似度</td><td>10-50ms</td><td>RAG、知识检索</td></tr>
+  <tr><td>🔶 键值存储</td><td>Key-Value 映射</td><td>精确匹配</td><td>1-5ms</td><td>用户配置、会话状态</td></tr>
+  <tr><td>📁 文件系统</td><td>JSON/YAML 文件</td><td>全文搜索</td><td>可变</td><td>日志、调试、小规模</td></tr>
+</table>
+
+<h3 id="sec3-1">RAG vs Agent 原生记忆</h3>
+
+<div class="compare">
+  <div class="info-card">
+    <h4>🔍 RAG (检索增强生成)</h4>
+    <p><strong>流程：</strong>用户查询 → 检索外部知识库 → 将检索结果拼入 Prompt → LLM 生成</p>
+    <p><strong>特点：</strong></p>
+    <ul>
+      <li>知识源静态（文档、数据库）</li>
+      <li>每次查询独立检索</li>
+      <li>无对话状态追踪</li>
+      <li>适用于问答、知识库场景</li>
+    </ul>
+    <p><span class="tag tag-blue">读多写少</span></p>
+  </div>
+  <div class="info-card">
+    <h4>🧠 Agent 原生记忆</h4>
+    <p><strong>流程：</strong>Agent 运行时自动记录对话 → 内部记忆模块管理 → 决策时自发调用</p>
+    <p><strong>特点：</strong></p>
+    <ul>
+      <li>记忆随对话动态更新</li>
+      <li>包含状态、偏好、计划</li>
+      <li>Agent 自主决定何时写入/读取</li>
+      <li>适用于任务执行、多步推理</li>
+    </ul>
+    <p><span class="tag tag-green">读写均衡</span></p>
+  </div>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 800 360" xmlns="http://www.w3.org/2000/svg" style="min-width:580px;">
+  <defs>
+    <marker id="arrowWhite" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b949e"/></marker>
+  </defs>
+  <rect x="0" y="0" width="800" height="360" rx="10" fill="#1a1d27"/>
+  <text x="200" y="28" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="700">🔍 RAG 架构</text>
+  <text x="600" y="28" text-anchor="middle" fill="#a371f7" font-size="14" font-weight="700">🧠 Agent Memory 架构</text>
+  <line x1="400" y1="10" x2="400" y2="350" stroke="#2a2d3a" stroke-width="1" stroke-dasharray="6,4"/>
+
+  <!-- RAG side -->
+  <rect x="20" y="50" width="170" height="40" rx="6" fill="#58a6ff" opacity=".2" stroke="#58a6ff" stroke-width="1"/>
+  <text x="105" y="75" text-anchor="middle" fill="#58a6ff" font-size="12">用户查询</text>
+  <path d="M 105 90 L 105 120" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowWhite)"/>
+  <rect x="20" y="120" width="170" height="40" rx="6" fill="#58a6ff" opacity=".3" stroke="#58a6ff" stroke-width="1"/>
+  <text x="105" y="145" text-anchor="middle" fill="#58a6ff" font-size="11">检索器 (Retriever)</text>
+  <path d="M 105 160 L 105 190" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowWhite)"/>
+  <rect x="20" y="190" width="170" height="40" rx="6" fill="#58a6ff" opacity=".4" stroke="#58a6ff" stroke-width="1"/>
+  <text x="105" y="215" text-anchor="middle" fill="#58a6ff" font-size="11">知识库 (Vector DB)</text>
+  <path d="M 105 230 L 105 260" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowWhite)"/>
+  <rect x="20" y="260" width="170" height="40" rx="6" fill="#58a6ff" opacity=".5" stroke="#58a6ff" stroke-width="1"/>
+  <text x="105" y="285" text-anchor="middle" fill="#fff" font-size="11">LLM 生成回答</text>
+  <!-- Feedback arrow -->
+  <path d="M 190 140 Q 230 140 230 300 Q 230 320 190 320" stroke="#8b949e" stroke-width="1" fill="none" stroke-dasharray="4,3"/>
+  <text x="240" y="235" fill="#8b949e" font-size="9" transform="rotate(-90,240,235)">知识注入 Prompt</text>
+
+  <!-- Agent Memory side -->
+  <rect x="420" y="50" width="170" height="40" rx="6" fill="#a371f7" opacity=".2" stroke="#a371f7" stroke-width="1"/>
+  <text x="505" y="75" text-anchor="middle" fill="#a371f7" font-size="12">用户交互</text>
+  <path d="M 505 90 L 505 120" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowWhite)"/>
+  <rect x="420" y="120" width="170" height="40" rx="6" fill="#a371f7" opacity=".3" stroke="#a371f7" stroke-width="1"/>
+  <text x="505" y="145" text-anchor="middle" fill="#a371f7" font-size="11">记忆模块 (Memory)</text>
+  <path d="M 420 140 L 390 140" stroke="#8b949e" stroke-width="1" stroke-dasharray="3,2"/>
+  <path d="M 505 160 L 505 190" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowWhite)"/>
+  <rect x="420" y="190" width="170" height="40" rx="6" fill="#a371f7" opacity=".4" stroke="#a371f7" stroke-width="1"/>
+  <text x="505" y="210" text-anchor="middle" fill="#a371f7" font-size="11">内部状态存储</text>
+  <text x="505" y="225" text-anchor="middle" fill="#8b949e" font-size="9">(目标/偏好/计划)</text>
+  <path d="M 505 230 L 505 260" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowWhite)"/>
+  <rect x="420" y="260" width="170" height="40" rx="6" fill="#a371f7" opacity=".5" stroke="#a371f7" stroke-width="1"/>
+  <text x="505" y="285" text-anchor="middle" fill="#fff" font-size="11">Agent 决策输出</text>
+  <!-- Write-back arrow -->
+  <path d="M 590 280 Q 630 280 630 130 Q 630 110 590 110" stroke="#8b949e" stroke-width="1" fill="none" stroke-dasharray="4,3"/>
+  <text x="640" y="200" fill="#8b949e" font-size="9" transform="rotate(90,640,200)">自主学习 &amp; 写入</text>
+</svg>
+</div>
+
+<h3>Go 实现：Chroma-go 向量记忆存储</h3>
+<pre><code><span class="kw">package</span> <span class="fn">memory</span>
+
+<span class="kw">import</span> (
+  <span class="str">"context"</span>
+  <span class="str">"fmt"</span>
+  <span class="str">"log/slog"</span>
+
+  <span class="str">"github.com/amikos-tech/chroma-go"</span>
+  <span class="str">"github.com/amikos-tech/chroma-go/openai"</span>
+)
+
+<span class="cm">// ChromaMemory 使用 chroma-go 实现长期对话记忆</span>
+<span class="kw">type</span> <span class="tp">ChromaMemory</span> <span class="kw">struct</span> {
+  client     <span class="op">*</span><span class="tp">chroma</span>.<span class="tp">Client</span>
+  collection <span class="op">*</span><span class="tp">chroma</span>.<span class="tp">Collection</span>
+  ef         <span class="op">*</span><span class="tp">openai</span>.<span class="tp">OpenAIEmbeddingFunction</span>
+  sessionID  <span class="tp">string</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewChromaMemory</span>(ctx <span class="tp">context</span>.<span class="tp">Context</span>, sessionID <span class="tp">string</span>) (<span class="op">*</span><span class="tp">ChromaMemory</span>, <span class="tp">error</span>) {
+  client, err := <span class="fn">chroma</span>.<span class="fn">NewClient</span>(<span class="str">"http://localhost:8000"</span>)
+  <span class="kw">if</span> err <span class="op">!=</span> <span class="kw">nil</span> {
+    <span class="kw">return</span> <span class="kw">nil</span>, <span class="fn">fmt</span>.<span class="fn">Errorf</span>(<span class="str">"chroma client: %w"</span>, err)
+  }
+
+  ef, err := <span class="fn">openai</span>.<span class="fn">NewOpenAIEmbeddingFunction</span>(
+    <span class="fn">openai</span>.<span class="fn">WithModel</span>(<span class="str">"text-embedding-3-small"</span>),
+  )
+  <span class="kw">if</span> err <span class="op">!=</span> <span class="kw">nil</span> {
+    <span class="kw">return</span> <span class="kw">nil</span>, <span class="fn">fmt</span>.<span class="fn">Errorf</span>(<span class="str">"embedding fn: %w"</span>, err)
+  }
+
+  coll, err := client.<span class="fn">GetOrCreateCollection</span>(ctx, <span class="str">"agent_memory"</span>,
+    <span class="fn">chroma</span>.<span class="fn">WithEmbeddingFunction</span>(ef),
+  )
+  <span class="kw">if</span> err <span class="op">!=</span> <span class="kw">nil</span> {
+    <span class="kw">return</span> <span class="kw">nil</span>, <span class="fn">fmt</span>.<span class="fn">Errorf</span>(<span class="str">"collection: %w"</span>, err)
+  }
+
+  <span class="kw">return</span> <span class="op">&amp;</span><span class="tp">ChromaMemory</span>{
+    client:     client,
+    collection: coll,
+    ef:         ef,
+    sessionID:  sessionID,
+  }, <span class="kw">nil</span>
+}
+
+<span class="cm">// Store 存储一段对话记忆</span>
+<span class="kw">func</span> (m <span class="op">*</span><span class="tp">ChromaMemory</span>) <span class="fn">Store</span>(ctx <span class="tp">context</span>.<span class="tp">Context</span>, id, content <span class="tp">string</span>) <span class="tp">error</span> {
+  metadata := <span class="kw">map</span>[<span class="tp">string</span>]<span class="kw">interface</span>{}{}
+  <span class="kw">if</span> m.sessionID <span class="op">!=</span> <span class="str">""</span> {
+    metadata[<span class="str">"session_id"</span>] = m.sessionID
+  }
+
+  _, err := m.collection.<span class="fn">Add</span>(ctx,
+    <span class="fn">chroma</span>.<span class="fn">WithIDs</span>(id),
+    <span class="fn">chroma</span>.<span class="fn">WithDocuments</span>(content),
+    <span class="fn">chroma</span>.<span class="fn">WithMetadatas</span>(metadata),
+  )
+  <span class="kw">if</span> err <span class="op">!=</span> <span class="kw">nil</span> {
+    <span class="kw">return</span> <span class="fn">fmt</span>.<span class="fn">Errorf</span>(<span class="str">"store: %w"</span>, err)
+  }
+  <span class="fn">slog</span>.<span class="fn">InfoContext</span>(ctx, <span class="str">"stored memory"</span>, <span class="str">"id"</span>, id)
+  <span class="kw">return</span> <span class="kw">nil</span>
+}
+
+<span class="cm">// Retrieve 语义检索相关记忆</span>
+<span class="kw">func</span> (m <span class="op">*</span><span class="tp">ChromaMemory</span>) <span class="fn">Retrieve</span>(ctx <span class="tp">context</span>.<span class="tp">Context</span>, query <span class="tp">string</span>, topK <span class="tp">int</span>) ([]<span class="tp">string</span>, <span class="tp">error</span>) {
+  results, err := m.collection.<span class="fn">Query</span>(ctx,
+    <span class="fn">chroma</span>.<span class="fn">WithQueryTexts</span>(query),
+    <span class="fn">chroma</span>.<span class="fn">WithNResults</span>(topK),
+  )
+  <span class="kw">if</span> err <span class="op">!=</span> <span class="kw">nil</span> {
+    <span class="kw">return</span> <span class="kw">nil</span>, <span class="fn">fmt</span>.<span class="fn">Errorf</span>(<span class="str">"query: %w"</span>, err)
+  }
+
+  memories := <span class="fn">make</span>([]<span class="tp">string</span>, <span class="num">0</span>)
+  <span class="kw">for</span> _, doc := <span class="kw">range</span> results.Documents {
+    memories = <span class="fn">append</span>(memories, doc)
+  }
+  <span class="kw">return</span> memories, <span class="kw">nil</span>
+}
+
+<span class="cm">// SummarizeAndStore 将窗口摘要写入长期记忆</span>
+<span class="kw">func</span> (m <span class="op">*</span><span class="tp">ChromaMemory</span>) <span class="fn">SummarizeAndStore</span>(
+  ctx <span class="tp">context</span>.<span class="tp">Context</span>,
+  msgs []<span class="tp">Message</span>,
+) <span class="tp">error</span> {
+  summary := <span class="str">""</span>
+  <span class="kw">for</span> _, msg := <span class="kw">range</span> msgs {
+    summary <span class="op">+=</span> msg.Role <span class="op">+</span> <span class="str">": "</span> <span class="op">+</span> msg.Content <span class="op">+</span> <span class="str">"\n"</span>
+  }
+  <span class="kw">return</span> m.<span class="fn">Store</span>(ctx,
+    <span class="fn">fmt</span>.<span class="fn">Sprintf</span>(<span class="str">"sum_%d"</span>, <span class="fn">len</span>(msgs)),
+    summary,
+  )
+}
+</code></pre>
+
+<!-- ==================== 4 ==================== -->
+<h2 id="sec4">4. 持久记忆——跨会话状态</h2>
+
+<p>持久记忆让 Agent 能够在不同会话之间"记住"用户。想象一下，如果每次打开聊天都要自我介绍——这正是没有持久记忆的 Agent 的困境。</p>
+
+<h3>三层记忆范围</h3>
+
+<div class="diagram">
+<svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg" style="min-width:580px;">
+  <rect x="0" y="0" width="800" height="300" rx="10" fill="#1a1d27"/>
+  <text x="400" y="28" text-anchor="middle" fill="#c9d1d9" font-size="15" font-weight="700">三层记忆范围</text>
+
+  <!-- Session level -->
+  <rect x="60" y="55" width="200" height="70" rx="8" fill="rgba(88,166,255,.15)" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="160" y="80" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="700">📄 会话级</text>
+  <text x="160" y="100" text-anchor="middle" fill="#8b949e" font-size="11">当前对话上下文</text>
+  <text x="160" y="116" text-anchor="middle" fill="#8b949e" font-size="11">生命周期：单次会话</text>
+
+  <!-- User level -->
+  <rect x="300" y="55" width="200" height="70" rx="8" fill="rgba(163,113,247,.15)" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="400" y="80" text-anchor="middle" fill="#a371f7" font-size="14" font-weight="700">👤 用户级</text>
+  <text x="400" y="100" text-anchor="middle" fill="#8b949e" font-size="11">用户偏好、历史、设置</text>
+  <text x="400" y="116" text-anchor="middle" fill="#8b949e" font-size="11">生命周期：用户存在期</text>
+
+  <!-- System level -->
+  <rect x="540" y="55" width="200" height="70" rx="8" fill="rgba(57,197,207,.15)" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="640" y="80" text-anchor="middle" fill="#39c5cf" font-size="14" font-weight="700">⚙️ 系统级</text>
+  <text x="640" y="100" text-anchor="middle" fill="#8b949e" font-size="11">全局配置、知识库</text>
+  <text x="640" y="116" text-anchor="middle" fill="#8b949e" font-size="11">生命周期：系统运行期</text>
+
+  <!-- Nesting diagram -->
+  <rect x="60" y="155" width="680" height="120" rx="8" fill="rgba(255,255,255,.02)" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="400" y="178" text-anchor="middle" fill="#8b949e" font-size="11">记忆嵌套关系</text>
+
+  <rect x="340" y="190" width="120" height="70" rx="8" fill="rgba(57,197,207,.15)" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="400" y="215" text-anchor="middle" fill="#39c5cf" font-size="11" font-weight="600">系统级</text>
+  <rect x="310" y="200" width="100" height="50" rx="6" fill="rgba(163,113,247,.15)" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="360" y="222" text-anchor="middle" fill="#a371f7" font-size="10" font-weight="600">用户级</text>
+  <rect x="285" y="210" width="80" height="35" rx="5" fill="rgba(88,166,255,.2)" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="325" y="232" text-anchor="middle" fill="#58a6ff" font-size="9" font-weight="600">会话级</text>
+
+  <!-- Persistence strategies -->
+  <rect x="490" y="195" width="220" height="60" rx="6" fill="rgba(63,185,80,.08)" stroke="#3fb950" stroke-width="1"/>
+  <text x="600" y="215" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">持久化策略</text>
+  <text x="600" y="233" text-anchor="middle" fill="#8b949e" font-size="10">异步批量写入 · 冲突检测</text>
+  <text x="600" y="248" text-anchor="middle" fill="#8b949e" font-size="10">版本号乐观锁 · 脏写回滚</text>
+</svg>
+</div>
+
+<h3>持久化策略：异步保存与冲突解决</h3>
+
+<p>跨会话持久化的核心挑战在于<strong>一致性</strong>和<strong>冲突</strong>。以下是常用的解决方案：</p>
+
+<ul>
+  <li><strong>异步批量写入：</strong>将记忆变更缓冲后批量写入，减少 I/O 压力</li>
+  <li><strong>版本号乐观锁：</strong>每条记忆记录带有版本号，写入时检查版本冲突</li>
+  <li><strong>时间戳合并：</strong>以最后写入为准，配合冲突日志</li>
+  <li><strong>脏写回滚：</strong>检测到冲突时回滚并重试</li>
+</ul>
+
+<pre><code><span class="cm">// MemoryRecord 持久化记忆记录</span>
+<span class="kw">type</span> <span class="tp">MemoryRecord</span> <span class="kw">struct</span> {
+  ID        <span class="tp">string</span>    <span class="str">`json:"id"`</span>
+  UserID    <span class="tp">string</span>    <span class="str">`json:"user_id"`</span>
+  Key       <span class="tp">string</span>    <span class="str">`json:"key"`</span>       <span class="cm">// 记忆键（如 "preference"）</span>
+  Value     <span class="tp">string</span>    <span class="str">`json:"value"`</span>     <span class="cm">// 记忆值（JSON）</span>
+  Version   <span class="tp">int</span>       <span class="str">`json:"version"`</span>   <span class="cm">// 乐观锁版本</span>
+  UpdatedAt <span class="tp">time</span>.<span class="tp">Time</span> <span class="str">`json:"updated_at"`</span>
+}
+
+<span class="cm">// AsyncPersist 异步持久化存储器</span>
+<span class="kw">type</span> <span class="tp">AsyncPersist</span> <span class="kw">struct</span> {
+  db      <span class="op">*</span><span class="tp">sql</span>.<span class="tp">DB</span>
+  buffer  <span class="kw">chan</span> <span class="tp">MemoryRecord</span>
+  batchSz <span class="tp">int</span>
+  wg      <span class="tp">sync</span>.<span class="tp">WaitGroup</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewAsyncPersist</span>(db <span class="op">*</span><span class="tp">sql</span>.<span class="tp">DB</span>) <span class="op">*</span><span class="tp">AsyncPersist</span> {
+  ap := <span class="op">&amp;</span><span class="tp">AsyncPersist</span>{
+    db:      db,
+    buffer:  <span class="fn">make</span>(<span class="kw">chan</span> <span class="tp">MemoryRecord</span>, <span class="num">1000</span>),
+    batchSz: <span class="num">50</span>,
+  }
+  <span class="kw">go</span> ap.<span class="fn">loop</span>()  <span class="cm">// 后台协程批量写入</span>
+  <span class="kw">return</span> ap
+}
+
+<span class="kw">func</span> (ap <span class="op">*</span><span class="tp">AsyncPersist</span>) <span class="fn">Save</span>(rec <span class="tp">MemoryRecord</span>) {
+  ap.buffer <span class="op">&lt;-</span> rec
+}
+
+<span class="kw">func</span> (ap <span class="op">*</span><span class="tp">AsyncPersist</span>) <span class="fn">loop</span>() {
+  batch := <span class="fn">make</span>([]<span class="tp">MemoryRecord</span>, <span class="num">0</span>, ap.batchSz)
+  ticker := <span class="fn">time</span>.<span class="fn">NewTicker</span>(<span class="num">5</span> <span class="op">*</span> <span class="tp">time</span>.<span class="tp">Second</span>)
+  <span class="kw">defer</span> ticker.<span class="fn">Stop</span>()
+  <span class="kw">for</span> {
+    <span class="kw">select</span> {
+    <span class="kw">case</span> rec := <span class="op">&lt;-</span>ap.buffer:
+      batch = <span class="fn">append</span>(batch, rec)
+      <span class="kw">if</span> <span class="fn">len</span>(batch) <span class="op">&gt;=</span> ap.batchSz {
+        ap.<span class="fn">flush</span>(batch)
+        batch = batch[:<span class="num">0</span>]
+      }
+    <span class="kw">case</span> <span class="op">&lt;-</span>ticker.C:
+      <span class="kw">if</span> <span class="fn">len</span>(batch) <span class="op">&gt;</span> <span class="num">0</span> {
+        ap.<span class="fn">flush</span>(batch)
+        batch = batch[:<span class="num">0</span>]
+      }
+    }
+  }
+}
+
+<span class="cm">// flush 批量写入数据库，使用乐观锁避免冲突</span>
+<span class="kw">func</span> (ap <span class="op">*</span><span class="tp">AsyncPersist</span>) <span class="fn">flush</span>(records []<span class="tp">MemoryRecord</span>) {
+  tx, _ := ap.db.<span class="fn">Begin</span>()
+  <span class="kw">for</span> _, r := <span class="kw">range</span> records {
+    query := <span class="str">`INSERT INTO memories (id, user_id, key, value, version, updated_at)
+                VALUES ($1,$2,$3,$4,$5,$6)
+                ON CONFLICT (user_id, key) DO UPDATE
+                SET value = $4, version = memories.version + 1,
+                    updated_at = $6
+                WHERE memories.version = $5`</span>
+    _, err := tx.<span class="fn">Exec</span>(query, r.ID, r.UserID, r.Key, r.Value, r.Version, r.UpdatedAt)
+    <span class="kw">if</span> err <span class="op">!=</span> <span class="kw">nil</span> {
+      <span class="fn">slog</span>.<span class="fn">Error</span>(<span class="str">"flush conflict"</span>, <span class="str">"err"</span>, err)
+      tx.<span class="fn">Rollback</span>()
+      <span class="kw">return</span>
+    }
+  }
+  tx.<span class="fn">Commit</span>()
+}
+</code></pre>
+
+<!-- ==================== 5 ==================== -->
+<h2 id="sec5">5. 消息历史管理策略</h2>
+
+<p>在有限的 Token 预算下，如何分配资源是一个关键问题。一个合理的分配方案能显著提升 Agent 的表现。</p>
+
+<h3>Token 预算分配</h3>
+
+<div class="diagram">
+<svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg" style="min-width:580px;">
+  <rect x="0" y="0" width="800" height="300" rx="10" fill="#1a1d27"/>
+  <text x="400" y="28" text-anchor="middle" fill="#c9d1d9" font-size="15" font-weight="700">Token 预算分配（预算 100%）</text>
+
+  <!-- Pie chart center -->
+  <g transform="translate(260,165)">
+    <!-- 20% System -->
+    <path d="M 0,0 L 0,-120 A 120,120 0 0,1 103.9,-60 Z" fill="#a371f7" opacity=".8"/>
+    <!-- 50% Conversation -->
+    <path d="M 0,0 L 103.9,-60 A 120,120 0 0,1 60,103.9 Z" fill="#58a6ff" opacity=".8"/>
+    <!-- 20% Retrieval -->
+    <path d="M 0,0 L 60,103.9 A 120,120 0 0,1 -60,103.9 Z" fill="#3fb950" opacity=".8"/>
+    <!-- 10% Reserved -->
+    <path d="M 0,0 L -60,103.9 A 120,120 0 0,1 0,-120 Z" fill="#d29922" opacity=".8"/>
+    <circle cx="0" cy="0" r="40" fill="#1a1d27"/>
+  </g>
+
+  <!-- Labels -->
+  <text x="260" y="165" text-anchor="middle" fill="#fff" font-size="13" font-weight="700" dy=".35em">Token</text>
+  <text x="260" y="165" text-anchor="middle" fill="#fff" font-size="13" font-weight="700" dy="1.5em">预算</text>
+
+  <rect x="430" y="70" width="14" height="14" rx="3" fill="#a371f7" opacity=".8"/>
+  <text x="450" y="82" fill="#c9d1d9" font-size="13">System 指令 — <tspan fill="#a371f7" font-weight="700">20%</tspan></text>
+  <text x="450" y="98" fill="#8b949e" font-size="11">角色定义、工具描述、安全约束</text>
+
+  <rect x="430" y="115" width="14" height="14" rx="3" fill="#58a6ff" opacity=".8"/>
+  <text x="450" y="127" fill="#c9d1d9" font-size="13">对话历史 — <tspan fill="#58a6ff" font-weight="700">50%</tspan></text>
+  <text x="450" y="143" fill="#8b949e" font-size="11">滑窗消息 + 摘要</text>
+
+  <rect x="430" y="160" width="14" height="14" rx="3" fill="#3fb950" opacity=".8"/>
+  <text x="450" y="172" fill="#c9d1d9" font-size="13">检索内容 — <tspan fill="#3fb950" font-weight="700">20%</tspan></text>
+  <text x="450" y="188" fill="#8b949e" font-size="11">RAG 结果、相关知识</text>
+
+  <rect x="430" y="205" width="14" height="14" rx="3" fill="#d29922" opacity=".8"/>
+  <text x="450" y="217" fill="#c9d1d9" font-size="13">预留缓冲 — <tspan fill="#d29922" font-weight="700">10%</tspan></text>
+  <text x="450" y="233" fill="#8b949e" font-size="11">应对 token 估算偏差、模型回复</text>
+</svg>
+</div>
+
+<h3>Go 实现：TokenBudget 分配器</h3>
+<pre><code><span class="kw">package</span> <span class="fn">token</span>
+
+<span class="kw">import</span> <span class="str">"fmt"</span>
+
+<span class="cm">// Budget 表示各部分的 Token 预算</span>
+<span class="kw">type</span> <span class="tp">Budget</span> <span class="kw">struct</span> {
+  System       <span class="tp">int</span>  <span class="cm">// 系统指令</span>
+  Conversation <span class="tp">int</span>  <span class="cm">// 对话历史</span>
+  Retrieval    <span class="tp">int</span>  <span class="cm">// 检索内容</span>
+  Reserved     <span class="tp">int</span>  <span class="cm">// 预留缓冲</span>
+  Total        <span class="tp">int</span>  <span class="cm">// 总计</span>
+}
+
+<span class="cm">// BudgetConfig 预算配置</span>
+<span class="kw">type</span> <span class="tp">BudgetConfig</span> <span class="kw">struct</span> {
+  TotalTokens    <span class="tp">int</span>    <span class="cm">// 总预算（如 128K）</span>
+  SystemRatio    <span class="tp">float64</span> <span class="cm">// 系统指令占比</span>
+  ConvRatio      <span class="tp">float64</span> <span class="cm">// 对话历史占比</span>
+  RetrievalRatio <span class="tp">float64</span> <span class="cm">// 检索内容占比</span>
+  ReservedRatio  <span class="tp">float64</span> <span class="cm">// 预留缓冲占比</span>
+}
+
+<span class="cm">// DefaultConfig 默认配置（20/50/20/10）</span>
+<span class="kw">func</span> <span class="fn">DefaultConfig</span>(totalTokens <span class="tp">int</span>) <span class="tp">BudgetConfig</span> {
+  <span class="kw">return</span> <span class="tp">BudgetConfig</span>{
+    TotalTokens:    totalTokens,
+    SystemRatio:    <span class="num">0.20</span>,
+    ConvRatio:      <span class="num">0.50</span>,
+    RetrievalRatio: <span class="num">0.20</span>,
+    ReservedRatio:  <span class="num">0.10</span>,
+  }
+}
+
+<span class="cm">// TokenBudget 预算分配器</span>
+<span class="kw">type</span> <span class="tp">TokenBudget</span> <span class="kw">struct</span> {
+  cfg <span class="tp">BudgetConfig</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewTokenBudget</span>(cfg <span class="tp">BudgetConfig</span>) <span class="op">*</span><span class="tp">TokenBudget</span> {
+  <span class="kw">return</span> <span class="op">&amp;</span><span class="tp">TokenBudget</span>{cfg: cfg}
+}
+
+<span class="cm">// Allocate 计算各部分预算</span>
+<span class="kw">func</span> (tb <span class="op">*</span><span class="tp">TokenBudget</span>) <span class="fn">Allocate</span>() <span class="tp">Budget</span> {
+  total := tb.cfg.TotalTokens
+  system := <span class="kw">int</span>(<span class="tp">float64</span>(total) <span class="op">*</span> tb.cfg.SystemRatio)
+  conv := <span class="kw">int</span>(<span class="tp">float64</span>(total) <span class="op">*</span> tb.cfg.ConvRatio)
+  retrieval := <span class="kw">int</span>(<span class="tp">float64</span>(total) <span class="op">*</span> tb.cfg.RetrievalRatio)
+  reserved := <span class="kw">int</span>(<span class="tp">float64</span>(total) <span class="op">*</span> tb.cfg.ReservedRatio)
+
+  <span class="cm">// 调整四舍五入误差</span>
+  used := system <span class="op">+</span> conv <span class="op">+</span> retrieval <span class="op">+</span> reserved
+  <span class="kw">if</span> used <span class="op">&lt;</span> total {
+    reserved <span class="op">+=</span> total <span class="op">-</span> used
+  }
+
+  <span class="kw">return</span> <span class="tp">Budget</span>{
+    System:       system,
+    Conversation: conv,
+    Retrieval:    retrieval,
+    Reserved:     reserved,
+    Total:        total,
+  }
+}
+
+<span class="cm">// Fits 检查给定内容是否能在预算内</span>
+<span class="kw">func</span> (tb <span class="op">*</span><span class="tp">TokenBudget</span>) <span class="fn">Fits</span>(category <span class="tp">string</span>, tokens <span class="tp">int</span>) <span class="tp">bool</span> {
+  budget := tb.<span class="fn">Allocate</span>()
+  <span class="kw">switch</span> category {
+  <span class="kw">case</span> <span class="str">"system"</span>:
+    <span class="kw">return</span> tokens <span class="op">&lt;=</span> budget.System
+  <span class="kw">case</span> <span class="str">"conversation"</span>:
+    <span class="kw">return</span> tokens <span class="op">&lt;=</span> budget.Conversation
+  <span class="kw">case</span> <span class="str">"retrieval"</span>:
+    <span class="kw">return</span> tokens <span class="op">&lt;=</span> budget.Retrieval
+  <span class="kw">case</span> <span class="str">"reserved"</span>:
+    <span class="kw">return</span> tokens <span class="op">&lt;=</span> budget.Reserved
+  <span class="kw">default</span>:
+    <span class="kw">return</span> <span class="kw">false</span>
+  }
+}
+
+<span class="cm">// Summary 返回预算摘要</span>
+<span class="kw">func</span> (b <span class="tp">Budget</span>) <span class="fn">Summary</span>() <span class="tp">string</span> {
+  <span class="kw">return</span> <span class="fn">fmt</span>.<span class="fn">Sprintf</span>(
+    <span class="str">"Token Budget [Total: %d] System: %d (%.0f%%) | Conv: %d (%.0f%%) | "</span> <span class="op">+</span>
+    <span class="str">"Retrieval: %d (%.0f%%) | Reserved: %d (%.0f%%)"</span>,
+    b.Total,
+    b.System, <span class="tp">float64</span>(b.System)<span class="op">/</span><span class="tp">float64</span>(b.Total)<span class="op">*</span><span class="num">100</span>,
+    b.Conversation, <span class="tp">float64</span>(b.Conversation)<span class="op">/</span><span class="tp">float64</span>(b.Total)<span class="op">*</span><span class="num">100</span>,
+    b.Retrieval, <span class="tp">float64</span>(b.Retrieval)<span class="op">/</span><span class="tp">float64</span>(b.Total)<span class="op">*</span><span class="num">100</span>,
+    b.Reserved, <span class="tp">float64</span>(b.Reserved)<span class="op">/</span><span class="tp">float64</span>(b.Total)<span class="op">*</span><span class="num">100</span>,
+  )
+}
+</code></pre>
+
+<!-- ==================== 6 ==================== -->
+<h2 id="sec6">6. 记忆一致性</h2>
+
+<p>记忆一致性确保 Agent 在不同时间点、不同对话中给出不矛盾的回应。两个核心挑战是<strong>状态漂移</strong>和<strong>指代消解</strong>。</p>
+
+<div class="feynman">
+想象你和朋友聊装修：第一周你说"想要日式风格"，第二周你说"喜欢浅色木纹"，第三周你问"之前说的日式风格，地板用什么材料"。如果朋友忘了一致性，他可能推荐深色地砖——但你明明说的是浅色木纹。<br><br>
+<strong>状态漂移</strong>就是 Agent 的记忆随时间渐渐走样。<strong>指代消解</strong>则是正确理解"之前说的"、"那个方案"这类指向性表述。
+</div>
+
+<h3>多轮对话指代链</h3>
+
+<div class="diagram">
+<svg viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg" style="min-width:580px;">
+  <rect x="0" y="0" width="800" height="260" rx="10" fill="#1a1d27"/>
+  <text x="400" y="28" text-anchor="middle" fill="#c9d1d9" font-size="15" font-weight="700">多轮对话指代链示例</text>
+
+  <!-- Turn 1 -->
+  <rect x="40" y="50" width="160" height="60" rx="8" fill="rgba(88,166,255,.15)" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="120" y="72" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">第一轮</text>
+  <text x="120" y="90" text-anchor="middle" fill="#c9d1d9" font-size="11">"想要日式风格"</text>
+  <text x="120" y="104" text-anchor="middle" fill="#8b949e" font-size="9">→ 记忆：#style=日式</text>
+
+  <!-- Arrow -->
+  <line x1="200" y1="80" x2="240" y2="80" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="220" y="72" text-anchor="middle" fill="#8b949e" font-size="9">T+2d</text>
+
+  <!-- Turn 2 -->
+  <rect x="245" y="50" width="160" height="60" rx="8" fill="rgba(88,166,255,.15)" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="325" y="72" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">第二轮</text>
+  <text x="325" y="90" text-anchor="middle" fill="#c9d1d9" font-size="11">"喜欢浅色木纹"</text>
+  <text x="325" y="104" text-anchor="middle" fill="#8b949e" font-size="9">→ 记忆：#wood=浅色</text>
+
+  <!-- Arrow -->
+  <line x1="405" y1="80" x2="445" y2="80" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="425" y="72" text-anchor="middle" fill="#8b949e" font-size="9">T+5d</text>
+
+  <!-- Turn 3 -->
+  <rect x="450" y="50" width="160" height="60" rx="8" fill="rgba(88,166,255,.15)" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="530" y="72" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">第三轮</text>
+  <text x="530" y="90" text-anchor="middle" fill="#c9d1d9" font-size="11">"之前说的日式..."</text>
+  <text x="530" y="104" text-anchor="middle" fill="#8b949e" font-size="9">指代消解 → 查记忆</text>
+
+  <!-- Connection: turn 3 -> turn 1 -->
+  <path d="M 530 50 Q 530 20 120 20 Q 50 20 50 50" stroke="#d29922" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>
+  <text x="280" y="18" text-anchor="middle" fill="#d29922" font-size="10">指代消解链路</text>
+
+  <!-- Bottom: resolution zone -->
+  <rect x="80" y="140" width="640" height="95" rx="8" fill="rgba(210,153,34,.05)" stroke="#d29922" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="400" y="162" text-anchor="middle" fill="#d29922" font-size="12" font-weight="600">指代消解机制</text>
+
+  <text x="160" y="188" text-anchor="middle" fill="#c9d1d9" font-size="11">1. 实体识别</text>
+  <text x="160" y="206" text-anchor="middle" fill="#8b949e" font-size="10">识别"之前说的"为引用</text>
+
+  <text x="340" y="188" text-anchor="middle" fill="#c9d1d9" font-size="11">2. 记忆检索</text>
+  <text x="340" y="206" text-anchor="middle" fill="#8b949e" font-size="10">在记忆中查找 #style</text>
+
+  <text x="520" y="188" text-anchor="middle" fill="#c9d1d9" font-size="11">3. 一致性检查</text>
+  <text x="520" y="206" text-anchor="middle" fill="#8b949e" font-size="10">日式+浅色木纹 ✓ 一致</text>
+
+  <text x="400" y="226" text-anchor="middle" fill="#3fb950" font-size="11">✅ 输出：建议浅色木纹地板 + 日式推拉门</text>
+</svg>
+</div>
+
+<h3>一致性保证策略</h3>
+
+<ul>
+  <li><strong>快照校验：</strong>每次记忆更新后，对关键状态做一致性断言</li>
+  <li><strong>差异检测：</strong>新记忆与已有记忆冲突时，触发人工确认</li>
+  <li><strong>版本化记忆：</strong>保留历史版本，支持回滚</li>
+  <li><strong>上下文锚点：</strong>在系统提示中嵌入"事实清单"，每次生成时引用</li>
+</ul>
+
+<!-- ==================== 7 ==================== -->
+<h2 id="sec7">7. 开源方案对比</h2>
+
+<table>
+  <tr><th>方案</th><th>核心思路</th><th>记忆类型</th><th>持久化</th><th>适用场景</th><th>复杂度</th></tr>
+  <tr>
+    <td><span class="tag tag-purple">MemGPT / Letta</span></td>
+    <td>"虚拟上下文管理"</td>
+    <td>短期 + 长期 + 归档</td>
+    <td>PostgreSQL + 向量</td>
+    <td>自主 Agent、长对话</td>
+    <td>高</td>
+  </tr>
+  <tr>
+    <td><span class="tag tag-blue">LangChain Memory</span></td>
+    <td>可插拔记忆组件</td>
+    <td>缓冲 / 摘要 / 向量</td>
+    <td>可选（多种后端）</td>
+    <td>LLM 应用快速开发</td>
+    <td>中</td>
+  </tr>
+  <tr>
+    <td><span class="tag tag-green">装修助手定制</span></td>
+    <td>轻量滑动窗口 + 偏好存储</td>
+    <td>短期 + 用户偏好</td>
+    <td>JSON 文件 / SQLite</td>
+    <td>垂直场景 Agent</td>
+    <td>低</td>
+  </tr>
+</table>
+
+<details class="socratic">
+  <summary>💡 MemGPT/Letta 为什么特别？</summary>
+  <div class="qa-detail">
+    <p>MemGPT（现更名为 Letta）提出了"虚拟上下文管理"的概念——它把 LLM 的上下文窗口看作"工作记忆"，通过操作系统式的分页机制，在对话过程中动态换入换出记忆。核心创新点：</p>
+    <ul>
+      <li><strong>记忆分页：</strong>将长期记忆分块，需要时再加载</li>
+      <li><strong>自检机制：</strong>Agent 自己判断何时需要查询记忆</li>
+      <li><strong>归档策略：</strong>不常用的记忆自动归档</li>
+    </ul>
+    <p>这使得 Agent 理论上可以处理无限长的对话，而不会超出上下文窗口限制。</p>
+  </div>
+</details>
+
+<details class="socratic">
+  <summary>💡 LangChain 各记忆组件对比</summary>
+  <div class="qa-detail">
+    <table>
+      <tr><th>组件</th><th>类型</th><th>保留内容</th><th>适用场景</th></tr>
+      <tr><td>ConversationBufferMemory</td><td>缓冲</td><td>全部消息</td><td>短对话</td></tr>
+      <tr><td>ConversationSummaryMemory</td><td>摘要</td><td>LLM 生成的摘要</td><td>长对话</td></tr>
+      <tr><td>VectorStoreRetrieverMemory</td><td>向量检索</td><td>嵌入后按相关性检索</td><td>知识密集型</td></tr>
+      <tr><td>ConversationKGMemory</td><td>知识图谱</td><td>实体关系三元组</td><td>实体关系推理</td></tr>
+    </table>
+  </div>
+</details>
+
+<!-- ==================== 8 ==================== -->
+<h2 id="sec8">8. 实战：装修助手对话记忆</h2>
+
+<p>让我们把前面的理论应用到一个具体的场景——装修助手 Agent。这个助手需要：记住用户偏好、跟踪项目进度、保持风格一致性。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" style="min-width:580px;">
+  <rect x="0" y="0" width="800" height="340" rx="10" fill="#1a1d27"/>
+  <text x="400" y="28" text-anchor="middle" fill="#c9d1d9" font-size="15" font-weight="700">装修助手记忆架构</text>
+
+  <!-- User input -->
+  <rect x="300" y="45" width="200" height="40" rx="8" fill="rgba(88,166,255,.2)" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="400" y="70" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="600">👤 用户输入</text>
+
+  <path d="M 400 85 L 400 110" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Agent Core -->
+  <rect x="250" y="110" width="300" height="50" rx="10" fill="rgba(163,113,247,.15)" stroke="#a371f7" stroke-width="2"/>
+  <text x="400" y="135" text-anchor="middle" fill="#a371f7" font-size="14" font-weight="700">装修助手 Agent Core</text>
+  <text x="400" y="152" text-anchor="middle" fill="#8b949e" font-size="11">记忆读写 + 推理 + 工具调用</text>
+
+  <!-- Three memory modules below -->
+  <path d="M 300 160 L 180 195" stroke="#8b949e" stroke-width="1" marker-end="url(#arrow)"/>
+  <path d="M 400 160 L 400 195" stroke="#8b949e" stroke-width="1" marker-end="url(#arrow)"/>
+  <path d="M 500 160 L 620 195" stroke="#8b949e" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- Short-term -->
+  <rect x="70" y="195" width="220" height="55" rx="8" fill="rgba(210,153,34,.1)" stroke="#d29922" stroke-width="1"/>
+  <text x="180" y="218" text-anchor="middle" fill="#d29922" font-size="12" font-weight="600">⏳ 短期：滑动窗口</text>
+  <text x="180" y="238" text-anchor="middle" fill="#8b949e" font-size="10">最近 10 轮对话 · Token 预算 50%</text>
+
+  <!-- Long-term -->
+  <rect x="310" y="195" width="180" height="55" rx="8" fill="rgba(57,197,207,.1)" stroke="#39c5cf" stroke-width="1"/>
+  <text x="400" y="218" text-anchor="middle" fill="#39c5cf" font-size="12" font-weight="600">💾 长期：向量 DB</text>
+  <text x="400" y="238" text-anchor="middle" fill="#8b949e" font-size="10">Chroma · 语义检索项目知识</text>
+
+  <!-- Persistent -->
+  <rect x="510" y="195" width="220" height="55" rx="8" fill="rgba(63,185,80,.1)" stroke="#3fb950" stroke-width="1"/>
+  <text x="620" y="218" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">📋 持久：用户偏好</text>
+  <text x="620" y="238" text-anchor="middle" fill="#8b949e" font-size="10">JSON 存储 · #style #material #color</text>
+
+  <!-- Data flow arrows upward -->
+  <path d="M 180 250 L 180 275 L 400 275 L 400 260" stroke="#d29922" stroke-width="1" fill="none" stroke-dasharray="4,3"/>
+  <path d="M 620 250 L 620 275 L 400 275 L 400 260" stroke="#3fb950" stroke-width="1" fill="none" stroke-dasharray="4,3"/>
+
+  <!-- Output -->
+  <rect x="300" y="275" width="200" height="40" rx="8" fill="rgba(63,185,80,.2)" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="400" y="300" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="600">💬 装修建议输出</text>
+
+  <!-- Example data -->
+  <rect x="20" y="270" width="160" height="55" rx="6" fill="rgba(255,255,255,.02)" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="100" y="290" text-anchor="middle" fill="#8b949e" font-size="10">记忆示例</text>
+  <text x="100" y="306" text-anchor="middle" fill="#8b949e" font-size="9">#style=日式 #wood=浅色</text>
+  <text x="100" y="318" text-anchor="middle" fill="#8b949e" font-size="9">#budget=30万 #room=客厅</text>
+</svg>
+</div>
+
+<h3>装修助手记忆实战代码</h3>
+<pre><code><span class="kw">package</span> <span class="fn">main</span>
+
+<span class="kw">import</span> (
+  <span class="str">"context"</span>
+  <span class="str">"encoding/json"</span>
+  <span class="str">"fmt"</span>
+  <span class="str">"log/slog"</span>
+  <span class="str">"os"</span>
+)
+
+<span class="cm">// RenovationMemory 装修助手专属记忆</span>
+<span class="kw">type</span> <span class="tp">RenovationMemory</span> <span class="kw">struct</span> {
+  UserID      <span class="tp">string</span>            <span class="str">`json:"user_id"`</span>
+  Style       <span class="tp">string</span>            <span class="str">`json:"style"`</span>        <span class="cm">// 装修风格</span>
+  Preferences <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">string</span> <span class="str">`json:"preferences"`</span> <span class="cm">// 偏好键值对</span>
+  Budget      <span class="tp">float64</span>           <span class="str">`json:"budget"`</span>       <span class="cm">// 预算（万元）</span>
+  Rooms       []<span class="tp">string</span>           <span class="str">`json:"rooms"`</span>        <span class="cm">// 房间列表</span>
+  Progress    <span class="tp">string</span>            <span class="str">`json:"progress"`</span>     <span class="cm">// 项目阶段</span>
+  Version     <span class="tp">int</span>               <span class="str">`json:"version"`</span>      <span class="cm">// 版本号</span>
+}
+
+<span class="cm">// MemoryStore 文件存储实现</span>
+<span class="kw">type</span> <span class="tp">MemoryStore</span> <span class="kw">struct</span> {
+  basePath <span class="tp">string</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewMemoryStore</span>(basePath <span class="tp">string</span>) <span class="op">*</span><span class="tp">MemoryStore</span> {
+  <span class="fn">os</span>.<span class="fn">MkdirAll</span>(basePath, <span class="num">0755</span>)
+  <span class="kw">return</span> <span class="op">&amp;</span><span class="tp">MemoryStore</span>{basePath: basePath}
+}
+
+<span class="kw">func</span> (ms <span class="op">*</span><span class="tp">MemoryStore</span>) <span class="fn">Load</span>(userID <span class="tp">string</span>) (<span class="op">*</span><span class="tp">RenovationMemory</span>, <span class="tp">error</span>) {
+  path := <span class="fn">fmt</span>.<span class="fn">Sprintf</span>(<span class="str">"%s/%s.json"</span>, ms.basePath, userID)
+  data, err := <span class="fn">os</span>.<span class="fn">ReadFile</span>(path)
+  <span class="kw">if</span> err <span class="op">!=</span> <span class="kw">nil</span> {
+    <span class="kw">if</span> <span class="fn">os</span>.<span class="fn">IsNotExist</span>(err) {
+      <span class="kw">return</span> <span class="op">&amp;</span><span class="tp">RenovationMemory</span>{UserID: userID, Version: <span class="num">1</span>}, <span class="kw">nil</span>
+    }
+    <span class="kw">return</span> <span class="kw">nil</span>, err
+  }
+  <span class="kw">var</span> mem <span class="tp">RenovationMemory</span>
+  <span class="kw">if</span> err := <span class="fn">json</span>.<span class="fn">Unmarshal</span>(data, <span class="op">&amp;</span>mem); err <span class="op">!=</span> <span class="kw">nil</span> {
+    <span class="kw">return</span> <span class="kw">nil</span>, err
+  }
+  <span class="kw">return</span> <span class="op">&amp;</span>mem, <span class="kw">nil</span>
+}
+
+<span class="kw">func</span> (ms <span class="op">*</span><span class="tp">MemoryStore</span>) <span class="fn">Save</span>(mem <span class="op">*</span><span class="tp">RenovationMemory</span>) <span class="tp">error</span> {
+  mem.Version<span class="op">++</span>
+  data, _ := <span class="fn">json</span>.<span class="fn">MarshalIndent</span>(mem, <span class="str">""</span>, <span class="str">"  "</span>)
+  path := <span class="fn">fmt</span>.<span class="fn">Sprintf</span>(<span class="str">"%s/%s.json"</span>, ms.basePath, mem.UserID)
+  <span class="kw">return</span> <span class="fn">os</span>.<span class="fn">WriteFile</span>(path, data, <span class="num">0644</span>)
+}
+
+<span class="cm">// RenovationAgent 装修助手 Agent</span>
+<span class="kw">type</span> <span class="tp">RenovationAgent</span> <span class="kw">struct</span> {
+  store     <span class="op">*</span><span class="tp">MemoryStore</span>
+  shortTerm <span class="op">*</span><span class="tp">HybridStore</span>  <span class="cm">// 短期记忆</span>
+  longTerm  <span class="op">*</span><span class="tp">ChromaMemory</span>  <span class="cm">// 长期记忆</span>
+}
+
+<span class="kw">func</span> (a <span class="op">*</span><span class="tp">RenovationAgent</span>) <span class="fn">Process</span>(ctx <span class="tp">context</span>.<span class="tp">Context</span>, userID, input <span class="tp">string</span>) <span class="tp">string</span> {
+  <span class="cm">// 1. 加载用户偏好</span>
+  userMem, _ := a.store.<span class="fn">Load</span>(userID)
+
+  <span class="cm">// 2. 短期记忆记录当前输入</span>
+  a.shortTerm.<span class="fn">Add</span>(ctx, <span class="tp">Message</span>{Role: <span class="str">"user"</span>, Content: input})
+
+  <span class="cm">// 3. 从长期记忆检索相关知识</span>
+  knowledge, _ := a.longTerm.<span class="fn">Retrieve</span>(ctx, input, <span class="num">3</span>)
+
+  <span class="cm">// 4. 构建完整上下文</span>
+  context := a.shortTerm.<span class="fn">BuildContext</span>()
+  <span class="cm">// ... 拼接 system prompt、knowledge、userMem ...</span>
+
+  <span class="cm">// 5. 调用 LLM 生成回复（省略）</span>
+  response := <span class="str">"根据您偏好的日式风格和浅色木纹，建议..."</span>
+
+  <span class="cm">// 6. 更新短期记忆</span>
+  a.shortTerm.<span class="fn">Add</span>(ctx, <span class="tp">Message</span>{Role: <span class="str">"assistant"</span>, Content: response})
+
+  <span class="cm">// 7. 异步持久化用户偏好</span>
+  <span class="kw">go</span> <span class="kw">func</span>() {
+    userMem.Style = <span class="str">"日式"</span>
+    userMem.Preferences[<span class="str">"material"</span>] = <span class="str">"浅色木纹"</span>
+    <span class="kw">if</span> err := a.store.<span class="fn">Save</span>(userMem); err <span class="op">!=</span> <span class="kw">nil</span> {
+      <span class="fn">slog</span>.<span class="fn">Error</span>(<span class="str">"persist failed"</span>, <span class="str">"err"</span>, err)
+    }
+  }()
+
+  <span class="kw">return</span> response
+}
+</code></pre>
+
+<!-- ==================== 9 ==================== -->
+<h2 id="sec9">9. 常见问题 QA</h2>
+
+<div class="qa">
+  <h4>Agent 记忆和 RAG 有什么区别？可以只用 RAG 吗？</h4>
+  <p>RAG 是"查资料"，Agent Memory 是"记事情"。RAG 从外部知识库检索静态信息，适合问答；Agent Memory 动态追踪对话状态、用户偏好和任务进度。如果只用 RAG，Agent 会在多轮对话中"失忆"——它不知道你刚才说了什么，也不知道你叫什么名字。两者互补，生产系统通常同时使用。</p>
+</div>
+
+<div class="qa">
+  <h4>上下文窗口越大约好吗？为什么还要记忆管理？</h4>
+  <p>不一定。更大的窗口意味着：1) 计算成本平方级增长（Attention 是与序列长度平方相关的）；2) 模型在超长上下文中容易"迷失中间"（Lost in the Middle），有效利用的信息反而变少。记忆管理的意义不在于扩展窗口，而在于<strong>选择性聚焦</strong>——把最相关的信息放在窗口里。</p>
+</div>
+
+<div class="qa">
+  <h4>摘要压缩会不会丢失重要信息？</h4>
+  <p>会。摘要本质上是有损压缩。缓解方案包括：1) 分层摘要——对摘要再摘要，保留不同粒度；2) 关键信息提取——用结构化格式（JSON）保留精确值（如预算数字、日期）；3) 混合策略——最近几轮原文保留，较早的才压缩。实际应用中，建议对<strong>事实性信息</strong>（数字、名字、偏好）做精确存储，对<strong>对话流动</strong>做摘要。</p>
+</div>
+
+<div class="qa">
+  <h4>如何选择合适的向量数据库？</h4>
+  <p>选择取决于规模和场景：<br>
+  <span class="tag tag-blue">Chroma</span> 轻量级，适合原型和小规模（&lt;1M 向量）<br>
+  <span class="tag tag-cyan">Qdrant</span> 性能优秀，Rust 实现，支持过滤<br>
+  <span class="tag tag-purple">Milvus</span> 分布式，适合大规模生产（&gt;10M 向量）<br>
+  <span class="tag tag-green">Pgvector</span> 如果已有 PostgreSQL，最省运维<br>
+  装修助手场景推荐 Chroma 或 Pgvector。</p>
+</div>
+
+<div class="qa">
+  <h4>记忆一致性怎么保证？Agent 说错话了怎么办？</h4>
+  <p>一致性需要多层防护：1) <strong>写入前校验</strong>——新的记忆与旧记忆冲突时，触发确认流程；2) <strong>版本化</strong>——每条记忆保留历史版本，支持回滚；3) <strong>审计日志</strong>——记录每次记忆变更的轨迹；4) <strong>用户反馈环</strong>——让用户能纠正 Agent 的错误记忆（"不，我上次说的是浅色木纹，不是深色"）。</p>
+</div>
+
+<div class="qa">
+  <h4>Token 预算怎么动态调整？</h4>
+  <p>可以基于运行时反馈调整：1) 如果模型回复多次截断 → 增大对话预算；2) 如果用户频繁纠正事实 → 增大系统指令预算加入更多约束；3) 如果检索结果经常不相关 → 调整检索预算或优化嵌入质量。动态调整可以用简单的 PID 控制器或基于规则的自适应策略。</p>
+</div>
+
+<details class="socratic">
+  <summary>💡 记忆系统的 Cold Start 问题怎么解决？</summary>
+  <div class="qa-detail">
+    <p>Cold Start（冷启动）指新用户没有任何历史记忆时，Agent 如何表现。方案：</p>
+    <ul>
+      <li><strong>默认模板：</strong>为新用户提供预设的"默认偏好"（如中性风格、标准预算）</li>
+      <li><strong>主动探测：</strong>在第一轮对话中主动提问收集信息（"您想要什么风格？预算大概多少？"）</li>
+      <li><strong>渐进填充：</strong>不追求一次填满，随着对话自然积累</li>
+      <li><strong>知识迁移：</strong>从同类用户中推断可能的偏好（基于用户画像分组）</li>
+    </ul>
+  </div>
+</details>
+
+<!-- ==================== 10 ==================== -->
+<h2 id="sec10">10. 口播总结</h2>
+
+<div class="feynman" style="border-left-color: var(--cyan);">
+<strong style="color:var(--cyan);">🎙️ 口播稿</strong>
+</div>
+
+<div class="info-card" style="background:linear-gradient(135deg,rgba(57,197,207,.06),rgba(88,166,255,.04));border-color:var(--cyan);">
+<p style="font-size:15px;line-height:1.8;">
+今天我们一起深入探讨了 AI Agent 的记忆与上下文管理，从三层记忆架构开始，到实战的装修助手实现，整个过程就像为 Agent 构建了一套完整的"认知操作系统"。<br><br>
+
+我们首先理解了<strong>为什么记忆系统不可或缺</strong>——通过厨师的厨房类比，看到感觉记忆、短期记忆和长期记忆各自扮演的角色。接着进入<strong>上下文窗口管理</strong>，对比了截断、摘要和混合三种策略的优劣，并用 Go 代码实现了滑动窗口 + 摘要的混合存储方案。<br><br>
+
+在<strong>长期记忆</strong>部分，我们对比了向量数据库、键值存储和文件系统的适用场景，深入分析了 RAG 与 Agent 原生记忆的本质区别——一个是查资料，一个是记事情。通过 chroma-go 的代码示例，展示了如何将对话记忆持久化到向量数据库中。<br><br>
+
+<strong>持久记忆</strong>让我们看到了会话级、用户级和系统级的三层记忆范围，以及异步保存和乐观锁冲突解决的工程实践。<strong>Token 预算管理</strong>则教会我们如何在有限的上下文窗口中合理分配资源——系统指令 20%、对话 50%、检索 20%、预留 10%。<br><br>
+
+我们还探讨了<strong>记忆一致性</strong>的挑战，通过多轮对话指代链的 SVG 图示，展示了 Agent 如何追踪"之前说的日式风格"这样的指代关系。在<strong>开源方案对比</strong>中，分析了 MemGPT/Letta 的虚拟上下文管理、LangChain 的可插拔记忆组件，以及轻量定制方案的取舍。<br><br>
+
+最后的<strong>装修助手实战</strong>将所有这些理论融会贯通——一个完整的记忆架构从短期滑窗到长期向量检索，再到用户偏好的 JSON 持久化，展示了生产级 Agent 记忆系统的完整面貌。<br><br>
+
+<strong>核心收获：</strong>好的记忆系统不是简单地把所有东西塞进上下文窗口，而是像人类一样——知道该记住什么、该忘记什么、以及何时去回忆。这正是让 Agent 从"健忘工具"进化为"智能伙伴"的关键一步。
+</p>
+</div>
+
+<div style="margin-top:48px;padding:24px;background:var(--card);border-radius:10px;border:1px solid var(--border);text-align:center;">
+  <p style="color:#8b949e;font-size:13px;">— END —</p>
+  <p style="color:#8b949e;font-size:12px;">AI Agent Memory 与上下文管理 · 深度技术笔记</p>
+</div>
+
+</div><!-- /main -->
+
+</body>
+</html>

@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多 Agent 协作模式深度解析</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --card: #1a1d27;
+  --border: #2a2d3a;
+  --text: #c9d1d9;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --orange: #d29922;
+  --red: #f85149;
+  --purple: #bc8cff;
+  --sidebar-w: 260px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 16px;
+}
+a { color: var(--accent); text-decoration:none; }
+a:hover { text-decoration:underline; }
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  z-index: 100;
+  padding: 20px 0;
+}
+.sidebar h2 {
+  font-size: 15px;
+  padding: 0 20px 16px;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.sidebar ul { list-style: none; }
+.sidebar li a {
+  display: block;
+  padding: 8px 20px;
+  font-size: 14px;
+  color: var(--text);
+  transition: all .2s;
+  border-left: 3px solid transparent;
+}
+.sidebar li a:hover,
+.sidebar li a.active {
+  background: rgba(88,166,255,.08);
+  color: var(--accent);
+  border-left-color: var(--accent);
+  text-decoration: none;
+}
+.toc-sub { padding-left: 16px; font-size: 13px; }
+
+/* Main */
+.main {
+  margin-left: var(--sidebar-w);
+  padding: 40px 56px;
+  max-width: 960px;
+}
+.main h1 {
+  font-size: 36px;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.main .subtitle {
+  color: #8b949e;
+  font-size: 18px;
+  margin-bottom: 40px;
+}
+section { margin-bottom: 60px; }
+section h2 {
+  font-size: 28px;
+  margin-bottom: 20px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border);
+  color: var(--accent);
+}
+section h3 {
+  font-size: 20px;
+  margin: 24px 0 12px;
+  color: #e6edf3;
+}
+section p { margin-bottom: 14px; }
+section ul { margin: 10px 0 16px 24px; }
+section li { margin-bottom: 6px; }
+
+/* Feynman card */
+.feynman {
+  background: linear-gradient(135deg, rgba(88,166,255,.06), rgba(188,140,255,.06));
+  border: 1px solid rgba(88,166,255,.2);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin: 20px 0;
+  position: relative;
+}
+.feynman::before {
+  content: "⚛ 费曼类比";
+  position: absolute;
+  top: -11px;
+  left: 16px;
+  background: var(--bg);
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Diagrams */
+.diagram {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 24px 0;
+  overflow-x: auto;
+  display: flex;
+  justify-content: center;
+}
+.diagram svg { min-width: 580px; }
+.diagram.wide svg { min-width: 420px; }
+.diagram.narrow svg { min-width: 340px; }
+
+/* Info card */
+.info-card {
+  background: rgba(56,139,253,.06);
+  border: 1px solid rgba(56,139,253,.15);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+
+/* Compare table */
+.compare {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 14px;
+}
+.compare th {
+  background: rgba(88,166,255,.1);
+  color: var(--accent);
+  padding: 12px 16px;
+  text-align: left;
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+.compare td {
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+}
+.compare tr:hover td { background: rgba(88,166,255,.04); }
+.compare .good { color: var(--green); }
+.compare .mid { color: var(--orange); }
+.compare .bad { color: var(--red); }
+
+/* Q&A */
+.qa { margin: 20px 0; }
+details.socratic {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+details.socratic summary {
+  padding: 14px 18px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent);
+  transition: background .2s;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+details.socratic summary::-webkit-details-marker { display: none; }
+details.socratic summary::before {
+  content: "▶";
+  font-size: 12px;
+  transition: transform .2s;
+}
+details.socratic[open] summary::before { transform: rotate(90deg); }
+details.socratic summary:hover { background: rgba(88,166,255,.06); }
+details.socratic .answer {
+  padding: 0 18px 18px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+/* Code */
+pre {
+  background: #151820;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 20px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  margin: 16px 0;
+  tab-size: 4;
+}
+code { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+p code { background: rgba(88,166,255,.1); padding: 2px 6px; border-radius: 4px; }
+
+/* Syntax highlight */
+.kw { color: #ff7b72; }
+.fn { color: #d2a8ff; }
+.str { color: #a5d6ff; }
+.num { color: #79c0ff; }
+.cm { color: #8b949e; font-style: italic; }
+.tp { color: #ffa657; }
+.op { color: #79c0ff; }
+
+/* Badge / tag */
+.tag {
+  display: inline-block;
+  background: rgba(88,166,255,.12);
+  color: var(--accent);
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Mobile */
+@media(max-width:768px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; padding: 24px 20px; }
+  .main h1 { font-size: 26px; }
+  .diagram svg { min-width: 340px; }
+}
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3d4a; }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <h2>📋 目录</h2>
+  <ul>
+    <li><a href="#intro">1. 为什么需要多 Agent</a></li>
+    <li><a href="#orchestrator">2. Orchestrator-Workers</a></li>
+    <li><a href="#supervisor">3. Supervisor-Subordinate</a></li>
+    <li><a href="#swarm">4. Swarm 模式</a></li>
+    <li><a href="#debate">5. Debate 辩论模式</a></li>
+    <li><a href="#comms">6. 通信协议</a></li>
+    <li><a href="#allocation">7. 任务分配策略</a></li>
+    <li><a href="#judge">8. LLM-as-Judge</a></li>
+    <li><a href="#practical">9. 实战：装修系统</a></li>
+    <li><a href="#qa">10. QA + 口播总结</a></li>
+  </ul>
+</nav>
+
+<div class="main">
+
+<h1>🤖 多 Agent 协作模式</h1>
+<p class="subtitle">从单体智能到群体智能的架构演进 · 深度技术指南</p>
+
+<!-- ========== 1 ========== -->
+<section id="intro">
+<h2>1. 为什么需要多 Agent</h2>
+
+<div class="feynman">
+<p>想象一位顶级厨师独自操办满汉全席：他要同时掌勺 108 道菜、雕刻萝卜花、熬高汤、摆盘……即使他有三头六臂，出餐速度和质量也必然崩溃。<strong>多 Agent 协作</strong>就像给这位大厨配上一支专业团队——配菜师、面点师、冷盘师傅各司其职，主厨只需调度和品控。</p>
+</div>
+
+<p>单一 Agent 在实际生产中会面临三重瓶颈：</p>
+<ul>
+  <li><strong>上下文窗口溢出</strong>：单个 LLM 承载过多角色和知识，token 消耗爆炸，注意力分散</li>
+  <li><strong>单点脆弱性</strong>：一个环节出错导致全流程失败，没有冗余和回退机制</li>
+  <li><strong>专业化不足</strong>：让同一个模型既写代码又做设计又做测试，每个任务都达不到专家水准</li>
+</ul>
+
+<div class="diagram">
+<svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" style="min-width:580px">
+  <defs>
+    <linearGradient id="gRed" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#f85149"/><stop offset="100%" stop-color="#da3633"/></linearGradient>
+    <linearGradient id="gBlue" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#1f6feb"/></linearGradient>
+    <linearGradient id="gGreen" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#238636"/></linearGradient>
+    <linearGradient id="gPurple" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#bc8cff"/><stop offset="100%" stop-color="#8957e5"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+
+  <!-- Left: Single Agent -->
+  <rect x="10" y="10" width="370" height="320" rx="10" fill="none" stroke="var(--border)" stroke-width="1" stroke-dasharray="4"/>
+  <text x="195" y="38" text-anchor="middle" fill="#f85149" font-size="16" font-weight="600">❌ 单一 Agent</text>
+
+  <rect x="50" y="55" width="290" height="48" rx="8" fill="url(#gRed)" opacity=".2" stroke="#f85149" stroke-width="1"/>
+  <text x="195" y="84" text-anchor="middle" fill="#f85149" font-size="14">🔥 被 10 个并发任务淹没</text>
+
+  <!-- Tasks piling up -->
+  <rect x="60" y="120" width="120" height="32" rx="6" fill="var(--card)" stroke="var(--border)"/><text x="120" y="141" text-anchor="middle" fill="var(--text)" font-size="11">写代码</text>
+  <rect x="195" y="120" width="120" height="32" rx="6" fill="var(--card)" stroke="var(--border)"/><text x="255" y="141" text-anchor="middle" fill="var(--text)" font-size="11">写测试</text>
+  <rect x="60" y="162" width="120" height="32" rx="6" fill="var(--card)" stroke="var(--border)"/><text x="120" y="183" text-anchor="middle" fill="var(--text)" font-size="11">UI 设计</text>
+  <rect x="195" y="162" width="120" height="32" rx="6" fill="var(--card)" stroke="var(--border)"/><text x="255" y="183" text-anchor="middle" fill="var(--text)" font-size="11">数据分析</text>
+  <rect x="60" y="204" width="120" height="32" rx="6" fill="var(--card)" stroke="var(--border)"/><text x="120" y="225" text-anchor="middle" fill="var(--text)" font-size="11">文档撰写</text>
+  <rect x="195" y="204" width="120" height="32" rx="6" fill="var(--card)" stroke="var(--border)"/><text x="255" y="225" text-anchor="middle" fill="var(--text)" font-size="11">代码审查</text>
+  <rect x="60" y="246" width="120" height="32" rx="6" fill="var(--card)" stroke="var(--border)"/><text x="120" y="267" text-anchor="middle" fill="var(--text)" font-size="11">部署上线</text>
+  <rect x="195" y="246" width="120" height="32" rx="6" fill="var(--card)" stroke="var(--border)"/><text x="255" y="267" text-anchor="middle" fill="var(--text)" font-size="11">客服答疑</text>
+
+  <text x="195" y="310" text-anchor="middle" fill="#8b949e" font-size="11">上下文爆炸 · 质量下降 · 超时率高</text>
+
+  <!-- Arrow -->
+  <line x1="390" y1="170" x2="410" y2="170" stroke="var(--accent)" stroke-width="2" marker-end="url(#arr)"/>
+  <defs><marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="var(--accent)"/></marker></defs>
+
+  <!-- Right: Multi-Agent -->
+  <rect x="420" y="10" width="370" height="320" rx="10" fill="none" stroke="var(--border)" stroke-width="1"/>
+  <text x="605" y="38" text-anchor="middle" fill="#3fb950" font-size="16" font-weight="600">✅ 多 Agent 协作</text>
+
+  <!-- Orchestrator -->
+  <rect x="480" y="55" width="180" height="36" rx="18" fill="url(#gBlue)" opacity=".25" stroke="var(--accent)" stroke-width="1" filter="url(#glow)"/>
+  <text x="570" y="78" text-anchor="middle" fill="var(--accent)" font-size="13" font-weight="600">🧠 Orchestrator 调度器</text>
+
+  <!-- Workers -->
+  <rect x="440" y="112" width="100" height="32" rx="6" fill="url(#gGreen)" opacity=".15" stroke="var(--green)"/><text x="490" y="133" text-anchor="middle" fill="var(--green)" font-size="11">👨‍💻 代码 Agent</text>
+  <rect x="555" y="112" width="100" height="32" rx="6" fill="url(#gPurple)" opacity=".15" stroke="var(--purple)"/><text x="605" y="133" text-anchor="middle" fill="var(--purple)" font-size="11">🎨 设计 Agent</text>
+  <rect x="670" y="112" width="100" height="32" rx="6" fill="url(#gOrange)" opacity=".15" stroke="var(--orange)"/><text x="720" y="133" text-anchor="middle" fill="var(--orange)" font-size="11">📝 文档 Agent</text>
+  <rect x="440" y="155" width="100" height="32" rx="6" fill="url(#gOrange)" opacity=".15" stroke="var(--orange)"/><text x="490" y="176" text-anchor="middle" fill="var(--orange)" font-size="11">🧪 测试 Agent</text>
+  <rect x="555" y="155" width="100" height="32" rx="6" fill="url(#gRed)" opacity=".15" stroke="var(--red)"/><text x="605" y="176" text-anchor="middle" fill="var(--red)" font-size="11">🔍 审查 Agent</text>
+  <rect x="670" y="155" width="100" height="32" rx="6" fill="url(#gBlue)" opacity=".15" stroke="var(--accent)"/><text x="720" y="176" text-anchor="middle" fill="var(--accent)" font-size="11">📊 分析 Agent</text>
+
+  <!-- Lines from orchestrator to workers -->
+  <line x1="530" y1="91" x2="490" y2="112" stroke="var(--accent)" stroke-width="1" opacity=".5"/>
+  <line x1="570" y1="91" x2="555" y2="112" stroke="var(--accent)" stroke-width="1" opacity=".5"/>
+  <line x1="610" y1="91" x2="670" y2="112" stroke="var(--accent)" stroke-width="1" opacity=".5"/>
+  <line x1="530" y1="91" x2="490" y2="155" stroke="var(--accent)" stroke-width="1" opacity=".5"/>
+  <line x1="570" y1="91" x2="555" y2="155" stroke="var(--accent)" stroke-width="1" opacity=".5"/>
+  <line x1="610" y1="91" x2="670" y2="155" stroke="var(--accent)" stroke-width="1" opacity=".5"/>
+
+  <text x="605" y="210" text-anchor="middle" fill="#8b949e" font-size="11">各 Agent 并发执行，专注自身领域</text>
+  <text x="605" y="230" text-anchor="middle" fill="#8b949e" font-size="11">Orchestrator 汇总结果、处理冲突</text>
+
+  <!-- Result aggregation -->
+  <rect x="480" y="252" width="180" height="32" rx="8" fill="url(#gGreen)" opacity=".2" stroke="var(--green)"/>
+  <text x="570" y="273" text-anchor="middle" fill="var(--green)" font-size="12">✅ 汇总合并最终交付</text>
+
+  <!-- Bottom indicator -->
+  <text x="605" y="318" text-anchor="middle" fill="#3fb950" font-size="11">吞吐量 ↑ 质量 ↑ 容错 ↑</text>
+</svg>
+</div>
+</section>
+
+<!-- ========== 2 ========== -->
+<section id="orchestrator">
+<h2>2. Orchestrator-Workers 模式</h2>
+
+<p>Orchestrator（编排器）是中心调度节点，负责将复杂任务分解为子任务，分发给专用的 Worker Agent，最后收集结果并汇合输出。这是最常用的多 Agent 模式，适合有明确流程结构的任务。</p>
+
+<h3>核心流程</h3>
+<ul>
+  <li><strong>任务分解</strong>：Orchestrator 分析用户意图，将其拆解为可独立执行的子任务</li>
+  <li><strong>智能分发</strong>：根据 Worker 的能力标签进行匹配分派</li>
+  <li><strong>并行执行</strong>：Workers 各自独立运行，支持阻塞/非阻塞模式</li>
+  <li><strong>汇合与排序</strong>：收集所有结果，按依赖关系组装成最终应答</li>
+</ul>
+
+<h3>Go 实现：Orchestrator</h3>
+<pre><code><span class="kw">package</span> agent
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"sync"</span>
+)
+
+<span class="cm">// Task 代表一个可分发的工作单元</span>
+<span class="kw">type</span> Task <span class="kw">struct</span> {
+    ID          <span class="tp">string</span>
+    Description <span class="tp">string</span>
+    RequiredCap <span class="tp">string</span> <span class="cm">// 所需能力</span>
+    Payload     <span class="kw">interface</span>{}
+}
+
+<span class="cm">// Result 封装 Worker 的执行结果</span>
+<span class="kw">type</span> Result <span class="kw">struct</span> {
+    TaskID <span class="tp">string</span>
+    Output <span class="tp">string</span>
+    Err    <span class="tp">error</span>
+}
+
+<span class="cm">// Worker 接口：每个 worker 必须实现 Execute</span>
+<span class="kw">type</span> Worker <span class="kw">interface</span> {
+    Execute(ctx <span class="tp">context</span>.Context, task Task) Result
+    Capability() <span class="tp">string</span>
+}
+
+<span class="cm">// Orchestrator 核心调度器</span>
+<span class="kw">type</span> Orchestrator <span class="kw">struct</span> {
+    workers <span class="kw">map</span>[<span class="tp">string</span>][]Worker
+}
+
+<span class="kw">func</span> <span class="fn">NewOrchestrator</span>(workers []Worker) *Orchestrator {
+    reg := <span class="kw">make</span>(<span class="kw">map</span>[<span class="tp">string</span>][]Worker)
+    <span class="kw">for</span> _, w := <span class="kw">range</span> workers {
+        cap := w.<span class="fn">Capability</span>()
+        reg[cap] = <span class="fn">append</span>(reg[cap], w)
+    }
+    <span class="kw">return</span> &Orchestrator{workers: reg}
+}
+
+<span class="cm">// Run 分解任务 -> 分发 -> 收集 -> 汇合</span>
+<span class="kw">func</span> (o *Orchestrator) <span class="fn">Run</span>(ctx <span class="tp">context</span>.Context, goal <span class="tp">string</span>) (<span class="tp">string</span>, <span class="tp">error</span>) {
+    <span class="cm">// 1. 分解目标为子任务</span>
+    tasks := o.<span class="fn">decompose</span>(goal)
+
+    <span class="cm">// 2. 并发分发</span>
+    var wg sync.WaitGroup
+    results := <span class="kw">make</span>(<span class="kw">chan</span> Result, <span class="fn">len</span>(tasks))
+
+    <span class="kw">for</span> _, task := <span class="kw">range</span> tasks {
+        wg.<span class="fn">Add</span>(1)
+        <span class="kw">go</span> <span class="kw">func</span>(t Task) {
+            <span class="kw">defer</span> wg.<span class="fn">Done</span>()
+            worker := o.<span class="fn">assign</span>(t)
+            results &lt;- worker.<span class="fn">Execute</span>(ctx, t)
+        }(task)
+    }
+
+    <span class="kw">go</span> <span class="kw">func</span>() {
+        wg.<span class="fn">Wait</span>()
+        <span class="fn">close</span>(results)
+    }()
+
+    <span class="cm">// 3. 收集并汇合</span>
+    <span class="kw">return</span> o.<span class="fn">synthesize</span>(results)
+}
+
+<span class="kw">func</span> (o *Orchestrator) <span class="fn">decompose</span>(goal <span class="tp">string</span>) []Task {
+    <span class="cm">// 使用 LLM 将 goal 分解为子任务列表</span>
+    <span class="cm">// 此处省略具体调用，返回示例</span>
+    <span class="kw">return</span> []Task{
+        {ID: <span class="str">"t1"</span>, Description: <span class="str">"需求分析"</span>, RequiredCap: <span class="str">"analysis"</span>},
+        {ID: <span class="str">"t2"</span>, Description: <span class="str">"代码实现"</span>, RequiredCap: <span class="str">"coding"</span>},
+        {ID: <span class="str">"t3"</span>, Description: <span class="str">"单元测试"</span>, RequiredCap: <span class="str">"testing"</span>},
+    }
+}
+
+<span class="kw">func</span> (o *Orchestrator) <span class="fn">assign</span>(t Task) Worker {
+    <span class="kw">return</span> o.workers[t.RequiredCap][<span class="num">0</span>]
+}
+
+<span class="kw">func</span> (o *Orchestrator) <span class="fn">synthesize</span>(results &lt;-<span class="kw">chan</span> Result) (<span class="tp">string</span>, <span class="tp">error</span>) {
+    <span class="kw">var</span> sb <span class="tp">strings</span>.Builder
+    <span class="kw">for</span> r := <span class="kw">range</span> results {
+        <span class="kw">if</span> r.Err != <span class="kw">nil</span> {
+            <span class="kw">return</span> <span class="str">""</span>, fmt.<span class="fn">Errorf</span>(<span class="str">"task %s failed: %w"</span>, r.TaskID, r.Err)
+        }
+        sb.<span class="fn">WriteString</span>(r.Output)
+        sb.<span class="fn">WriteString</span>(<span class="str">"\n"</span>)
+    }
+    <span class="kw">return</span> sb.<span class="fn">String</span>(), <span class="kw">nil</span>
+}
+</code></pre>
+
+<div class="diagram">
+<svg viewBox="0 0 780 420" xmlns="http://www.w3.org/2000/svg" style="min-width:580px">
+  <defs>
+    <linearGradient id="gb1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#1f6feb"/></linearGradient>
+    <linearGradient id="gg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#238636"/></linearGradient>
+    <linearGradient id="gp1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#bc8cff"/><stop offset="100%" stop-color="#8957e5"/></linearGradient>
+    <linearGradient id="go1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#d29922"/><stop offset="100%" stop-color="#9e6a03"/></linearGradient>
+  </defs>
+
+  <!-- Title -->
+  <text x="390" y="30" text-anchor="middle" fill="var(--accent)" font-size="16" font-weight="600">Orchestrator-Workers 流程图</text>
+
+  <!-- User -->
+  <rect x="290" y="50" width="200" height="40" rx="20" fill="url(#gb1)" opacity=".2" stroke="var(--accent)" stroke-width="1.5"/>
+  <text x="390" y="76" text-anchor="middle" fill="var(--accent)" font-size="14">👤 用户输入目标</text>
+
+  <line x1="390" y1="90" x2="390" y2="115" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- Orchestrator -->
+  <rect x="290" y="115" width="200" height="44" rx="10" fill="url(#gb1)" opacity=".3" stroke="var(--accent)" stroke-width="2"/>
+  <text x="390" y="142" text-anchor="middle" fill="var(--accent)" font-size="14" font-weight="600">🧠 Orchestrator</text>
+
+  <text x="390" y="175" text-anchor="middle" fill="var(--text)" font-size="11">分解 → 分配 → 收集 → 汇合</text>
+
+  <!-- Arrow down to decompose -->
+  <line x1="390" y1="159" x2="390" y2="190" stroke="var(--accent)" stroke-width="1" marker-end="url(#arr2)"/>
+
+  <!-- Decompose box -->
+  <rect x="250" y="190" width="280" height="34" rx="6" fill="none" stroke="var(--border)" stroke-dasharray="4"/>
+  <text x="390" y="212" text-anchor="middle" fill="#8b949e" font-size="12">🔧 任务分解：T1 需求 / T2 编码 / T3 测试</text>
+
+  <!-- Lines to workers -->
+  <line x1="310" y1="224" x2="100" y2="260" stroke="var(--green)" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="390" y1="224" x2="390" y2="260" stroke="var(--purple)" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="470" y1="224" x2="680" y2="260" stroke="var(--orange)" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- Workers -->
+  <rect x="30" y="260" width="140" height="50" rx="8" fill="url(#gg1)" opacity=".15" stroke="var(--green)" stroke-width="1.5"/>
+  <text x="100" y="281" text-anchor="middle" fill="var(--green)" font-size="13">👩‍💻 Worker A</text>
+  <text x="100" y="298" text-anchor="middle" fill="var(--text)" font-size="11">需求分析</text>
+
+  <rect x="325" y="260" width="140" height="50" rx="8" fill="url(#gp1)" opacity=".15" stroke="var(--purple)" stroke-width="1.5"/>
+  <text x="395" y="281" text-anchor="middle" fill="var(--purple)" font-size="13">🧑‍💻 Worker B</text>
+  <text x="395" y="298" text-anchor="middle" fill="var(--text)" font-size="11">编码实现</text>
+
+  <rect x="610" y="260" width="140" height="50" rx="8" fill="url(#go1)" opacity=".15" stroke="var(--orange)" stroke-width="1.5"/>
+  <text x="680" y="281" text-anchor="middle" fill="var(--orange)" font-size="13">👨‍🔬 Worker C</text>
+  <text x="680" y="298" text-anchor="middle" fill="var(--text)" font-size="11">单元测试</text>
+
+  <!-- Results back -->
+  <line x1="100" y1="310" x2="310" y2="345" stroke="var(--green)" stroke-width="1.5" marker-end="url(#arr2)" stroke-dasharray="4"/>
+  <line x1="395" y1="310" x2="395" y2="345" stroke="var(--purple)" stroke-width="1.5" marker-end="url(#arr2)" stroke-dasharray="4"/>
+  <line x1="680" y1="310" x2="470" y2="345" stroke="var(--orange)" stroke-width="1.5" marker-end="url(#arr2)" stroke-dasharray="4"/>
+
+  <!-- Synthesize -->
+  <rect x="290" y="345" width="200" height="44" rx="10" fill="url(#gg1)" opacity=".2" stroke="var(--green)" stroke-width="1.5"/>
+  <text x="390" y="372" text-anchor="middle" fill="var(--green)" font-size="14" font-weight="600">📦 汇合合成</text>
+
+  <!-- Output -->
+  <line x1="390" y1="389" x2="390" y2="410" stroke="var(--green)" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <rect x="290" y="410" width="200" height="36" rx="18" fill="url(#gg1)" opacity=".25" stroke="var(--green)"/>
+  <text x="390" y="433" text-anchor="middle" fill="var(--green)" font-size="13">✅ 最终输出</text>
+
+</svg>
+</div>
+</section>
+
+<!-- ========== 3 ========== -->
+<section id="supervisor">
+<h2>3. Supervisor-Subordinate 模式</h2>
+
+<p>在 Supervisor（监督者）模式中，一个上级 Agent 负责监控和评估下级 Agent 的工作质量，当下级产出不达标时触发重做。这解决了 Agent 输出不可靠的核心痛点。</p>
+
+<div class="info-card">
+<strong>关键机制：</strong> 监督者不直接执行任务，而是对 Worker 的输出进行质量检查。发现缺陷后，将任务连同反馈一起退回给 Worker 重做，直到质量达标或达到最大重试次数。
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 700 340" xmlns="http://www.w3.org/2000/svg" style="min-width:580px">
+  <defs>
+    <linearGradient id="gsup" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#f85149"/><stop offset="100%" stop-color="#da3633"/></linearGradient>
+    <linearGradient id="gsub" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#1f6feb"/></linearGradient>
+  </defs>
+
+  <!-- Supervisor -->
+  <rect x="240" y="20" width="220" height="50" rx="25" fill="url(#gsup)" opacity=".2" stroke="var(--red)" stroke-width="2"/>
+  <text x="350" y="50" text-anchor="middle" fill="var(--red)" font-size="15" font-weight="600">👁️ Supervisor</text>
+
+  <!-- Subordinates -->
+  <rect x="30" y="130" width="150" height="44" rx="8" fill="url(#gsub)" opacity=".15" stroke="var(--accent)" stroke-width="1.5"/>
+  <text x="105" y="148" text-anchor="middle" fill="var(--accent)" font-size="13">Worker A</text>
+  <text x="105" y="163" text-anchor="middle" fill="var(--text)" font-size="11">任务执行</text>
+
+  <rect x="275" y="130" width="150" height="44" rx="8" fill="url(#gsub)" opacity=".15" stroke="var(--accent)" stroke-width="1.5"/>
+  <text x="350" y="148" text-anchor="middle" fill="var(--accent)" font-size="13">Worker B</text>
+  <text x="350" y="163" text-anchor="middle" fill="var(--text)" font-size="11">任务执行</text>
+
+  <rect x="520" y="130" width="150" height="44" rx="8" fill="url(#gsub)" opacity=".15" stroke="var(--accent)" stroke-width="1.5"/>
+  <text x="595" y="148" text-anchor="middle" fill="var(--accent)" font-size="13">Worker C</text>
+  <text x="595" y="163" text-anchor="middle" fill="var(--text)" font-size="11">任务执行</text>
+
+  <!-- Assignment arrows -->
+  <line x1="300" y1="70" x2="125" y2="130" stroke="var(--red)" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="350" y1="70" x2="350" y2="130" stroke="var(--red)" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="400" y1="70" x2="570" y2="130" stroke="var(--red)" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- Quality check loop -->
+  <path d="M105,174 Q35,200 105,220 Q175,240 105,260" fill="none" stroke="var(--orange)" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#arr2)"/>
+  <text x="20" y="210" fill="var(--orange)" font-size="10">❌ 重做</text>
+
+  <path d="M350,174 Q260,230 350,270 Q440,310 350,340" fill="none" stroke="var(--orange)" stroke-width="1.5" stroke-dasharray="4"/>
+  <text x="260" y="250" fill="var(--orange)" font-size="10">❌ 重做</text>
+
+  <path d="M595,174 Q665,200 595,220 Q525,240 595,260" fill="none" stroke="var(--orange)" stroke-width="1.5" stroke-dasharray="4"/>
+  <text x="640" y="210" fill="var(--orange)" font-size="10">❌ 重做</text>
+
+  <!-- Result flow -->
+  <line x1="125" y1="310" x2="300" y2="280" stroke="var(--green)" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="350" y1="310" x2="350" y2="280" stroke="var(--green)" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="570" y1="310" x2="400" y2="280" stroke="var(--green)" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- Final output -->
+  <rect x="240" y="270" width="220" height="44" rx="10" fill="url(#gg1)" opacity=".2" stroke="var(--green)" stroke-width="1.5"/>
+  <text x="350" y="297" text-anchor="middle" fill="var(--green)" font-size="13">✅ 质量通过 → 汇合</text>
+
+  <text x="350" y="330" text-anchor="middle" fill="#8b949e" font-size="11">最多重试 N 次，超限则标记失败</text>
+</svg>
+</div>
+</section>
+
+<!-- ========== 4 ========== -->
+<section id="swarm">
+<h2>4. Swarm 模式</h2>
+
+<p>Swarm（群体）模式取消中心节点，所有 Agent 通过消息传递相互通信、协商和协作。每个 Agent 都是对等的（peer-to-peer），依靠局部信息做出决策，整体涌现出智能行为。</p>
+
+<div class="feynman">
+<p>就像蜂群中的蜜蜂——没有"总指挥"，每只蜜蜂根据周围同伴的信息素信号自主行动。整个蜂群却能高效完成采蜜、筑巢、防御等复杂任务。<strong>Swarm 模式</strong>的 Agent 群同样通过消息总线交换信息，自组织完成任务。</p>
+</div>
+
+<h3>特点</h3>
+<ul>
+  <li><strong>去中心化</strong>：没有单点故障，弹性极高</li>
+  <li><strong>可扩展</strong>：加入新 Agent 无需修改其他节点</li>
+  <li><strong>鲁棒性</strong>：部分 Agent 失效不影响整体</li>
+  <li><strong>挑战</strong>：调试困难、消息风暴、最终一致性</li>
+</ul>
+
+<div class="diagram">
+<svg viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg" style="min-width:580px">
+  <defs>
+    <radialGradient id="cg"><stop offset="0%" stop-color="#3fb950" stop-opacity=".15"/><stop offset="100%" stop-color="#3fb950" stop-opacity="0"/></radialGradient>
+  </defs>
+
+  <text x="350" y="30" text-anchor="middle" fill="var(--accent)" font-size="16" font-weight="600">🐝 Swarm 网状拓扑</text>
+
+  <!-- Agent nodes in a ring -->
+  <circle cx="350" cy="70" r="36" fill="url(#gg1)" opacity=".25" stroke="var(--green)" stroke-width="2"/>
+  <text x="350" y="75" text-anchor="middle" fill="var(--green)" font-size="11">A1</text>
+
+  <circle cx="560" cy="140" r="36" fill="url(#gp1)" opacity=".25" stroke="var(--purple)" stroke-width="2"/>
+  <text x="560" y="145" text-anchor="middle" fill="var(--purple)" font-size="11">A2</text>
+
+  <circle cx="560" cy="280" r="36" fill="url(#gb1)" opacity=".25" stroke="var(--accent)" stroke-width="2"/>
+  <text x="560" y="285" text-anchor="middle" fill="var(--accent)" font-size="11">A3</text>
+
+  <circle cx="350" cy="340" r="36" fill="url(#go1)" opacity=".25" stroke="var(--orange)" stroke-width="2"/>
+  <text x="350" y="345" text-anchor="middle" fill="var(--orange)" font-size="11">A4</text>
+
+  <circle cx="140" cy="280" r="36" fill="url(#gg1)" opacity=".25" stroke="var(--green)" stroke-width="2"/>
+  <text x="140" y="285" text-anchor="middle" fill="var(--green)" font-size="11">A5</text>
+
+  <circle cx="140" cy="140" r="36" fill="url(#gp1)" opacity=".25" stroke="var(--purple)" stroke-width="2"/>
+  <text x="140" y="145" text-anchor="middle" fill="var(--purple)" font-size="11">A6</text>
+
+  <!-- Message lines - full mesh -->
+  <line x1="386" y1="70" x2="524" y2="140" stroke="var(--accent)" stroke-width="1" opacity=".4" marker-end="url(#arr2)"/>
+  <line x1="560" y1="176" x2="560" y2="244" stroke="var(--accent)" stroke-width="1" opacity=".4" marker-end="url(#arr2)"/>
+  <line x1="524" y1="280" x2="386" y2="340" stroke="var(--accent)" stroke-width="1" opacity=".4" marker-end="url(#arr2)"/>
+  <line x1="350" y1="304" x2="350" y2="106" stroke="var(--accent)" stroke-width="1" opacity=".4" marker-end="url(#arr2)"/>
+  <line x1="176" y1="280" x2="314" y2="340" stroke="var(--accent)" stroke-width="1" opacity=".4" marker-end="url(#arr2)"/>
+  <line x1="140" y1="244" x2="140" y2="176" stroke="var(--accent)" stroke-width="1" opacity=".4" marker-end="url(#arr2)"/>
+  <line x1="176" y1="140" x2="314" y2="70" stroke="var(--accent)" stroke-width="1" opacity=".4" marker-end="url(#arr2)"/>
+  <line x1="386" y1="340" x2="524" y2="280" stroke="var(--accent)" stroke-width="1" opacity=".4" marker-end="url(#arr2)"/>
+  <line x1="524" y1="140" x2="455" y2="70" stroke="var(--accent)" stroke-width="1" opacity=".4"/>
+  <line x1="350" y1="106" x2="245" y2="140" stroke="var(--accent)" stroke-width="1" opacity=".4"/>
+  <line x1="140" y1="176" x2="245" y2="70" stroke="var(--accent)" stroke-width="1" opacity=".3"/>
+  <line x1="560" y1="244" x2="455" y2="340" stroke="var(--accent)" stroke-width="1" opacity=".3"/>
+  <line x1="314" y1="70" x2="245" y2="140" stroke="var(--accent)" stroke-width="1" opacity=".3"/>
+  <line x1="455" y1="340" x2="455" y2="106" stroke="var(--accent)" stroke-width="1" opacity=".3"/>
+  <line x1="176" y1="244" x2="245" y2="106" stroke="var(--accent)" stroke-width="1" opacity=".3"/>
+
+  <!-- Message label -->
+  <rect x="230" y="190" width="200" height="28" rx="14" fill="var(--card)" stroke="var(--border)" opacity=".8"/>
+  <text x="330" y="209" text-anchor="middle" fill="var(--accent)" font-size="11">📨 消息传递与协商</text>
+
+  <!-- Bottom notes -->
+  <text x="350" y="370" text-anchor="middle" fill="#8b949e" font-size="11">每个节点独立决策 · 无中心 · 自组织 · 高可用</text>
+</svg>
+</div>
+</section>
+
+<!-- ========== 5 ========== -->
+<section id="debate">
+<h2>5. Debate 辩论模式</h2>
+
+<p>Debate（辩论）模式让多个 Agent 扮演不同角色，针对同一问题进行多轮辩论和反驳，最后通过投票或 LLM-as-Judge 达成共识。这种模式能显著提升答案的深度、广度和准确性。</p>
+
+<h3>Go 实现：Debate 循环</h3>
+<pre><code><span class="kw">package</span> debate
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"fmt"</span>
+)
+
+<span class="cm">// Agent 观点</span>
+<span class="kw">type</span> Statement <span class="kw">struct</span> {
+    Role   <span class="tp">string</span>
+    Content <span class="tp">string</span>
+    Round   <span class="tp">int</span>
+}
+
+<span class="cm">// Debate 辩论引擎</span>
+<span class="kw">type</span> Debate struct {
+    Topic    <span class="tp">string</span>
+    Roles    []<span class="tp">string</span>
+    History  []Statement
+    MaxRound <span class="tp">int</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewDebate</span>(topic <span class="tp">string</span>, roles []<span class="tp">string</span>) *Debate {
+    <span class="kw">return</span> &Debate{
+        Topic:    topic,
+        Roles:    roles,
+        MaxRound: <span class="num">3</span>,
+    }
+}
+
+<span class="cm">// Run 执行多轮辩论</span>
+<span class="kw">func</span> (d *Debate) <span class="fn">Run</span>(ctx <span class="tp">context</span>.Context, llm <span class="kw">func</span>(<span class="tp">string</span>) <span class="tp">string</span>) []Statement {
+    <span class="kw">for</span> round := <span class="num">1</span>; round &lt;= d.MaxRound; round++ {
+        <span class="kw">for</span> _, role := <span class="kw">range</span> d.Roles {
+            prompt := d.<span class="fn">buildPrompt</span>(role, round)
+            response := llm(prompt)
+
+            d.History = <span class="fn">append</span>(d.History, Statement{
+                Role:    role,
+                Content: response,
+                Round:   round,
+            })
+
+            <span class="cm">// 打印辩论过程</span>
+            fmt.<span class="fn">Printf</span>(<span class="str">"[Round %d] %s: %s\n"</span>, round, role, response[:<span class="fn">min</span>(<span class="num">80</span>, <span class="fn">len</span>(response))])
+        }
+    }
+    <span class="kw">return</span> d.History
+}
+
+<span class="kw">func</span> (d *Debate) <span class="fn">buildPrompt</span>(role <span class="tp">string</span>, round <span class="tp">int</span>) <span class="tp">string</span> {
+    prompt := fmt.<span class="fn">Sprintf</span>(<span class="str">"议题：%s\n你的身份：%s\n当前是第 %d 轮辩论。\n"</span>, d.Topic, role, round)
+
+    <span class="kw">if</span> round &gt; <span class="num">1</span> {
+        prompt += <span class="str">"以下是之前的辩论记录，请根据这些观点进行反驳或补充：\n"</span>
+        <span class="kw">for</span> _, s := <span class="kw">range</span> d.History {
+            prompt += fmt.<span class="fn">Sprintf</span>(<span class="str">"  [%s]: %s\n"</span>, s.Role, s.Content)
+        }
+        prompt += <span class="str">"\n请针对以上观点提出新的论据或反驳。\n"</span>
+    }
+    <span class="kw">return</span> prompt
+}
+
+<span class="cm">// Vote 对辩论结果投票</span>
+<span class="kw">func</span> <span class="fn">Vote</span>(history []Statement) <span class="tp">string</span> {
+    <span class="cm">// 使用 LLM-as-Judge 投票</span>
+    <span class="cm">// 返回获胜方的 Role</span>
+    <span class="kw">return</span> <span class="str">"winner_role"</span>
+}
+</code></pre>
+
+<div class="diagram">
+<svg viewBox="0 0 720 380" xmlns="http://www.w3.org/2000/svg" style="min-width:580px">
+  <defs>
+    <linearGradient id="gd1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#bc8cff"/><stop offset="100%" stop-color="#8957e5"/></linearGradient>
+    <linearGradient id="gd2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#d29922"/><stop offset="100%" stop-color="#9e6a03"/></linearGradient>
+    <linearGradient id="gd3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#238636"/></linearGradient>
+  </defs>
+
+  <text x="360" y="30" text-anchor="middle" fill="var(--accent)" font-size="16" font-weight="600">🎭 Debate 辩论模式</text>
+
+  <!-- Three debaters -->
+  <rect x="30" y="60" width="180" height="44" rx="8" fill="url(#gd1)" opacity=".2" stroke="var(--purple)" stroke-width="1.5"/>
+  <text x="120" y="78" text-anchor="middle" fill="var(--purple)" font-size="13">🎭 正方 Agent</text>
+  <text x="120" y="95" text-anchor="middle" fill="var(--text)" font-size="11">「应该采用微服务」</text>
+
+  <rect x="270" y="60" width="180" height="44" rx="8" fill="url(#gd2)" opacity=".2" stroke="var(--orange)" stroke-width="1.5"/>
+  <text x="360" y="78" text-anchor="middle" fill="var(--orange)" font-size="13">🎭 反方 Agent</text>
+  <text x="360" y="95" text-anchor="middle" fill="var(--text)" font-size="11">「单体架构更合适」</text>
+
+  <rect x="510" y="60" width="180" height="44" rx="8" fill="url(#gd3)" opacity=".2" stroke="var(--green)" stroke-width="1.5"/>
+  <text x="600" y="78" text-anchor="middle" fill="var(--green)" font-size="13">🎭 中立 Agent</text>
+  <text x="600" y="95" text-anchor="middle" fill="var(--text)" font-size="11">「折中方案：模块化」</text>
+
+  <!-- Debate rounds -->
+  <rect x="100" y="140" width="160" height="36" rx="6" fill="var(--card)" stroke="var(--border)"/>
+  <text x="180" y="163" text-anchor="middle" fill="var(--text)" font-size="12">第 1 轮：立论陈词</text>
+
+  <rect x="280" y="140" width="160" height="36" rx="6" fill="var(--card)" stroke="var(--border)"/>
+  <text x="360" y="163" text-anchor="middle" fill="var(--text)" font-size="12">第 2 轮：互相反驳</text>
+
+  <rect x="460" y="140" width="160" height="36" rx="6" fill="var(--card)" stroke="var(--border)"/>
+  <text x="540" y="163" text-anchor="middle" fill="var(--text)" font-size="12">第 3 轮：总结陈词</text>
+
+  <line x1="260" y1="158" x2="280" y2="158" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="440" y1="158" x2="460" y2="158" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- Arrows between debaters -->
+  <path d="M210,82 Q240,50 270,82" fill="none" stroke="var(--orange)" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <path d="M450,82 Q480,50 510,82" fill="none" stroke="var(--green)" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- Vote -->
+  <line x1="360" y1="176" x2="360" y2="220" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <rect x="250" y="220" width="220" height="44" rx="22" fill="url(#gd1)" opacity=".25" stroke="var(--purple)" stroke-width="2"/>
+  <text x="360" y="240" text-anchor="middle" fill="var(--purple)" font-size="14" font-weight="600">🗳️ LLM-as-Judge 投票</text>
+  <text x="360" y="258" text-anchor="middle" fill="var(--text)" font-size="11">综合论证、逻辑、证据打分</text>
+
+  <line x1="360" y1="264" x2="360" y2="300" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- Consensus -->
+  <rect x="280" y="300" width="160" height="44" rx="10" fill="url(#gd3)" opacity=".2" stroke="var(--green)" stroke-width="1.5"/>
+  <text x="360" y="325" text-anchor="middle" fill="var(--green)" font-size="14" font-weight="600">🤝 共识输出</text>
+
+  <text x="360" y="365" text-anchor="middle" fill="#8b949e" font-size="11">融合各方观点，形成最终结论</text>
+</svg>
+</div>
+</section>
+
+<!-- ========== 6 ========== -->
+<section id="comms">
+<h2>6. 通信协议</h2>
+
+<p>多 Agent 之间的通信方式是架构设计的核心决策之一。三种主流方案各有优劣：</p>
+
+<table class="compare">
+  <thead>
+    <tr>
+      <th>特性</th>
+      <th>直接调用 (RPC/HTTP)</th>
+      <th>消息队列 (MQ)</th>
+      <th>共享内存 (Redis/DB)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>延迟</strong></td>
+      <td class="good">低 (ms 级)</td>
+      <td class="mid">中等 (10-100ms)</td>
+      <td class="good">低 (μs 级)</td>
+    </tr>
+    <tr>
+      <td><strong>解耦程度</strong></td>
+      <td class="bad">紧耦合</td>
+      <td class="good">高</td>
+      <td class="mid">中等</td>
+    </tr>
+    <tr>
+      <td><strong>可靠性</strong></td>
+      <td class="mid">需自建重试</td>
+      <td class="good">持久化 + ACK</td>
+      <td class="mid">依赖持久化方案</td>
+    </tr>
+    <tr>
+      <td><strong>扩展性</strong></td>
+      <td class="bad">线性增长连接</td>
+      <td class="good">水平扩展</td>
+      <td class="good">水平扩展</td>
+    </tr>
+    <tr>
+      <td><strong>调试</strong></td>
+      <td class="good">简单直接</td>
+      <td class="mid">需追踪消息</td>
+      <td class="mid">需监控状态</td>
+    </tr>
+    <tr>
+      <td><strong>适用场景</strong></td>
+      <td>小规模、确定性流程</td>
+      <td>高吞吐、异步解耦</td>
+      <td>状态共享、实时协作</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="diagram">
+<svg viewBox="0 0 780 320" xmlns="http://www.w3.org/2000/svg" style="min-width:580px">
+  <defs>
+    <linearGradient id="gc1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#1f6feb"/></linearGradient>
+    <linearGradient id="gc2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#238636"/></linearGradient>
+    <linearGradient id="gc3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#d29922"/><stop offset="100%" stop-color="#9e6a03"/></linearGradient>
+  </defs>
+
+  <text x="390" y="25" text-anchor="middle" fill="var(--accent)" font-size="15" font-weight="600">三种通信协议对比</text>
+
+  <!-- Direct -->
+  <rect x="15" y="45" width="240" height="260" rx="10" fill="var(--card)" stroke="var(--accent)" stroke-width="1.2"/>
+  <text x="135" y="72" text-anchor="middle" fill="var(--accent)" font-size="14" font-weight="600">🔗 直接调用</text>
+  <rect x="35" y="88" width="80" height="36" rx="6" fill="url(#gc1)" opacity=".2" stroke="var(--accent)"/><text x="75" y="111" text-anchor="middle" fill="var(--accent)" font-size="11">Agent A</text>
+  <line x1="115" y1="106" x2="155" y2="106" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <rect x="155" y="88" width="80" height="36" rx="6" fill="url(#gc1)" opacity=".2" stroke="var(--accent)"/><text x="195" y="111" text-anchor="middle" fill="var(--accent)" font-size="11">Agent B</text>
+  <text x="135" y="165" text-anchor="middle" fill="#8b949e" font-size="11">HTTP/gRPC 直连</text>
+  <text x="135" y="185" text-anchor="middle" fill="#8b949e" font-size="11">延迟低，耦合高</text>
+  <text x="135" y="205" text-anchor="middle" fill="#8b949e" font-size="11">适合：小规模</text>
+
+  <!-- MQ -->
+  <rect x="270" y="45" width="240" height="260" rx="10" fill="var(--card)" stroke="var(--green)" stroke-width="1.2"/>
+  <text x="390" y="72" text-anchor="middle" fill="var(--green)" font-size="14" font-weight="600">📨 消息队列</text>
+  <rect x="290" y="88" width="80" height="36" rx="6" fill="url(#gc2)" opacity=".2" stroke="var(--green)"/><text x="330" y="111" text-anchor="middle" fill="var(--green)" font-size="11">Producer</text>
+  <rect x="410" y="88" width="80" height="36" rx="6" fill="url(#gc2)" opacity=".2" stroke="var(--green)"/><text x="450" y="111" text-anchor="middle" fill="var(--green)" font-size="11">Consumer</text>
+  <rect x="310" y="148" width="160" height="36" rx="18" fill="var(--card)" stroke="var(--green)" stroke-dasharray="4"/>
+  <text x="390" y="171" text-anchor="middle" fill="var(--green)" font-size="12">📦 MQ Broker</text>
+  <line x1="330" y1="124" x2="370" y2="148" stroke="var(--green)" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="430" y1="148" x2="450" y2="124" stroke="var(--green)" stroke-width="1.5"/>
+  <text x="390" y="225" text-anchor="middle" fill="#8b949e" font-size="11">Kafka / RabbitMQ</text>
+  <text x="390" y="245" text-anchor="middle" fill="#8b949e" font-size="11">高吞吐，持久化</text>
+  <text x="390" y="265" text-anchor="middle" fill="#8b949e" font-size="11">适合：异步解耦</text>
+
+  <!-- Shared Memory -->
+  <rect x="525" y="45" width="240" height="260" rx="10" fill="var(--card)" stroke="var(--orange)" stroke-width="1.2"/>
+  <text x="645" y="72" text-anchor="middle" fill="var(--orange)" font-size="14" font-weight="600">🧠 共享内存</text>
+  <rect x="545" y="88" width="80" height="36" rx="6" fill="url(#gc3)" opacity=".2" stroke="var(--orange)"/><text x="585" y="111" text-anchor="middle" fill="var(--orange)" font-size="11">Agent A</text>
+  <rect x="665" y="88" width="80" height="36" rx="6" fill="url(#gc3)" opacity=".2" stroke="var(--orange)"/><text x="705" y="111" text-anchor="middle" fill="var(--orange)" font-size="11">Agent B</text>
+  <rect x="570" y="148" width="150" height="36" rx="6" fill="var(--card)" stroke="var(--orange)" stroke-width="1.5"/>
+  <text x="645" y="171" text-anchor="middle" fill="var(--orange)" font-size="11">🗄️ Redis / 数据库</text>
+  <line x1="585" y1="124" x2="610" y2="148" stroke="var(--orange)" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="685" y1="148" x2="705" y2="124" stroke="var(--orange)" stroke-width="1.5"/>
+  <text x="645" y="225" text-anchor="middle" fill="#8b949e" font-size="11">共享状态读写</text>
+  <text x="645" y="245" text-anchor="middle" fill="#8b949e" font-size="11">强一致性可选</text>
+  <text x="645" y="265" text-anchor="middle" fill="#8b949e" font-size="11">适合：实时协作</text>
+</svg>
+</div>
+</section>
+
+<!-- ========== 7 ========== -->
+<section id="allocation">
+<h2>7. 任务分配策略</h2>
+
+<p>如何将任务分配给最合适的 Agent 是多 Agent 系统效率的关键。以下是四种主流策略：</p>
+
+<div class="info-card">
+<strong>选择策略的核心考量：</strong> Worker 的异构程度越高，分配策略越需要智能化。同质 Worker 集群用 Round Robin 即可，异构集群则需要 Capability 或 Auction 策略。
+</div>
+
+<table class="compare">
+  <thead>
+    <tr>
+      <th>策略</th>
+      <th>原理</th>
+      <th>优点</th>
+      <th>缺点</th>
+      <th>适用场景</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Round Robin</strong></td>
+      <td>轮询依次分配</td>
+      <td>实现简单、负载平均</td>
+      <td>忽略能力差异</td>
+      <td>同质 Worker</td>
+    </tr>
+    <tr>
+      <td><strong>Capability</strong></td>
+      <td>根据能力标签匹配</td>
+      <td>专业对口、质量高</td>
+      <td>需维护能力注册表</td>
+      <td>异构高技能集群</td>
+    </tr>
+    <tr>
+      <td><strong>Load-aware</strong></td>
+      <td>根据当前负载分配</td>
+      <td>避免过载、响应快</td>
+      <td>需实时监控状态</td>
+      <td>负载波动大</td>
+    </tr>
+    <tr>
+      <td><strong>Auction</strong></td>
+      <td>Worker 竞标任务</td>
+      <td>动态最优匹配</td>
+      <td>计算开销大、复杂</td>
+      <td>复杂决策场景</td>
+    </tr>
+  </tbody>
+</table>
+
+<pre><code><span class="cm">// LoadAwareBalancer 负载感知分配器</span>
+<span class="kw">type</span> LoadAwareBalancer <span class="kw">struct</span> {
+    workers    []Worker
+    loadCount  []<span class="tp">int</span>
+    mu         sync.Mutex
+}
+
+<span class="kw">func</span> (lb *LoadAwareBalancer) <span class="fn">Assign</span>(task Task) Worker {
+    lb.mu.<span class="fn">Lock</span>()
+    <span class="kw">defer</span> lb.mu.<span class="fn">Unlock</span>()
+
+    minIdx := <span class="num">0</span>
+    <span class="kw">for</span> i := <span class="num">1</span>; i &lt; <span class="fn">len</span>(lb.workers); i++ {
+        <span class="kw">if</span> lb.loadCount[i] &lt; lb.loadCount[minIdx] {
+            minIdx = i
+        }
+    }
+    lb.loadCount[minIdx]++
+    <span class="kw">return</span> lb.workers[minIdx]
+}
+
+<span class="kw">func</span> (lb *LoadAwareBalancer) <span class="fn">Complete</span>(workerIdx <span class="tp">int</span>) {
+    lb.mu.<span class="fn">Lock</span>()
+    lb.loadCount[workerIdx]--
+    lb.mu.<span class="fn">Unlock</span>()
+}
+</code></pre>
+</section>
+
+<!-- ========== 8 ========== -->
+<section id="judge">
+<h2>8. LLM-as-Judge</h2>
+
+<p>在多 Agent 系统中，Agent 之间难免产生冲突和分歧。<strong>LLM-as-Judge</strong> 模式让一个独立的评判 Agent 根据预定义的评分标准对各方输出进行裁决，解决冲突并给出最终方案。</p>
+
+<h3>评判标准</h3>
+<ul>
+  <li><strong>事实准确性</strong>：声明是否有事实依据，是否可验证</li>
+  <li><strong>逻辑一致性</strong>：论点内部是否自洽，推理是否严谨</li>
+  <li><strong>完整性</strong>：是否覆盖了问题的所有关键方面</li>
+  <li><strong>实用性</strong>：方案是否切实可行，是否有具体步骤</li>
+  <li><strong>安全性</strong>：是否存在偏见、有害内容或安全风险</li>
+</ul>
+
+<h3>Go 实现：Judge 仲裁器</h3>
+<pre><code><span class="kw">package</span> judge
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"fmt"</span>
+)
+
+<span class="cm">// Criterion 评判维度</span>
+<span class="kw">type</span> Criterion <span class="kw">struct</span> {
+    Name   <span class="tp">string</span>
+    Weight <span class="tp">float64</span> <span class="cm">// 权重 0-1</span>
+}
+
+<span class="cm">// Score 打分结果</span>
+<span class="kw">type</span> Score <span class="kw">struct</span> {
+    AgentID    <span class="tp">string</span>
+    Scores     <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">float64</span> <span class="cm">// 维度 -> 分数</span>
+    Total      <span class="tp">float64</span>
+    Reasoning  <span class="tp">string</span> <span class="cm">// 评判理由</span>
+}
+
+<span class="cm">// Judge 仲裁器</span>
+<span class="kw">type</span> Judge struct {
+    Criteria []Criterion
+    LLM      <span class="kw">func</span>(prompt <span class="tp">string</span>) <span class="tp">string</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewJudge</span>(llm <span class="kw">func</span>(<span class="tp">string</span>) <span class="tp">string</span>) *Judge {
+    <span class="kw">return</span> &Judge{
+        Criteria: []Criterion{
+            {Name: <span class="str">"accuracy"</span>, Weight: <span class="num">0.30</span>},
+            {Name: <span class="str">"logic"</span>, Weight: <span class="num">0.25</span>},
+            {Name: <span class="str">"completeness"</span>, Weight: <span class="num">0.20</span>},
+            {Name: <span class="str">"practicality"</span>, Weight: <span class="num">0.15</span>},
+            {Name: <span class="str">"safety"</span>, Weight: <span class="num">0.10</span>},
+        },
+        LLM: llm,
+    }
+}
+
+<span class="cm">// Arbitrate 对多个 Agent 的输出进行仲裁</span>
+<span class="kw">func</span> (j *Judge) <span class="fn">Arbitrate</span>(ctx <span class="tp">context</span>.Context, submissions <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">string</span>) (*Score, <span class="tp">error</span>) {
+    <span class="kw">var</span> bestScore *Score
+
+    <span class="kw">for</span> agentID, output := <span class="kw">range</span> submissions {
+        prompt := j.<span class="fn">buildEvalPrompt</span>(agentID, output)
+        result := j.LLM(prompt)
+
+        score, err := j.<span class="fn">parseScore</span>(result)
+        <span class="kw">if</span> err != <span class="kw">nil</span> {
+            <span class="kw">return</span> <span class="kw">nil</span>, fmt.<span class="fn">Errorf</span>(<span class="str">"parse score for %s: %w"</span>, agentID, err)
+        }
+
+        <span class="kw">if</span> bestScore == <span class="kw">nil</span> || score.Total &gt; bestScore.Total {
+            bestScore = score
+        }
+    }
+
+    <span class="kw">return</span> bestScore, <span class="kw">nil</span>
+}
+
+<span class="kw">func</span> (j *Judge) <span class="fn">buildEvalPrompt</span>(agentID, output <span class="tp">string</span>) <span class="tp">string</span> {
+    prompt := fmt.<span class="fn">Sprintf</span>(<span class="str">`请对以下 Agent (%s) 的输出进行评分。
+
+评分维度（满分 10 分）：
+1. accuracy (权重 0.30) - 事实准确性
+2. logic (权重 0.25) - 逻辑一致性
+3. completeness (权重 0.20) - 完整性
+4. practicality (权重 0.15) - 实用性
+5. safety (权重 0.10) - 安全性
+
+Agent 输出：
+---
+%s
+---
+
+请按 JSON 格式返回评分和理由。`</span>, agentID, output)
+    <span class="kw">return</span> prompt
+}
+
+<span class="kw">func</span> (j *Judge) <span class="fn">parseScore</span>(llmOutput <span class="tp">string</span>) (*Score, <span class="tp">error</span>) {
+    <span class="cm">// 解析 LLM 返回的 JSON 评分</span>
+    <span class="cm">// 计算加权总分</span>
+    <span class="kw">return</span> &Score{}, <span class="kw">nil</span>
+}
+</code></pre>
+</section>
+
+<!-- ========== 9 ========== -->
+<section id="practical">
+<h2>9. 实战：装修系统多 Agent</h2>
+
+<p>以一个智能装修助手为例，展示多 Agent 协作的完整流程。用户输入"我要装修一套 120㎡ 的三居室，预算 30 万，现代简约风格"，系统自动调度多个专业化 Agent 协作完成。</p>
+
+<div class="diagram wide">
+<svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="min-width:580px">
+  <defs>
+    <linearGradient id="gprac1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#f85149"/><stop offset="100%" stop-color="#da3633"/></linearGradient>
+    <linearGradient id="gprac2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#1f6feb"/></linearGradient>
+    <linearGradient id="gprac3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#238636"/></linearGradient>
+    <linearGradient id="gprac4" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#bc8cff"/><stop offset="100%" stop-color="#8957e5"/></linearGradient>
+    <linearGradient id="gprac5" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#d29922"/><stop offset="100%" stop-color="#9e6a03"/></linearGradient>
+  </defs>
+
+  <text x="400" y="28" text-anchor="middle" fill="var(--accent)" font-size="16" font-weight="600">🏠 装修系统多 Agent 协作图</text>
+
+  <!-- User -->
+  <rect x="300" y="45" width="200" height="36" rx="18" fill="url(#gprac1)" opacity=".2" stroke="var(--red)" stroke-width="1.5"/>
+  <text x="400" y="68" text-anchor="middle" fill="var(--red)" font-size="13">👤 用户需求</text>
+
+  <line x1="400" y1="81" x2="400" y2="100" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- Orchestrator -->
+  <rect x="300" y="100" width="200" height="36" rx="6" fill="url(#gprac2)" opacity=".3" stroke="var(--accent)" stroke-width="1.5"/>
+  <text x="400" y="123" text-anchor="middle" fill="var(--accent)" font-size="13" font-weight="600">🧠 主调度 Orchestrator</text>
+
+  <!-- Lines to agents -->
+  <line x1="350" y1="136" x2="60" y2="170" stroke="var(--accent)" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="390" y1="136" x2="180" y2="170" stroke="var(--accent)" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="400" y1="136" x2="400" y2="170" stroke="var(--accent)" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="420" y1="136" x2="620" y2="170" stroke="var(--accent)" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="450" y1="136" x2="740" y2="170" stroke="var(--accent)" stroke-width="1.2" marker-end="url(#arr2)"/>
+
+  <!-- Agents row 1 -->
+  <rect x="10" y="170" width="110" height="56" rx="8" fill="url(#gprac3)" opacity=".15" stroke="var(--green)" stroke-width="1.2"/>
+  <text x="65" y="192" text-anchor="middle" fill="var(--green)" font-size="11" font-weight="600">📐 需求分析</text>
+  <text x="65" y="210" text-anchor="middle" fill="var(--text)" font-size="10">理解预算风格</text>
+
+  <rect x="140" y="170" width="110" height="56" rx="8" fill="url(#gprac4)" opacity=".15" stroke="var(--purple)" stroke-width="1.2"/>
+  <text x="195" y="192" text-anchor="middle" fill="var(--purple)" font-size="11" font-weight="600">🎨 设计方案</text>
+  <text x="195" y="210" text-anchor="middle" fill="var(--text)" font-size="10">3D 效果图</text>
+
+  <rect x="280" y="170" width="110" height="56" rx="8" fill="url(#gprac2)" opacity=".15" stroke="var(--accent)" stroke-width="1.2"/>
+  <text x="335" y="192" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="600">💰 预算控制</text>
+  <text x="335" y="210" text-anchor="middle" fill="var(--text)" font-size="10">30 万分配</text>
+
+  <rect x="470" y="170" width="110" height="56" rx="8" fill="url(#gprac5)" opacity=".15" stroke="var(--orange)" stroke-width="1.2"/>
+  <text x="525" y="192" text-anchor="middle" fill="var(--orange)" font-size="11" font-weight="600">🛒 材料采购</text>
+  <text x="525" y="210" text-anchor="middle" fill="var(--text)" font-size="10">供应商比价</text>
+
+  <rect x="640" y="170" width="110" height="56" rx="8" fill="url(#gprac1)" opacity=".15" stroke="var(--red)" stroke-width="1.2"/>
+  <text x="695" y="192" text-anchor="middle" fill="var(--red)" font-size="11" font-weight="600">📅 工期排程</text>
+  <text x="695" y="210" text-anchor="middle" fill="var(--text)" font-size="10">30 天计划</text>
+
+  <!-- Agents row 2 -->
+  <rect x="10" y="250" width="110" height="56" rx="8" fill="url(#gprac2)" opacity=".15" stroke="var(--accent)" stroke-width="1.2"/>
+  <text x="65" y="272" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="600">⚖️ 法规合规</text>
+  <text x="65" y="290" text-anchor="middle" fill="var(--text)" font-size="10">审批流程</text>
+
+  <rect x="140" y="250" width="110" height="56" rx="8" fill="url(#gprac3)" opacity=".15" stroke="var(--green)" stroke-width="1.2"/>
+  <text x="195" y="272" text-anchor="middle" fill="var(--green)" font-size="11" font-weight="600">🔧 施工管理</text>
+  <text x="195" y="290" text-anchor="middle" fill="var(--text)" font-size="10">分阶段交底</text>
+
+  <rect x="280" y="250" width="110" height="56" rx="8" fill="url(#gprac4)" opacity=".15" stroke="var(--purple)" stroke-width="1.2"/>
+  <text x="335" y="272" text-anchor="middle" fill="var(--purple)" font-size="11" font-weight="600">🔍 质量巡检</text>
+  <text x="335" y="290" text-anchor="middle" fill="var(--text)" font-size="10">分项验收</text>
+
+  <rect x="470" y="250" width="110" height="56" rx="8" fill="url(#gprac1)" opacity=".15" stroke="var(--red)" stroke-width="1.2"/>
+  <text x="525" y="272" text-anchor="middle" fill="var(--red)" font-size="11" font-weight="600">📞 客户沟通</text>
+  <text x="525" y="290" text-anchor="middle" fill="var(--text)" font-size="10">进度同步</text>
+
+  <rect x="640" y="250" width="110" height="56" rx="8" fill="url(#gprac5)" opacity=".15" stroke="var(--orange)" stroke-width="1.2"/>
+  <text x="695" y="272" text-anchor="middle" fill="var(--orange)" font-size="11" font-weight="600">🧹 交付验收</text>
+  <text x="695" y="290" text-anchor="middle" fill="var(--text)" font-size="10">最终审核</text>
+
+  <!-- Results back -->
+  <line x1="335" y1="306" x2="390" y2="340" stroke="var(--green)" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="525" y1="306" x2="420" y2="340" stroke="var(--green)" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+  <!-- Result synthesis -->
+  <rect x="300" y="340" width="200" height="44" rx="10" fill="url(#gprac3)" opacity=".2" stroke="var(--green)" stroke-width="1.5"/>
+  <text x="400" y="367" text-anchor="middle" fill="var(--green)" font-size="14" font-weight="600">📦 完整装修方案</text>
+
+  <!-- Output details -->
+  <rect x="200" y="395" width="400" height="28" rx="14" fill="var(--card)" stroke="var(--border)"/>
+  <text x="400" y="414" text-anchor="middle" fill="#8b949e" font-size="11">设计方案 + 预算表 + 采购清单 + 工期表 + 验收标准</text>
+</svg>
+</div>
+
+<p>每个 Agent 的输出都会经过 <strong>Supervisor</strong> 质检，质检不合格的退回重做。最终 Orchestrator 汇合所有子方案，形成完整的装修提案交付用户。</p>
+</section>
+
+<!-- ========== 10 ========== -->
+<section id="qa">
+<h2>10. QA + 口播总结</h2>
+
+<div class="qa">
+
+<details class="socratic">
+  <summary>多 Agent 和单 Agent 调 Prompt 有什么区别？</summary>
+  <div class="answer">
+    <p>单 Agent 调 Prompt 是在"教一个人做所有事"——你得把全部规则塞进一个上下文，容易冲突且 token 爆炸。多 Agent 是"组建一支专业团队"——每个 Agent 只专注自己的领域，Prompt 简洁、职责清晰、可独立优化。从工程实践看，多 Agent debug 更容易定位问题，因为你知道是"预算 Agent 算错了"而不是"整个模型表现不稳定"。</p>
+  </div>
+</details>
+
+<details class="socratic">
+  <summary>Orchestrator 本身会不会成为瓶颈？</summary>
+  <div class="answer">
+    <p>会。Orchestrator 是中心节点，如果设计不当确实会成为单点瓶颈。解决方案：1) 将 Orchestrator 设计为无状态，可水平扩展；2) 引入异步事件驱动架构，Orchestrator 只管分发和策略，不阻塞等待 Worker 结果；3) 对于超大规模场景，采用分层 Orchestrator——根 Orchestrator 只调度子 Orchestrator，子 Orchestrator 再调度具体 Workers。</p>
+  </div>
+</details>
+
+<details class="socratic">
+  <summary>Debate 模式真的能提高答案质量吗？</summary>
+  <div class="answer">
+    <p>研究（如 Du et al. 2023）和实践都表明：多轮辩论能显著提升答案的准确性和深度。原因是：1) 不同角色迫使模型从多角度思考；2) 反驳机制迫使模型检查自己的逻辑漏洞；3) 多轮迭代让论证越来越严谨。但在简单问题上 Debate 是过度设计，建议仅用于复杂、高风险的决策场景。</p>
+  </div>
+</details>
+
+<details class="socratic">
+  <summary>Swarm 模式如何避免消息风暴？</summary>
+  <div class="answer">
+    <p>Swarm 的消息风暴是真实挑战。常用策略：1) <strong>TTL 机制</strong>——每条消息设置有效时长，过期自动丢弃；2) <strong>路由过滤</strong>——Agent 只订阅自己关心的消息类型；3) <strong>去重逻辑</strong>——同一 Agent 在短时间内收到多条相同消息时只处理一次；4) <strong>退避算法</strong>——负载高时增大消息发送间隔。生产环境建议用消息队列 + Swarm 的混合架构。</p>
+  </div>
+</details>
+
+<details class="socratic">
+  <summary>什么时候用 Capability 分配，什么时候用 Auction？</summary>
+  <div class="answer">
+    <p><strong>Capability 分配</strong>适合：Worker 能力标签明确且稳定，任务类型可预判（如"翻译任务→翻译 Agent"）。优点是快、确定性强。<strong>Auction 分配</strong>适合：Worker 能力标签模糊或动态变化，任务需要综合评估（如"写一篇技术博客→同时考量写作能力、技术深度、风格匹配"）。Auction 更灵活但带来额外延迟和计算成本。经验法则：能预判时用 Capability，需综合评判时用 Auction。</p>
+  </div>
+</details>
+
+</div>
+
+<!-- Summary -->
+<div class="info-card" style="margin-top:30px">
+  <strong>🎙️ 口播总结：</strong> 多 Agent 协作是从"大而全"到"小而专"的范式转变。本文深入解析了 5 种核心模式——Orchestrator-Workers、Supervisor-Subordinate、Swarm、Debate 和 LLM-as-Judge，涵盖了从中心化到去中心化、从串行到并行、从单角度到多角度辩论的完整谱系。配合 Go 代码示例和 7 张 SVG 架构图，希望能帮助你设计出高效、可靠、可扩展的多 Agent 系统。核心心法：<strong>专业分工 + 智能调度 + 质量闭环 = 群体智能</strong>。
+</div>
+
+</section>
+
+</div>
+
+<script>
+// Active sidebar link tracking
+document.querySelectorAll('.sidebar a').forEach(link => {
+  link.addEventListener('click', function(e) {
+    document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// Highlight active section on scroll
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      document.querySelectorAll('.sidebar a').forEach(a => {
+        a.classList.remove('active');
+        if (a.getAttribute('href') === '#' + id) a.classList.add('active');
+      });
+    }
+  });
+}, { rootMargin: '-80px 0px -60% 0px' });
+
+document.querySelectorAll('section[id]').forEach(section => observer.observe(section));
+</script>
+
+</body>
+</html>

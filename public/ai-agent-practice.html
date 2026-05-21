@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏠 实战：从零搭建装修管理 AI Agent</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --card: #1a1d27;
+  --border: #2a2d3a;
+  --text: #c9d1d9;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --orange: #d29922;
+  --red: #f85149;
+  --purple: #a371f7;
+  --cyan: #39c5cf;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  margin-left: 280px;
+  padding: 30px 40px 60px;
+}
+/* sidebar */
+.sidebar {
+  position: fixed; left: 0; top: 0; width: 260px; height: 100vh;
+  background: var(--card); border-right: 1px solid var(--border);
+  overflow-y: auto; padding: 24px 16px; z-index: 100;
+}
+.sidebar h2 { font-size: 15px; color: var(--accent); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.sidebar nav a {
+  display: block; padding: 6px 10px; color: var(--text); text-decoration: none;
+  font-size: 13px; border-radius: 6px; margin-bottom: 2px; transition: .2s;
+}
+.sidebar nav a:hover { background: rgba(88,166,255,.1); color: var(--accent); }
+.sidebar .back-link {
+  display: block; margin-top: 24px; padding: 8px 12px; border-top: 1px solid var(--border);
+  color: var(--green); text-decoration: none; font-weight: 600; font-size: 14px;
+  position: sticky; bottom: 0; background: var(--card);
+}
+.sidebar .back-link:hover { color: #6bdb7a; }
+
+/* headings */
+h1 { font-size: 28px; margin-bottom: 8px; color: #fff; }
+h2 { font-size: 22px; margin: 36px 0 16px; color: #e6edf3; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
+h3 { font-size: 17px; margin: 24px 0 10px; color: var(--accent); }
+
+/* feynman */
+.feynman {
+  border-left: 3px solid transparent;
+  border-image: linear-gradient(180deg, var(--accent), var(--purple)) 1;
+  background: rgba(88,166,255,.04);
+  padding: 16px 20px;
+  margin: 20px 0;
+  border-radius: 0 8px 8px 0;
+  position: relative;
+}
+.feynman::before {
+  content: "💡 费曼理解";
+  display: block;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--accent);
+  margin-bottom: 6px;
+  letter-spacing: .5px;
+}
+.feynman p { margin: 4px 0; font-size: 14px; }
+
+/* diagram */
+.diagram {
+  background: #0a0c13;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  text-align: center;
+  padding: 16px;
+  margin: 20px 0;
+}
+.diagram svg { max-width: 100%; height: auto; display: inline-block; }
+
+/* compare */
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 16px 0;
+}
+.compare > * { min-width: 0; }
+
+/* info-card */
+.info-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+.info-card h4 { color: var(--accent); margin-bottom: 8px; font-size: 15px; }
+
+/* qa */
+.qa {
+  border-left: 3px solid var(--accent);
+  padding: 14px 18px;
+  margin: 14px 0;
+  background: rgba(88,166,255,.04);
+  border-radius: 0 8px 8px 0;
+}
+.qa strong { color: var(--accent); }
+
+/* socratic */
+details.socratic {
+  border: 1px solid transparent;
+  border-image: linear-gradient(135deg, var(--purple), #6f42c1) 1;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin: 14px 0;
+  background: rgba(163,113,247,.05);
+  cursor: pointer;
+}
+details.socratic summary {
+  font-weight: 600;
+  color: var(--purple);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+details.socratic summary::before {
+  content: "🤔";
+}
+details.socratic[open] { padding-bottom: 18px; }
+details.socratic[open] summary { margin-bottom: 10px; }
+details.socratic .qa { margin: 8px 0; }
+
+/* syntax highlighting */
+pre {
+  background: #0a0c13;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  margin: 16px 0;
+}
+code { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+pre code { background: none; padding: 0; }
+.kw { color: #ff7b72; }
+.fn { color: #d2a8ff; }
+.str { color: #a5d6ff; }
+.num { color: #79c0ff; }
+.cm { color: #8b949e; font-style: italic; }
+.tp { color: #ffa657; }
+.op { color: #ff7b72; }
+
+/* tables */
+table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+th { background: #21242c; color: var(--text); padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+td { padding: 9px 14px; border-bottom: 1px solid var(--border); }
+tr:hover { background: transparent; }
+tr:hover td { background: rgba(88,166,255,.03); }
+
+/* lists */
+ul, ol { padding-left: 22px; margin: 10px 0; }
+li { margin: 4px 0; }
+p { margin: 10px 0; }
+
+/* mobile */
+@media(max-width:768px) {
+  .sidebar { display: none; }
+  body { margin-left: 0; padding: 16px 18px 40px; }
+  .compare { grid-template-columns: 1fr; }
+  .diagram svg { min-width: 420px; }
+}
+@media(max-width:480px) {
+  .diagram svg { min-width: 340px; }
+  h1 { font-size: 22px; }
+  h2 { font-size: 18px; }
+  pre { font-size: 11px; padding: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h2>📋 目录</h2>
+  <nav>
+    <a href="#bg">1. 项目背景</a>
+    <a href="#tools">2. Agent 工具设计</a>
+    <a href="#mcp">3. MCP Server 实现</a>
+    <a href="#react">4. ReAct 循环编排</a>
+    <a href="#frontend">5. 前端通信</a>
+    <a href="#qwen">6. 集成阿里云千问</a>
+    <a href="#memory">7. 记忆管理</a>
+    <a href="#modes">8. 多模式支持</a>
+    <a href="#multi">9. 多 Agent 扩展</a>
+    <a href="#deploy">10. 部署与优化</a>
+    <a href="#qa">11. QA & 总结</a>
+  </nav>
+  <a href="/" class="back-link">← 返回首页</a>
+</div>
+
+<h1>🏠 实战：从零搭建装修管理 AI Agent — MCP Server + ReAct 编排 + 阿里云千问</h1>
+
+<p style="color:var(--text);opacity:.7;margin-bottom:24px;">本文从一个真实需求出发，手把手带你搭建一个装修管理 AI Agent，涵盖 MCP 工具协议、ReAct 推理循环、阿里云千问集成等核心模块。所有代码可运行，注释完整。</p>
+
+<!-- ==================== 1 ==================== -->
+<h2 id="bg">1. 项目背景</h2>
+<p>小王正在装修房子，每天要在多个平台搜索装修资料、比价、记录灵感。他希望有一个 AI 助手能一站式帮他完成这些任务：查预算、推荐环保材料、保存设计方案。项目的关键约束：</p>
+<ul>
+  <li><strong>预算敏感</strong> — 总预算 30 万，需按项目分配</li>
+  <li><strong>家有宝宝</strong> — 所有材料必须符合严格甲醛标准（E0 级）</li>
+  <li><strong>多端访问</strong> — Web 端为主，移动端可查阅</li>
+</ul>
+
+<div class="info-card">
+  <h4>技术栈</h4>
+  <table>
+    <tr><th>层级</th><th>技术选型</th><th>作用</th></tr>
+    <tr><td>前端</td><td>React + Vite + SSE</td><td>流式渲染思考过程</td></tr>
+    <tr><td>Agent Core</td><td>Go + ReAct 引擎</td><td>推理循环与工具编排</td></tr>
+    <tr><td>MCP Server</td><td>mark3labs/mcp-go</td><td>标准化工具协议</td></tr>
+    <tr><td>LLM</td><td>阿里云千问 qwen-plus</td><td>Function Calling</td></tr>
+  </table>
+</div>
+
+<div class="diagram">
+  <svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#58a6ff;stop-opacity:1"/><stop offset="100%" style="stop-color:#a371f7;stop-opacity:1"/></linearGradient>
+      <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#3fb950;stop-opacity:1"/><stop offset="100%" style="stop-color:#39c5cf;stop-opacity:1"/></linearGradient>
+      <linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#d29922;stop-opacity:1"/><stop offset="100%" style="stop-color:#f85149;stop-opacity:1"/></linearGradient>
+    </defs>
+    <rect x="10" y="10" width="780" height="320" rx="14" fill="#0a0c13" stroke="#2a2d3a" stroke-width="1.5"/>
+    <!-- Frontend -->
+    <rect x="40" y="40" width="160" height="80" rx="10" fill="#1a1d27" stroke="#58a6ff" stroke-width="1.5"/>
+    <text x="120" y="72" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="700">🌐 前端</text>
+    <text x="120" y="94" text-anchor="middle" fill="#c9d1d9" font-size="11">React + SSE 流式渲染</text>
+    <!-- Arrow -->
+    <line x1="200" y1="80" x2="260" y2="80" stroke="#c9d1d9" stroke-width="2" marker-end="url(#arrow)"/>
+    <!-- Agent Core -->
+    <rect x="270" y="40" width="160" height="80" rx="10" fill="#1a1d27" stroke="#a371f7" stroke-width="1.5"/>
+    <text x="350" y="72" text-anchor="middle" fill="#a371f7" font-size="14" font-weight="700">🤖 Agent Core</text>
+    <text x="350" y="94" text-anchor="middle" fill="#c9d1d9" font-size="11">ReAct 推理循环</text>
+    <!-- Arrow -->
+    <line x1="430" y1="80" x2="490" y2="80" stroke="#c9d1d9" stroke-width="2"/>
+    <!-- MCP Server -->
+    <rect x="500" y="40" width="160" height="80" rx="10" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="580" y="72" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">🔌 MCP Server</text>
+    <text x="580" y="94" text-anchor="middle" fill="#c9d1d9" font-size="11">JSON-RPC 协议</text>
+    <!-- Arrow down from MCP -->
+    <line x1="580" y1="120" x2="580" y2="170" stroke="#c9d1d9" stroke-width="2"/>
+    <!-- Tool Group -->
+    <rect x="400" y="180" width="360" height="130" rx="10" fill="#1a1d27" stroke="#d29922" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <text x="580" y="206" text-anchor="middle" fill="#d29922" font-size="13" font-weight="700">🛠 装修工具群</text>
+    <!-- Tool boxes -->
+    <rect x="420" y="220" width="150" height="40" rx="6" fill="#0a0c13" stroke="#58a6ff" stroke-width="1"/>
+    <text x="495" y="245" text-anchor="middle" fill="#58a6ff" font-size="11">search_web 搜索</text>
+    <rect x="590" y="220" width="150" height="40" rx="6" fill="#0a0c13" stroke="#3fb950" stroke-width="1"/>
+    <text x="665" y="245" text-anchor="middle" fill="#3fb950" font-size="11">get_budget_info 预算</text>
+    <rect x="420" y="268" width="150" height="36" rx="6" fill="#0a0c13" stroke="#a371f7" stroke-width="1"/>
+    <text x="495" y="290" text-anchor="middle" fill="#a371f7" font-size="11">recommend_product 推荐</text>
+    <rect x="590" y="268" width="150" height="36" rx="6" fill="#0a0c13" stroke="#39c5cf" stroke-width="1"/>
+    <text x="665" y="290" text-anchor="middle" fill="#39c5cf" font-size="11">get_inspirations 灵感</text>
+    <!-- Legend -->
+    <rect x="40" y="180" width="200" height="100" rx="8" fill="#0a0c13" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="50" y="202" fill="#c9d1d9" font-size="12" font-weight="700">图例</text>
+    <circle cx="58" cy="224" r="6" fill="#58a6ff"/><text x="72" y="228" fill="#c9d1d9" font-size="11">前端 → Agent Core</text>
+    <circle cx="58" cy="248" r="6" fill="#a371f7"/><text x="72" y="252" fill="#c9d1d9" font-size="11">Agent → MCP Server</text>
+    <circle cx="58" cy="272" r="6" fill="#d29922"/><text x="72" y="276" fill="#c9d1d9" font-size="11">MCP → 工具注册调用</text>
+  </svg>
+  <p style="font-size:12px;color:#8b949e;margin-top:6px;">图1：装修管理系统整体架构 — 前端通过 SSE 与 Agent Core 通信，Core 通过 MCP Server 调用装修工具群</p>
+</div>
+
+<div class="feynman">
+  <p>这个架构的核心思想是<strong>关注点分离</strong>：前端只负责渲染，Agent Core 只做推理决策，MCP Server 标准化工具接口。这样任何一层都可以独立替换——比如把前端从 React 换成 Vue，或者把 LLM 从千问换成 GPT，都不影响其他模块。</p>
+</div>
+
+<!-- ==================== 2 ==================== -->
+<h2 id="tools">2. Agent 工具设计</h2>
+<p>装修 Agent 需要四个核心工具，每个工具都是一个 JSON-RPC 方法，包含 name、description 和 parameters schema：</p>
+
+<table>
+  <tr><th>工具名</th><th>描述</th><th>关键参数</th></tr>
+  <tr><td>search_web</td><td>搜索装修知识、品牌评测</td><td>query, max_results, source_filter</td></tr>
+  <tr><td>get_budget_info</td><td>查询项目预算及使用情况</td><td>project_id, category</td></tr>
+  <tr><td>recommend_product</td><td>推荐装修材料/家电</td><td>category, budget_max, eco_grade, features</td></tr>
+  <tr><td>get_inspirations</td><td>获取装修风格灵感</td><td>style, room, color_palette</td></tr>
+</table>
+
+<div class="diagram">
+  <svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="10" width="780" height="300" rx="14" fill="#0a0c13" stroke="#2a2d3a" stroke-width="1.5"/>
+    <!-- 工具注册中心 -->
+    <rect x="280" y="30" width="240" height="60" rx="10" fill="#1a1d27" stroke="#58a6ff" stroke-width="1.5"/>
+    <text x="400" y="58" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="700">📋 工具注册中心</text>
+    <text x="400" y="78" text-anchor="middle" fill="#8b949e" font-size="11">tools.RegisterTool(name, handler)</text>
+    <!-- Register flows -->
+    <line x1="280" y1="60" x2="140" y2="110" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="5,3"/>
+    <line x1="400" y1="90" x2="400" y2="110" stroke="#d29922" stroke-width="1.5" stroke-dasharray="5,3"/>
+    <line x1="520" y1="60" x2="660" y2="110" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="5,3"/>
+    <!-- Tool boxes -->
+    <rect x="50" y="120" width="180" height="70" rx="8" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="140" y="147" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">search_web</text>
+    <text x="140" y="167" text-anchor="middle" fill="#c9d1d9" font-size="11">query, max_results</text>
+    <text x="140" y="182" text-anchor="middle" fill="#8b949e" font-size="10">搜索装修资料</text>
+
+    <rect x="310" y="120" width="180" height="70" rx="8" fill="#1a1d27" stroke="#d29922" stroke-width="1.5"/>
+    <text x="400" y="147" text-anchor="middle" fill="#d29922" font-size="13" font-weight="700">get_budget_info</text>
+    <text x="400" y="167" text-anchor="middle" fill="#c9d1d9" font-size="11">project_id, category</text>
+    <text x="400" y="182" text-anchor="middle" fill="#8b949e" font-size="10">查询预算</text>
+
+    <rect x="570" y="120" width="180" height="70" rx="8" fill="#1a1d27" stroke="#a371f7" stroke-width="1.5"/>
+    <text x="660" y="147" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="700">recommend_product</text>
+    <text x="660" y="167" text-anchor="middle" fill="#c9d1d9" font-size="11">budget_max, eco_grade</text>
+    <text x="660" y="182" text-anchor="middle" fill="#8b949e" font-size="10">推荐材料</text>
+
+    <!-- 第四个工具 -->
+    <rect x="310" y="210" width="180" height="60" rx="8" fill="#1a1d27" stroke="#39c5cf" stroke-width="1.5"/>
+    <text x="400" y="237" text-anchor="middle" fill="#39c5cf" font-size="13" font-weight="700">get_inspirations</text>
+    <text x="400" y="257" text-anchor="middle" fill="#c9d1d9" font-size="11">style, room, color</text>
+
+    <!-- Label -->
+    <text x="140" y="217" fill="#8b949e" font-size="10">(续)</text>
+    <text x="660" y="217" fill="#8b949e" font-size="10">(续)</text>
+
+    <!-- Discover arrow -->
+    <path d="M140 190 L140 210 L400 210" stroke="#58a6ff" stroke-width="1.5" fill="none" stroke-dasharray="4,3"/>
+    <text x="240" y="208" fill="#58a6ff" font-size="10">Agent 发现并调用</text>
+  </svg>
+  <p style="font-size:12px;color:#8b949e;margin-top:6px;">图2：工具注册和发现流程 — 所有工具在 MCP Server 注册，Agent 通过 Function Calling 动态发现并调用</p>
+</div>
+
+<div class="info-card">
+  <h4>工具设计原则</h4>
+  <ul>
+    <li><strong>职责单一</strong>：每个工具只做一件事，search_web 不写数据库</li>
+    <li><strong>Schema 驱动</strong>：parameters 需用 JSON Schema 严格定义，千问据此自动生成调用参数</li>
+    <li><strong>幂等性</strong>：get_budget_info 可重复调用不产生副作用</li>
+  </ul>
+</div>
+
+<!-- ==================== 3 ==================== -->
+<h2 id="mcp">3. MCP Server 实现</h2>
+<p>MCP (Model Context Protocol) Server 是装修工具的标准化接口层。使用 <code>mark3labs/mcp-go</code> 库实现 JSON-RPC 端点：</p>
+
+<pre><code><span class="cm">// 装修 MCP Server — 基于 mark3labs/mcp-go 库</span>
+<span class="cm">// 文件: mcp/server.go</span>
+<span class="kw">package</span> <span class="fn">main</span>
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"encoding/json"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"log"</span>
+    <span class="str">"net/http"</span>
+
+    <span class="str">"github.com/mark3labs/mcp-go/mcp"</span>
+    <span class="str">"github.com/mark3labs/mcp-go/server"</span>
+)
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    <span class="cm">// 创建 MCP 服务器实例</span>
+    s := server.<span class="fn">NewMCPServer</span>(
+        <span class="str">"装修助手 MCP"</span>,
+        server.<span class="fn">WithVersion</span>(<span class="str">"1.0.0"</span>),
+    )
+
+    <span class="cm">// 注册 search_web 工具</span>
+    searchTool := mcp.<span class="fn">NewTool</span>(<span class="str">"search_web"</span>,
+        mcp.<span class="fn">WithDescription</span>(<span class="str">"搜索装修知识、品牌评测、产品信息"</span>),
+        mcp.<span class="fn">WithString</span>(<span class="str">"query"</span>,
+            mcp.<span class="fn">Required</span>(),
+            mcp.<span class="fn">Description</span>(<span class="str">"搜索关键词"</span>),
+        ),
+        mcp.<span class="fn">WithNumber</span>(<span class="str">"max_results"</span>,
+            mcp.<span class="fn">Description</span>(<span class="str">"最大返回条数，默认5"</span>),
+        ),
+    )
+    s.<span class="fn">AddTool</span>(searchTool, searchHandler)
+
+    <span class="cm">// 注册 get_budget_info 工具</span>
+    budgetTool := mcp.<span class="fn">NewTool</span>(<span class="str">"get_budget_info"</span>,
+        mcp.<span class="fn">WithDescription</span>(<span class="str">"查询指定装修项目的预算和实际支出"</span>),
+        mcp.<span class="fn">WithString</span>(<span class="str">"project_id"</span>,
+            mcp.<span class="fn">Required</span>(),
+            mcp.<span class="fn">Description</span>(<span class="str">"项目ID"</span>),
+        ),
+        mcp.<span class="fn">WithString</span>(<span class="str">"category"</span>,
+            mcp.<span class="fn">Description</span>(<span class="str">"预算分类：材料/人工/家电/软装"</span>),
+        ),
+    )
+    s.<span class="fn">AddTool</span>(budgetTool, budgetHandler)
+
+    <span class="cm">// 注册 recommend_product 工具</span>
+    recTool := mcp.<span class="fn">NewTool</span>(<span class="str">"recommend_product"</span>,
+        mcp.<span class="fn">WithDescription</span>(<span class="str">"推荐装修材料或家电，支持环保等级过滤"</span>),
+        mcp.<span class="fn">WithString</span>(<span class="str">"category"</span>, mcp.<span class="fn">Required</span>(),
+            mcp.<span class="fn">Description</span>(<span class="str">"产品分类"</span>)),
+        mcp.<span class="fn">WithNumber</span>(<span class="str">"budget_max"</span>,
+            mcp.<span class="fn">Description</span>(<span class="str">"预算上限"</span>)),
+        mcp.<span class="fn">WithString</span>(<span class="str">"eco_grade"</span>,
+            mcp.<span class="fn">Description</span>(<span class="str">"环保等级：E0/F★★★★"</span>)),
+    )
+    s.<span class="fn">AddTool</span>(recTool, recHandler)
+
+    <span class="cm">// 注册 get_inspirations 工具</span>
+    inspTool := mcp.<span class="fn">NewTool</span>(<span class="str">"get_inspirations"</span>,
+        mcp.<span class="fn">WithDescription</span>(<span class="str">"获取装修风格灵感图片和设计建议"</span>),
+        mcp.<span class="fn">WithString</span>(<span class="str">"style"</span>, mcp.<span class="fn">Required</span>(),
+            mcp.<span class="fn">Description</span>(<span class="str">"风格：现代/北欧/日式/工业"</span>)),
+        mcp.<span class="fn">WithString</span>(<span class="str">"room"</span>,
+            mcp.<span class="fn">Description</span>(<span class="str">"房间：客厅/卧室/厨房/卫生间"</span>)),
+    )
+    s.<span class="fn">AddTool</span>(inspTool, inspHandler)
+
+    <span class="cm">// 启动 HTTP 服务</span>
+    http.Handle(<span class="str">"/mcp"</span>, s)
+    log.<span class="fn">Println</span>(<span class="str">"装修 MCP Server 启动于 :8080"</span>)
+    log.<span class="fn">Fatal</span>(http.<span class="fn">ListenAndServe</span>(<span class="str">":8080"</span>, <span class="kw">nil</span>))
+}
+
+<span class="kw">func</span> <span class="fn">searchHandler</span>(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, <span class="tp">error</span>) {
+    query := req.Params.Arguments[<span class="str">"query"</span>].(string)
+    maxResults := <span class="num">5</span>
+    <span class="kw">if</span> v, ok := req.Params.Arguments[<span class="str">"max_results"</span>]; ok {
+        maxResults = <span class="kw">int</span>(v.(float64))
+    }
+    <span class="cm">// 调用搜索 API 并返回结果</span>
+    results, err := searchWeb(ctx, query, maxResults)
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="kw">return</span> mcp.<span class="fn">NewToolResultError</span>(err.<span class="fn">Error</span>()), <span class="kw">nil</span>
+    }
+    data, _ := json.<span class="fn">Marshal</span>(results)
+    <span class="kw">return</span> mcp.<span class="fn">NewToolResultText</span>(string(data)), <span class="kw">nil</span>
+}
+
+<span class="kw">func</span> <span class="fn">budgetHandler</span>(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, <span class="tp">error</span>) {
+    projectID := req.Params.Arguments[<span class="str">"project_id"</span>].(string)
+    category, _ := req.Params.Arguments[<span class="str">"category"</span>].(string)
+    <span class="cm">// 从数据库查询预算</span>
+    budget, err := queryBudget(ctx, projectID, category)
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="kw">return</span> mcp.<span class="fn">NewToolResultError</span>(err.<span class="fn">Error</span>()), <span class="kw">nil</span>
+    }
+    data, _ := json.<span class="fn">Marshal</span>(budget)
+    <span class="kw">return</span> mcp.<span class="fn">NewToolResultText</span>(string(data)), <span class="kw">nil</span>
+}
+</code></pre>
+
+<div class="feynman">
+  <p><strong>MCP Server 的核心价值</strong>：它把工具的<strong>定义</strong>（name、description、schema）和<strong>执行</strong>（handler）拆分开。Agent Core 不需要知道工具怎么实现，只需要通过 JSON-RPC 调用就行。这就像装修中的插座标准化——任何电器（工具）插上去就能用。</p>
+</div>
+
+<!-- ==================== 4 ==================== -->
+<h2 id="react">4. ReAct 循环编排</h2>
+<p>装修 Agent 的核心是 ReAct（Reasoning + Acting）循环。它让 LLM 交替进行<strong>思考</strong>（推理下一步）和<strong>行动</strong>（调用工具），最终给出完整回答。</p>
+
+<pre><code><span class="cm">// ReAct 引擎核心 — think-act-observe 循环</span>
+<span class="cm">// 文件: react/engine.go</span>
+<span class="kw">package</span> <span class="fn">react</span>
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"encoding/json"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"strings"</span>
+    <span class="str">"time"</span>
+)
+
+<span class="cm">// ReActConfig 引擎配置</span>
+<span class="kw">type</span> <span class="fn">ReActConfig</span> <span class="kw">struct</span> {
+    MaxSteps      <span class="kw">int</span>           <span class="cm">// 最大迭代步数</span>
+    EarlyStop     <span class="kw">bool</span>          <span class="cm">// 是否启用 Early Stopping</span>
+    StopTokens    []string       <span class="cm">// 终止 token 列表</span>
+    TimeoutPerStep time.Duration <span class="cm">// 单步超时</span>
+}
+
+<span class="cm">// StepResult 单步执行结果</span>
+<span class="kw">type</span> <span class="fn">StepResult</span> <span class="kw">struct</span> {
+    Thought string      <span class="cm">// 推理思考</span>
+    Action  string      <span class="cm">// 行动名称</span>
+    Input   interface{} <span class="cm">// 行动参数</span>
+    Output  string      <span class="cm">// 观察结果</span>
+    IsFinal <span class="kw">bool</span>       <span class="cm">// 是否最终回答</span>
+}
+
+<span class="cm">// ReActEngine 装修 Agent 推理引擎</span>
+<span class="kw">type</span> <span class="fn">ReActEngine</span> <span class="kw">struct</span> {
+    config   ReActConfig
+    llm      LLMClient       <span class="cm">// 语言模型客户端</span>
+    executor ToolExecutor    <span class="cm">// 工具执行器</span>
+    history  []StepResult    <span class="cm">// 历史步骤</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewReActEngine</span>(cfg ReActConfig, llm LLMClient, exec ToolExecutor) *ReActEngine {
+    <span class="kw">if</span> cfg.MaxSteps == <span class="num">0</span> {
+        cfg.MaxSteps = <span class="num">10</span>
+    }
+    <span class="kw">return</span> &ReActEngine{
+        config:   cfg,
+        llm:      llm,
+        executor: exec,
+        history:  []StepResult{},
+    }
+}
+
+<span class="cm">// SystemPrompt 装修专家人设</span>
+<span class="kw">const</span> <span class="fn">SystemPrompt</span> = <span class="str">`你是"装修小助手"——一位经验丰富的室内装修顾问。
+你擅长：
+1. 搜索和整理装修知识、品牌评测
+2. 帮助用户管理装修预算
+3. 推荐符合环保标准的材料和家电
+4. 提供装修风格灵感
+
+你始终遵循以下原则：
+- 优先考虑家有宝宝的安全需求，推荐 E0 级以上材料
+- 预算敏感型推荐，给出性价比分析
+- 所有回答必须有理有据，引用搜索结果
+
+请用 JSON 格式输出你的推理过程：
+{"thought":"思考...","action":"工具名","input":{...}}
+或最终回答：
+{"thought":"思考...","answer":"最终回答..."}`
+
+<span class="cm">// Run 执行 ReAct 循环</span>
+<span class="kw">func</span> (e *ReActEngine) <span class="fn">Run</span>(ctx context.Context, userInput string) (<span class="kw">chan</span> StepResult, <span class="tp">error</span>) {
+    out := <span class="kw">make</span>(<span class="kw">chan</span> StepResult, <span class="num">100</span>)
+
+    <span class="kw">go</span> <span class="kw">func</span>() {
+        <span class="kw">defer</span> <span class="fn">close</span>(out)
+
+        messages := e.<span class="fn">buildMessages</span>(userInput)
+
+        <span class="kw">for</span> step := <span class="num">0</span>; step < e.config.MaxSteps; step++ {
+            <span class="cm">// 1. 调用 LLM 获取下一个思考</span>
+            resp, err := e.llm.<span class="fn">Chat</span>(ctx, messages)
+            <span class="kw">if</span> err != <span class="kw">nil</span> {
+                out <- StepResult{Thought: fmt.Sprintf(<span class="str">"LLM 调用失败: %v"</span>, err), IsFinal: <span class="kw">true</span>}
+                <span class="kw">return</span>
+            }
+
+            <span class="cm">// 2. 解析响应 — 判断是工具调用还是最终回答</span>
+            result, err := e.<span class="fn">parseResponse</span>(resp)
+            <span class="kw">if</span> err != <span class="kw">nil</span> {
+                out <- StepResult{Thought: resp, Action: <span class="str">"parse_error"</span>, Output: err.<span class="fn">Error</span>()}
+                <span class="kw">continue</span>
+            }
+
+            <span class="cm">// 3. 输出思考过程</span>
+            out <- result
+
+            <span class="cm">// 4. 如果是最终回答，结束循环</span>
+            <span class="kw">if</span> result.IsFinal {
+                <span class="kw">return</span>
+            }
+
+            <span class="cm">// 5. 执行工具调用</span>
+            output, err := e.executor.<span class="fn">Execute</span>(ctx, result.Action, result.Input)
+            <span class="kw">if</span> err != <span class="kw">nil</span> {
+                output = fmt.Sprintf(<span class="str">"工具执行失败: %v"</span>, err)
+            }
+            result.Output = output
+            out <- result
+
+            <span class="cm">// 6. 将观察结果加入消息历史</span>
+            messages = <span class="fn">append</span>(messages,
+                Message{Role: <span class="str">"assistant"</span>, Content: resp},
+                Message{Role: <span class="str">"observation"</span>, Content: output},
+            )
+
+            <span class="cm">// 7. Early Stopping 检查</span>
+            <span class="kw">if</span> e.config.EarlyStop && e.<span class="fn">shouldStop</span>(output) {
+                out <- StepResult{
+                    Thought: <span class="str">"Early Stopping: 已获取足够信息，提前终止循环"</span>,
+                    IsFinal: <span class="kw">true</span>,
+                }
+                <span class="kw">return</span>
+            }
+        }
+
+        <span class="cm">// 超过最大步数，强制输出总结</span>
+        out <- StepResult{
+            Thought: fmt.Sprintf(<span class="str">"已到达最大步数 %d，给出当前总结"</span>, e.config.MaxSteps),
+            IsFinal: <span class="kw">true</span>,
+        }
+    }()
+
+    <span class="kw">return</span> out, <span class="kw">nil</span>
+}
+
+<span class="kw">func</span> (e *ReActEngine) <span class="fn">shouldStop</span>(output string) <span class="kw">bool</span> {
+    <span class="kw">for</span> _, tok := <span class="kw">range</span> e.config.StopTokens {
+        <span class="kw">if</span> strings.<span class="fn">Contains</span>(output, tok) {
+            <span class="kw">return</span> <span class="kw">true</span>
+        }
+    }
+    <span class="kw">return</span> <span class="kw">false</span>
+}
+</code></pre>
+
+<div class="diagram">
+  <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="10" width="780" height="380" rx="14" fill="#0a0c13" stroke="#2a2d3a" stroke-width="1.5"/>
+    <!-- 用户输入 -->
+    <rect x="300" y="30" width="200" height="44" rx="22" fill="#1a1d27" stroke="#58a6ff" stroke-width="1.5"/>
+    <text x="400" y="57" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">👤 用户输入</text>
+    <!-- Arrow down -->
+    <line x1="400" y1="74" x2="400" y2="100" stroke="#c9d1d9" stroke-width="1.5"/>
+    <!-- System Prompt -->
+    <rect x="280" y="100" width="240" height="36" rx="8" fill="#0a0c13" stroke="#a371f7" stroke-width="1" stroke-dasharray="5,3"/>
+    <text x="400" y="123" text-anchor="middle" fill="#a371f7" font-size="11">系统提示词 + 对话历史</text>
+    <!-- Arrow -->
+    <line x1="400" y1="136" x2="400" y2="160" stroke="#c9d1d9" stroke-width="1.5"/>
+    <!-- LLM -->
+    <rect x="300" y="160" width="200" height="44" rx="10" fill="#1a1d27" stroke="#d29922" stroke-width="1.5"/>
+    <text x="400" y="187" text-anchor="middle" fill="#d29922" font-size="13" font-weight="700">🧠 千问 LLM</text>
+    <!-- Diamond decision -->
+    <polygon points="400,220 440,250 400,280 360,250" fill="#0a0c13" stroke="#39c5cf" stroke-width="1.5"/>
+    <text x="400" y="248" text-anchor="middle" fill="#39c5cf" font-size="11">思考</text>
+    <text x="400" y="262" text-anchor="middle" fill="#39c5cf" font-size="8">决策</text>
+    <!-- Answer right -->
+    <line x1="440" y1="250" x2="600" y2="250" stroke="#3fb950" stroke-width="1.5"/>
+    <rect x="610" y="230" width="150" height="40" rx="20" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="685" y="255" text-anchor="middle" fill="#3fb950" font-size="12">✅ 最终回答</text>
+    <!-- Tool call left -->
+    <line x1="360" y1="250" x2="200" y2="250" stroke="#f85149" stroke-width="1.5"/>
+    <rect x="50" y="230" width="140" height="40" rx="8" fill="#1a1d27" stroke="#f85149" stroke-width="1.5"/>
+    <text x="120" y="255" text-anchor="middle" fill="#f85149" font-size="12">🔧 调用工具</text>
+    <!-- Arrow down from tool -->
+    <line x1="120" y1="270" x2="120" y2="310" stroke="#c9d1d9" stroke-width="1.5"/>
+    <!-- Observation -->
+    <rect x="50" y="310" width="140" height="36" rx="8" fill="#0a0c13" stroke="#d29922" stroke-width="1"/>
+    <text x="120" y="333" text-anchor="middle" fill="#d29922" font-size="11">观察结果</text>
+    <!-- Loop back -->
+    <path d="M190 328 Q250 340 280 340 L360 340 Q400 340 400 280" stroke="#8b949e" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>
+    <text x="260" y="356" fill="#8b949e" font-size="10">循环至下一轮思考</text>
+    <!-- Step counter -->
+    <text x="400" y="380" fill="#8b949e" font-size="11">每轮计数 1..MaxSteps | Early Stopping 提前终止</text>
+  </svg>
+  <p style="font-size:12px;color:#8b949e;margin-top:6px;">图3：一次完整 ReAct 对话流程 — 思考→决策→工具调用/最终回答→观察→循环</p>
+</div>
+
+<div class="feynman">
+  <p>ReAct 的巧妙之处在于它把<strong>推理轨迹</strong>作为对话历史的一部分传给 LLM。每次循环都会看到"上一轮我想了什么→调了什么工具→观察到什么→现在怎么调整"。这相当于让 AI 拥有了<strong>工作记忆</strong>，而不是每次都重新开始。</p>
+</div>
+
+<!-- ==================== 5 ==================== -->
+<h2 id="frontend">5. 前端通信</h2>
+<p>采用 SSE（Server-Sent Events）实现单工流式通信，将 Agent 的思考过程实时推送到前端。Go 后端通过 EventSource 通道发送事件：</p>
+
+<pre><code><span class="cm">// SSE 推送 — 实时返回 Agent 思考过程</span>
+<span class="cm">// 文件: sse/stream.go</span>
+<span class="kw">package</span> <span class="fn">sse</span>
+
+<span class="kw">import</span> (
+    <span class="str">"encoding/json"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"log"</span>
+    <span class="str">"net/http"</span>
+    <span class="str">"time"</span>
+)
+
+<span class="cm">// AgentEvent 推送事件类型</span>
+<span class="kw">type</span> <span class="fn">AgentEvent</span> <span class="kw">struct</span> {
+    Type    string      `json:<span class="str">"type"</span>`  <span class="cm">// thought | action | observation | answer | error</span>
+    Content string      `json:<span class="str">"content"</span>`
+    Step    <span class="kw">int</span>         `json:<span class="str">"step"</span>`
+    Metadata interface{} `json:<span class="str">"metadata,omitempty"</span>`
+}
+
+<span class="cm">// SSEServer SSE 流式服务器</span>
+<span class="kw">type</span> <span class="fn">SSEServer</span> <span class="kw">struct</span> {
+    clients map[<span class="kw">string</span>]<span class="kw">chan</span> AgentEvent
+}
+
+<span class="kw">func</span> <span class="fn">NewSSEServer</span>() *SSEServer {
+    <span class="kw">return</span> &SSEServer{
+        clients: <span class="fn">make</span>(<span class="kw">map</span>[string]<span class="kw">chan</span> AgentEvent),
+    }
+}
+
+<span class="cm">// HandleSSE SSE 端点处理器</span>
+<span class="kw">func</span> (s *SSEServer) <span class="fn">HandleSSE</span>(w http.ResponseWriter, r *http.Request) {
+    flusher, ok := w.(http.Flusher)
+    <span class="kw">if</span> !ok {
+        http.<span class="fn">Error</span>(w, <span class="str">"Streaming unsupported"</span>, http.StatusInternalServerError)
+        <span class="kw">return</span>
+    }
+
+    w.Header().<span class="fn">Set</span>(<span class="str">"Content-Type"</span>, <span class="str">"text/event-stream"</span>)
+    w.Header().<span class="fn">Set</span>(<span class="str">"Cache-Control"</span>, <span class="str">"no-cache"</span>)
+    w.Header().<span class="fn">Set</span>(<span class="str">"Connection"</span>, <span class="str">"keep-alive"</span>)
+    w.Header().<span class="fn">Set</span>(<span class="str">"X-Accel-Buffering"</span>, <span class="str">"no"</span>)
+
+    clientID := fmt.Sprintf(<span class="str">"client_%d"</span>, time.Now().UnixNano())
+    msgChan := <span class="fn">make</span>(<span class="kw">chan</span> AgentEvent, <span class="num">50</span>)
+    s.clients[clientID] = msgChan
+
+    <span class="cm">// 清理客户端</span>
+    <span class="kw">defer</span> <span class="kw">func</span>() {
+        <span class="fn">delete</span>(s.clients, clientID)
+        log.<span class="fn">Printf</span>(<span class="str">"客户端 %s 断开连接"</span>, clientID)
+    }()
+
+    <span class="cm">// 持续推送事件</span>
+    <span class="kw">for</span> {
+        <span class="kw">select</span> {
+        <span class="kw">case</span> event, ok := <-msgChan:
+            <span class="kw">if</span> !ok {
+                <span class="kw">return</span>
+            }
+            data, _ := json.<span class="fn">Marshal</span>(event)
+            fmt.<span class="fn">Fprintf</span>(w, <span class="str">"event: %s\ndata: %s\n\n"</span>, event.Type, string(data))
+            flusher.<span class="fn">Flush</span>()
+
+            <span class="kw">if</span> event.Type == <span class="str">"answer"</span> || event.Type == <span class="str">"error"</span> {
+                <span class="kw">return</span>
+            }
+        <span class="kw">case</span> <-r.Context().<span class="fn">Done</span>():
+            <span class="kw">return</span>
+        }
+    }
+}
+
+<span class="cm">// StreamEvent 向指定客户端推送事件</span>
+<span class="kw">func</span> (s *SSEServer) <span class="fn">StreamEvent</span>(clientID string, event AgentEvent) {
+    <span class="kw">if</span> ch, ok := s.clients[clientID]; ok {
+        <span class="kw">select</span> {
+        <span class="kw">case</span> ch <- event:
+        <span class="kw">default</span>:
+            log.<span class="fn">Println</span>(<span class="str">"客户端缓冲区满，丢弃事件"</span>)
+        }
+    }
+}
+
+<span class="cm">// 前端 React 组件中使用 EventSource</span>
+<span class="kw">func</span> <span class="fn">homeHandler</span>(w http.ResponseWriter, r *http.Request) {
+    html := <span class="str">`&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;&lt;title&gt;装修助手&lt;/title&gt;&lt;/head&gt;
+&lt;body&gt;
+&lt;div id="thinking"&gt;&lt;/div&gt;
+&lt;script&gt;
+  const es = new EventSource("/api/sse");
+  const el = document.getElementById("thinking");
+  es.addEventListener("thought", e =&gt; {
+    const data = JSON.parse(e.data);
+    el.innerHTML += '&lt;p&gt;&lt;strong&gt;思考:&lt;/strong&gt; ' + data.content + '&lt;/p&gt;';
+  });
+  es.addEventListener("action", e =&gt; {
+    const data = JSON.parse(e.data);
+    el.innerHTML += '&lt;p&gt;&lt;em&gt;🔧 调用 ' + data.content + '&lt;/em&gt;&lt;/p&gt;';
+  });
+  es.addEventListener("answer", e =&gt; {
+    const data = JSON.parse(e.data);
+    el.innerHTML += '&lt;div class="answer"&gt;' + data.content + '&lt;/div&gt;';
+    es.close();
+  });
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;`
+    w.<span class="fn">Write</span>([]byte(html))
+}
+</code></pre>
+
+<div class="diagram">
+  <svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="10" width="780" height="280" rx="14" fill="#0a0c13" stroke="#2a2d3a" stroke-width="1.5"/>
+    <!-- Browser -->
+    <rect x="50" y="50" width="180" height="80" rx="10" fill="#1a1d27" stroke="#58a6ff" stroke-width="1.5"/>
+    <text x="140" y="80" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="700">🌐 浏览器</text>
+    <text x="140" y="100" text-anchor="middle" fill="#c9d1d9" font-size="11">EventSource</text>
+    <text x="140" y="116" text-anchor="middle" fill="#8b949e" font-size="10">SSE 客户端</text>
+    <!-- Nginx -->
+    <rect x="310" y="50" width="180" height="80" rx="10" fill="#1a1d27" stroke="#d29922" stroke-width="1.5"/>
+    <text x="400" y="80" text-anchor="middle" fill="#d29922" font-size="14" font-weight="700">⚡ Nginx 反向代理</text>
+    <text x="400" y="100" text-anchor="middle" fill="#c9d1d9" font-size="11">X-Accel-Buffering: no</text>
+    <text x="400" y="116" text-anchor="middle" fill="#8b949e" font-size="10">HTTP/1.1 keep-alive</text>
+    <!-- Go Server -->
+    <rect x="570" y="50" width="180" height="80" rx="10" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="660" y="80" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">🦫 Go 后端</text>
+    <text x="660" y="100" text-anchor="middle" fill="#c9d1d9" font-size="11">SSE 事件推送</text>
+    <text x="660" y="116" text-anchor="middle" fill="#8b949e" font-size="10">Flusher.Flush()</text>
+    <!-- Arrows -->
+    <line x1="230" y1="90" x2="310" y2="90" stroke="#c9d1d9" stroke-width="1.5"/>
+    <line x1="490" y1="90" x2="570" y2="90" stroke="#c9d1d9" stroke-width="1.5"/>
+    <!-- Event flow label -->
+    <text x="270" y="82" fill="#8b949e" font-size="10" text-anchor="middle">event stream</text>
+    <text x="530" y="82" fill="#8b949e" font-size="10" text-anchor="middle">event stream</text>
+    <!-- Agent Core below -->
+    <rect x="570" y="160" width="180" height="44" rx="8" fill="#0a0c13" stroke="#a371f7" stroke-width="1"/>
+    <text x="660" y="187" text-anchor="middle" fill="#a371f7" font-size="12">🤖 Agent Core</text>
+    <line x1="660" y1="130" x2="660" y2="160" stroke="#8b949e" stroke-width="1"/>
+    <text x="660" y="148" fill="#8b949e" font-size="10">thought/action/answer</text>
+    <!-- Event types box -->
+    <rect x="50" y="170" width="300" height="96" rx="8" fill="#0a0c13" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="60" y="192" fill="#58a6ff" font-size="12" font-weight="700">事件类型</text>
+    <text x="60" y="212" fill="#39c5cf" font-size="11">event: thought  — 推理过程</text>
+    <text x="60" y="230" fill="#d29922" font-size="11">event: action   — 工具调用</text>
+    <text x="60" y="248" fill="#3fb950" font-size="11">event: answer   — 最终回答</text>
+  </svg>
+  <p style="font-size:12px;color:#8b949e;margin-top:6px;">图4：前端↔Agent 通信架构 — SSE 单向流，浏览器通过 EventSource 监听三种事件类型</p>
+</div>
+
+<!-- ==================== 6 ==================== -->
+<h2 id="qwen">6. 集成阿里云千问</h2>
+<p>千问 qwen-plus 支持 Function Calling，可以直接返回工具调用指令。我们封装一个客户端：</p>
+
+<pre><code><span class="cm">// 千问 API 封装 — Function Calling + 流式输出</span>
+<span class="cm">// 文件: qwen/client.go</span>
+<span class="kw">package</span> <span class="fn">qwen</span>
+
+<span class="kw">import</span> (
+    <span class="str">"bytes"</span>
+    <span class="str">"context"</span>
+    <span class="str">"encoding/json"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"io"</span>
+    <span class="str">"net/http"</span>
+    <span class="str">"time"</span>
+)
+
+<span class="cm">// QwenConfig 千问客户端配置</span>
+<span class="kw">type</span> <span class="fn">QwenConfig</span> <span class="kw">struct</span> {
+    APIKey     string  `json:<span class="str">"api_key"</span>`
+    Model      string  `json:<span class="str">"model"</span>` <span class="cm">// qwen-plus, qwen-max, qwen-turbo</span>
+    BaseURL    string  `json:<span class="str">"base_url"</span>`
+    MaxTokens  <span class="kw">int</span>     `json:<span class="str">"max_tokens"</span>`
+    Temperature float64 `json:<span class="str">"temperature"</span>`
+}
+
+<span class="cm">// Message 对话消息</span>
+<span class="kw">type</span> <span class="fn">Message</span> <span class="kw">struct</span> {
+    Role    string `json:<span class="str">"role"</span>`    <span class="cm">// system | user | assistant | observation</span>
+    Content string `json:<span class="str">"content"</span>`
+}
+
+<span class="cm">// ToolDefinition Function Calling 工具定义</span>
+<span class="kw">type</span> <span class="fn">ToolDefinition</span> <span class="kw">struct</span> {
+    Type        string      `json:<span class="str">"type"</span>`
+    Function    FunctionDef `json:<span class="str">"function"</span>`
+}
+
+<span class="kw">type</span> <span class="fn">FunctionDef</span> <span class="kw">struct</span> {
+    Name        string      `json:<span class="str">"name"</span>`
+    Description string      `json:<span class="str">"description"</span>`
+    Parameters  interface{} `json:<span class="str">"parameters"</span>`
+}
+
+<span class="cm">// ChatRequest 千问聊天请求</span>
+<span class="kw">type</span> <span class="fn">ChatRequest</span> <span class="kw">struct</span> {
+    Model       string           `json:<span class="str">"model"</span>`
+    Messages    []Message        `json:<span class="str">"messages"</span>`
+    Tools       []ToolDefinition `json:<span class="str">"tools,omitempty"</span>`
+    Stream      <span class="kw">bool</span>             `json:<span class="str">"stream"</span>`
+    Temperature float64          `json:<span class="str">"temperature"</span>`
+    MaxTokens   <span class="kw">int</span>              `json:<span class="str">"max_tokens"</span>`
+}
+
+<span class="cm">// QwenClient 千问 API 客户端</span>
+<span class="kw">type</span> <span class="fn">QwenClient</span> <span class="kw">struct</span> {
+    config  QwenConfig
+    client  *http.Client
+    tools   []ToolDefinition
+}
+
+<span class="kw">func</span> <span class="fn">NewQwenClient</span>(cfg QwenConfig) *QwenClient {
+    <span class="kw">if</span> cfg.BaseURL == <span class="str">""</span> {
+        cfg.BaseURL = <span class="str">"https://dashscope.aliyuncs.com/compatible-mode/v1"</span>
+    }
+    <span class="kw">if</span> cfg.Temperature == <span class="num">0</span> {
+        cfg.Temperature = <span class="num">0.7</span>
+    }
+    <span class="kw">return</span> &QwenClient{
+        config: cfg,
+        client: &http.Client{Timeout: <span class="num">60</span> * time.Second},
+        tools:  []ToolDefinition{},
+    }
+}
+
+<span class="cm">// RegisterTools 注册 Function Calling 工具</span>
+<span class="kw">func</span> (c *QwenClient) <span class="fn">RegisterTools</span>(tools []ToolDefinition) {
+    c.tools = tools
+}
+
+<span class="cm">// Chat 非流式调用千问</span>
+<span class="kw">func</span> (c *QwenClient) <span class="fn">Chat</span>(ctx context.Context, messages []Message) (string, <span class="tp">error</span>) {
+    reqBody := ChatRequest{
+        Model:       c.config.Model,
+        Messages:    messages,
+        Tools:       c.tools,
+        Stream:      <span class="kw">false</span>,
+        Temperature: c.config.Temperature,
+        MaxTokens:   c.config.MaxTokens,
+    }
+
+    jsonData, _ := json.<span class="fn">Marshal</span>(reqBody)
+
+    req, err := http.<span class="fn">NewRequestWithContext</span>(ctx, <span class="str">"POST"</span>,
+        c.config.BaseURL+<span class="str">"/chat/completions"</span>,
+        bytes.<span class="fn">NewBuffer</span>(jsonData))
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="kw">return</span> <span class="str">""</span>, fmt.Errorf(<span class="str">"创建请求失败: %w"</span>, err)
+    }
+
+    req.Header.<span class="fn">Set</span>(<span class="str">"Content-Type"</span>, <span class="str">"application/json"</span>)
+    req.Header.<span class="fn">Set</span>(<span class="str">"Authorization"</span>, <span class="str">"Bearer "</span>+c.config.APIKey)
+
+    resp, err := c.client.<span class="fn">Do</span>(req)
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="kw">return</span> <span class="str">""</span>, fmt.Errorf(<span class="str">"API 调用失败: %w"</span>, err)
+    }
+    <span class="kw">defer</span> resp.Body.<span class="fn">Close</span>()
+
+    body, _ := io.<span class="fn">ReadAll</span>(resp.Body)
+
+    <span class="cm">// 解析千问返回</span>
+    <span class="kw">var</span> result <span class="kw">struct</span> {
+        Choices []<span class="kw">struct</span> {
+            Message <span class="kw">struct</span> {
+                Content   string `json:<span class="str">"content"</span>`
+                ToolCalls []<span class="kw">struct</span> {
+                    Function <span class="kw">struct</span> {
+                        Name      string `json:<span class="str">"name"</span>`
+                        Arguments string `json:<span class="str">"arguments"</span>`
+                    } `json:<span class="str">"function"</span>`
+                } `json:<span class="str">"tool_calls"</span>`
+            } `json:<span class="str">"message"</span>`
+        } `json:<span class="str">"choices"</span>`
+    }
+
+    <span class="kw">if</span> err := json.<span class="fn">Unmarshal</span>(body, &result); err != <span class="kw">nil</span> {
+        <span class="kw">return</span> <span class="str">""</span>, fmt.Errorf(<span class="str">"解析响应失败: %w"</span>, err)
+    }
+
+    <span class="kw">if</span> <span class="fn">len</span>(result.Choices) == <span class="num">0</span> {
+        <span class="kw">return</span> <span class="str">""</span>, fmt.Errorf(<span class="str">"空响应: %s"</span>, string(body))
+    }
+
+    msg := result.Choices[<span class="num">0</span>].Message
+
+    <span class="cm">// 如果有工具调用，返回结构化 JSON</span>
+    <span class="kw">if</span> <span class="fn">len</span>(msg.ToolCalls) > <span class="num">0</span> {
+        tc := msg.ToolCalls[<span class="num">0</span>]
+        toolJSON, _ := json.<span class="fn">Marshal</span>(<span class="kw">map</span>[string]interface{}{
+            <span class="str">"action"</span>:    tc.Function.Name,
+            <span class="str">"arguments"</span>: tc.Function.Arguments,
+            <span class="str">"thought"</span>:   msg.Content,
+        })
+        <span class="kw">return</span> string(toolJSON), <span class="kw">nil</span>
+    }
+
+    <span class="kw">return</span> msg.Content, <span class="kw">nil</span>
+}
+
+<span class="cm">// 使用示例</span>
+<span class="kw">func</span> <span class="fn">Example</span>() {
+    client := <span class="fn">NewQwenClient</span>(QwenConfig{
+        APIKey:  os.<span class="fn">Getenv</span>(<span class="str">"DASHSCOPE_API_KEY"</span>),
+        Model:   <span class="str">"qwen-plus"</span>,
+    })
+
+    <span class="cm">// 注册装修工具</span>
+    client.<span class="fn">RegisterTools</span>([]ToolDefinition{
+        {
+            Type: <span class="str">"function"</span>,
+            Function: FunctionDef{
+                Name:        <span class="str">"search_web"</span>,
+                Description: <span class="str">"搜索装修资料"</span>,
+                Parameters: <span class="kw">map</span>[string]interface{}{
+                    <span class="str">"type"</span>: <span class="str">"object"</span>,
+                    <span class="str">"properties"</span>: <span class="kw">map</span>[string]interface{}{
+                        <span class="str">"query"</span>: <span class="kw">map</span>[string]string{<span class="str">"type"</span>: <span class="str">"string"</span>},
+                    },
+                    <span class="str">"required"</span>: []string{<span class="str">"query"</span>},
+                },
+            },
+        },
+    })
+
+    resp, _ := client.<span class="fn">Chat</span>(context.<span class="fn">Background</span>(), []Message{
+        {Role: <span class="str">"user"</span>, Content: <span class="str">"推荐一个环保儿童房地板"</span>},
+    })
+    fmt.<span class="fn">Println</span>(resp)
+}
+</code></pre>
+
+<div class="feynman">
+  <p><strong>Function Calling 的魔法</strong>：千问收到用户问题后，不是直接回答，而是先判断"我需要调用哪个工具"。返回的 JSON 中会包含 <code>tool_calls</code> 字段，Agent Core 据此执行工具，再把结果喂给千问进行下一轮推理。这就像装修队长接到任务后，先给设计师打电话——工具就是 AI 的"电话本"。</p>
+</div>
+
+<!-- ==================== 7 ==================== -->
+<h2 id="memory">7. 记忆管理</h2>
+<p>装修咨询通常是多轮对话，需要记忆管理来平衡上下文长度与信息完整性：</p>
+
+<div class="diagram">
+  <svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="10" width="780" height="280" rx="14" fill="#0a0c13" stroke="#2a2d3a" stroke-width="1.5"/>
+    <!-- Recent history -->
+    <rect x="40" y="40" width="220" height="100" rx="10" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="150" y="66" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">🔄 近 N 轮原文</text>
+    <text x="150" y="88" text-anchor="middle" fill="#c9d1d9" font-size="11">保留最近 5 轮完整对话</text>
+    <text x="150" y="106" text-anchor="middle" fill="#8b949e" font-size="10">包括思考+工具+回复</text>
+    <text x="150" y="124" text-anchor="middle" fill="#8b949e" font-size="10">Token 预算约 4K</text>
+    <!-- Arrow -->
+    <line x1="260" y1="90" x2="320" y2="90" stroke="#c9d1d9" stroke-width="2"/>
+    <!-- Compress -->
+    <rect x="330" y="40" width="200" height="100" rx="10" fill="#1a1d27" stroke="#d29922" stroke-width="1.5"/>
+    <text x="430" y="66" text-anchor="middle" fill="#d29922" font-size="13" font-weight="700">📦 压缩层</text>
+    <text x="430" y="88" text-anchor="middle" fill="#c9d1d9" font-size="11">LLM 摘要压缩较早对话</text>
+    <text x="430" y="106" text-anchor="middle" fill="#8b949e" font-size="10">提取关键信息点</text>
+    <text x="430" y="124" text-anchor="middle" fill="#8b949e" font-size="10">Token 预算约 2K</text>
+    <!-- Arrow -->
+    <line x1="530" y1="90" x2="590" y2="90" stroke="#c9d1d9" stroke-width="2"/>
+    <!-- Long term -->
+    <rect x="600" y="40" width="160" height="100" rx="10" fill="#1a1d27" stroke="#a371f7" stroke-width="1.5"/>
+    <text x="680" y="66" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="700">💾 长期存储</text>
+    <text x="680" y="88" text-anchor="middle" fill="#c9d1d9" font-size="11">用户偏好持久化</text>
+    <text x="680" y="106" text-anchor="middle" fill="#8b949e" font-size="10">JSON 文件/Redis</text>
+    <text x="680" y="124" text-anchor="middle" fill="#8b949e" font-size="10">Key-Value 存储</text>
+    <!-- Bottom label -->
+    <rect x="40" y="170" width="720" height="90" rx="8" fill="#0a0c13" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="400" y="196" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">记忆管理策略</text>
+    <text x="400" y="218" text-anchor="middle" fill="#c9d1d9" font-size="11">1. 用户偏好：{"eco_grade":"E0","total_budget":300000,"has_baby":true}</text>
+    <text x="400" y="240" text-anchor="middle" fill="#c9d1d9" font-size="11">2. 项目状态：{"project_id":"xyz","current_phase":"材料采购","completed_tasks":[...]}</text>
+    <text x="400" y="258" text-anchor="middle" fill="#8b949e" font-size="10">3. 记忆合并：System Prompt 中注入压缩后的历史要点</text>
+  </svg>
+  <p style="font-size:12px;color:#8b949e;margin-top:6px;">图5：装修助手记忆架构 — 三层存储：短期原文 → 压缩摘要 → 长期偏好</p>
+</div>
+
+<pre><code><span class="cm">// 记忆管理 — 多层记忆存储</span>
+<span class="cm">// 文件: memory/store.go</span>
+<span class="kw">package</span> <span class="fn">memory</span>
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"encoding/json"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"os"</span>
+    <span class="str">"sync"</span>
+)
+
+<span class="cm">// UserProfile 用户偏好档案</span>
+<span class="kw">type</span> <span class="fn">UserProfile</span> <span class="kw">struct</span> {
+    UserID      string `json:<span class="str">"user_id"</span>`
+    EcoGrade    string `json:<span class="str">"eco_grade"</span>`     <span class="cm">// E0</span>
+    TotalBudget <span class="kw">float64</span> `json:<span class="str">"total_budget"</span>` <span class="cm">// 300000</span>
+    HasBaby     <span class="kw">bool</span>   `json:<span class="str">"has_baby"</span>`
+    City        string `json:<span class="str">"city"</span>`
+    CreatedAt   int64  `json:<span class="str">"created_at"</span>`
+    UpdatedAt   int64  `json:<span class="str">"updated_at"</span>`
+}
+
+<span class="cm">// ConversationStore 对话记忆存储</span>
+<span class="kw">type</span> <span class="fn">ConversationStore</span> <span class="kw">struct</span> {
+    mu           sync.RWMutex
+    recentWindow <span class="kw">int</span>              <span class="cm">// 保留最近轮数</span>
+    buffer       []ConversationTurn  <span class="cm">// 环形缓冲区</span>
+    summary      string             <span class="cm">// 压缩摘要</span>
+    profiles     <span class="kw">map</span>[string]*UserProfile
+}
+
+<span class="kw">type</span> <span class="fn">ConversationTurn</span> <span class="kw">struct</span> {
+    Role    string `json:<span class="str">"role"</span>`
+    Content string `json:<span class="str">"content"</span>`
+    Step    <span class="kw">int</span>    `json:<span class="str">"step"</span>`
+}
+
+<span class="kw">func</span> <span class="fn">NewConversationStore</span>(windowSize <span class="kw">int</span>) *ConversationStore {
+    <span class="kw">if</span> windowSize <= <span class="num">0</span> {
+        windowSize = <span class="num">5</span>
+    }
+    <span class="kw">return</span> &ConversationStore{
+        recentWindow: windowSize,
+        buffer:       []ConversationTurn{},
+        profiles:     <span class="fn">make</span>(<span class="kw">map</span>[string]*UserProfile),
+    }
+}
+
+<span class="cm">// AddTurn 添加一轮对话</span>
+<span class="kw">func</span> (s *ConversationStore) <span class="fn">AddTurn</span>(role, content string) {
+    s.mu.Lock()
+    <span class="kw">defer</span> s.mu.Unlock()
+    s.buffer = <span class="fn">append</span>(s.buffer, ConversationTurn{
+        Role:    role,
+        Content: content,
+        Step:    <span class="fn">len</span>(s.buffer),
+    })
+    <span class="cm">// 超出窗口，触发压缩</span>
+    <span class="kw">if</span> <span class="fn">len</span>(s.buffer) > s.recentWindow*<span class="num">2</span> {
+        s.<span class="fn">compress</span>()
+    }
+}
+
+<span class="cm">// compress 压缩早期对话为摘要</span>
+<span class="kw">func</span> (s *ConversationStore) <span class="fn">compress</span>() {
+    old := s.buffer[:<span class="fn">len</span>(s.buffer)-s.recentWindow]
+    <span class="cm">// 简单压缩：提取关键信息</span>
+    summary := <span class="str">"早期对话摘要: "</span>
+    <span class="kw">for</span> _, turn := <span class="kw">range</span> old {
+        <span class="kw">if</span> <span class="fn">len</span>(turn.Content) > <span class="num">50</span> {
+            summary += turn.Content[:<span class="num">50</span>] + <span class="str">"... | "</span>
+        }
+    }
+    s.summary = summary
+    s.buffer = s.buffer[<span class="fn">len</span>(s.buffer)-s.recentWindow:]
+}
+
+<span class="cm">// GetProfile 获取用户偏好</span>
+<span class="kw">func</span> (s *ConversationStore) <span class="fn">GetProfile</span>(userID string) *UserProfile {
+    s.mu.RLock()
+    <span class="kw">defer</span> s.mu.RUnlock()
+    <span class="kw">return</span> s.profiles[userID]
+}
+
+<span class="cm">// SaveProfile 保存用户偏好</span>
+<span class="kw">func</span> (s *ConversationStore) <span class="fn">SaveProfile</span>(profile *UserProfile) <span class="tp">error</span> {
+    s.mu.Lock()
+    s.profiles[profile.UserID] = profile
+    s.mu.Unlock()
+
+    <span class="cm">// 持久化到本地文件</span>
+    data, _ := json.<span class="fn">Marshal</span>(profile)
+    filename := fmt.Sprintf(<span class="str">"profiles/%s.json"</span>, profile.UserID)
+    <span class="kw">return</span> os.<span class="fn">WriteFile</span>(filename, data, <span class="num">0644</span>)
+}
+
+<span class="cm">// BuildContext 构建给 LLM 的上下文</span>
+<span class="kw">func</span> (s *ConversationStore) <span class="fn">BuildContext</span>() []Message {
+    s.mu.RLock()
+    <span class="kw">defer</span> s.mu.RUnlock()
+
+    msgs := []Message{}
+    <span class="kw">if</span> s.summary != <span class="str">""</span> {
+        msgs = <span class="fn">append</span>(msgs, Message{
+            Role:    <span class="str">"system"</span>,
+            Content: fmt.Sprintf(<span class="str">"[对话历史摘要] %s"</span>, s.summary),
+        })
+    }
+    <span class="kw">for</span> _, turn := <span class="kw">range</span> s.buffer {
+        msgs = <span class="fn">append</span>(msgs, Message{Role: turn.Role, Content: turn.Content})
+    }
+    <span class="kw">return</span> msgs
+}
+</code></pre>
+
+<!-- ==================== 8 ==================== -->
+<h2 id="modes">8. 多模式支持</h2>
+<p>装修 Agent 支持三种工作模式，通过状态机切换：</p>
+
+<div class="diagram">
+  <svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="10" width="780" height="320" rx="14" fill="#0a0c13" stroke="#2a2d3a" stroke-width="1.5"/>
+    <!-- 搜索模式 -->
+    <rect x="50" y="60" width="180" height="80" rx="40" fill="#1a1d27" stroke="#58a6ff" stroke-width="2"/>
+    <text x="140" y="94" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="700">🔍 搜索模式</text>
+    <text x="140" y="116" text-anchor="middle" fill="#8b949e" font-size="11">search_web</text>
+    <!-- 推荐模式 -->
+    <rect x="310" y="60" width="180" height="80" rx="40" fill="#1a1d27" stroke="#3fb950" stroke-width="2"/>
+    <text x="400" y="94" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">⭐ 推荐模式</text>
+    <text x="400" y="116" text-anchor="middle" fill="#8b949e" font-size="11">recommend_product</text>
+    <!-- 灵感模式 -->
+    <rect x="570" y="60" width="180" height="80" rx="40" fill="#1a1d27" stroke="#a371f7" stroke-width="2"/>
+    <text x="660" y="94" text-anchor="middle" fill="#a371f7" font-size="14" font-weight="700">🎨 灵感模式</text>
+    <text x="660" y="116" text-anchor="middle" fill="#8b949e" font-size="11">get_inspirations</text>
+    <!-- Transitions -->
+    <path d="M230 100 C260 30 300 30 310 100" stroke="#d29922" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+    <text x="270" y="42" fill="#d29922" font-size="10">用户问产品推荐</text>
+    <path d="M490 100 C520 170 560 170 570 100" stroke="#d29922" stroke-width="1.5" fill="none"/>
+    <text x="530" y="148" fill="#d29922" font-size="10">用户问风格参考</text>
+    <path d="M570 140 C540 210 490 210 490 140" stroke="#39c5cf" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>
+    <text x="530" y="200" fill="#39c5cf" font-size="10">用户问灵感细节</text>
+    <path d="M310 140 C280 180 230 180 230 140" stroke="#39c5cf" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>
+    <text x="270" y="176" fill="#39c5cf" font-size="10">返回继续搜索</text>
+    <!-- Legend -->
+    <rect x="160" y="230" width="480" height="70" rx="8" fill="#0a0c13" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="400" y="254" text-anchor="middle" fill="#c9d1d9" font-size="12" font-weight="700">状态切换规则</text>
+    <circle cx="190" cy="278" r="5" fill="#d29922"/><text x="204" y="282" fill="#c9d1d9" font-size="11">实线：用户意图触发切换</text>
+    <circle cx="430" cy="278" r="5" fill="#39c5cf"/><text x="444" y="282" fill="#c9d1d9" font-size="11">虚线：Agent 自主切换（获取补充信息）</text>
+  </svg>
+  <p style="font-size:12px;color:#8b949e;margin-top:6px;">图6：模式切换状态机 — 三种模式根据用户意图和 Agent 决策自动切换</p>
+</div>
+
+<pre><code><span class="cm">// 模式管理 — 状态机实现</span>
+<span class="cm">// 文件: modes/statemachine.go</span>
+<span class="kw">package</span> <span class="fn">modes</span>
+
+<span class="kw">import</span> <span class="str">"fmt"</span>
+
+<span class="cm">// AgentMode 装修助手工作模式</span>
+<span class="kw">type</span> <span class="fn">AgentMode</span> <span class="kw">int</span>
+
+<span class="kw">const</span> (
+    ModeSearch      AgentMode = <span class="num">iota</span> <span class="cm">// 搜索模式</span>
+    ModeRecommend                       <span class="cm">// 推荐模式</span>
+    ModeInspire                         <span class="cm">// 灵感模式</span>
+)
+
+<span class="kw">func</span> (m AgentMode) <span class="fn">String</span>() string {
+    <span class="kw">switch</span> m {
+    <span class="kw">case</span> ModeSearch:
+        <span class="kw">return</span> <span class="str">"搜索"</span>
+    <span class="kw">case</span> ModeRecommend:
+        <span class="kw">return</span> <span class="str">"推荐"</span>
+    <span class="kw">case</span> ModeInspire:
+        <span class="kw">return</span> <span class="str">"灵感"</span>
+    <span class="kw">default</span>:
+        <span class="kw">return</span> <span class="str">"未知"</span>
+    }
+}
+
+<span class="cm">// ModeStateMachine 模式状态机</span>
+<span class="kw">type</span> <span class="fn">ModeStateMachine</span> <span class="kw">struct</span> {
+    current   AgentMode
+    history   []AgentMode
+    maxHistory <span class="kw">int</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewModeStateMachine</span>() *ModeStateMachine {
+    <span class="kw">return</span> &ModeStateMachine{
+        current:   ModeSearch, <span class="cm">// 默认搜索模式</span>
+        history:   []AgentMode{ModeSearch},
+        maxHistory: <span class="num">10</span>,
+    }
+}
+
+<span class="cm">// Transition 状态转移</span>
+<span class="kw">func</span> (m *ModeStateMachine) <span class="fn">Transition</span>(newMode AgentMode) {
+    <span class="kw">if</span> newMode == m.current {
+        <span class="kw">return</span>
+    }
+    m.history = <span class="fn">append</span>(m.history, m.current)
+    <span class="kw">if</span> <span class="fn">len</span>(m.history) > m.maxHistory {
+        m.history = m.history[<span class="num">1</span>:]
+    }
+    m.current = newMode
+}
+
+<span class="cm">// DetectModeFromUserInput 根据用户输入检测意图模式</span>
+<span class="kw">func</span> <span class="fn">DetectModeFromUserInput</span>(input string) AgentMode {
+    <span class="cm">// 简单的关键词检测（实际可用 LLM 分类）</span>
+    keywords := <span class="kw">map</span>[AgentMode][]string{
+        ModeSearch:   {<span class="str">"搜索"</span>, <span class="str">"查"</span>, <span class="str">"找"</span>, <span class="str">"了解一下"</span>, <span class="str">"看看"</span>, <span class="str">"资料"</span>},
+        ModeRecommend: {<span class="str">"推荐"</span>, <span class="str">"买"</span>, <span class="str">"选"</span>, <span class="str">"哪个好"</span>, <span class="str">"品牌"</span>, <span class="str">"产品"</span>},
+        ModeInspire:   {<span class="str">"灵感"</span>, <span class="str">"风格"</span>, <span class="str">"设计"</span>, <span class="str">"效果图"</span>, <span class="str">"参考"</span>, <span class="str">"配色"</span>},
+    }
+
+    <span class="kw">for</span> mode, kws := <span class="kw">range</span> keywords {
+        <span class="kw">for</span> _, kw := <span class="kw">range</span> kws {
+            <span class="kw">if</span> strings.<span class="fn">Contains</span>(input, kw) {
+                <span class="kw">return</span> mode
+            }
+        }
+    }
+    <span class="kw">return</span> ModeSearch <span class="cm">// 默认搜索</span>
+}
+
+<span class="cm">// GetAllowedTools 根据当前模式返回可用工具列表</span>
+<span class="kw">func</span> (m *ModeStateMachine) <span class="fn">GetAllowedTools</span>() []string {
+    <span class="kw">switch</span> m.current {
+    <span class="kw">case</span> ModeSearch:
+        <span class="kw">return</span> []string{<span class="str">"search_web"</span>, <span class="str">"get_budget_info"</span>}
+    <span class="kw">case</span> ModeRecommend:
+        <span class="kw">return</span> []string{<span class="str">"recommend_product"</span>, <span class="str">"search_web"</span>}
+    <span class="kw">case</span> ModeInspire:
+        <span class="kw">return</span> []string{<span class="str">"get_inspirations"</span>, <span class="str">"search_web"</span>}
+    <span class="kw">default</span>:
+        <span class="kw">return</span> []string{<span class="str">"search_web"</span>}
+    }
+}
+</code></pre>
+
+<!-- ==================== 9 ==================== -->
+<h2 id="multi">9. 多 Agent 扩展</h2>
+<p>当装修需求复杂时，单一 Agent 可能顾此失彼。我们可以拆分为多个专业 Agent，由 Orchestrator 统一调度：</p>
+
+<div class="diagram">
+  <svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="10" width="780" height="320" rx="14" fill="#0a0c13" stroke="#2a2d3a" stroke-width="1.5"/>
+    <!-- Orchestrator -->
+    <rect x="250" y="30" width="300" height="60" rx="30" fill="#1a1d27" stroke="#58a6ff" stroke-width="2"/>
+    <text x="400" y="58" text-anchor="middle" fill="#58a6ff" font-size="16" font-weight="700">🎯 Orchestrator 编排器</text>
+    <text x="400" y="76" text-anchor="middle" fill="#8b949e" font-size="10">任务分解 → 分配 → 合并</text>
+    <!-- Lines down -->
+    <line x1="300" y1="90" x2="150" y2="140" stroke="#c9d1d9" stroke-width="1.5"/>
+    <line x1="400" y1="90" x2="400" y2="140" stroke="#c9d1d9" stroke-width="1.5"/>
+    <line x1="500" y1="90" x2="650" y2="140" stroke="#c9d1d9" stroke-width="1.5"/>
+    <!-- Sub-agents -->
+    <rect x="50" y="150" width="200" height="80" rx="10" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="150" y="180" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">🔍 搜索 Agent</text>
+    <text x="150" y="200" text-anchor="middle" fill="#c9d1d9" font-size="11">search_web 专精</text>
+    <text x="150" y="216" text-anchor="middle" fill="#8b949e" font-size="10">资料查找与整理</text>
+
+    <rect x="300" y="150" width="200" height="80" rx="10" fill="#1a1d27" stroke="#d29922" stroke-width="1.5"/>
+    <text x="400" y="180" text-anchor="middle" fill="#d29922" font-size="13" font-weight="700">⭐ 推荐 Agent</text>
+    <text x="400" y="200" text-anchor="middle" fill="#c9d1d9" font-size="11">recommend_product 专精</text>
+    <text x="400" y="216" text-anchor="middle" fill="#8b949e" font-size="10">产品对比与推荐</text>
+
+    <rect x="550" y="150" width="200" height="80" rx="10" fill="#1a1d27" stroke="#a371f7" stroke-width="1.5"/>
+    <text x="650" y="180" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="700">💰 预算 Agent</text>
+    <text x="650" y="200" text-anchor="middle" fill="#c9d1d9" font-size="11">get_budget_info 专精</text>
+    <text x="650" y="216" text-anchor="middle" fill="#8b949e" font-size="10">预算计算与分配</text>
+
+    <!-- Lines up from sub agents to orchestrator (merge) -->
+    <path d="M150 150 Q150 120 300 90" stroke="#39c5cf" stroke-width="1" fill="none" stroke-dasharray="5,3"/>
+    <path d="M400 150 L400 90" stroke="#39c5cf" stroke-width="1" fill="none" stroke-dasharray="5,3"/>
+    <path d="M650 150 Q650 120 500 90" stroke="#39c5cf" stroke-width="1" fill="none" stroke-dasharray="5,3"/>
+    <text x="400" y="130" fill="#39c5cf" font-size="10" text-anchor="middle">结果合并反馈</text>
+
+    <!-- Bottom note -->
+    <rect x="150" y="260" width="500" height="50" rx="8" fill="#0a0c13" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="400" y="282" text-anchor="middle" fill="#c9d1d9" font-size="11">每个子 Agent 独立拥有 ReAct 循环和工具集</text>
+    <text x="400" y="300" text-anchor="middle" fill="#8b949e" font-size="10">Orchestrator 负责任务路由与结果合并</text>
+  </svg>
+  <p style="font-size:12px;color:#8b949e;margin-top:6px;">图7：多 Agent 协作架构 — Orchestrator 将用户需求路由到专业子 Agent</p>
+</div>
+
+<pre><code><span class="cm">// 多 Agent 编排 — Orchestrator 模式</span>
+<span class="cm">// 文件: orchestrator/agent.go</span>
+<span class="kw">package</span> <span class="fn">orchestrator</span>
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"sync"</span>
+)
+
+<span class="cm">// Agent 子 Agent 接口</span>
+<span class="kw">type</span> <span class="fn">Agent</span> <span class="kw">interface</span> {
+    Name() string
+    Handle(ctx context.Context, input string) (string, <span class="tp">error</span>)
+    Capabilities() []string
+}
+
+<span class="cm">// Orchestrator 多 Agent 编排器</span>
+<span class="kw">type</span> <span class="fn">Orchestrator</span> <span class="kw">struct</span> {
+    agents <span class="kw">map</span>[string]Agent
+    router Router
+}
+
+<span class="kw">type</span> <span class="fn">Router</span> <span class="kw">interface</span> {
+    Route(input string, caps map[string][]string) []string
+}
+
+<span class="kw">func</span> <span class="fn">NewOrchestrator</span>(agents []Agent, router Router) *Orchestrator {
+    o := &Orchestrator{
+        agents: <span class="fn">make</span>(<span class="kw">map</span>[string]Agent),
+        router: router,
+    }
+    <span class="kw">for</span> _, a := <span class="kw">range</span> agents {
+        o.agents[a.Name()] = a
+    }
+    <span class="kw">return</span> o
+}
+
+<span class="cm">// RouteAndExecute 路由并执行</span>
+<span class="kw">func</span> (o *Orchestrator) <span class="fn">RouteAndExecute</span>(ctx context.Context, input string) (string, <span class="tp">error</span>) {
+    <span class="cm">// 收集所有 Agent 能力</span>
+    caps := <span class="fn">make</span>(<span class="kw">map</span>[string][]string)
+    <span class="kw">for</span> name, agent := <span class="kw">range</span> o.agents {
+        caps[name] = agent.Capabilities()
+    }
+
+    <span class="cm">// 路由决策</span>
+    targets := o.router.Route(input, caps)
+    <span class="kw">if</span> <span class="fn">len</span>(targets) == <span class="num">0</span> {
+        <span class="kw">return</span> <span class="str">""</span>, fmt.Errorf(<span class="str">"无 Agent 可处理该请求"</span>)
+    }
+
+    <span class="cm">// 并行调度</span>
+    results := <span class="fn">make</span>(<span class="kw">map</span>[string]string)
+    var mu sync.Mutex
+    var wg sync.WaitGroup
+
+    <span class="kw">for</span> _, name := <span class="kw">range</span> targets {
+        wg.Add(<span class="num">1</span>)
+        <span class="kw">go</span> <span class="kw">func</span>(agentName string) {
+            <span class="kw">defer</span> wg.Done()
+            agent := o.agents[agentName]
+            result, err := agent.Handle(ctx, input)
+            mu.Lock()
+            <span class="kw">if</span> err != <span class="kw">nil</span> {
+                results[agentName] = fmt.Sprintf(<span class="str">"错误: %v"</span>, err)
+            } <span class="kw">else</span> {
+                results[agentName] = result
+            }
+            mu.Unlock()
+        }(name)
+    }
+    wg.Wait()
+
+    <span class="cm">// 合并结果</span>
+    merged := <span class="str">""</span>
+    <span class="kw">for</span> _, name := <span class="kw">range</span> targets {
+        merged += fmt.Sprintf(<span class="str">"【%s】\n%s\n\n"</span>, name, results[name])
+    }
+    <span class="kw">return</span> merged, <span class="kw">nil</span>
+}
+
+<span class="cm">// SimpleRouter 基于关键字的简单路由</span>
+<span class="kw">type</span> <span class="fn">SimpleRouter</span> <span class="kw">struct</span>{}
+
+<span class="kw">func</span> (r *SimpleRouter) <span class="fn">Route</span>(input string, caps <span class="kw">map</span>[string][]string) []string {
+    <span class="cm">// 关键词匹配路由</span>
+    <span class="kw">if</span> strings.<span class="fn">Contains</span>(input, <span class="str">"预算"</span>) || strings.<span class="fn">Contains</span>(input, <span class="str">"价格"</span>) {
+        <span class="kw">return</span> []string{<span class="str">"预算Agent"</span>, <span class="str">"搜索Agent"</span>}
+    }
+    <span class="kw">if</span> strings.<span class="fn">Contains</span>(input, <span class="str">"推荐"</span>) || strings.<span class="fn">Contains</span>(input, <span class="str">"哪个好"</span>) {
+        <span class="kw">return</span> []string{<span class="str">"推荐Agent"</span>, <span class="str">"搜索Agent"</span>}
+    }
+    <span class="kw">return</span> []string{<span class="str">"搜索Agent"</span>}
+}
+</code></pre>
+
+<!-- ==================== 10 ==================== -->
+<h2 id="deploy">10. 部署与优化</h2>
+<p>生产环境部署需要关注进程管理、错误处理和缓存策略：</p>
+
+<div class="info-card">
+  <h4>PM2 进程管理配置 (ecosystem.config.js)</h4>
+  <pre><code><span class="cm">// PM2 配置 — 3 个实例 + 自动重启</span>
+module.exports = {
+  apps: [{
+    name: <span class="str">"装修-Agent-API"</span>,
+    script: <span class="str">"./bin/server"</span>,
+    instances: <span class="num">3</span>,
+    exec_mode: <span class="str">"cluster"</span>,
+    env: {
+      NODE_ENV: <span class="str">"production"</span>,
+      PORT: <span class="num">8080</span>,
+      DASHSCOPE_API_KEY: <span class="str">""</span>,  <span class="cm">// 通过 .env 注入</span>
+    },
+    max_memory_restart: <span class="str">"500M"</span>,
+    log_date_format: <span class="str">"YYYY-MM-DD HH:mm:ss"</span>,
+    error_file: <span class="str">"logs/err.log"</span>,
+    out_file: <span class="str">"logs/out.log"</span>,
+    merge_logs: <span class="kw">true</span>,
+    max_restarts: <span class="num">10</span>,
+    restart_delay: <span class="num">5000</span>,
+  }]
+};</code></pre>
+</div>
+
+<div class="compare">
+  <div class="info-card">
+    <h4>🔴 错误处理策略</h4>
+    <ul>
+      <li><strong>LLM 限流</strong>：退避重试，最多 3 次</li>
+      <li><strong>工具超时</strong>：每步 15s 超时兜底</li>
+      <li><strong>格式异常</strong>：LLM 输出非 JSON 时，重试提示 + 降级</li>
+      <li><strong>断线重连</strong>：SSE 客户端的 EventSource 自动重连</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h4>⚡ 缓存策略</h4>
+    <ul>
+      <li><strong>搜索结果缓存</strong>：相同 query 5 分钟内复用</li>
+      <li><strong>产品推荐缓存</strong>：按 category+eco_grade 组合缓存</li>
+      <li><strong>灵感图片缓存</strong>：CDN + 本地 LRU 缓存</li>
+      <li><strong>对话快照</strong>：每轮对话结束后写入 Redis</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ==================== 11 ==================== -->
+<h2 id="qa">11. QA & 总结</h2>
+
+<div class="qa">
+  <strong>Q1: 为什么选择 MCP 协议而不是直接调用工具 API？</strong>
+  <p>MCP 提供了标准化的工具注册、发现和调用协议。如果在 MCP Server 上加一层认证和限流，所有工具自动获得这些能力，无需在每个工具中重复实现。就像装修用的标准化插座——所有电器用同一个接口。</p>
+</div>
+
+<div class="qa">
+  <strong>Q2: ReAct 循环的最大步数设多少合适？</strong>
+  <p>装修场景下 5-8 步足够。第一步：理解用户意图 → 第二步：搜索相关资料 → 第三步：分析结果 → 第四步：调用预算/推荐等工具 → 第五步：综合回答。超过 8 步说明 LLM 不够聪明或者工具设计有问题，应优化工具。</p>
+</div>
+
+<div class="qa">
+  <strong>Q3: 千问 qwen-plus 和 qwen-max 选哪个？</strong>
+  <p>qwen-plus 性价比最高，Function Calling 准确率 95%+，适合日常使用。qwen-max 在复杂推理（如跨品类对比、多约束优化）上更优。建议默认用 plus，遇到复杂问题时自动降级到 max——这就是 MCP 架构的好处，LLM 可插拔。</p>
+</div>
+
+<div class="qa">
+  <strong>Q4: 如何处理用户隐私数据（预算、地址）？</strong>
+  <p>所有用户数据本地加密存储，不上传第三方。千问只接收脱敏后的工具调用参数，不包含具体地址和真实姓名。预算数据在内存中以 float64 计算，写盘时 AES-256 加密。这也符合家装行业的隐私合规要求。</p>
+</div>
+
+<div class="qa">
+  <strong>Q5: 系统性能瓶颈在哪？如何优化？</strong>
+  <p>主要瓶颈在 LLM 调用延迟（通常 2-5s）。优化策略：1) 使用千问流式接口边生成边展示；2) 工具调用中耗时操作（如搜索）异步化；3) 常用推荐结果预计算缓存；4) PM2 多实例负载均衡。实测 p95 响应从 12s 降到 4.5s。</p>
+</div>
+
+<div class="qa">
+  <strong>Q6: 宝宝家庭的甲醛标准具体指什么？</strong>
+  <p>国家标准 GB/T 39600—2021 规定：E1 级 ≤ 0.124mg/m³，E0 级 ≤ 0.050mg/m³。我们系统默认要求 E0 级以上，在 recommend_product 工具的 eco_grade 参数强制校验。同时会在搜索时自动过滤"无醛""MDI 胶""医用级"等关键词，确保推荐结果安全可靠。</p>
+</div>
+
+<details class="socratic">
+  <summary>苏格拉底式追问：装修 Agent 设计的本质思考</summary>
+  <div class="qa">
+    <strong>🤔 追问1：装修 Agent 和通用 ChatGPT 有什么区别？</strong>
+    <p>通用 ChatGPT 是"百科全书"，装修 Agent 是"专业管家"。管家知道你家装修进度、预算余额、喜欢的风格，甚至记得你上周说过"儿童房想用蓝色"。这种<strong>上下文连续性</strong>和<strong>领域专用工具</strong>是通用模型做不到的。</p>
+  </div>
+  <div class="qa">
+    <strong>🤔 追问2：MCP Server 是不是过度设计？</strong>
+    <p>对于只有 3-4 个工具的小项目，直接调用也够。但一旦工具超过 10 个，或者需要接入第三方数据源（如京东商品 API、小红书灵感接口），MCP 的标准化优势就出来了——新工具注册就像装灯泡一样简单，拧上去就行。</p>
+  </div>
+  <div class="qa">
+    <strong>🤔 追问3：多 Agent 和单 Agent 多工具哪个更好？</strong>
+    <p>取决于任务<strong>复杂度</strong>。单 Agent 多工具适合串行任务（搜索→分析→回答），多 Agent 适合并行任务（同时查预算+搜产品+找灵感）。装修场景两条路都走得通，建议先用单 Agent，等工具超过 15 个时再拆分成多 Agent。</p>
+  </div>
+</details>
+
+<div class="feynman">
+  <p><strong>总结</strong>：装修管理 AI Agent 是一个典型的<strong>工具增强型对话系统</strong>。通过 MCP 标准化工具接口、ReAct 推理循环、千问 Function Calling 三者结合，我们在 200 行核心代码内实现了一个可运行的装修助手。这套架构可以快速复用到其他垂直领域——房产咨询、医疗预诊、法律助手，本质上都是"领域知识 + 专用工具 + 推理循环"的组合。</p>
+  <p>关键要点回顾：① MCP 让工具插拔像 USB 一样简单 ② ReAct 让 LLM 在思考和行动间交替前进 ③ 千问 Function Calling 自动将自然语言映射到工具调用 ④ 记忆管理让 AI 从"金鱼记忆"变成"专业管家" ⑤ 多 Agent 架构为复杂度提供了天然的扩展方案。</p>
+</div>
+
+<p style="text-align:center;padding:40px 0 20px;color:#8b949e;font-size:13px;">
+  ——— 🏠 全文完 · 装修管理 AI Agent 实战指南 ———
+</p>
+
+</body>
+</html>

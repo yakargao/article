@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCP 协议深度解析 — AI Agent 互联互通</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --card: #1a1d27;
+  --border: #2a2d3a;
+  --text: #c9d1d9;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --orange: #d29922;
+  --red: #f85149;
+  --purple: #a371f7;
+  --cyan: #39c5cf;
+  --sidebar-w: 260px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.7;margin-left:var(--sidebar-w);min-height:100vh}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+h1{font-size:2.2rem;margin-bottom:.4em;color:#fff}
+h2{font-size:1.6rem;margin:2em 0 .6em;color:var(--accent);border-bottom:2px solid var(--border);padding-bottom:.3em}
+h3{font-size:1.2rem;margin:1.2em 0 .4em;color:var(--cyan)}
+h4{color:var(--orange);margin:.8em 0 .3em}
+.main{padding:2.5rem 3rem 5rem;max-width:960px;margin:0 auto}
+.sidebar{position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;background:var(--card);border-right:1px solid var(--border);padding:1.8rem 1rem;overflow-y:auto;z-index:100}
+.sidebar h3{color:#fff;font-size:1.1rem;margin:0 0 1.2rem;border:none;padding:0}
+.nav-item{display:block;padding:.5rem .8rem;margin:.2rem 0;border-radius:6px;color:var(--text);font-size:.88rem;cursor:pointer;transition:background .18s,color .18s}
+.nav-item:hover,.nav-item.active{background:var(--border);color:var(--accent);text-decoration:none}
+.nav-item code{font-size:.8rem;color:var(--orange)}
+
+/* Component classes */
+.feynman{background:var(--card);border-left:4px solid var(--accent);border-radius:0 10px 10px 0;padding:1.2rem 1.5rem;margin:1.5em 0;font-style:italic;position:relative}
+.feynman::before{content:"⚡ 费曼说";display:block;font-style:normal;font-weight:700;color:var(--accent);margin-bottom:.5rem;font-size:.9rem;letter-spacing:.5px}
+.diagram{overflow-x:auto;text-align:center;margin:1.5rem 0;padding:.8rem 0;background:var(--card);border-radius:10px;border:1px solid var(--border)}
+.diagram svg{min-width:580px;max-width:100%}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:1.5rem 0}
+.info-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.2rem 1.5rem;margin:1.2rem 0;transition:border-color .2s}
+.info-card:hover{border-color:var(--accent)}
+.info-card h4{margin-top:0}
+.qa{margin:1.5rem 0}
+.qa>div{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem 1.5rem;margin:.8rem 0}
+.qa-question{color:var(--accent);font-weight:600;cursor:pointer;display:flex;align-items:center;gap:.5rem}
+.qa-question::before{content:"Q:";color:var(--orange);font-weight:800;font-size:1.1rem}
+.qa-answer{margin-top:.6rem;padding-left:1.4rem;border-left:2px solid var(--border)}
+.qa-answer::before{content:"A:";color:var(--green);font-weight:800;margin-right:.5rem}
+details.socratic{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.8rem 1.2rem;margin:1rem 0;cursor:pointer}
+details.socratic summary{color:var(--accent);font-weight:600;outline:none}
+details.socratic>div{padding:.8rem 0 0 1rem;border-left:2px solid var(--border);margin-top:.5rem}
+
+/* Syntax highlighting */
+pre{background:#131621;border:1px solid var(--border);border-radius:8px;padding:1rem 1.2rem;overflow-x:auto;font-size:.88rem;line-height:1.5;margin:1.2rem 0}
+code{font-family:'JetBrains Mono','Fira Code','SF Mono',monospace}
+.kw{color:var(--purple);font-weight:600}
+.fn{color:var(--cyan)}
+.str{color:var(--green)}
+.num{color:var(--orange)}
+.cm{color:#6e7681;font-style:italic}
+.tp{color:var(--accent)}
+.op{color:var(--red)}
+
+/* Utility */
+.tag{display:inline-block;background:var(--border);color:var(--text);border-radius:12px;padding:.1rem .7rem;font-size:.78rem;font-weight:500}
+.tag.blue{background:rgba(88,166,255,.15);color:var(--accent)}
+.tag.green{background:rgba(63,185,80,.15);color:var(--green)}
+.tag.orange{background:rgba(210,153,34,.15);color:var(--orange)}
+.tag.purple{background:rgba(163,113,247,.15);color:var(--purple)}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.7rem .9rem;border:1px solid var(--border)}
+th{background:var(--card);color:var(--accent);font-weight:600}
+tr:hover{background:rgba(255,255,255,.03)}
+.pros-cons{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:.8rem 0}
+.pros-cons .pro{color:var(--green)}
+.pros-cons .con{color:var(--red)}
+.back-top{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--border);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:1.2rem;cursor:pointer;transition:background .2s;z-index:99}
+.back-top:hover{background:var(--border)}
+
+@media(max-width:768px){
+  .sidebar{display:none}
+  body{margin-left:0}
+  .main{padding:1.5rem 1rem}
+  .compare{grid-template-columns:1fr}
+  .diagram svg{min-width:420px}
+  .pros-cons{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+  .diagram svg{min-width:340px}
+  h1{font-size:1.5rem}
+  .main{padding:1rem .8rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<nav class="sidebar">
+<h3>📖 MCP 深度解析</h3>
+<a class="nav-item active" href="#s1">1. MCP 是什么</a>
+<a class="nav-item" href="#s2">2. MCP 架构概览</a>
+<a class="nav-item" href="#s3">3. 传输层</a>
+<a class="nav-item" href="#s4">4. 工具发现机制</a>
+<a class="nav-item" href="#s5">5. Resource &amp; Prompt</a>
+<a class="nav-item" href="#s6">6. MCP vs FC vs API</a>
+<a class="nav-item" href="#s7">7. A2A 协议</a>
+<a class="nav-item" href="#s8">8. Go 实现 MCP Server</a>
+<a class="nav-item" href="#s9">9. QA</a>
+<a class="nav-item" href="#s10">10. 口播总结</a>
+</nav>
+
+<!-- ===== MAIN ===== -->
+<div class="main">
+
+<h1>🤖 MCP 协议深度解析</h1>
+<p style="color:#8b949e;font-size:1.05rem;margin-bottom:2rem">Model Context Protocol — 让 AI Agent 与工具世界无缝对话</p>
+
+<!-- === SECTION 1 === -->
+<section id="s1">
+<h2>1. MCP 是什么</h2>
+
+<p><strong>MCP（Model Context Protocol）</strong> 是 Anthropic 于 2024 年 11 月开源的一个开放协议，旨在标准化 AI 模型与外部工具、数据源之间的交互方式。它定义了统一的「<strong>工具发现 → 调用 → 结果返回</strong>」生命周期，让 LLM 应用可以像「即插即用」一样接入各种能力。</p>
+
+<div class="feynman">
+想象你有一台笔记本电脑，想连接打印机、显示器、键盘、鼠标……如果没有 USB 标准，你需要为每种外设准备不同的接口和驱动。MCP 就是 AI 世界的 USB-C —— 它为 AI Agent 提供了一个统一的接口标准，从此任何兼容 MCP 的工具都可以「即插即用」。
+</div>
+
+<h3>诞生背景</h3>
+<div class="compare">
+<div class="info-card">
+<h4>🔒 OpenAI Function Calling</h4>
+<p>专有协议，仅限 OpenAI 模型使用。每次新增工具需要写大量适配代码。生态封闭，存在厂商锁定风险。</p>
+<span class="tag">2023.06 发布</span>
+<span class="tag orange">专有</span>
+</div>
+<div class="info-card">
+<h4>🔓 Anthropic MCP</h4>
+<p>开放标准，任何模型/框架都可实现。定义了传输层、工具发现、资源访问等完整规范。社区迅速采纳。</p>
+<span class="tag">2024.11 开源</span>
+<span class="tag green">开放</span>
+</div>
+</div>
+
+<h3>集成范式转变</h3>
+<div class="diagram">
+<svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0 10 3.5 0 7" fill="#58a6ff"/></marker>
+    <marker id="b" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0 10 3.5 0 7" fill="#f85149"/></marker>
+  </defs>
+  <!-- Before -->
+  <text x="60" y="30" fill="#f85149" font-size="16" font-weight="700">BEFORE — N×M 集成爆炸</text>
+  <rect x="20" y="50" width="130" height="40" rx="8" fill="#1a1d27" stroke="#f85149" stroke-width="1.5"/>
+  <text x="85" y="75" fill="#c9d1d9" font-size="12" text-anchor="middle">LLM A</text>
+  <rect x="20" y="110" width="130" height="40" rx="8" fill="#1a1d27" stroke="#f85149" stroke-width="1.5"/>
+  <text x="85" y="135" fill="#c9d1d9" font-size="12" text-anchor="middle">LLM B</text>
+  <rect x="20" y="170" width="130" height="40" rx="8" fill="#1a1d27" stroke="#f85149" stroke-width="1.5"/>
+  <text x="85" y="195" fill="#c9d1d9" font-size="12" text-anchor="middle">LLM C</text>
+
+  <line x1="155" y1="70" x2="230" y2="70" stroke="#f85149" stroke-width="1.2" marker-end="url(#b)"/>
+  <line x1="155" y1="130" x2="230" y2="70" stroke="#f85149" stroke-width="1.2" marker-end="url(#b)"/>
+  <line x1="155" y1="190" x2="230" y2="70" stroke="#f85149" stroke-width="1.2" marker-end="url(#b)"/>
+  <line x1="155" y1="70" x2="230" y2="130" stroke="#f85149" stroke-width="1.2" marker-end="url(#b)"/>
+  <line x1="155" y1="130" x2="230" y2="130" stroke="#f85149" stroke-width="1.2" marker-end="url(#b)"/>
+  <line x1="155" y1="190" x2="230" y2="130" stroke="#f85149" stroke-width="1.2" marker-end="url(#b)"/>
+  <line x1="155" y1="70" x2="230" y2="190" stroke="#f85149" stroke-width="1.2" marker-end="url(#b)"/>
+  <line x1="155" y1="130" x2="230" y2="190" stroke="#f85149" stroke-width="1.2" marker-end="url(#b)"/>
+  <line x1="155" y1="190" x2="230" y2="190" stroke="#f85149" stroke-width="1.2" marker-end="url(#b)"/>
+
+  <rect x="240" y="50" width="110" height="40" rx="8" fill="#1a1d27" stroke="#f85149" stroke-width="1.2"/>
+  <text x="295" y="75" fill="#c9d1d9" font-size="11" text-anchor="middle">Tool Alpha</text>
+  <rect x="240" y="110" width="110" height="40" rx="8" fill="#1a1d27" stroke="#f85149" stroke-width="1.2"/>
+  <text x="295" y="135" fill="#c9d1d9" font-size="11" text-anchor="middle">Tool Beta</text>
+  <rect x="240" y="170" width="110" height="40" rx="8" fill="#1a1d27" stroke="#f85149" stroke-width="1.2"/>
+  <text x="295" y="195" fill="#c9d1d9" font-size="11" text-anchor="middle">Tool Gamma</text>
+
+  <text x="180" y="240" fill="#f85149" font-size="28" font-weight="700" text-anchor="middle">×</text>
+  <text x="180" y="260" fill="#8b949e" font-size="12" text-anchor="middle">每个 LLM 需要独立适配每个工具</text>
+
+  <!-- After -->
+  <text x="500" y="30" fill="#3fb950" font-size="16" font-weight="700">AFTER — 统一通过 MCP</text>
+  <rect x="390" y="52" width="120" height="38" rx="8" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="450" y="76" fill="#c9d1d9" font-size="12" text-anchor="middle">LLM A</text>
+  <rect x="390" y="108" width="120" height="38" rx="8" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="450" y="132" fill="#c9d1d9" font-size="12" text-anchor="middle">LLM B</text>
+  <rect x="390" y="164" width="120" height="38" rx="8" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="450" y="188" fill="#c9d1d9" font-size="12" text-anchor="middle">LLM C</text>
+
+  <line x1="515" y1="71" x2="560" y2="110" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="515" y1="127" x2="560" y2="110" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="515" y1="183" x2="560" y2="110" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <rect x="570" y="88" width="160" height="48" rx="24" fill="#1a1d27" stroke="#58a6ff" stroke-width="2"/>
+  <text x="650" y="117" fill="#58a6ff" font-size="14" font-weight="700" text-anchor="middle">🔌 MCP 协议层</text>
+
+  <line x1="735" y1="108" x2="770" y2="70" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="735" y1="112" x2="770" y2="130" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="735" y1="116" x2="770" y2="190" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <rect x="775" y="50" width="110" height="38" rx="8" fill="#1a1d27" stroke="#3fb950" stroke-width="1.2"/>
+  <text x="830" y="74" fill="#c9d1d9" font-size="11" text-anchor="middle">Tool Alpha</text>
+  <rect x="775" y="108" width="110" height="38" rx="8" fill="#1a1d27" stroke="#3fb950" stroke-width="1.2"/>
+  <text x="830" y="132" fill="#c9d1d9" font-size="11" text-anchor="middle">Tool Beta</text>
+  <rect x="775" y="166" width="110" height="38" rx="8" fill="#1a1d27" stroke="#3fb950" stroke-width="1.2"/>
+  <text x="830" y="190" fill="#c9d1d9" font-size="11" text-anchor="middle">Tool Gamma</text>
+
+  <text x="620" y="240" fill="#3fb950" font-size="28" font-weight="700" text-anchor="middle">N + M</text>
+  <text x="620" y="260" fill="#8b949e" font-size="12" text-anchor="middle">每个 LLM 只需对接 MCP，M×N 变 N+M</text>
+</svg>
+</div>
+</section>
+
+<!-- === SECTION 2 === -->
+<section id="s2">
+<h2>2. MCP 架构概览</h2>
+
+<p>MCP 采用 <strong>Client-Server</strong> 架构，分为四个核心层次：</p>
+
+<div class="diagram">
+<svg viewBox="0 0 780 420" xmlns="http://www.w3.org/2000/svg">
+  <rect x="20" y="10" width="740" height="400" rx="14" fill="none" stroke="#2a2d3a" stroke-width="1.5" stroke-dasharray="6 3"/>
+  <text x="390" y="38" fill="#8b949e" font-size="13" text-anchor="middle">MCP 架构分层</text>
+
+  <!-- Layer 1: Client -->
+  <rect x="40" y="60" width="700" height="70" rx="10" fill="#1a1d27" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="390" y="85" fill="#58a6ff" font-size="15" font-weight="700" text-anchor="middle">🖥️ Client (宿主应用)</text>
+  <text x="390" y="107" fill="#8b949e" font-size="12" text-anchor="middle">LLM 宿主 — Claude Desktop / VS Code / 自定义 Agent</text>
+  <text x="390" y="122" fill="#8b949e" font-size="11" text-anchor="middle">负责：发送请求 → 接收结果 → 维护会话状态</text>
+
+  <!-- Arrow -->
+  <line x1="390" y1="130" x2="390" y2="150" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Layer 2: Transport -->
+  <rect x="40" y="155" width="700" height="70" rx="10" fill="#1a1d27" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="390" y="180" fill="#39c5cf" font-size="15" font-weight="700" text-anchor="middle">🔗 Transport (传输层)</text>
+  <text x="390" y="202" fill="#8b949e" font-size="12" text-anchor="middle">stdio (标准输入/输出) · SSE · WebSocket</text>
+  <text x="390" y="217" fill="#8b949e" font-size="11" text-anchor="middle">负责：消息序列化 (JSON-RPC 2.0) · 连接管理 · 生命周期</text>
+
+  <line x1="390" y1="225" x2="390" y2="245" stroke="#39c5cf" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Layer 3: Server -->
+  <rect x="40" y="250" width="700" height="70" rx="10" fill="#1a1d27" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="390" y="275" fill="#a371f7" font-size="15" font-weight="700" text-anchor="middle">⚙️ Server (MCP 服务端)</text>
+  <text x="390" y="297" fill="#8b949e" font-size="12" text-anchor="middle">实现 Tool / Resource / Prompt 能力的注册与分发</text>
+  <text x="390" y="312" fill="#8b949e" font-size="11" text-anchor="middle">通过 Capabilities 声明自身能力</text>
+
+  <line x1="390" y1="320" x2="390" y2="340" stroke="#a371f7" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Layer 4: Tool/Resource -->
+  <rect x="40" y="345" width="700" height="55" rx="10" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="390" y="368" fill="#3fb950" font-size="15" font-weight="700" text-anchor="middle">🔧 Tool / Resource / Prompt (能力层)</text>
+  <text x="390" y="388" fill="#8b949e" font-size="11" text-anchor="middle">Tool: 可调用函数 · Resource: 数据资源 · Prompt: 提示模板</text>
+</svg>
+</div>
+
+<h3>核心角色说明</h3>
+<div class="compare">
+<div class="info-card">
+<h4>🖥️ Host (宿主)</h4>
+<p>运行 LLM 的应用，比如 Claude Desktop、IDE 插件、或你的自定义 Agent 框架。Host 创建 Client 实例。</p>
+</div>
+<div class="info-card">
+<h4>📡 Client (客户端)</h4>
+<p>与 MCP Server 建立一对一连接。负责发送 JSON-RPC 请求、接收响应、管理传输层握手。</p>
+</div>
+<div class="info-card">
+<h4>🔌 Server (服务端)</h4>
+<p>暴露工具、数据资源和提示模板的程序。通过 Capabilities 声明自己支持的功能点。</p>
+</div>
+<div class="info-card">
+<h4>🔧 Tool/Resource</h4>
+<p>Tool = 可执行函数（写数据库、发邮件）；Resource = 可读取数据（文件、API）；Prompt = 预定义提示模板。</p>
+</div>
+</div>
+</section>
+
+<!-- === SECTION 3 === -->
+<section id="s3">
+<h2>3. 传输层</h2>
+
+<p>MCP 目前支持三种传输方式，覆盖从本地进程到远程服务的全部场景：</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 280" xmlns="http://www.w3.org/2000/svg">
+  <!-- stdio -->
+  <rect x="20" y="20" width="230" height="240" rx="10" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="135" y="50" fill="#3fb950" font-size="14" font-weight="700" text-anchor="middle">📟 stdio</text>
+  <text x="135" y="72" fill="#8b949e" font-size="11" text-anchor="middle">子进程 · 标准 I/O</text>
+  <rect x="50" y="90" width="170" height="38" rx="6" fill="#131621" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="135" y="114" fill="#c9d1d9" font-size="12" text-anchor="middle">Host App</text>
+  <line x1="135" y1="128" x2="135" y2="145" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a)"/>
+  <rect x="50" y="150" width="170" height="38" rx="6" fill="#131621" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="135" y="174" fill="#c9d1d9" font-size="12" text-anchor="middle">MCP Server (子进程)</text>
+  <text x="135" y="210" fill="#6e7681" font-size="10" text-anchor="middle">stdin → JSON-RPC → stdout</text>
+  <text x="135" y="230" fill="#6e7681" font-size="10" text-anchor="middle">本地调试首选</text>
+  <text x="135" y="250" fill="#3fb950" font-size="10" text-anchor="middle">✅ 零依赖 · 低延迟</text>
+
+  <!-- SSE -->
+  <rect x="275" y="20" width="230" height="240" rx="10" fill="#1a1d27" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="390" y="50" fill="#58a6ff" font-size="14" font-weight="700" text-anchor="middle">🌐 SSE</text>
+  <text x="390" y="72" fill="#8b949e" font-size="11" text-anchor="middle">Server-Sent Events</text>
+  <rect x="305" y="90" width="170" height="38" rx="6" fill="#131621" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="390" y="114" fill="#c9d1d9" font-size="12" text-anchor="middle">Client</text>
+  <line x1="390" y1="128" x2="390" y2="145" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#a)"/>
+  <rect x="305" y="150" width="170" height="38" rx="6" fill="#131621" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="390" y="174" fill="#c9d1d9" font-size="12" text-anchor="middle">HTTP Server</text>
+  <text x="390" y="210" fill="#6e7681" font-size="10" text-anchor="middle">HTTP POST + EventStream</text>
+  <text x="390" y="230" fill="#6e7681" font-size="10" text-anchor="middle">远程服务 · 单向推送</text>
+  <text x="390" y="250" fill="#58a6ff" font-size="10" text-anchor="middle">✅ 标准 HTTP · 防火墙友好</text>
+
+  <!-- WebSocket -->
+  <rect x="530" y="20" width="240" height="240" rx="10" fill="#1a1d27" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="650" y="50" fill="#a371f7" font-size="14" font-weight="700" text-anchor="middle">🔌 WebSocket</text>
+  <text x="650" y="72" fill="#8b949e" font-size="11" text-anchor="middle">全双工</text>
+  <rect x="560" y="90" width="170" height="38" rx="6" fill="#131621" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="645" y="114" fill="#c9d1d9" font-size="12" text-anchor="middle">Client</text>
+  <line x1="645" y1="128" x2="645" y2="145" stroke="#a371f7" stroke-width="1.5" marker-end="url(#a)"/>
+  <rect x="560" y="150" width="170" height="38" rx="6" fill="#131621" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="645" y="174" fill="#c9d1d9" font-size="12" text-anchor="middle">WS Server</text>
+  <text x="645" y="210" fill="#6e7681" font-size="10" text-anchor="middle">双向实时通信</text>
+  <text x="645" y="230" fill="#6e7681" font-size="10" text-anchor="middle">低延迟 · 全双工</text>
+  <text x="645" y="250" fill="#a371f7" font-size="10" text-anchor="middle">✅ 双向推送 · 灵活</text>
+</svg>
+</div>
+
+<h3>传输层对比</h3>
+<table>
+<tr><th>特性</th><th>stdio</th><th>SSE</th><th>WebSocket</th></tr>
+<tr><td>连接方式</td><td>子进程 stdin/stdout</td><td>HTTP POST + EventStream</td><td>WebSocket 握手</td></tr>
+<tr><td>通信模式</td><td>半双工 (request/response)</td><td>客户端请求 + 服务端推送</td><td>全双工</td></tr>
+<tr><td>延迟</td><td>极低 (进程内 IPC)</td><td>中 (HTTP 开销)</td><td>低 (持久连接)</td></tr>
+<tr><td>适用场景</td><td>本地开发、CLI 工具</td><td>远程服务、浏览器</td><td>实时双向通信</td></tr>
+<tr><td>防火墙穿透</td><td>不适用</td><td>✅ 标准 HTTP</td><td>⚠️ 部分网络限制</td></tr>
+<tr><td>状态</td><td>无状态</td><td>有状态 (SSE 连接)</td><td>有状态 (WS 连接)</td></tr>
+<tr><td>Go 实现</td><td><code>os/exec</code></td><td><code>net/http</code></td><td><code>gorilla/websocket</code></td></tr>
+</table>
+</section>
+
+<!-- === SECTION 4 === -->
+<section id="s4">
+<h2>4. 工具发现机制</h2>
+
+<p>MCP 的工具交互基于标准的 <strong>JSON-RPC 2.0</strong> 协议，分为两个核心流程：</p>
+
+<div class="info-card">
+<h4>📋 工具发现 (listTools)</h4>
+<p>Client 向 Server 发送 <code>tools/list</code> 请求，Server 返回可用工具列表（名称、描述、输入 Schema）。LLM 根据 Schema 决定调用哪个工具并填充参数。</p>
+</div>
+
+<div class="info-card">
+<h4>📞 工具调用 (tools/call)</h4>
+<p>Client 发送 <code>tools/call</code> 请求，包含工具名称和参数。Server 执行并返回结果（成功数据或错误信息）。</p>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg">
+  <rect x="30" y="10" width="700" height="340" rx="12" fill="none" stroke="#2a2d3a" stroke-width="1.5" stroke-dasharray="6 3"/>
+  <text x="380" y="35" fill="#8b949e" font-size="13" text-anchor="middle">Request / Response 生命周期</text>
+
+  <!-- LLM -->
+  <rect x="40" y="65" width="150" height="45" rx="8" fill="#1a1d27" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="115" y="92" fill="#58a6ff" font-size="13" font-weight="700" text-anchor="middle">🧠 LLM</text>
+
+  <!-- Client -->
+  <rect x="300" y="65" width="150" height="45" rx="8" fill="#1a1d27" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="375" y="92" fill="#39c5cf" font-size="13" font-weight="700" text-anchor="middle">📡 MCP Client</text>
+
+  <!-- Server -->
+  <rect x="555" y="65" width="150" height="45" rx="8" fill="#1a1d27" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="630" y="92" fill="#a371f7" font-size="13" font-weight="700" text-anchor="middle">🔌 MCP Server</text>
+
+  <!-- Step 1 -->
+  <text x="60" y="152" fill="#8b949e" font-size="11">①</text>
+  <line x1="195" y1="140" x2="295" y2="140" stroke="#58a6ff" stroke-width="1.2" marker-end="url(#a)"/>
+  <text x="200" y="155" fill="#8b949e" font-size="10" text-anchor="middle"><tspan fill="#3fb950">tools/list</tspan></text>
+
+  <line x1="455" y1="160" x2="550" y2="160" stroke="#58a6ff" stroke-width="1.2" marker-end="url(#a)"/>
+  <text x="465" y="175" fill="#58a6ff" font-size="10" text-anchor="middle">tools/list → params →</text>
+
+  <line x1="555" y1="180" x2="455" y2="180" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="488" y="195" fill="#3fb950" font-size="10" text-anchor="middle">← 工具列表 JSON</text>
+
+  <line x1="300" y1="200" x2="195" y2="200" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="215" y="215" fill="#3fb950" font-size="10" text-anchor="middle">← tools.list 结果</text>
+
+  <!-- Step 2 -->
+  <text x="60" y="245" fill="#8b949e" font-size="11">②</text>
+  <line x1="195" y1="240" x2="295" y2="240" stroke="#d29922" stroke-width="1.2" marker-end="url(#a)"/>
+  <text x="200" y="255" fill="#8b949e" font-size="10" text-anchor="middle"><tspan fill="#d29922">tools/call</tspan></text>
+
+  <line x1="455" y1="260" x2="550" y2="260" stroke="#d29922" stroke-width="1.2" marker-end="url(#a)"/>
+  <text x="465" y="275" fill="#d29922" font-size="10" text-anchor="middle">tools/call → name,args →</text>
+
+  <line x1="555" y1="280" x2="455" y2="280" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="488" y="295" fill="#3fb950" font-size="10" text-anchor="middle">← 工具执行结果</text>
+
+  <line x1="300" y1="300" x2="195" y2="300" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="215" y="315" fill="#3fb950" font-size="10" text-anchor="middle">← 最终响应数据</text>
+
+  <text x="380" y="342" fill="#6e7681" font-size="10" text-anchor="middle">① 工具发现 → ② 工具调用</text>
+</svg>
+</div>
+
+<h3>JSON-RPC 消息格式</h3>
+<pre><span class="cm">// listTools 请求</span>
+{
+  <span class="str">"jsonrpc"</span>: <span class="str">"2.0"</span>,
+  <span class="str">"id"</span>: <span class="num">1</span>,
+  <span class="str">"method"</span>: <span class="str">"tools/list"</span>,
+  <span class="str">"params"</span>: {}
+}
+
+<span class="cm">// tools/list 响应</span>
+{
+  <span class="str">"jsonrpc"</span>: <span class="str">"2.0"</span>,
+  <span class="str">"id"</span>: <span class="num">1</span>,
+  <span class="str">"result"</span>: {
+    <span class="str">"tools"</span>: [{
+      <span class="str">"name"</span>: <span class="str">"search_product"</span>,
+      <span class="str">"description"</span>: <span class="str">"搜索商品库存信息"</span>,
+      <span class="str">"inputSchema"</span>: {
+        <span class="str">"type"</span>: <span class="str">"object"</span>,
+        <span class="str">"properties"</span>: {
+          <span class="str">"query"</span>: { <span class="str">"type"</span>: <span class="str">"string"</span> }
+        },
+        <span class="str">"required"</span>: [<span class="str">"query"</span>]
+      }
+    }]
+  }
+}
+
+<span class="cm">// tools/call 请求</span>
+{
+  <span class="str">"jsonrpc"</span>: <span class="str">"2.0"</span>,
+  <span class="str">"id"</span>: <span class="num">2</span>,
+  <span class="str">"method"</span>: <span class="str">"tools/call"</span>,
+  <span class="str">"params"</span>: {
+    <span class="str">"name"</span>: <span class="str">"search_product"</span>,
+    <span class="str">"arguments"</span>: { <span class="str">"query"</span>: <span class="str">"laptop"</span> }
+  }
+}
+</pre>
+</section>
+
+<!-- === SECTION 5 === -->
+<section id="s5">
+<h2>5. Resource 与 Prompt</h2>
+
+<p>除了 Tool，MCP 还定义了两种能力类型，让模型能够访问数据和使用提示模板：</p>
+
+<table>
+<tr><th>能力</th><th>用途</th><th>类比</th><th>MCP 方法</th></tr>
+<tr>
+  <td><span class="tag blue">Tool</span></td>
+  <td>执行操作（写入、计算、调用外部 API）</td>
+  <td>🔧 扳手 — 用来「做事」</td>
+  <td><code>tools/list</code> <code>tools/call</code></td>
+</tr>
+<tr>
+  <td><span class="tag green">Resource</span></td>
+  <td>读取数据（文件、数据库、API 响应）</td>
+  <td>📂 文件柜 — 用来「看数据」</td>
+  <td><code>resources/list</code> <code>resources/read</code></td>
+</tr>
+<tr>
+  <td><span class="tag purple">Prompt</span></td>
+  <td>获取预定义提示模板</td>
+  <td>📝 模板卡片 — 用来「说」</td>
+  <td><code>prompts/list</code> <code>prompts/get</code></td>
+</tr>
+</table>
+
+<h3>Go 代码：注册 Tool 和 Resource</h3>
+<pre><span class="kw">package</span> <span class="fn">main</span>
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"encoding/json"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"log"</span>
+
+    <span class="str">"github.com/mark3labs/mcp-go/mcp"</span>
+    <span class="str">"github.com/mark3labs/mcp-go/server"</span>
+)
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    <span class="cm">// 创建 MCP 服务端</span>
+    s := <span class="fn">server</span>.<span class="fn">NewMCP</span>(server.<span class="fn">WithName</span>(<span class="str">"product-server"</span>))
+
+    <span class="cm">// ── 注册 Tool ──</span>
+    searchProductTool := mcp.<span class="fn">NewTool</span>(<span class="str">"search_product"</span>,
+        mcp.<span class="fn">WithDescription</span>(<span class="str">"按关键词搜索商品库存"</span>),
+        mcp.<span class="fn">WithString</span>(<span class="str">"query"</span>,
+            mcp.<span class="fn">Required</span>(),
+            mcp.<span class="fn">Description</span>(<span class="str">"搜索关键词（如 'laptop'）"</span>),
+        ),
+    )
+
+    s.<span class="fn">AddTool</span>(searchProductTool, <span class="kw">func</span>(ctx context.Context, req mcp.<span class="tp">CallToolRequest</span>) (*mcp.<span class="tp">CallToolResult</span>, <span class="tp">error</span>) {
+        query := req.Params.Arguments[<span class="str">"query"</span>].(<span class="tp">string</span>)
+        result, _ := <span class="fn">json</span>.<span class="fn">Marshal</span>(<span class="fn">searchDB</span>(query))
+        <span class="kw">return</span> mcp.<span class="fn">NewToolResultText</span>(<span class="fn">string</span>(result)), <span class="kw">nil</span>
+    })
+
+    <span class="cm">// ── 注册 Resource ──</span>
+    s.<span class="fn">AddResource</span>(
+        mcp.<span class="fn">NewResource</span>(<span class="str">"inventory://products"</span>,
+            <span class="str">"product-list"</span>,
+            mcp.<span class="fn">WithResourceDescription</span>(<span class="str">"当前商品库存列表 (CSV)"</span>),
+            mcp.<span class="fn">WithMIMEType</span>(<span class="str">"text/csv"</span>),
+        ),
+        <span class="kw">func</span>(ctx context.Context, req mcp.<span class="tp">ReadResourceRequest</span>) ([]mcp.<span class="tp">ResourceContents</span>, <span class="tp">error</span>) {
+            csv := <span class="str">`id,name,stock,price
+1,MacBook Pro,23,1999
+2,ThinkPad X1,15,1799`</span>
+            <span class="kw">return</span> []mcp.<span class="tp">ResourceContents</span>{
+                mcp.<span class="fn">NewTextResourceContents</span>(<span class="str">"inventory://products"</span>,
+                    <span class="str">"text/csv"</span>, csv),
+            }, <span class="kw">nil</span>
+        },
+    )
+
+    log.<span class="fn">Println</span>(<span class="str">"MCP Server started on stdio..."</span>)
+    <span class="kw">if</span> err := server.<span class="fn">ServeStdio</span>(s); err != <span class="kw">nil</span> {
+        log.<span class="fn">Fatal</span>(err)
+    }
+}
+
+<span class="kw">func</span> <span class="fn">searchDB</span>(q <span class="tp">string</span>) []<span class="tp">map</span>[<span class="tp">string</span>]<span class="tp">any</span> {
+    <span class="cm">// 模拟数据库查询</span>
+    <span class="kw">return</span> []<span class="tp">map</span>[<span class="tp">string</span>]<span class="tp">any</span>{
+        {<span class="str">"id"</span>: <span class="num">1</span>, <span class="str">"name"</span>: <span class="str">"MacBook Pro M4"</span>, <span class="str">"stock"</span>: <span class="num">23</span>},
+        {<span class="str">"id"</span>: <span class="num">2</span>, <span class="str">"name"</span>: <span class="str">"ThinkPad X1 Carbon"</span>, <span class="str">"stock"</span>: <span class="num">15</span>},
+    }
+}
+</pre>
+</section>
+
+<!-- === SECTION 6 === -->
+<section id="s6">
+<h2>6. MCP vs Function Calling vs API</h2>
+
+<p>这三者虽然都涉及「模型调用外部能力」，但抽象层级完全不同：</p>
+
+<div class="diagram">
+<svg viewBox="0 0 780 340" xmlns="http://www.w3.org/2000/svg">
+  <!-- MCP -->
+  <rect x="20" y="20" width="230" height="180" rx="12" fill="#1a1d27" stroke="#58a6ff" stroke-width="2"/>
+  <text x="135" y="52" fill="#58a6ff" font-size="16" font-weight="700" text-anchor="middle">🔌 MCP 协议</text>
+  <text x="135" y="78" fill="#8b949e" font-size="11" text-anchor="middle">开放标准 · 厂商无关</text>
+  <line x1="60" y1="93" x2="210" y2="93" stroke="#2a2d3a" stroke-width=".5"/>
+  <text x="135" y="115" fill="#c9d1d9" font-size="11" text-anchor="middle">标准化工具发现与编排</text>
+  <text x="135" y="135" fill="#c9d1d9" font-size="11" text-anchor="middle">Tool / Resource / Prompt</text>
+  <text x="135" y="155" fill="#c9d1d9" font-size="11" text-anchor="middle">传输层抽象 (stdio/SSE/WS)</text>
+  <text x="135" y="175" fill="#c9d1d9" font-size="11" text-anchor="middle">支持多模型、多框架</text>
+  <text x="135" y="195" fill="#3fb950" font-size="11" text-anchor="middle">✅ 生态级标准化</text>
+
+  <!-- Function Calling -->
+  <rect x="275" y="20" width="230" height="180" rx="12" fill="#1a1d27" stroke="#d29922" stroke-width="2"/>
+  <text x="390" y="52" fill="#d29922" font-size="16" font-weight="700" text-anchor="middle">⚡ Function Calling</text>
+  <text x="390" y="78" fill="#8b949e" font-size="11" text-anchor="middle">模型原生功能</text>
+  <line x1="315" y1="93" x2="465" y2="93" stroke="#2a2d3a" stroke-width=".5"/>
+  <text x="390" y="115" fill="#c9d1d9" font-size="11" text-anchor="middle">LLM 原生函数调用能力</text>
+  <text x="390" y="135" fill="#c9d1d9" font-size="11" text-anchor="middle">直接生成 JSON 参数</text>
+  <text x="390" y="155" fill="#c9d1d9" font-size="11" text-anchor="middle">绑定特定模型 API</text>
+  <text x="390" y="175" fill="#c9d1d9" font-size="11" text-anchor="middle">无标准传输层</text>
+  <text x="390" y="195" fill="#d29922" font-size="11" text-anchor="middle">⚠️ 厂商锁定风险</text>
+
+  <!-- API -->
+  <rect x="530" y="20" width="230" height="180" rx="12" fill="#1a1d27" stroke="#3fb950" stroke-width="2"/>
+  <text x="645" y="52" fill="#3fb950" font-size="16" font-weight="700" text-anchor="middle">🌐 传统 API</text>
+  <text x="645" y="78" fill="#8b949e" font-size="11" text-anchor="middle">REST / gRPC</text>
+  <line x1="570" y1="93" x2="720" y2="93" stroke="#2a2d3a" stroke-width=".5"/>
+  <text x="645" y="115" fill="#c9d1d9" font-size="11" text-anchor="middle">手动编写调用逻辑</text>
+  <text x="645" y="135" fill="#c9d1d9" font-size="11" text-anchor="middle">无 LLM 上下文感知</text>
+  <text x="645" y="155" fill="#c9d1d9" font-size="11" text-anchor="middle">需自行做 Schema 描述</text>
+  <text x="645" y="175" fill="#c9d1d9" font-size="11" text-anchor="middle">成熟但非 Agent 原生</text>
+  <text x="645" y="195" fill="#3fb950" font-size="11" text-anchor="middle">✅ 通用性强</text>
+
+  <!-- 轴线 -->
+  <line x1="50" y1="245" x2="760" y2="245" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="55" y="275" fill="#6e7681" font-size="10">抽象层级</text>
+  <text x="55" y="295" fill="#6e7681" font-size="10">生态兼容</text>
+  <text x="55" y="315" fill="#6e7681" font-size="10">实现复杂度</text>
+
+  <line x1="180" y1="240" x2="180" y2="325" stroke="#58a6ff" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="180" y="340" fill="#58a6ff" font-size="12" font-weight="700" text-anchor="middle">MCP</text>
+
+  <line x1="390" y1="240" x2="390" y2="325" stroke="#d29922" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="390" y="340" fill="#d29922" font-size="12" font-weight="700" text-anchor="middle">FC</text>
+
+  <line x1="645" y1="240" x2="645" y2="325" stroke="#3fb950" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="645" y="340" fill="#3fb950" font-size="12" font-weight="700" text-anchor="middle">API</text>
+</svg>
+</div>
+
+<div class="feynman">
+MCP 不是要替代 Function Calling 或 REST API，而是站在更高的抽象层次上。如果把 Function Calling 比作「插座上的国标插孔」，MCP 就是「带转换器的万能插座 — 美标、欧标、英标都能插」。传统 REST API 则是「直接拿电线接进墙里」—— 强大但需要专业电工。
+</div>
+</section>
+
+<!-- === SECTION 7 === -->
+<section id="s7">
+<h2>7. A2A 协议</h2>
+
+<p><strong>A2A（Agent-to-Agent）</strong> 是 Google 在 2025 年 4 月提出的 Agent 间通信协议，与 MCP 形成互补关系：</p>
+
+<div class="compare">
+<div class="info-card">
+<h4>🔌 MCP (Model → Context)</h4>
+<p>模型与工具/数据之间的标准化接口。「垂直」集成 —— Agent 使用工具。</p>
+<span class="tag blue">Tool Integration</span>
+</div>
+<div class="info-card">
+<h4>🤝 A2A (Agent → Agent)</h4>
+<p>智能体之间的协作通信协议。「水平」集成 —— Agent 调用 Agent。</p>
+<span class="tag purple">Agent Orchestration</span>
+</div>
+</div>
+
+<h3>协议栈</h3>
+<div class="diagram">
+<svg viewBox="0 0 760 350" xmlns="http://www.w3.org/2000/svg">
+  <!-- A2A Layer -->
+  <rect x="40" y="20" width="680" height="80" rx="10" fill="#1a1d27" stroke="#a371f7" stroke-width="2"/>
+  <text x="380" y="50" fill="#a371f7" font-size="16" font-weight="700" text-anchor="middle">🤝 A2A 协议层 — Agent 协作</text>
+  <text x="380" y="72" fill="#8b949e" font-size="12" text-anchor="middle">Agent Card 发现 · 任务委派 · 能力协商 · 结果回调</text>
+  <text x="380" y="90" fill="#8b949e" font-size="11" text-anchor="middle">基于 HTTP + JSON · 支持长任务 (轮询/推送)</text>
+
+  <!-- MCP Layer -->
+  <rect x="40" y="125" width="680" height="80" rx="10" fill="#1a1d27" stroke="#58a6ff" stroke-width="2"/>
+  <text x="380" y="155" fill="#58a6ff" font-size="16" font-weight="700" text-anchor="middle">🔌 MCP 协议层 — Agent 使用工具</text>
+  <text x="380" y="177" fill="#8b949e" font-size="12" text-anchor="middle">Tool 发现与调用 · Resource 读取 · Prompt 模板</text>
+  <text x="380" y="195" fill="#8b949e" font-size="11" text-anchor="middle">JSON-RPC 2.0 · 传输层抽象 (stdio/SSE/WS)</text>
+
+  <!-- Agent Layer -->
+  <rect x="40" y="230" width="320" height="100" rx="10" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="200" y="258" fill="#3fb950" font-size="14" font-weight="700" text-anchor="middle">🧠 Agent A</text>
+  <text x="200" y="282" fill="#8b949e" font-size="11" text-anchor="middle">LLM + MCP Client</text>
+  <text x="200" y="300" fill="#6e7681" font-size="10" text-anchor="middle">工具调用 · 推理决策</text>
+  <text x="200" y="318" fill="#6e7681" font-size="10" text-anchor="middle">任务分解 · 子任务委派</text>
+
+  <rect x="400" y="230" width="320" height="100" rx="10" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="560" y="258" fill="#3fb950" font-size="14" font-weight="700" text-anchor="middle">🧠 Agent B</text>
+  <text x="560" y="282" fill="#8b949e" font-size="11" text-anchor="middle">LLM + MCP Client</text>
+  <text x="560" y="300" fill="#6e7681" font-size="10" text-anchor="middle">工具调用 · 推理决策</text>
+  <text x="560" y="318" fill="#6e7681" font-size="10" text-anchor="middle">任务接收 · 结果返回</text>
+
+  <!-- Arrow between agents -->
+  <line x1="365" y1="280" x2="395" y2="280" stroke="#a371f7" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="395" y1="300" x2="365" y2="300" stroke="#a371f7" stroke-width="2" marker-end="url(#a)"/>
+  <text x="380" y="275" fill="#a371f7" font-size="9" text-anchor="middle">A2A</text>
+</svg>
+</div>
+
+<h3>MCP + A2A 协同工作流</h3>
+<pre><span class="cm">// Agent A 通过 MCP 查询数据，通过 A2A 委派任务给 Agent B</span>
+<span class="kw">func</span> <span class="fn">handleUserQuery</span>(userQuery <span class="tp">string</span>) {
+    <span class="cm">// 1. MCP: 从数据库读用户信息</span>
+    userData := mcpClient.<span class="fn">readResource</span>(<span class="str">"db://users/123"</span>)
+
+    <span class="cm">// 2. LLM 推理：需要 Agent B 协助</span>
+    <span class="kw">if</span> needsSpecialist(userQuery) {
+        <span class="cm">// 3. A2A: 委派任务给 Agent B</span>
+        taskID := a2aClient.<span class="fn">sendTask</span>(<span class="str">"agent-b@internal"</span>, <span class="tp">Task</span>{
+            Query:   userQuery,
+            Context: userData,
+        })
+
+        <span class="cm">// 4. 轮询或等待推送获取结果</span>
+        result := a2aClient.<span class="fn">awaitTask</span>(taskID)
+        <span class="fn">replyToUser</span>(result)
+    }
+}
+</pre>
+</section>
+
+<!-- === SECTION 8 === -->
+<section id="s8">
+<h2>8. Go 实现 MCP Server</h2>
+
+<p>下面是一个完整的 MCP Server 实现，使用 <code>mark3labs/mcp-go</code> 库，包含两个实际工具和安全认证：</p>
+
+<details class="socratic">
+<summary>📦 go.mod 依赖</summary>
+<div>
+<pre><span class="cm">// go.mod</span>
+module mcp-product-server
+
+go <span class="num">1.22</span>
+
+require github.com/mark3labs/mcp-go v0.8.3
+</pre>
+</div>
+</details>
+
+<h3>完整 MCP Server 代码</h3>
+<pre><span class="kw">package</span> <span class="fn">main</span>
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"crypto/hmac"</span>
+    <span class="str">"crypto/sha256"</span>
+    <span class="str">"encoding/hex"</span>
+    <span class="str">"encoding/json"</span>
+    <span class="str">"errors"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"log"</span>
+    <span class="str">"net/http"</span>
+    <span class="str">"os"</span>
+    <span class="str">"time"</span>
+
+    <span class="str">"github.com/mark3labs/mcp-go/mcp"</span>
+    <span class="str">"github.com/mark3labs/mcp-go/server"</span>
+)
+
+<span class="cm">// ── 数据模型 ──</span>
+<span class="kw">type</span> <span class="tp">Product</span> <span class="kw">struct</span> {
+    ID    <span class="tp">int</span>     <span class="str">`json:"id"`</span>
+    Name  <span class="tp">string</span>  <span class="str">`json:"name"`</span>
+    Stock <span class="tp">int</span>     <span class="str">`json:"stock"`</span>
+    Price <span class="tp">float64</span> <span class="str">`json:"price"`</span>
+}
+
+<span class="kw">type</span> <span class="tp">Budget</span> <span class="kw">struct</span> {
+    Total   <span class="tp">float64</span> <span class="str">`json:"total"`</span>
+    Used    <span class="tp">float64</span> <span class="str">`json:"used"`</span>
+    Remains <span class="tp">float64</span> <span class="str">`json:"remains"`</span>
+}
+
+<span class="cm">// ── 内存数据库 ──</span>
+<span class="kw">var</span> products = []<span class="tp">Product</span>{
+    {<span class="num">1</span>, <span class="str">"MacBook Pro M4"</span>, <span class="num">23</span>, <span class="num">1999.00</span>},
+    {<span class="num">2</span>, <span class="str">"ThinkPad X1 Carbon"</span>, <span class="num">15</span>, <span class="num">1799.00</span>},
+    {<span class="num">3</span>, <span class="str">"Dell XPS 16"</span>, <span class="num">8</span>, <span class="num">1899.00</span>},
+}
+
+<span class="kw">var</span> budget = <span class="tp">Budget</span>{Total: <span class="num">100000</span>, Used: <span class="num">42350</span>}
+
+<span class="cm">// ── API Key 验证中间件 ──</span>
+<span class="kw">func</span> <span class="fn">authMiddleware</span>(expectedKey <span class="tp">string</span>) <span class="kw">func</span>(http.<span class="tp">Handler</span>) http.<span class="tp">Handler</span> {
+    <span class="kw">return</span> <span class="kw">func</span>(next http.<span class="tp">Handler</span>) http.<span class="tp">Handler</span> {
+        <span class="kw">return</span> http.<span class="fn">HandlerFunc</span>(<span class="kw">func</span>(w http.<span class="tp">ResponseWriter</span>, r *http.<span class="tp">Request</span>) {
+            key := r.Header.<span class="fn">Get</span>(<span class="str">"X-API-Key"</span>)
+            <span class="kw">if</span> key == <span class="str">""</span> || !<span class="fn">validateHMAC</span>(key, expectedKey) {
+                http.<span class="fn">Error</span>(w, <span class="str">"unauthorized"</span>, http.<span class="tp">StatusUnauthorized</span>)
+                <span class="kw">return</span>
+            }
+            next.<span class="fn">ServeHTTP</span>(w, r)
+        })
+    }
+}
+
+<span class="kw">func</span> <span class="fn">validateHMAC</span>(provided, secret <span class="tp">string</span>) <span class="tp">bool</span> {
+    mac := hmac.<span class="fn">New</span>(sha256.<span class="fn">New</span>, []<span class="tp">byte</span>(secret))
+    mac.<span class="fn">Write</span>([]<span class="tp">byte</span>(provided))
+    expected := hex.<span class="fn">EncodeToString</span>(mac.<span class="fn">Sum</span>(<span class="kw">nil</span>))
+    <span class="kw">return</span> hmac.<span class="fn">Equal</span>([]<span class="tp">byte</span>(provided), []<span class="tp">byte</span>(expected))
+}
+
+<span class="cm">// ── 工具1: search_product ──</span>
+<span class="kw">func</span> <span class="fn">handleSearchProduct</span>(ctx context.Context, req mcp.<span class="tp">CallToolRequest</span>) (*mcp.<span class="tp">CallToolResult</span>, <span class="tp">error</span>) {
+    query, _ := req.Params.Arguments[<span class="str">"query"</span>].(<span class="tp">string</span>)
+    <span class="kw">if</span> query == <span class="str">""</span> {
+        <span class="kw">return</span> <span class="kw">nil</span>, errors.<span class="fn">New</span>(<span class="str">"query is required"</span>)
+    }
+
+    <span class="kw">var</span> results []<span class="tp">Product</span>
+    <span class="kw">for</span> _, p := <span class="kw">range</span> products {
+        <span class="kw">if</span> <span class="fn">containsIgnoreCase</span>(p.Name, query) {
+            results = <span class="fn">append</span>(results, p)
+        }
+    }
+
+    data, _ := <span class="fn">json</span>.<span class="fn">Marshal</span>(results)
+    <span class="kw">return</span> mcp.<span class="fn">NewToolResultText</span>(<span class="fn">string</span>(data)), <span class="kw">nil</span>
+}
+
+<span class="cm">// ── 工具2: get_budget ──</span>
+<span class="kw">func</span> <span class="fn">handleGetBudget</span>(ctx context.Context, req mcp.<span class="tp">CallToolRequest</span>) (*mcp.<span class="tp">CallToolResult</span>, <span class="tp">error</span>) {
+    budget.Remains = budget.Total - budget.Used
+    data, _ := <span class="fn">json</span>.<span class="fn">Marshal</span>(budget)
+    <span class="kw">return</span> mcp.<span class="fn">NewToolResultText</span>(<span class="fn">string</span>(data)), <span class="kw">nil</span>
+}
+
+<span class="kw">func</span> <span class="fn">containsIgnoreCase</span>(s, substr <span class="tp">string</span>) <span class="tp">bool</span> {
+    <span class="kw">return</span> <span class="fn">len</span>(s) &gt;= <span class="fn">len</span>(substr) &amp;&amp;
+        <span class="fn">contains</span>(<span class="fn">toLower</span>(s), <span class="fn">toLower</span>(substr))
+}
+
+<span class="kw">func</span> <span class="fn">toLower</span>(s <span class="tp">string</span>) <span class="tp">string</span> {
+    b := []<span class="tp">byte</span>(s)
+    <span class="kw">for</span> i, c := <span class="kw">range</span> b {
+        <span class="kw">if</span> c &gt;= <span class="str">'A'</span> &amp;&amp; c &lt;= <span class="str">'Z'</span> {
+            b[i] = c + <span class="num">32</span>
+        }
+    }
+    <span class="kw">return</span> <span class="fn">string</span>(b)
+}
+
+<span class="kw">func</span> <span class="fn">contains</span>(s, substr <span class="tp">string</span>) <span class="tp">bool</span> {
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt;= <span class="fn">len</span>(s)-<span class="fn">len</span>(substr); i++ {
+        <span class="kw">if</span> s[i:i+<span class="fn">len</span>(substr)] == substr {
+            <span class="kw">return</span> <span class="kw">true</span>
+        }
+    }
+    <span class="kw">return</span> <span class="kw">false</span>
+}
+
+<span class="cm">// ── Main ──</span>
+<span class="kw">func</span> <span class="fn">main</span>() {
+    apiKey := os.<span class="fn">Getenv</span>(<span class="str">"MCP_API_KEY"</span>)
+    <span class="kw">if</span> apiKey == <span class="str">""</span> {
+        log.<span class="fn">Fatal</span>(<span class="str">"MCP_API_KEY environment variable required"</span>)
+    }
+
+    <span class="cm">// 创建 SSE 传输 MCP Server</span>
+    s := server.<span class="fn">NewMCP</span>(
+        server.<span class="fn">WithName</span>(<span class="str">"product-mcp-server"</span>),
+        server.<span class="fn">WithVersion</span>(<span class="str">"1.0.0"</span>),
+    )
+
+    <span class="cm">// 注册 search_product 工具</span>
+    searchTool := mcp.<span class="fn">NewTool</span>(<span class="str">"search_product"</span>,
+        mcp.<span class="fn">WithDescription</span>(<span class="str">"按关键词搜索商品库存信息"</span>),
+        mcp.<span class="fn">WithString</span>(<span class="str">"query"</span>,
+            mcp.<span class="fn">Required</span>(),
+            mcp.<span class="fn">Description</span>(<span class="str">"商品名称关键词"</span>),
+        ),
+        mcp.<span class="fn">WithNumber</span>(<span class="str">"max_results"</span>,
+            mcp.<span class="fn">Description</span>(<span class="str">"最多返回结果数 (默认 10)"</span>),
+        ),
+    )
+    s.<span class="fn">AddTool</span>(searchTool, handleSearchProduct)
+
+    <span class="cm">// 注册 get_budget 工具</span>
+    budgetTool := mcp.<span class="fn">NewTool</span>(<span class="str">"get_budget"</span>,
+        mcp.<span class="fn">WithDescription</span>(<span class="str">"查看当前采购预算总额、已用和剩余金额"</span>),
+    )
+    s.<span class="fn">AddTool</span>(budgetTool, handleGetBudget)
+
+    <span class="cm">// 启动 SSE + HTTP 服务</span>
+    mcpHandler := server.<span class="fn">NewSSEServer</span>(s)
+    handler := <span class="fn">authMiddleware</span>(apiKey)(mcpHandler)
+
+    httpServer := &amp;http.<span class="tp">Server</span>{
+        Addr:         <span class="str">":8080"</span>,
+        Handler:      handler,
+        ReadTimeout:  <span class="num">10</span> * time.<span class="tp">Second</span>,
+        WriteTimeout: <span class="num">30</span> * time.<span class="tp">Second</span>,
+    }
+
+    log.<span class="fn">Printf</span>(<span class="str">"MCP Server running on :8080 with API Key auth\n"</span>)
+    log.<span class="fn">Fatal</span>(httpServer.<span class="fn">ListenAndServe</span>())
+}
+</pre>
+
+<h3>启动与测试</h3>
+<pre><span class="cm"># 设置 API Key 并启动</span>
+<span class="kw">export</span> MCP_API_KEY=sk-secret-mcp-key-2024
+go run main.go
+
+<span class="cm"># 另开终端测试 listTools</span>
+curl -X POST http://localhost:8080 \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -H <span class="str">"X-API-Key: sk-secret-mcp-key-2024"</span> \
+  -d <span class="str">'{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'</span>
+
+<span class="cm"># 测试 search_product</span>
+curl -X POST http://localhost:8080 \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -H <span class="str">"X-API-Key: sk-secret-mcp-key-2024"</span> \
+  -d <span class="str">'{"jsonrpc":"2.0","id":2,"method":"tools/call",
+       "params":{"name":"search_product",
+       "arguments":{"query":"MacBook"}}}'</span>
+
+<span class="cm"># 预期响应：</span>
+<span class="cm">// {"jsonrpc":"2.0","id":2,"result":{"content":[{"type":"text",</span>
+<span class="cm">//   "text":"[{\"id\":1,\"name\":\"MacBook Pro M4\",\"stock\":23,\"price\":1999}]"}]}}</span>
+</pre>
+</section>
+
+<!-- === SECTION 9 === -->
+<section id="s9">
+<h2>9. 常见问题 (QA)</h2>
+
+<div class="qa">
+<div>
+<div class="qa-question">MCP 只能在 Anthropic 的模型上使用吗？</div>
+<div class="qa-answer">不是。MCP 是一个开放协议，任何 LLM 都可以通过实现 MCP Client 来使用。目前已有多家框架支持：<strong>LangChain</strong>、<strong>LlamaIndex</strong>、<strong>OpenAI Agents SDK</strong> 等都有 MCP 集成。Anthropic 是发起者，但不专享。</div>
+</div>
+
+<div>
+<div class="qa-question">MCP 是否支持非文本工具（图片生成、音频处理）？</div>
+<div class="qa-answer">可以。MCP 的 <code>CallToolResult</code> 支持多种 <code>content</code> 类型：<code>text</code>、<code>image</code>（Base64 编码）、<code>resource</code>（引用外部资源）、<code>embedded</code>（嵌入资源）。你可以返回图片、音频、二进制数据等。</div>
+</div>
+
+<div>
+<div class="qa-question">MCP 和 Function Calling 到底有什么实质区别？</div>
+<div class="qa-answer">Function Calling 是「模型能力」—— 模型在生成响应时能调用预定义函数。MCP 是「生态协议」—— 它标准化了<strong>工具发现、注册、调用、传输</strong>全流程。你可以把 MCP 理解成「Function Calling 标准化框架」：FC 只管「调」，MCP 管「怎么找到、怎么连接、怎么调、怎么返回」。</div>
+</div>
+
+<div>
+<div class="qa-question">MCP Server 一定是远程 HTTP 服务吗？</div>
+<div class="qa-answer">不一定。MCP 支持 <strong>stdio 传输</strong>，意味着 Server 可以作为一个本地子进程运行，通过标准输入/输出通信。这在本地开发、调试场景下非常方便，零依赖、极低延迟。Claude Desktop 就是通过 stdio 启动本地 MCP Server 的。</div>
+</div>
+
+<div>
+<div class="qa-question">MCP 如何处理长时间运行的任务？</div>
+<div class="qa-answer">MCP 协议设计了 <code>notifications</code> 机制来支持异步和长时间任务。Server 可以通过 <code>notifications/tasks/progress</code> 通知客户端进度。对于极端长任务，标准做法是先返回一个「任务接受」响应，然后通过另一个通道（如 SSE 推送）在任务完成时通知客户端。这类似于 A2A 中使用的轮询+推送模式。</div>
+</div>
+
+<div>
+<div class="qa-question">多个工具依赖（如先查库存再下单）MCP 能处理吗？</div>
+<div class="qa-answer">MCP 协议本身专注于单次工具调用，<strong>调用编排</strong>由 LLM 层负责。通常情况下，LLM 会先调用 <code>search_product</code> 获取商品 ID，再用结果作为输入调用 <code>create_order</code>。这个「思考 → 调用 → 思考 → 再调用」的多步流程由 LLM 的推理能力和 MCP Client 的会话管理共同完成。</div>
+</div>
+</div>
+</section>
+
+<!-- === SECTION 10 === -->
+<section id="s10">
+<h2>10. 口播总结</h2>
+
+<div class="feynman" style="border-left-color:var(--purple);font-style:normal">
+<p style="margin-bottom:.6rem">🎙️ <strong>一句话总结：</strong></p>
+<p><strong>MCP（Model Context Protocol）</strong> 是 Anthropic 开源的 AI Agent 工具集成标准协议，它像 USB-C 一样统一了 LLM 与外部世界的连接方式，让 N×M 的集成爆炸简化为 N+M。</p>
+
+<p style="margin-top:1rem">🔑 <strong>核心要点：</strong></p>
+<ul style="padding-left:1.5rem;margin-top:.4rem">
+  <li><strong>四层架构：</strong>Host → Client → Transport → Server/Tool，每层各司其职</li>
+  <li><strong>三种传输：</strong>stdio（本地）、SSE（远程单向）、WebSocket（实时双向）</li>
+  <li><strong>三大能力：</strong>Tool（执行操作）、Resource（读取数据）、Prompt（提示模板）</li>
+  <li><strong>标准协议：</strong>基于 JSON-RPC 2.0，tools/list 发现，tools/call 调用</li>
+  <li><strong>开放生态：</strong>与 A2A（Agent 间协作）互补，一起构建完整的 Agent 互联生态</li>
+  <li><strong>快速上手：</strong>Go 社区有 mark3labs/mcp-go 库，几十行代码就能跑起一个 MCP Server</li>
+</ul>
+
+<p style="margin-top:1rem">💡 <strong>展望：</strong>2025 年是 AI Agent 从「单体智能」走向「群体协作」的关键一年。MCP 统一了「模型→工具」的接口，A2A 统一了「Agent→Agent」的接口。两者的结合，正在为 AI 生态搭建一个类似互联网 TCP/IP 的基座协议栈。作为开发者，现在上手 MCP 就是抓住下一波红利的入场券。</p>
+</div>
+
+<!-- Back to top -->
+<div class="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</div>
+
+</div><!-- /main -->
+
+<script>
+// Sidebar active state on scroll
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function(e) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// Intersection Observer for scroll-spy
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      const id = entry.target.id;
+      document.querySelector(`.nav-item[href="#${id}"]`)?.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+
+document.querySelectorAll('section').forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

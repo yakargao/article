@@ -1,7 +1,7 @@
 {
   "name": "interview-review",
   "version": "1.0.0",
-  "description": "",
+  "description": "软件开发成神之路 - 52篇费曼风格技术文章（AI Agent/系统设计/高级开发实战/计算机基础）",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

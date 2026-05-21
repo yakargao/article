@@ -48,35 +48,7 @@
   .toolbar input::placeholder { color: var(--muted); }
 
   /* ── Category pills ── */
-  .pills-wrap { 
-    max-width: 960px; margin: 12px auto 0;
-    overflow-x: auto; -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .pills-wrap::-webkit-scrollbar { display: none; }
-  .pills {
-    display: flex; gap: 6px; padding: 2px 0 8px;
-    white-space: nowrap;
-  }
-  .pill {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 14px; border-radius: 20px;
-    font-size: 13px; font-weight: 500;
-    border: 1px solid var(--border);
-    background: var(--card); color: var(--muted);
-    cursor: pointer; transition: all 0.15s;
-    user-select: none;
-  }
-  .pill:hover { border-color: var(--accent); color: var(--text); }
-  .pill.active { 
-    background: rgba(88,166,255,0.12); border-color: var(--accent);
-    color: var(--accent); font-weight: 600;
-  }
-  .pill .count {
-    font-size: 11px; background: rgba(255,255,255,0.06);
-    padding: 0 7px; border-radius: 10px; line-height: 18px;
-  }
-  .pill.active .count { background: rgba(88,166,255,0.15); }
+
 
   /* ── Content area ── */
   .content { max-width: 960px; margin: 0 auto; padding: 20px 24px 60px; }
@@ -136,24 +108,7 @@
   }
   .search-empty.visible { display: block; }
 
-  /* ── Review dashboard toggle ── */
-  .review-bar {
-    max-width: 960px; margin: 0 auto;
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px 14px; cursor: pointer; border-radius: 8px;
-    font-size: 12px; color: var(--muted);
-    transition: background 0.15s;
-  }
-  .review-bar:hover { background: rgba(88,166,255,0.04); }
-  .review-bar .arrow { transition: transform 0.2s; }
-  .review-bar.open .arrow { transform: rotate(90deg); }
-  .review-dashboard {
-    max-width: 960px; margin: 0 auto 8px;
-    background: linear-gradient(135deg, rgba(88,166,255,0.04), rgba(163,113,247,0.04));
-    border: 1px solid rgba(88,166,255,0.15); border-radius: 10px;
-    padding: 16px 20px; display: none;
-  }
-  .review-dashboard.open { display: block; }
+
 
   /* ── Footer ── */
   .footer { max-width: 960px; margin: 32px auto; text-align: center; font-size: 12px; color: var(--muted); }
@@ -165,8 +120,7 @@
     .header .sub { font-size: 12px; gap: 10px; }
     .toolbar { flex-direction: row; gap: 8px; margin-top: 10px; }
     .toolbar input { padding: 7px 10px; font-size: 12px; }
-    .pills-wrap { margin-top: 8px; }
-    .pill { padding: 5px 10px; font-size: 12px; }
+
     .content { padding: 12px 12px 40px; }
     .cat-header { padding: 8px 12px; }
     .cat-header .name { font-size: 13px; }
@@ -188,7 +142,7 @@
   <div class="header-inner">
     <h1>📘 软件开发<span>成神之路</span></h1>
     <div class="sub">
-      <span class="stat">🧠 费曼学习法 · 艾宾浩斯循环复习</span>
+      <span class="stat">🧠 费曼学习法 · 53 篇深度文章</span>
       <span class="stat"><strong id="totalCount">53</strong> 篇文章 · <strong>7</strong> 个分类</span>
     </div>
 
@@ -196,55 +150,17 @@
       <input type="text" id="search" placeholder="🔍 搜索文章..." autocomplete="off" oninput="filterArticles()">
     </div>
 
-    <div class="pills-wrap">
-      <div class="pills" id="pills">
-        <div class="pill active" data-cat="all" onclick="switchCategory('all')">
-          📂 全部 <span class="count">53</span>
-        </div>
-        <div class="pill" data-cat="sys-design" onclick="switchCategory('sys-design')">
-          🏛️ 系统设计 <span class="count">13</span>
-        </div>
-        <div class="pill" data-cat="senior" onclick="switchCategory('senior')">
-          ⚡ 高级开发实战 <span class="count">13</span>
-        </div>
-        <div class="pill" data-cat="ai" onclick="switchCategory('ai')">
-          🤖 AI Agent <span class="count">8</span>
-        </div>
-        <div class="pill" data-cat="lang-cs" onclick="switchCategory('lang-cs')">
-          💻 语言与计算机基础 <span class="count">8</span>
-        </div>
-        <div class="pill" data-cat="computer-arch" onclick="switchCategory('computer-arch')">
-          🏗️ 计算机组成原理 <span class="count">7</span>
-        </div>
-        <div class="pill" data-cat="middleware" onclick="switchCategory('middleware')">
-          🔧 中间件 <span class="count">3</span>
-        </div>
-        <div class="pill" data-cat="algo" onclick="switchCategory('algo')">
-          🧮 算法 <span class="count">1</span>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 
-<div class="review-bar" id="reviewToggle" onclick="toggleReview()">
-  <span>🧠</span> 艾宾浩斯复习看板 <span style="color:var(--muted);font-size:11px">· 遗忘临界点提醒</span>
-  <span style="margin-left:auto" class="arrow">▸</span>
-</div>
-<div class="review-dashboard" id="reviewDashboard">
-  <div id="reviewContent"></div>
-  <div style="margin-top:10px;display:flex;gap:8px">
-    <button class="pill" onclick="if(confirm('确定重置全部复习进度？')){Ebbinghaus.resetAll();location.reload()}" style="background:rgba(248,81,73,0.1);border-color:rgba(248,81,73,0.3);color:#f87173;padding:5px 14px;font-size:12px;border-radius:8px;border:1px solid">🔄 重置</button>
-    <button class="pill" id="btn-notify" onclick="requestNotify()" style="background:rgba(88,166,255,0.1);border-color:rgba(88,166,255,0.3);color:#58a6ff;padding:5px 14px;font-size:12px;border-radius:8px;border:1px solid">🔔 开启提醒</button>
-  </div>
-</div>
+
 
 <div class="content" id="content">
   <!-- Sections injected by JS -->
 </div>
 
 <div class="footer">
-  软件开发成神之路 · 费曼学习法 · 🧠 艾宾浩斯循环复习
+  软件开发成神之路 · 费曼学习法
 </div>
 
 <script src="/ebbinghaus.js"></script>
@@ -326,7 +242,7 @@ function render() {
   container.innerHTML = '';
   SECTIONS.forEach((sec, idx) => {
     const div = document.createElement('div');
-    div.className = 'cat-section' + (idx === 0 ? ' open' : '');
+    div.className = 'cat-section';
     div.id = 'sec-' + sec.id;
     div.dataset.category = sec.id;
 
@@ -359,25 +275,7 @@ function render() {
   });
 }
 
-// ── Category switch ──
-function switchCategory(catId) {
-  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
-  document.querySelector(`.pill[data-cat="${catId}"]`).classList.add('active');
 
-  document.querySelectorAll('.cat-section').forEach(s => {
-    if (catId === 'all') {
-      s.classList.add('open');
-    } else {
-      s.classList.toggle('open', s.dataset.category === catId);
-    }
-  });
-
-  // Scroll to first open section
-  const first = document.querySelector('.cat-section.open');
-  if (first) {
-    setTimeout(() => first.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-  }
-}
 
 // ── Section toggle ──
 function toggleSection(id) {
@@ -426,23 +324,18 @@ function filterArticles() {
   empty.classList.toggle('visible', visibleCount === 0);
 }
 
-// ── Review dashboard ──
-function toggleReview() {
-  const bar = document.getElementById('reviewToggle');
-  const dash = document.getElementById('reviewDashboard');
-  bar.classList.toggle('open');
-  dash.classList.toggle('open');
-}
+
 
 // ── Init ──
 document.addEventListener('DOMContentLoaded', () => {
   render();
-  // Check URL hash for initial category
+  // Scroll to section if URL has hash
   const hash = location.hash.replace('#', '');
-  if (hash && hash !== 'all') {
-    switchCategory(hash);
-    document.querySelector(`.pill[data-cat="${hash}"]`)?.classList.add('active');
-    document.querySelector('.pill[data-cat="all"]')?.classList.remove('active');
+  if (hash) {
+    setTimeout(() => {
+      const el = document.getElementById('sec-' + hash);
+      if (el) { el.classList.add('open'); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    }, 200);
   }
 });
 </script>

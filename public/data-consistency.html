@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>错·漏·重·迟 — 数据一致性问题的四种形态与解法 · 费曼学习法</title>
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; --pink: #db61a2; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; transition: width 0.25s ease; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--cyan); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; text-decoration: none; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram svg { min-width: 580px; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+
+  .kw { color: #ff7b72; } .fn { color: #d2a8ff; } .str { color: #a5d6ff; } .num { color: #79c0ff; } .cm { color: #8b949e; font-style: italic; } .tp { color: #ffa657; } .op { color: #ff7b72; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .compare { grid-template-columns: 1fr; }
+    .diagram svg { min-width: 420px; }
+  }
+  @media (max-width: 480px) {
+    .diagram svg { min-width: 340px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔄 数据 <span>一致性</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">四种形态</div>
+  <a class="nav-item" href="#wrong">❌ 错 — 数据写错了</a>
+  <a class="nav-item" href="#miss">🕳️ 漏 — 数据丢了</a>
+  <a class="nav-item" href="#dup">📋 重 — 数据重复了</a>
+  <a class="nav-item" href="#delay">⏳ 迟 — 数据来晚了</a>
+  <div class="nav-section">解法与实战</div>
+  <a class="nav-item" href="#matrix">🎯 选择矩阵</a>
+  <a class="nav-item" href="#go-code">💻 Go 代码实现</a>
+  <a class="nav-item" href="#order-case">📦 订单系统实战</a>
+  <a class="nav-item" href="#qa">💬 实战问答</a>
+  <a class="nav-item" href="#summary">🎯 口播总结</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>🔄 错·漏·重·迟 — 数据一致性问题的四种形态与解法</h2>
+  <p style="color:var(--muted);font-size:13px">2026 · 分布式系统设计核心 · Go 代码实战 · 共 8 张配图</p>
+
+  <div class="feynman">
+    <p><span class="analogy">🏃 类比：</span>数据一致性就像接力赛的交接棒。四位跑者（Producer/DB/Cache/Consumer）之间传递的"棒"（数据）必须——<strong>接力棒内容正确（不错）</strong>，<strong>不能掉棒（不漏）</strong>，<strong>不能递两次（不重）</strong>，<strong>不能接棒晚了导致掉速（不迟）</strong>。任何一环出错，整场比赛（业务流程）都受影响。</p>
+    <p>本文系统拆解数据一致性的四大"恶魔"——<span style="color:var(--red);font-weight:600">错</span>（数据写错）、<span style="color:var(--orange);font-weight:600">漏</span>（数据丢失）、<span style="color:var(--purple);font-weight:600">重</span>（数据重复）、<span style="color:var(--cyan);font-weight:600">迟</span>（数据延迟），并给出各自的经典解法与 Go 代码实现。最后用一个完整的订单系统案例串联所有方案。</p>
+  </div>
+</section>
+
+<!-- ═══════ 总览图 ═══════ -->
+<section id="overview-diagram" class="section">
+  <h2>📊 四大问题总览</h2>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 380" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="do1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#64748b"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="360" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <!-- Center: Data Bus -->
+      <rect x="270" y="145" width="280" height="50" rx="25" fill="rgba(88,166,255,0.1)" stroke="#58a6ff"/>
+      <text x="410" y="170" text-anchor="middle" fill="#58a6ff" font-size="14" font-family="sans-serif" font-weight="600">🔄 数据流 · Data Flow</text>
+      <text x="410" y="186" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">生产者 → 系统 → 消费者</text>
+
+      <!-- WRONG -->
+      <rect x="30" y="35" width="200" height="80" rx="10" fill="rgba(248,81,73,0.1)" stroke="#f85149"/>
+      <text x="130" y="62" text-anchor="middle" fill="#f85149" font-size="20" font-family="sans-serif" font-weight="700">❌ 错</text>
+      <text x="130" y="82" text-anchor="middle" fill="#c9d1d9" font-size="12" font-family="sans-serif">并发覆盖 · ABA · CAS 失效</text>
+      <text x="130" y="100" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">◉ 乐观锁 · MVCC · 版本号</text>
+
+      <!-- MISS -->
+      <rect x="590" y="35" width="200" height="80" rx="10" fill="rgba(210,153,34,0.1)" stroke="#d29922"/>
+      <text x="690" y="62" text-anchor="middle" fill="#d29922" font-size="20" font-family="sans-serif" font-weight="700">🕳️ 漏</text>
+      <text x="690" y="82" text-anchor="middle" fill="#c9d1d9" font-size="12" font-family="sans-serif">消息丢失 · 半提交 · 缓存穿透</text>
+      <text x="690" y="100" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">◉ 2PC · Saga · 本地消息表</text>
+
+      <!-- DUPLICATE -->
+      <rect x="30" y="245" width="200" height="80" rx="10" fill="rgba(163,113,247,0.1)" stroke="#a371f7"/>
+      <text x="130" y="272" text-anchor="middle" fill="#a371f7" font-size="20" font-family="sans-serif" font-weight="700">📋 重</text>
+      <text x="130" y="292" text-anchor="middle" fill="#c9d1d9" font-size="12" font-family="sans-serif">幂等破坏 · 重复消费 · 重下单</text>
+      <text x="130" y="310" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">◉ 幂等表 · 唯一键 · 去重</text>
+
+      <!-- DELAY -->
+      <rect x="590" y="245" width="200" height="80" rx="10" fill="rgba(57,197,207,0.1)" stroke="#39c5cf"/>
+      <text x="690" y="272" text-anchor="middle" fill="#39c5cf" font-size="20" font-family="sans-serif" font-weight="700">⏳ 迟</text>
+      <text x="690" y="292" text-anchor="middle" fill="#c9d1d9" font-size="12" font-family="sans-serif">主从延迟 · 缓存不一致</text>
+      <text x="690" y="310" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">◉ 读写分离 · 版本向量</text>
+
+      <!-- Arrows to center -->
+      <path d="M230,75 L260,75 L260,160 L270,160" stroke="#f85149" stroke-width="1.5" marker-end="url(#do1)"/>
+      <path d="M590,75 L560,75 L560,160 L550,160" stroke="#d29922" stroke-width="1.5" marker-end="url(#do1)"/>
+      <path d="M230,285 L260,285 L260,200 L270,200" stroke="#a371f7" stroke-width="1.5" marker-end="url(#do1)"/>
+      <path d="M590,285 L560,285 L560,200 L550,200" stroke="#39c5cf" stroke-width="1.5" marker-end="url(#do1)"/>
+
+      <text x="410" y="340" fill="#8b949e" font-size="10" font-family="sans-serif" text-anchor="middle">💡 四种问题可能同时存在，需要分层防御。最可怕的是你只防了三种，漏掉的那种会在线上炸给你看。</text>
+    </svg>
+    <div class="diagram-caption">图 1 · 数据一致性四大问题：错/漏/重/迟，每种问题有其经典场景和对应的解法</div>
+  </div>
+</section>
+
+<!-- ═══════ 1. WRONG ═══════ -->
+<section id="wrong" class="section">
+  <h2>❌ 错 — 数据写错了</h2>
+
+  <p>"错"是最直观的一致性事故：<strong>数据被写入了错误的值</strong>。不是因为 bug（那叫缺陷），而是因为并发导致两个写操作互相覆盖，最终结果不符合预期。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">🍳 类比：</span>两个人同时往一个仓库里记账。A 先读到余额 100，准备加 50 写回 150；B 也在同一时刻读到余额 100，准备减 30 写回 70。无论谁最后写，另一个人的结果就被覆盖了——最终要么是 150（丢了 B 的操作），要么是 70（丢了 A 的操作），永远不可能是正确的 120。</p>
+  </div>
+
+  <h3>三种典型场景</h3>
+
+  <div class="compare">
+    <div>
+      <h4><span class="badge badge-red">场景 1</span> 并发写覆盖</h4>
+      <p>读-改-写（Read-Modify-Write）三步非原子执行。两个线程同时读到 V0，各自修改后写入，后写的覆盖前写的。</p>
+      <p><strong>解法：</strong>乐观锁（版本号/CAS）、悲观锁（行锁/分布式锁）</p>
+    </div>
+    <div>
+      <h4><span class="badge badge-red">场景 2</span> ABA 问题</h4>
+      <p>A 读到值 X，准备 CAS 更新时，被 B 改成 Y 又改回 X。A 的 CAS 检查到仍然是 X 就通过了，但中间状态被 A 忽略。</p>
+      <p><strong>解法：</strong>带版本号的 CAS（AtomicStampedReference）</p>
+    </div>
+  </div>
+  <div class="info-card">
+    <h4><span class="badge badge-red">场景 3</span> 更新丢失（Lost Update）</h4>
+    <p>SQL 级别的经典问题：<code>UPDATE t SET count = count + 1 WHERE id = 1</code> 在 MySQL 中是行锁保护的，但 <code>SELECT count INTO @c; @c = @c + 1; UPDATE t SET count = @c</code> 这种先读再算后写就不安全。</p>
+    <p><strong>解法：</strong>原子 SQL（<code>SET count = count + N</code>）、乐观锁</p>
+  </div>
+
+  <h3>SVG：并发写冲突全流程</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="dw1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#f85149"/></marker>
+        <marker id="dw2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#3fb950"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="280" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <!-- DB -->
+      <rect x="310" y="20" width="200" height="45" rx="8" fill="rgba(88,166,255,0.1)" stroke="#58a6ff"/>
+      <text x="410" y="48" text-anchor="middle" fill="#58a6ff" font-size="14" font-family="sans-serif" font-weight="600">🗄️ 数据库</text>
+
+      <!-- Thread A -->
+      <rect x="30" y="100" width="160" height="40" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f85149"/>
+      <text x="110" y="125" text-anchor="middle" fill="#f85149" font-size="12" font-family="sans-serif" font-weight="600">🔴 Thread A</text>
+
+      <!-- Thread B -->
+      <rect x="630" y="100" width="160" height="40" rx="6" fill="rgba(210,153,34,0.08)" stroke="#d29922"/>
+      <text x="710" y="125" text-anchor="middle" fill="#d29922" font-size="12" font-family="sans-serif" font-weight="600">🟡 Thread B</text>
+
+      <!-- Actions A -->
+      <rect x="40" y="155" width="140" height="32" rx="5" fill="rgba(248,81,73,0.06)" stroke="#f85149" stroke-width="0.5"/>
+      <text x="110" y="176" text-anchor="middle" fill="#c9d1d9" font-size="11" font-family="sans-serif">SELECT v=100</text>
+
+      <rect x="40" y="195" width="140" height="32" rx="5" fill="rgba(248,81,73,0.06)" stroke="#f85149" stroke-width="0.5"/>
+      <text x="110" y="216" text-anchor="middle" fill="#c9d1d9" font-size="11" font-family="sans-serif">v = 100+50=150</text>
+
+      <rect x="40" y="235" width="140" height="32" rx="5" fill="rgba(248,81,73,0.15)" stroke="#f85149" stroke-width="0.5"/>
+      <text x="110" y="256" text-anchor="middle" fill="#f85149" font-size="11" font-family="sans-serif">❌ UPDATE v=150</text>
+
+      <!-- Actions B -->
+      <rect x="640" y="155" width="140" height="32" rx="5" fill="rgba(210,153,34,0.06)" stroke="#d29922" stroke-width="0.5"/>
+      <text x="710" y="176" text-anchor="middle" fill="#c9d1d9" font-size="11" font-family="sans-serif">SELECT v=100</text>
+
+      <rect x="640" y="195" width="140" height="32" rx="5" fill="rgba(210,153,34,0.06)" stroke="#d29922" stroke-width="0.5"/>
+      <text x="710" y="216" text-anchor="middle" fill="#c9d1d9" font-size="11" font-family="sans-serif">v = 100-30=70</text>
+
+      <rect x="640" y="235" width="140" height="32" rx="5" fill="rgba(210,153,34,0.15)" stroke="#d29922" stroke-width="0.5"/>
+      <text x="710" y="256" text-anchor="middle" fill="#d29922" font-size="11" font-family="sans-serif">❌ UPDATE v=70</text>
+
+      <!-- Timeline arrows -->
+      <path d="M180,172 L300,172" stroke="#64748b" stroke-width="1" stroke-dasharray="3,2"/>
+      <path d="M180,250 L300,250" stroke="#64748b" stroke-width="1" stroke-dasharray="3,2"/>
+      <path d="M500,172 L630,172" stroke="#64748b" stroke-width="1" stroke-dasharray="3,2"/>
+      <path d="M500,250 L630,250" stroke="#64748b" stroke-width="1" stroke-dasharray="3,2"/>
+
+      <!-- Timeline -->
+      <line x1="60" y1="290" x2="760" y2="290" stroke="#2a2d3a" stroke-width="1"/>
+      <text x="410" y="280" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">→ 时间</text>
+      <text x="410" y="290" text-anchor="middle" fill="#f85149" font-size="10" font-family="sans-serif">← 最终结果 = 70（B 覆盖了 A 的 +50）</text>
+    </svg>
+    <div class="diagram-caption">图 2 · 并发写覆盖：A 和 B 同时读到 v=100，各自计算后先后写入，最后一个写入者覆盖了前一个的结果</div>
+  </div>
+
+  <h3>经典解法：乐观锁</h3>
+  <p>在每次更新时携带上一次读取的版本号，更新时检查版本号是否被他人修改：</p>
+  <pre><code><span class="cm">-- SQL 层面：UPDATE ... WHERE version = ?</span>
+<span class="kw">UPDATE</span> account <span class="kw">SET</span>
+  balance = balance + ?,
+  version = version + 1
+<span class="kw">WHERE</span> id = ? <span class="kw">AND</span> version = ?;
+
+<span class="cm">-- 如果 affected_rows == 0，说明版本号已被他人修改，需要重试</span></code></pre>
+
+  <p>Go 代码见下方第四节 <a href="#go-code">Go 代码实现</a> 中的乐观锁示例。</p>
+</section>
+
+<!-- ═══════ 2. MISS ═══════ -->
+<section id="miss" class="section">
+  <h2>🕳️ 漏 — 数据丢了</h2>
+
+  <p>"漏"比"错"更隐蔽——数据不是写错了，而是<strong>根本就没写进去</strong>。典型场景是分布式事务中，A 服务提交成功，B 服务提交失败，结果 A 的数据"白写了"，B 的数据丢了。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">🍳 类比：</span>你往一个快递柜里放了包裹（A 写成功），然后往另一个柜子里放第二个包裹（B 写失败），但取件人以为两个都到位了。结果来取件时只拿到一个——第一个包裹变成了\"孤魂野鬼\"。这就是分布式事务的\"部分提交\"问题。</p>
+  </div>
+
+  <h3>四种常见的"漏"</h3>
+  <table>
+    <tr><th>场景</th><th>原因</th><th>影响</th><th>解法</th></tr>
+    <tr><td>消息丢失</td><td>Kafka/RocketMQ 未持久化、网络抖动、Broker 挂</td><td>消费者永远收不到某条消息</td><td>生产者重试 + 幂等消费者</td></tr>
+    <tr><td>事务部分提交</td><td>分布式事务中一个分支失败</td><td>数据处于不一致的中间态</td><td>2PC/TCC/Saga</td></tr>
+    <tr><td>缓存击穿</td><td>热 key 过期后大量请求打到 DB</td><td>DB 压力暴增，请求超时</td><td>互斥锁重建缓存</td></tr>
+    <tr><td>Binlog 丢失</td><td>主从复制中网络分区</td><td>从库缺失部分数据</td><td>半同步复制</td></tr>
+  </table>
+
+  <h3>SVG：消息丢失链</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 260" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="dm1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#d29922"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="240" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <!-- Producer -->
+      <rect x="40" y="60" width="150" height="55" rx="8" fill="rgba(88,166,255,0.1)" stroke="#58a6ff"/>
+      <text x="115" y="86" text-anchor="middle" fill="#58a6ff" font-size="13" font-family="sans-serif" font-weight="600">📤 Producer</text>
+      <text x="115" y="102" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">发送消息</text>
+
+      <!-- Broker -->
+      <rect x="290" y="60" width="150" height="55" rx="8" fill="rgba(210,153,34,0.1)" stroke="#d29922"/>
+      <text x="365" y="86" text-anchor="middle" fill="#d29922" font-size="13" font-family="sans-serif" font-weight="600">📦 Broker</text>
+      <text x="365" y="102" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">存储/转发</text>
+
+      <!-- Consumer -->
+      <rect x="540" y="60" width="150" height="55" rx="8" fill="rgba(163,113,247,0.1)" stroke="#a371f7"/>
+      <text x="615" y="86" text-anchor="middle" fill="#a371f7" font-size="13" font-family="sans-serif" font-weight="600">📥 Consumer</text>
+      <text x="615" y="102" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">消费消息</text>
+
+      <path d="M195,87 L280,87" stroke="#58a6ff" stroke-width="2" marker-end="url(#dm1)"/>
+      <path d="M445,87 L530,87" stroke="#d29922" stroke-width="2" marker-end="url(#dm1)"/>
+
+      <!-- Loss points -->
+      <rect x="195" y="140" width="90" height="30" rx="5" fill="rgba(248,81,73,0.1)" stroke="#f85149" stroke-width="0.5"/>
+      <text x="240" y="160" text-anchor="middle" fill="#f85149" font-size="10" font-family="sans-serif">⚠️ 网络丢包</text>
+
+      <rect x="340" y="140" width="90" height="30" rx="5" fill="rgba(248,81,73,0.1)" stroke="#f85149" stroke-width="0.5"/>
+      <text x="385" y="160" text-anchor="middle" fill="#f85149" font-size="10" font-family="sans-serif">⚠️ Broker 崩</text>
+
+      <rect x="520" y="140" width="130" height="30" rx="5" fill="rgba(248,81,73,0.1)" stroke="#f85149" stroke-width="0.5"/>
+      <text x="585" y="160" text-anchor="middle" fill="#f85149" font-size="10" font-family="sans-serif">⚠️ 消费失败未回传</text>
+
+      <path d="M240,115 L240,135" stroke="#f85149" stroke-width="1" stroke-dasharray="3,2"/>
+      <path d="M385,115 L385,135" stroke="#f85149" stroke-width="1" stroke-dasharray="3,2"/>
+      <path d="M585,115 L585,135" stroke="#f85149" stroke-width="1" stroke-dasharray="3,2"/>
+
+      <text x="410" y="210" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">💡 每个环节都可能丢消息，所以需要在源头（Producer）做可靠重试，在终点（Consumer）做幂等去重</text>
+    </svg>
+    <div class="diagram-caption">图 3 · 消息丢失链：Producer→Broker→Consumer，每个环节都可能丢，需要层层防守</div>
+  </div>
+
+  <h3>Saga 补偿模式</h3>
+  <p>Saga 是解决"漏"问题的最实用方案：把一个长事务拆成一串本地事务，每个事务有对应的<strong>补偿操作（Compensation）</strong>。如果在第 N 步失败，依次执行 N-1 到第 1 步的补偿操作"撤销"前面的结果。</p>
+
+  <div class="info-card">
+    <h4>Saga 的两种实现方式</h4>
+    <ul>
+      <li><strong>编排式（Choreography）：</strong>每个服务完成后发送事件，下一个服务监听事件触发。简单但流程分散</li>
+      <li><strong>协调式（Orchestration）：</strong>一个协调器负责调度所有服务，集中控制但耦合度高</li>
+    </ul>
+    <p>Go 实现见下方第四节 <a href="#go-code">Go 代码</a>。</p>
+  </div>
+</section>
+
+<!-- ═══════ 3. DUPLICATE ═══════ -->
+<section id="dup" class="section">
+  <h2>📋 重 — 数据重复了</h2>
+
+  <p>"重"是最让人头疼的问题——不是数据没了，而是<strong>多了一份</strong>。重复数据会引发级联故障：重复扣款、重复发货、重复通知……</p>
+
+  <div class="feynman">
+    <p><span class="analogy">🍳 类比：</span>你在自动售货机扫了码，手机弹出支付成功——但机器没出货。你又扫了一遍，又支付成功，机器出了两瓶。多出来的那瓶就是\"重复\"。这就是幂等被破坏的后果：同样的操作被执行了两次。</p>
+  </div>
+
+  <h3>重复怎么来的？</h3>
+  <ul>
+    <li><strong>重试机制：</strong>上游调超时了，重试一次，结果第一次其实成功了</li>
+    <li><strong>消息队列 at-least-once：</strong>Consumer 处理完但提交 offset 失败，重启后重新消费</li>
+    <li><strong>用户行为：</strong>用户手抖点两次"提交订单"</li>
+  </ul>
+
+  <h3>SVG：重复消费场景</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 260" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="dd1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#a371f7"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="240" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <!-- MQ -->
+      <rect x="360" y="30" width="100" height="50" rx="8" fill="rgba(88,166,255,0.1)" stroke="#58a6ff"/>
+      <text x="410" y="58" text-anchor="middle" fill="#58a6ff" font-size="13" font-family="sans-serif" font-weight="600">📨 MQ</text>
+
+      <!-- Same message twice -->
+      <rect x="360" y="100" width="100" height="35" rx="5" fill="rgba(163,113,247,0.08)" stroke="#a371f7" stroke-width="0.5"/>
+      <text x="410" y="122" text-anchor="middle" fill="#a371f7" font-size="11" font-family="sans-serif">Msg #1</text>
+
+      <rect x="360" y="140" width="100" height="35" rx="5" fill="rgba(163,113,247,0.08)" stroke="#a371f7" stroke-width="0.5"/>
+      <text x="410" y="162" text-anchor="middle" fill="#a371f7" font-size="11" font-family="sans-serif">Msg #1 (重)</text>
+
+      <!-- Arrow 1 -->
+      <path d="M465,117 L530,117" stroke="#a371f7" stroke-width="1.5" marker-end="url(#dd1)"/>
+      <path d="M465,157 L530,157" stroke="#f85149" stroke-width="1.5" marker-end="url(#dd1)"/>
+
+      <!-- Consumer -->
+      <rect x="540" y="100" width="120" height="50" rx="8" fill="rgba(163,113,247,0.1)" stroke="#a371f7"/>
+      <text x="600" y="125" text-anchor="middle" fill="#a371f7" font-size="13" font-family="sans-serif" font-weight="600">📥 Consumer</text>
+      <text x="600" y="141" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">收到两次！</text>
+
+      <!-- Result -->
+      <rect x="540" y="180" width="120" height="40" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f85149" stroke-width="0.5"/>
+      <text x="600" y="204" text-anchor="middle" fill="#f85149" font-size="11" font-family="sans-serif" font-weight="600">❌ 重复下单</text>
+
+      <path d="M600,150 L600,172" stroke="#f85149" stroke-width="1.5" marker-end="url(#dd1)"/>
+
+      <text x="410" y="230" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">💡 幂等的核心是：<strong>同一操作的多次执行，结果与执行一次相同</strong></text>
+    </svg>
+    <div class="diagram-caption">图 4 · 重复消费：MQ 的 at-least-once 语义导致 Consumer 收到同一条消息两次</div>
+  </div>
+
+  <h3>三种去重方案</h3>
+  <table>
+    <tr><th>方案</th><th>原理</th><th>适用场景</th><th>注意</th></tr>
+    <tr><td>幂等表（去重表）</td><td>用业务唯一键（如 order_id）做主键，INSERT 冲突则跳过</td><td>订单创建、支付回调</td><td>需要事务支持</td></tr>
+    <tr><td>Redis 分布式锁去重</td><td>用业务键在 Redis 中 SET NX，成功才处理</td><td>高并发场景</td><td>需要处理锁过期</td></tr>
+    <tr><td>唯一键约束</td><td>数据库层设置 UNIQUE KEY</td><td>最后一道防线</td><td>性能开销</td></tr>
+  </table>
+
+  <p>Go 代码实现见下方第四节。</p>
+</section>
+
+<!-- ═══════ 4. DELAY ═══════ -->
+<section id="delay" class="section">
+  <h2>⏳ 迟 — 数据来晚了</h2>
+
+  <p>"迟"是四种问题中最微妙的——数据没错、没丢、没重复，只是<strong>到得不及时</strong>。在"读你的写"（read-your-writes）场景中，用户刚写完就查询，结果看到的是旧数据。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">🍳 类比：</span>你在淘宝下了单，扣款成功后去"我的订单"查看——结果页面显示\"暂无订单\"。你吓出一身冷汗，再刷一次才出现。这 2 秒的时间窗口就是\"延迟\"问题。数据最终到了，但迟到了 2 秒。</p>
+  </div>
+
+  <h3>典型延迟场景</h3>
+
+  <div class="compare">
+    <div>
+      <h4><span class="badge badge-cyan">场景 1</span> 主从延迟</h4>
+      <p>写主库、读从库。从库复制主库的 Binlog 需要时间。如果写主库后立刻读从库，可能读到旧数据。</p>
+      <p><strong>解法：</strong>写后读主库、强制读主库 N 秒、数据库代理层</p>
+    </div>
+    <div>
+      <h4><span class="badge badge-cyan">场景 2</span> 缓存不一致</h4>
+      <p>先更新 DB 再删除缓存（Cache-Aside 模式）。在删除缓存到下次写缓存的间隙，可能有旧数据被读走。</p>
+      <p><strong>解法：</strong>延时双删、Read-Through + TTL</p>
+    </div>
+  </div>
+
+  <h3>SVG：缓存不一致时间窗口</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="dl1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#39c5cf"/></marker>
+        <marker id="dl2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#f85149"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="280" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <!-- Writer -->
+      <rect x="40" y="40" width="140" height="50" rx="8" fill="rgba(63,185,80,0.1)" stroke="#3fb950"/>
+      <text x="110" y="66" text-anchor="middle" fill="#3fb950" font-size="12" font-family="sans-serif" font-weight="600">✍️ Write</text>
+
+      <!-- Reader -->
+      <rect x="640" y="40" width="140" height="50" rx="8" fill="rgba(88,166,255,0.1)" stroke="#58a6ff"/>
+      <text x="710" y="66" text-anchor="middle" fill="#58a6ff" font-size="12" font-family="sans-serif" font-weight="600">👀 Read</text>
+
+      <!-- DB -->
+      <rect x="140" y="130" width="140" height="50" rx="8" fill="rgba(88,166,255,0.1)" stroke="#58a6ff"/>
+      <text x="210" y="156" text-anchor="middle" fill="#58a6ff" font-size="12" font-family="sans-serif" font-weight="600">🗄️ DB (已更新)</text>
+
+      <!-- Cache -->
+      <rect x="360" y="130" width="140" height="50" rx="8" fill="rgba(210,153,34,0.1)" stroke="#d29922"/>
+      <text x="430" y="156" text-anchor="middle" fill="#d29922" font-size="12" font-family="sans-serif" font-weight="600">⚡ Cache (旧值)</text>
+
+      <!-- Slave -->
+      <rect x="560" y="130" width="140" height="50" rx="8" fill="rgba(163,113,247,0.1)" stroke="#a371f7"/>
+      <text x="630" y="156" text-anchor="middle" fill="#a371f7" font-size="12" font-family="sans-serif" font-weight="600">🗄️ Slave (旧值)</text>
+
+      <!-- Writer flow -->
+      <path d="M180,90 L180,125" stroke="#3fb950" stroke-width="1.5" marker-end="url(#dl1)"/>
+      <text x="200" y="105" fill="#8b949e" font-size="10" font-family="sans-serif">① 写 DB 成功</text>
+
+      <!-- Cache delete -->
+      <path d="M210,155 L350,155" stroke="#d29922" stroke-width="1.5" marker-end="url(#dl1)"/>
+      <text x="280" y="148" fill="#8b949e" font-size="9" font-family="sans-serif">② 删缓存</text>
+
+      <!-- Replication delay -->
+      <path d="M285,155 L550,155" stroke="#f85149" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#dl2)"/>
+      <text x="420" y="120" fill="#f85149" font-size="10" font-family="sans-serif">⚠️ 复制延迟（几毫秒~几秒）</text>
+
+      <!-- Reader flow -->
+      <path d="M710,90 L710,105 L630,105 L630,125" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#dl1)"/>
+      <text x="670" y="100" fill="#f85149" font-size="10" font-family="sans-serif">③ 读到了旧值！</text>
+
+      <text x="410" y="270" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">💡 延迟问题无法彻底消除，只能缩小影响范围或从业务层规避</text>
+    </svg>
+    <div class="diagram-caption">图 5 · 缓存 + 主从延迟时间窗口：写 DB 成功 → 读请求落到旧 Cache 或延迟的从库上，读到旧数据</div>
+  </div>
+
+  <h3>延迟容忍与业务取舍</h3>
+  <p>延迟是"最终一致性"的代价。没有系统能做到强一致性 + 高可用 + 低延迟同时最优（CAP 定理）。关键在于：</p>
+  <ul>
+    <li><strong>业务容忍度：</strong>展示型数据（排行榜、推荐）允许秒级延迟；交易型数据（余额、库存）尽可能强一致</li>
+    <li><strong>Read-After-Write：</strong>用户刚写的内容自己读 → 强制读主库</li>
+    <li><strong>单调读：</strong>如果一个用户读到 v2，后续绝不能再读到 v1</li>
+  </ul>
+</section>
+
+<!-- ═══════ 5. 选择矩阵 ═══════ -->
+<section id="matrix" class="section">
+  <h2>🎯 选择矩阵 — 面对四种问题，该怎么选？</h2>
+
+  <p>实际系统中，四种问题可能同时存在。你不可能用一套方案解决所有问题——<strong>需要根据业务场景做取舍</strong>。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="dx1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#64748b"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="280" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <!-- Axis -->
+      <text x="400" y="38" text-anchor="middle" fill="#8b949e" font-size="11" font-family="sans-serif">对延迟的敏感度 →</text>
+      <text x="40" y="160" fill="#8b949e" font-size="11" font-family="sans-serif" transform="rotate(-90,40,160)">对准确度的要求 →</text>
+
+      <!-- Q1: 错+重 敏感 -->
+      <rect x="60" y="55" width="210" height="75" rx="8" fill="rgba(248,81,73,0.08)" stroke="#f85149"/>
+      <text x="165" y="80" text-anchor="middle" fill="#f85149" font-size="13" font-family="sans-serif" font-weight="600">❌📋 错+重 敏感</text>
+      <text x="165" y="98" text-anchor="middle" fill="#c9d1d9" font-size="11" font-family="sans-serif">余额扣减 · 库存扣减</text>
+      <text x="165" y="114" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">解法：乐观锁 + 幂等表</text>
+
+      <!-- Q2: 漏+迟 敏感 -->
+      <rect x="310" y="55" width="210" height="75" rx="8" fill="rgba(57,197,207,0.08)" stroke="#39c5cf"/>
+      <text x="415" y="80" text-anchor="middle" fill="#39c5cf" font-size="13" font-family="sans-serif" font-weight="600">🕳️⏳ 漏+迟 敏感</text>
+      <text x="415" y="98" text-anchor="middle" fill="#c9d1d9" font-size="11" font-family="sans-serif">消息通知 · 缓存更新</text>
+      <text x="415" y="114" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">解法：重试 + 最终一致</text>
+
+      <!-- Q3: 全部敏感 -->
+      <rect x="60" y="148" width="210" height="75" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a371f7"/>
+      <text x="165" y="173" text-anchor="middle" fill="#a371f7" font-size="13" font-family="sans-serif" font-weight="600">🔥 全部敏感</text>
+      <text x="165" y="191" text-anchor="middle" fill="#c9d1d9" font-size="11" font-family="sans-serif">支付 · 转账 · 电子合同</text>
+      <text x="165" y="207" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">解法：分布式事务 + 对比</text>
+
+      <!-- Q4: 都不敏感 -->
+      <rect x="310" y="148" width="210" height="75" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950"/>
+      <text x="415" y="173" text-anchor="middle" fill="#3fb950" font-size="13" font-family="sans-serif" font-weight="600">✅ 都不敏感</text>
+      <text x="415" y="191" text-anchor="middle" fill="#c9d1d9" font-size="11" font-family="sans-serif">日志 · 统计 · 推荐</text>
+      <text x="415" y="207" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">解法：最终一致性 + 补偿</text>
+    </svg>
+    <div class="diagram-caption">图 6 · 选择矩阵：根据业务对准确度和延迟的容忍度选择不同的防御方案</div>
+  </div>
+
+  <h3>四种问题的优先防御策略</h3>
+  <table>
+    <tr><th>问题</th><th>防御成本</th><th>检测难度</th><th>修复难度</th><th>优先防御场景</th></tr>
+    <tr><td>❌ 错</td><td>中（版本号）</td><td>中</td><td>高（需要回滚）</td><td>金融、库存、账户</td></tr>
+    <tr><td>🕳️ 漏</td><td>低（重试）</td><td>低</td><td>中（补偿）</td><td>消息、事务、通知</td></tr>
+    <tr><td>📋 重</td><td>低（去重）</td><td>低</td><td>高（需要撤销）</td><td>支付、下单、发券</td></tr>
+    <tr><td>⏳ 迟</td><td>高（强制读主）</td><td>高</td><td>低（等待即可）</td><td>读后写、用户资料</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 6. Go 代码 ═══════ -->
+<section id="go-code" class="section">
+  <h2>💻 Go 代码实现</h2>
+  <p>四段核心代码，分别解决错/漏/重/迟四种问题。</p>
+
+  <h3>1️⃣ 乐观锁 — 防"错"</h3>
+  <p>带版本号的 CAS 更新，解决并发写覆盖：</p>
+  <pre><code><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"database/sql"</span>
+    <span class="str">"fmt"</span>
+)
+
+<span class="cm">// OptimisticUpdate 带版本号的乐观锁更新</span>
+<span class="cm">// 如果版本号不匹配，返回 ErrConflict 让调用方重试</span>
+<span class="kw">func</span> OptimisticUpdate(db <span class="tp">*sql.DB</span>, userID <span class="tp">int</span>, amount <span class="tp">int</span>, version <span class="tp">int</span>) <span class="op">(</span><span class="tp">int</span>, <span class="tp">error</span><span class="op">)</span> {
+    <span class="kw">var</span> currentVersion <span class="tp">int</span>
+    <span class="kw">var</span> balance <span class="tp">int</span>
+
+    tx, <span class="op">_</span> <span class="op">:=</span> db.Begin()
+    <span class="kw">defer</span> tx.Rollback()
+
+    <span class="cm">// 先查询当前值和版本号</span>
+    err <span class="op">:=</span> tx.QueryRow(
+        <span class="str">`SELECT balance, version FROM account WHERE id = $1 FOR UPDATE`</span>,
+        userID,
+    ).Scan(<span class="op">&amp;</span>balance, <span class="op">&amp;</span>currentVersion)
+
+    <span class="kw">if</span> err <span class="op">!=</span> <span class="lit">nil</span> {
+        <span class="kw">return</span> <span class="num">0</span>, fmt.Errorf(<span class="str">"query: %w"</span>, err)
+    }
+
+    <span class="cm">// 检查版本号是否匹配</span>
+    <span class="kw">if</span> currentVersion <span class="op">!=</span> version {
+        <span class="kw">return</span> <span class="num">0</span>, fmt.Errorf(<span class="str">"版本冲突: 当前=%d, 期望=%d"</span>, currentVersion, version)
+    }
+
+    <span class="cm">// 执行更新，同时自增版本号</span>
+    newBalance <span class="op">:=</span> balance <span class="op">+</span> amount
+    res, <span class="op">_</span> <span class="op">:=</span> tx.Exec(
+        <span class="str">`UPDATE account SET balance = $1, version = version + 1 WHERE id = $2 AND version = $3`</span>,
+        newBalance, userID, version,
+    )
+
+    affected, <span class="op">_</span> <span class="op">:=</span> res.RowsAffected()
+    <span class="kw">if</span> affected <span class="op">==</span> <span class="num">0</span> {
+        <span class="kw">return</span> <span class="num">0</span>, fmt.Errorf(<span class="str">"乐观锁冲突: 数据已被他人修改"</span>)
+    }
+
+    tx.Commit()
+    <span class="kw">return</span> newBalance, <span class="lit">nil</span>
+}</code></pre>
+
+  <h3>2️⃣ 幂等中间件 — 防"重"</h3>
+  <pre><code><span class="kw">package</span> idempotent
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"sync"</span>
+    <span class="str">"time"</span>
+
+    <span class="str">"github.com/redis/go-redis/v9"</span>
+)
+
+<span class="cm">// IdempotentMiddleware 幂等中间件</span>
+<span class="cm">// 利用 Redis SET NX 实现请求去重</span>
+<span class="kw">type</span> IdempotentMiddleware <span class="kw">struct</span> {
+    rdb     <span class="op">*</span>redis.Client
+    mu      <span class="op">*</span>sync.Mutex
+    ttl     time.Duration <span class="cm">// 幂等key有效期</span>
+}
+
+<span class="kw">func</span> New(rdb <span class="op">*</span>redis.Client, ttl time.Duration) <span class="op">*</span>IdempotentMiddleware {
+    <span class="kw">return</span> <span class="op">&amp;</span>IdempotentMiddleware{rdb: rdb, mu: <span class="op">&amp;</span>sync.Mutex{}, ttl: ttl}
+}
+
+<span class="cm">// TryAcquire 尝试获取幂等锁</span>
+<span class="cm">// bizKey: 业务唯一键（如 order_12345）</span>
+<span class="cm">// 返回 true 表示第一次处理，false 表示重复请求</span>
+<span class="kw">func</span> (m <span class="op">*</span>IdempotentMiddleware) TryAcquire(ctx context.Context, bizKey <span class="tp">string</span>) (<span class="tp">bool</span>, <span class="tp">error</span>) {
+    <span class="cm">// 本地互斥锁防止并发问题</span>
+    m.mu.Lock()
+    <span class="kw">defer</span> m.mu.Unlock()
+
+    ok, err <span class="op">:=</span> m.rdb.SetNX(ctx, <span class="str">"idem:"</span><span class="op">+</span>bizKey, <span class="str">"1"</span>, m.ttl).Result()
+    <span class="kw">if</span> err <span class="op">!=</span> <span class="lit">nil</span> {
+        <span class="kw">return</span> <span class="lit">false</span>, fmt.Errorf(<span class="str">"redis: %w"</span>, err)
+    }
+    <span class="kw">return</span> ok, <span class="lit">nil</span>
+}
+
+<span class="cm">// WithIdempotent 幂等包装器：接收一个处理函数，防止重复执行</span>
+<span class="kw">func</span> (m <span class="op">*</span>IdempotentMiddleware) WithIdempotent(
+    ctx context.Context,
+    bizKey <span class="tp">string</span>,
+    fn <span class="kw">func</span>() <span class="tp">error</span>,
+) <span class="tp">error</span> {
+    acquired, err <span class="op">:=</span> m.TryAcquire(ctx, bizKey)
+    <span class="kw">if</span> err <span class="op">!=</span> <span class="lit">nil</span> {
+        <span class="kw">return</span> err
+    }
+    <span class="kw">if</span> <span class="op">!</span>acquired {
+        <span class="kw">return</span> fmt.Errorf(<span class="str">"重复请求: %s 已处理"</span>, bizKey)
+    }
+    <span class="kw">return</span> fn()
+}</code></pre>
+
+  <h3>3️⃣ Saga 协调器 — 防"漏"</h3>
+  <pre><code><span class="kw">package</span> saga
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"log"</span>
+)
+
+<span class="cm">// Step 定义一个 Saga 步骤</span>
+<span class="kw">type</span> Step <span class="kw">struct</span> {
+    Name    <span class="tp">string</span>
+    Action  <span class="kw">func</span>(context.Context) <span class="tp">error</span>  <span class="cm">// 正向操作</span>
+    Compensate <span class="kw">func</span>(context.Context) <span class="tp">error</span> <span class="cm">// 补偿操作</span>
+}
+
+<span class="cm">// SagaOrchestrator Saga 编排协调器</span>
+<span class="kw">type</span> SagaOrchestrator <span class="kw">struct</span> {
+    steps []Step
+}
+
+<span class="kw">func</span> NewSaga(steps []Step) <span class="op">*</span>SagaOrchestrator {
+    <span class="kw">return</span> <span class="op">&amp;</span>SagaOrchestrator{steps: steps}
+}
+
+<span class="cm">// Execute 按顺序执行 Saga，失败时反向补偿</span>
+<span class="kw">func</span> (s <span class="op">*</span>SagaOrchestrator) Execute(ctx context.Context) <span class="tp">error</span> {
+    executed <span class="op">:=</span> <span class="kw">make</span>([]<span class="tp">int</span>, <span class="num">0</span>, len(s.steps))
+
+    <span class="kw">for</span> i, step <span class="op">:=</span> <span class="kw">range</span> s.steps {
+        <span class="kw">if</span> err <span class="op">:=</span> step.Action(ctx); err <span class="op">!=</span> <span class="lit">nil</span> {
+            log.Printf(<span class="str">"[Saga] 步骤 %s 失败: %v，开始补偿"</span>, step.Name, err)
+
+            <span class="cm">// 反向补偿已执行的步骤</span>
+            <span class="kw">for</span> j <span class="op">:=</span> len(executed) <span class="op">-</span> <span class="num">1</span>; j <span class="op">&gt;=</span> <span class="num">0</span>; j<span class="op">--</span> {
+                idx <span class="op">:=</span> executed[j]
+                <span class="kw">if</span> compErr <span class="op">:=</span> s.steps[idx].Compensate(ctx); compErr <span class="op">!=</span> <span class="lit">nil</span> {
+                    log.Printf(<span class="str">"[Saga] 补偿步骤 %s 失败: %v"</span>,
+                        s.steps[idx].Name, compErr)
+                }
+            }
+            <span class="kw">return</span> fmt.Errorf(<span class="str">"saga 失败于步骤 %s: %w"</span>, step.Name, err)
+        }
+        executed <span class="op">=</span> append(executed, i)
+        log.Printf(<span class="str">"[Saga] 步骤 %s 成功"</span>, step.Name)
+    }
+    <span class="kw">return</span> <span class="lit">nil</span>
+}
+
+<span class="cm">// 使用示例：创建订单 Saga</span>
+<span class="kw">func</span> Example() {
+    steps <span class="op">:=</span> []Step{
+        {
+            Name: <span class="str">"扣减库存"</span>,
+            Action: <span class="kw">func</span>(ctx context.Context) <span class="tp">error</span> {
+                <span class="kw">return</span> deductInventory(ctx, <span class="str">"sku_001"</span>, <span class="num">1</span>)
+            },
+            Compensate: <span class="kw">func</span>(ctx context.Context) <span class="tp">error</span> {
+                <span class="kw">return</span> restoreInventory(ctx, <span class="str">"sku_001"</span>, <span class="num">1</span>)
+            },
+        },
+        {
+            Name: <span class="str">"扣减余额"</span>,
+            Action: <span class="kw">func</span>(ctx context.Context) <span class="tp">error</span> {
+                <span class="kw">return</span> deductBalance(ctx, <span class="str">"user_001"</span>, <span class="num">99.00</span>)
+            },
+            Compensate: <span class="kw">func</span>(ctx context.Context) <span class="tp">error</span> {
+                <span class="kw">return</span> restoreBalance(ctx, <span class="str">"user_001"</span>, <span class="num">99.00</span>)
+            },
+        },
+        {
+            Name: <span class="str">"创建订单"</span>,
+            Action: <span class="kw">func</span>(ctx context.Context) <span class="tp">error</span> {
+                <span class="kw">return</span> createOrder(ctx, <span class="str">"order_001"</span>)
+            },
+            Compensate: <span class="kw">func</span>(ctx context.Context) <span class="tp">error</span> {
+                <span class="kw">return</span> cancelOrder(ctx, <span class="str">"order_001"</span>)
+            },
+        },
+    }
+
+    saga <span class="op">:=</span> NewSaga(steps)
+    <span class="kw">if</span> err <span class="op">:=</span> saga.Execute(context.Background()); err <span class="op">!=</span> <span class="lit">nil</span> {
+        log.Printf(<span class="str">"订单创建失败: %v"</span>, err)
+    }
+}</code></pre>
+
+  <h3>4️⃣ 版本向量 — 防"迟"</h3>
+  <p>用于检测数据是否过期——即使系统有延迟，也能拒绝使用旧数据：</p>
+  <pre><code><span class="kw">package</span> versionvec
+
+<span class="kw">import</span> (
+    <span class="str">"fmt"</span>
+    <span class="str">"sync"</span>
+    <span class="str">"sync/atomic"</span>
+)
+
+<span class="cm">// VersionedValue 带版本号的值，解决最终一致性的过期读问题</span>
+<span class="kw">type</span> VersionedValue[T <span class="kw">any</span>] <span class="kw">struct</span> {
+    Value   T
+    Version <span class="tp">int64</span>
+}
+
+<span class="cm">// ConsistentCache 带版本检测的一致性缓存</span>
+<span class="kw">type</span> ConsistentCache[T <span class="kw">any</span>] <span class="kw">struct</span> {
+    mu        sync.RWMutex
+    cache     <span class="kw">map</span>[<span class="tp">string</span>]<span class="op">*</span>VersionedValue[T]
+    versioner <span class="op">*</span>atomic.Int64
+}
+
+<span class="kw">func</span> NewConsistentCache[T <span class="kw">any</span>]() <span class="op">*</span>ConsistentCache[T] {
+    <span class="kw">return</span> <span class="op">&amp;</span>ConsistentCache[T]{
+        cache:     <span class="kw">make</span>(<span class="kw">map</span>[<span class="tp">string</span>]<span class="op">*</span>VersionedValue[T]),
+        versioner: <span class="op">&amp;</span>atomic.Int64{},
+    }
+}
+
+<span class="cm">// GetWithVersion 读取缓存，同时返回版本号</span>
+<span class="cm">// 调用方可以根据版本号决定是否信任该值</span>
+<span class="kw">func</span> (c <span class="op">*</span>ConsistentCache[T]) GetWithVersion(key <span class="tp">string</span>) (<span class="tp">T</span>, <span class="tp">int64</span>, <span class="tp">bool</span>) {
+    c.mu.RLock()
+    <span class="kw">defer</span> c.mu.RUnlock()
+    vv, ok <span class="op">:=</span> c.cache[key]
+    <span class="kw">if</span> <span class="op">!</span>ok {
+        <span class="kw">var</span> zero T
+        <span class="kw">return</span> zero, <span class="num">0</span>, <span class="lit">false</span>
+    }
+    <span class="kw">return</span> vv.Value, vv.Version, <span class="lit">true</span>
+}
+
+<span class="cm">// PutIfNewer 仅当新版本号大于当前版本号时才写入（防旧覆盖新）</span>
+<span class="cm">// 返回值：是否成功写入</span>
+<span class="kw">func</span> (c <span class="op">*</span>ConsistentCache[T]) PutIfNewer(key <span class="tp">string</span>, val T) <span class="tp">bool</span> {
+    newVer <span class="op">:=</span> c.versioner.Add(<span class="num">1</span>)
+
+    c.mu.Lock()
+    <span class="kw">defer</span> c.mu.Unlock()
+
+    existing, exists <span class="op">:=</span> c.cache[key]
+    <span class="kw">if</span> exists <span class="op">&amp;&amp;</span> existing.Version <span class="op">&gt;=</span> newVer {
+        <span class="cm">// 已经有更新的版本，拒绝写入</span>
+        <span class="kw">return</span> <span class="lit">false</span>
+    }
+    c.cache[key] <span class="op">=</span> <span class="op">&amp;</span>VersionedValue[T]{Value: val, Version: newVer}
+    <span class="kw">return</span> <span class="lit">true</span>
+}
+
+<span class="cm">// CompareWithDB 对比缓存版本与数据库版本</span>
+<span class="cm">// 如果缓存版本旧，返回 true 表示需要刷新</span>
+<span class="kw">func</span> (c <span class="op">*</span>ConsistentCache[T]) CompareWithDB(
+    key <span class="tp">string</span>, dbVersion <span class="tp">int64</span>,
+) <span class="tp">bool</span> {
+    _, ver, ok <span class="op">:=</span> c.GetWithVersion(key)
+    <span class="kw">if</span> <span class="op">!</span>ok {
+        <span class="kw">return</span> <span class="lit">true</span> <span class="cm">// 缓存缺失，需要刷新</span>
+    }
+    <span class="kw">return</span> ver <span class="op">&lt;</span> dbVersion <span class="cm">// 缓存版本号小于数据库版本号</span>
+}
+
+<span class="kw">func</span> Example() {
+    cache <span class="op">:=</span> NewConsistentCache[<span class="tp">string</span>]()
+
+    <span class="cm">// 写数据时带上时间戳/版本号</span>
+    cache.PutIfNewer(<span class="str">"user:100"</span>, <span class="str">`{"name":"张三","balance":100}`</span>)
+
+    <span class="cm">// 读数据时检查版本</span>
+    val, ver, ok <span class="op">:=</span> cache.GetWithVersion(<span class="str">"user:100"</span>)
+    <span class="kw">if</span> ok {
+        fmt.Printf(<span class="str">"版本 %d: %s\n"</span>, ver, val)
+    }
+}</code></pre>
+</section>
+
+<!-- ═══════ 7. 订单系统实战 ═══════ -->
+<section id="order-case" class="section">
+  <h2>📦 订单系统实战 — 四种问题一网打尽</h2>
+
+  <p>一个订单从创建到支付完成的完整流程，几乎囊括了所有四种一致性问题。下面是一个真实订单系统如何层层防御的架构：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 420" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="dz1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#64748b"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="400" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <text x="410" y="35" text-anchor="middle" fill="#e6edf3" font-size="15" font-family="sans-serif" font-weight="700">📦 订单系统一致性防御架构</text>
+
+      <!-- Step 1: 创建订单 -->
+      <rect x="40" y="55" width="230" height="55" rx="8" fill="rgba(88,166,255,0.08)" stroke="#58a6ff"/>
+      <text x="155" y="78" text-anchor="middle" fill="#58a6ff" font-size="12" font-family="sans-serif" font-weight="600">① 创建订单</text>
+      <text x="155" y="96" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">幂等表：biz_id UNIQUE KEY</text>
+
+      <rect x="310" y="55" width="200" height="55" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950"/>
+      <text x="410" y="78" text-anchor="middle" fill="#3fb950" font-size="12" font-family="sans-serif" font-weight="600">② 扣库存</text>
+      <text x="410" y="96" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">乐观锁：version+1</text>
+
+      <rect x="550" y="55" width="220" height="55" rx="8" fill="rgba(210,153,34,0.08)" stroke="#d29922"/>
+      <text x="660" y="78" text-anchor="middle" fill="#d29922" font-size="12" font-family="sans-serif" font-weight="600">③ 发送消息</text>
+      <text x="660" y="96" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">本地消息表：防消息丢失</text>
+
+      <path d="M275,82 L300,82" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#dz1)"/>
+      <path d="M515,82 L540,82" stroke="#3fb950" stroke-width="1.5" marker-end="url(#dz1)"/>
+
+      <!-- Step 2: 支付 -->
+      <rect x="40" y="145" width="230" height="55" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a371f7"/>
+      <text x="155" y="168" text-anchor="middle" fill="#a371f7" font-size="12" font-family="sans-serif" font-weight="600">④ 支付回调</text>
+      <text x="155" y="186" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">幂等：payment_id 去重</text>
+
+      <rect x="310" y="145" width="200" height="55" rx="8" fill="rgba(88,166,255,0.08)" stroke="#58a6ff"/>
+      <text x="410" y="168" text-anchor="middle" fill="#58a6ff" font-size="12" font-family="sans-serif" font-weight="600">⑤ 更新订单</text>
+      <text x="410" y="186" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">乐观锁：防并发支付</text>
+
+      <rect x="550" y="145" width="220" height="55" rx="8" fill="rgba(248,81,73,0.08)" stroke="#f85149"/>
+      <text x="660" y="168" text-anchor="middle" fill="#f85149" font-size="12" font-family="sans-serif" font-weight="600">⑥ 发券/通知</text>
+      <text x="660" y="186" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">Saga：失败时补偿</text>
+
+      <path d="M275,172 L300,172" stroke="#a371f7" stroke-width="1.5" marker-end="url(#dz1)"/>
+      <path d="M515,172 L540,172" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#dz1)"/>
+
+      <!-- Defense layers -->
+      <rect x="40" y="235" width="730" height="1" fill="var(--border)"/>
+      <text x="410" y="255" text-anchor="middle" fill="#e6edf3" font-size="13" font-family="sans-serif" font-weight="600">层层防御</text>
+
+      <rect x="40" y="270" width="170" height="55" rx="8" fill="rgba(248,81,73,0.08)" stroke="#f85149" stroke-dasharray="4,3"/>
+      <text x="125" y="294" text-anchor="middle" fill="#f85149" font-size="12" font-family="sans-serif" font-weight="600">❌ 防错层</text>
+      <text x="125" y="312" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">原子 SQL · 乐观锁</text>
+
+      <rect x="230" y="270" width="170" height="55" rx="8" fill="rgba(210,153,34,0.08)" stroke="#d29922" stroke-dasharray="4,3"/>
+      <text x="315" y="294" text-anchor="middle" fill="#d29922" font-size="12" font-family="sans-serif" font-weight="600">🕳️ 防漏层</text>
+      <text x="315" y="312" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">本地消息表 · Saga</text>
+
+      <rect x="420" y="270" width="170" height="55" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a371f7" stroke-dasharray="4,3"/>
+      <text x="505" y="294" text-anchor="middle" fill="#a371f7" font-size="12" font-family="sans-serif" font-weight="600">📋 防重层</text>
+      <text x="505" y="312" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">幂等表 · 唯一键</text>
+
+      <rect x="610" y="270" width="160" height="55" rx="8" fill="rgba(57,197,207,0.08)" stroke="#39c5cf" stroke-dasharray="4,3"/>
+      <text x="690" y="294" text-anchor="middle" fill="#39c5cf" font-size="12" font-family="sans-serif" font-weight="600">⏳ 防迟层</text>
+      <text x="690" y="312" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">强制读主 · 版本</text>
+
+      <text x="410" y="375" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">💡 订单系统是 错+漏+重+迟 全部存在的典型场景，每一层防一种，缺一不可</text>
+    </svg>
+    <div class="diagram-caption">图 7 · 订单系统一致性防御架构：从创建到支付，每层防一种问题</div>
+  </div>
+
+  <h3>各环节对应方案</h3>
+  <table>
+    <tr><th>环节</th><th>可能问题</th><th>防御方案</th><th>代码对应</th></tr>
+    <tr><td>创建订单</td><td>重（用户手抖点两次）</td><td>唯一键约束 + Redis 幂等锁</td><td>幂等中间件</td></tr>
+    <tr><td>扣减库存</td><td>错（并发超卖）</td><td>乐观锁（version 字段）</td><td>OptimisticUpdate</td></tr>
+    <tr><td>发送异步消息</td><td>漏（MQ 丢消息）</td><td>本地消息表 + 定时重试</td><td>本地消息表</td></tr>
+    <tr><td>支付回调</td><td>重（支付网关重复回调）</td><td>payment_id 幂等表</td><td>IdempotentMiddleware</td></tr>
+    <tr><td>更新订单状态</td><td>错（并发状态覆盖）</td><td>乐观锁 + 状态机验证</td><td>OptimisticUpdate</td></tr>
+    <tr><td>发优惠券/通知</td><td>漏（发券失败）</td><td>Saga 补偿（发券失败→退款）</td><td>SagaOrchestrator</td></tr>
+    <tr><td>用户查询订单</td><td>迟（主从延迟看不到最新）</td><td>写后 N 秒强制读主库</td><td>ConsistentCache</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>⚠️ 关键教训</h4>
+    <p>不要试图用一把锤子解决所有钉子：</p>
+    <ul>
+      <li>乐观锁解决"错"，但对高频写场景性能不佳</li>
+      <li>幂等表解决"重"，但需要额外的存储和清理机制</li>
+      <li>Saga 解决"漏"，但要求每个步骤都有可补偿的逆操作</li>
+      <li>版本向量解决"迟"，但增加系统复杂度</li>
+    </ul>
+    <p>最安全的做法是：<strong>在入口做幂等（防重），在修改处做乐观锁（防错），在异步处做重试+补偿（防漏），在读请求处做版本检测（防迟）</strong>。</p>
+  </div>
+</section>
+
+<!-- ═══════ QA ═══════ -->
+<section id="qa" class="section">
+  <h2>💬 实战问答</h2>
+
+  <div class="qa">
+    <div class="q">🤔 Q：我们的系统已经有了幂等，还需要乐观锁吗？</div>
+    <div class="a">这两者是不同层面的防御。幂等防止的是"同一个请求被执行多次"，乐观锁防止的是"多个不同请求并发修改同一条数据"。举一个典型场景：用户 A 和用户 B 同时抢购最后一件商品，这是两个不同的请求（不是重复请求），幂等拦不住，需要乐观锁来防止超卖。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">🤔 Q：Saga 和 2PC 有什么区别？什么时候用哪个？</div>
+    <div class="a">2PC（两阶段提交）是<strong>强一致性</strong>协议——所有参与者要么全提交要么全回滚。Saga 是<strong>最终一致性</strong>方案——每个本地事务先提交，失败时靠补偿操作"撤销"。选择原则：如果业务可以接受短暂的不一致窗口（大多数互联网业务），用 Saga 性能更好；如果必须严格一致（金融对账），用 2PC 或 TCC。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">🤔 Q：MySQL 主从延迟太严重，怎么解决"迟"的问题？</div>
+    <div class="a">有几种分层解法：① <strong>强制路由</strong>：写后 N 秒内的读请求强制路由到主库（在 ORM 层或代理层做）；② <strong>数据库中间件</strong>：如 ProxySQL、ShardingSphere 支持自动将写后读路由到主库；③ <strong>业务降级</strong>：延迟敏感的操作（用户刚修改的资料）走主库，允许延迟的操作（报表查询）走从库；④ <strong>从库延迟监控</strong>：当 seconds_behind_master 超过阈值时自动切主库。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">🤔 Q：本地消息表会不会导致"错"——消息表状态写入了但业务操作没提交？</div>
+    <div class="a">不会，前提是<strong>消息表写入和业务操作在同一个本地事务中</strong>。它们的原子性由数据库保证：要么都提交，要么都回滚。这就是 TCC 中的 Try 阶段的思想——先预留资源，确认业务可执行后才把消息状态改为"可发送"。如果担心事务过大影响性能，可以考虑使用事务性发件箱模式（Transactional Outbox）代替。</div>
+  </div>
+
+  <details class="socratic">
+    <summary>追问：如果消息队列本身挂了，本地消息表还能工作吗？ <span class="socratic-num">#延伸思考</span></summary>
+    <div class="socratic-a">
+      <p>可以。本地消息表的核心思路是：<span class="highlight">先把消息写入业务数据库的同一事务中</span>，MQ 只是一个"发送通道"。</p>
+      <p>当 MQ 挂了：</p>
+      <ul>
+        <li>消息状态停留在 "待发送"</li>
+        <li>后台有一个定时任务定期扫描 "待发送" 的消息重新投递</li>
+        <li>消费者端做好幂等，即使重复投递也不会重复处理</li>
+      </ul>
+      <p>这保证了即使 MQ 出现较长时间的中断，消息也不会丢失——损失的是实时性（"迟"的问题），而不是完整性（"漏"的问题）。这正是分布式系统中的"取舍"：用延迟换安全。</p>
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>追问：如果四种问题必须选一种"放弃"，你选哪个？ <span class="socratic-num">#架构取舍</span></summary>
+    <div class="socratic-a">
+      <p>从业务损伤来看：<span class="highlight">放弃"迟"的代价最小</span>。</p>
+      <p>原因：</p>
+      <ul>
+        <li><strong>❌ 错</strong> — 数据写错需要回滚或对账修复，成本极高。金融场景下错一笔可能导致大额损失。</li>
+        <li><strong>🕳️ 漏</strong> — 消息丢了用户永远收不到通知，订单状态永远不会推进到下一步。</li>
+        <li><strong>📋 重</strong> — 重复扣款/发货涉及赔偿退费，还损坏用户体验。</li>
+        <li><strong>⏳ 迟</strong> — 用户多刷新一次就好了，或者等几秒数据自然一致。几乎不需要人工介入。</li>
+      </ul>
+      <p>所以防御优先级应该是：<strong>错 ≈ 重 ≈ 漏 > 迟</strong>。先保证数据正确、不丢、不重复，再谈响应速度。</p>
+    </div>
+  </details>
+</section>
+
+<!-- ═══════ 口播总结 ═══════ -->
+<section id="summary" class="section">
+  <h2>🎯 口播总结</h2>
+
+  <div class="feynman">
+    <p>今天我们拆了数据一致性的四个"恶魔"；</p>
+    <p><strong>❌ 错</strong> — 数据写错了，拿<strong>乐观锁 + 版本号</strong>防并发覆盖</p>
+    <p><strong>🕳️ 漏</strong> — 数据丢了，拿<strong>Saga + 本地消息表</strong>防部分提交</p>
+    <p><strong>📋 重</strong> — 数据重复了，拿<strong>幂等表 + 唯一键</strong>防重复处理</p>
+    <p><strong>⏳ 迟</strong> — 数据来晚了，拿<strong>版本向量 + 强制读主</strong>防过期读</p>
+    <p><br>记住最重要的一句话：<strong>不要用一把锤子钉所有钉子</strong>。一个完整系统应该层层设防，每层解决一种问题。入口做幂等，修改处做乐观锁，异步处做补偿 + 重试，读处做版本检测。</p>
+    <p style="margin-top:12px;color:var(--muted);font-size:13px">🎧 更多细节见 GitHub：<a href="https://github.com/yakargao/article" style="color:var(--accent)">github.com/yakargao/article</a></p>
+  </div>
+</section>
+
+</main>
+</div>
+</body>
+</html>

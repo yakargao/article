@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏃 贪心 · LeetCode 解法模式 · 费曼学习法</title>
+<style>  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 40px 20px 80px; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .back { color: var(--muted); font-size: 13px; text-decoration: none; display: inline-block; margin-bottom: 24px; }
+  .back:hover { color: var(--accent); }
+  h1 { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 32px; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; overflow-x: auto; margin: 10px 0; font-size: 12px; line-height: 1.5; }
+  pre code { background: none; color: var(--text); padding: 0; }
+
+  .desc-box { background: linear-gradient(135deg,rgba(88,166,255,0.06),rgba(163,113,247,0.04)); border:1px solid rgba(88,166,255,0.2); border-radius:12px; padding:20px 24px; margin-bottom:32px; position:relative; }
+  .desc-box::before { content:'💡 核心思想'; position:absolute; top:-11px; left:20px; background:var(--bg); padding:2px 12px; border-radius:10px; font-size:12px; font-weight:600; color:var(--accent); }
+  .desc-box .tip { color:var(--green); font-size:13px; margin-top:8px; }
+
+  .diagram { background:#0a0c13; border:1px solid var(--border); border-radius:12px; padding:12px; margin:24px 0; text-align:center; overflow-x:auto; }
+  .diagram-caption { font-size:12px; color:var(--muted); margin-top:8px; }
+
+  .prob-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; margin-top:24px; }
+  .prob-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 18px; cursor:pointer; transition:all .15s; position:relative; }
+  .prob-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .prob-id { font-size:11px; color:var(--muted); font-weight:600; }
+  .prob-title { font-size:15px; font-weight:600; color:#fff; margin:4px 0 8px; }
+  .prob-idea { font-size:12px; color:var(--muted); line-height:1.6; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .prob-meta { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .prob-diff { font-size:10px; padding:2px 8px; border-radius:8px; font-weight:600; }
+  .diff-Easy { background:rgba(63,185,80,0.12); color:var(--green); }
+  .diff-Medium { background:rgba(210,153,34,0.12); color:var(--orange); }
+  .diff-Hard { background:rgba(248,81,73,0.12); color:var(--red); }
+  .card-tag { font-size:10px; padding:2px 7px; border-radius:8px; font-weight:600; background:rgba(163,113,247,0.10); color:var(--purple); }
+
+  /* Modal */
+  .modal { display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.7); align-items:center; justify-content:center; }
+  .modal.active { display:flex; }
+  .modal-content { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:28px 32px; max-width:700px; width:92%; max-height:85vh; overflow-y:auto; }
+  .modal-close { float:right; background:none; border:none; color:var(--muted); font-size:22px; cursor:pointer; }
+  .modal h3 { font-size:20px; color:#fff; margin-bottom:12px; }
+  .modal h4 { font-size:14px; color:var(--accent); margin:16px 0 8px; }
+  .idea-box { background:rgba(88,166,255,0.06); border-left:3px solid var(--accent); padding:10px 14px; border-radius:0 8px 8px 0; margin:10px 0; font-size:13px; }
+  .key { color:var(--green); font-weight:600; }
+  .code-toggle { background:var(--card); border:1px solid var(--border); color:var(--accent); padding:6px 14px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; margin:8px 0; }
+  .code-block { display:none; }
+  .code-block.show { display:block; }
+  @media (max-width:768px) { body{padding:20px 12px 80px;} .prob-grid{grid-template-columns:1fr;} .modal-content{padding:18px;} }</style>
+</head>
+<body>
+<div class="container">
+<a href="/leetcode-patterns.html" class="back">← 所有模式</a>
+<h1>🏃 贪心</h1>
+<p class="subtitle">8 道题 · LeetCode Top 100 解法模式</p>
+<div class="desc-box">
+<p>每一步都选当前最优，期望全局最优。跳跃游戏、买股票、任务调度。贪心不是万能的——关键要证明"局部最优 = 全局最优"。</p>
+<p class="tip">💡 核心技巧：先排序再贪心是常见套路</p>
+</div>
+<div class="diagram">
+<svg viewBox="0 0 700 150" style="max-width:700px;width:100%"><rect x="20" y="60" width="80" height="40" rx="8" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="1.5"/><text x="60" y="85" text-anchor="middle" fill="#22d3ee" font-size="10" font-weight="600">步骤 1</text><line x1="100" y1="80" x2="150" y2="80" stroke="#475569" stroke-width="1.5" marker-end="url(#ag)"/><rect x="155" y="60" width="80" height="40" rx="8" fill="rgba(163,113,247,0.12)" stroke="#a78bfa" stroke-width="1.5"/><text x="195" y="85" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="600">步骤 2</text><line x1="235" y1="80" x2="285" y2="80" stroke="#475569" stroke-width="1.5" marker-end="url(#ag)"/><rect x="290" y="60" width="80" height="40" rx="8" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.5"/><text x="330" y="85" text-anchor="middle" fill="#3fb950" font-size="10" font-weight="600">步骤 N</text><defs><marker id="ag" markerWidth="6" markerHeight="4" refX="6" refY="2"><path d="M0,0 L6,2 L0,4 Z" fill="#475569"/></marker></defs><text x="200" y="35" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">每一步贪心选择当前最优</text><text x="200" y="130" text-anchor="middle" fill="#64748b" font-size="10">核心：证明局部最优 → 全局最优 | 常见：先排序再贪心</text></svg>
+<div class="diagram-caption">贪心 模式图解</div>
+</div>
+<h3 style="margin-top:32px">📝 题目列表（8 题）</h3>
+<div class="prob-grid">
+<div class="prob-card" onclick="showProblem(121)">
+<div class="prob-id">#121 <span class="prob-diff diff-Easy">Easy</span></div>
+<div class="prob-title">Best Time to Buy and Sell Stock</div>
+<div class="prob-idea">维护历史最低价，每天利润=price-minPrice。</div>
+<div class="prob-meta"><span class="card-tag">贪心</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(11)">
+<div class="prob-id">#11 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Container With Most Water</div>
+<div class="prob-idea">对撞指针。每次移动较短的那根。</div>
+<div class="prob-meta"><span class="card-tag">双指针</span><span class="card-tag">贪心</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(45)">
+<div class="prob-id">#45 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Jump Game II</div>
+<div class="prob-idea">维护当前步边界curEnd和下一步最远maxReach。走到边界时步数+1。</div>
+<div class="prob-meta"><span class="card-tag">贪心</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(55)">
+<div class="prob-id">#55 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Jump Game</div>
+<div class="prob-idea">维护最远能跳到的位置maxReach。i≤maxReach时更新。</div>
+<div class="prob-meta"><span class="card-tag">贪心</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(122)">
+<div class="prob-id">#122 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Best Time II</div>
+<div class="prob-idea">只要明天>今天就买。累加所有上升段。</div>
+<div class="prob-meta"><span class="card-tag">贪心</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(406)">
+<div class="prob-id">#406 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Queue Reconstruction by Height</div>
+<div class="prob-idea">按身高降序k升序排列。逐个插入到第k个位置。</div>
+<div class="prob-meta"><span class="card-tag">贪心</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(621)">
+<div class="prob-id">#621 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Task Scheduler</div>
+<div class="prob-idea">最高频maxFreq，maxCount个同频率。max(总数,(maxFreq-1)*(n+1)+maxCount)。</div>
+<div class="prob-meta"><span class="card-tag">贪心</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(763)">
+<div class="prob-id">#763 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Partition Labels</div>
+<div class="prob-idea">记录每个字母最后位置。遍历更新end，i走到end时切一片。</div>
+<div class="prob-meta"><span class="card-tag">贪心</span></div>
+</div>
+</div>
+</div>
+
+<div class="modal" id="modal"><div class="modal-content"><button class="modal-close" onclick="closeModal()">✕</button><div id="modalBody"></div></div></div>
+
+<script src="/leetcode-data.js"></script>
+<script>
+let currentId=null;
+function showProblem(id){currentId=id;const p=PROBLEMS[id];if(!p)return;
+let h='<h3>#'+p.id+' '+p.title+' <span class="prob-diff diff-'+p.diff+'" style="display:inline-block;vertical-align:middle">'+p.diff+'</span></h3>';
+h+='<p style="color:var(--text);line-height:1.9">'+p.desc+'</p>';
+h+='<h4>输入</h4><pre><code>'+p.inp+'</code></pre><h4>输出</h4><pre><code>'+p.out+'</code></pre>';
+h+='<div class="idea-box"><span class="key">💡 解题思路：</span>'+p.idea+'</div>';
+if(p.code){h+='<button class="code-toggle" onclick="this.nextElementSibling.classList.toggle('show')">查看代码</button>';
+h+='<div class="code-block"><pre><code>'+p.code.replace(/</g,'&lt;')+'</code></pre></div>';}
+if(p.tags){h+='<div class="modal-tags" style="margin-top:12px">';p.tags.forEach(t=>{h+='<span class="card-tag">'+t+'</span>';});h+='</div>';}
+document.getElementById('modalBody').innerHTML=h;document.getElementById('modal').classList.add('active');document.body.style.overflow='hidden';}
+function closeModal(){document.getElementById('modal').classList.remove('active');document.body.style.overflow='';currentId=null;}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&currentId)closeModal();});
+</script>
+</body>
+</html>

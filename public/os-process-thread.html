@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>操作系统第1篇：进程、线程与协程 · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  .handwrite { font-family: 'Ma Shan Zheng', cursive; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 14px 0; }
+  .qa-item h4 { margin: 0 0 6px; color: var(--orange); font-size: 14px; }
+  .qa-item p { margin: 4px 0; }
+  .summary-box { background: linear-gradient(135deg, rgba(57,197,207,0.06), rgba(88,166,255,0.06)); border: 1px solid rgba(57,197,207,0.25); border-radius: 12px; padding: 24px 28px; margin: 24px 0; position: relative; }
+  .summary-box::before { content: '🎤 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .summary-box p { margin: 8px 0; }
+  .highlight-box { background: rgba(248,81,73,0.04); border-left: 3px solid var(--red); padding: 12px 16px; margin: 14px 0; border-radius: 0 8px 8px 0; font-size: 13px; }
+  .highlight-box strong { color: var(--red); }
+    .compare { grid-template-columns: 1fr; } }
+
+    /* ── Mobile Responsive ── */
+    
+      .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+      .main { margin-left: 0; padding: 16px 14px; }
+      .sidebar { display: none; }
+      
+      .section h2 { font-size: 20px; }
+      .section h3 { font-size: 17px; }
+      pre { font-size: 12px; padding: 12px 14px; }
+      table { font-size: 12px; }
+      th, td { padding: 7px 10px; }
+      .diagram svg { border-radius: 8px; }
+      .qa .q { font-size: 13px; padding: 10px 14px; }
+      .qa .a { font-size: 12px; padding: 12px 14px; }
+    }
+  
+  /* SVG Responsive Protection — prevent overlap on narrow screens */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 480px; }
+  }
+  @media (max-width: 480px) {
+      .section h2 { font-size: 18px; }
+      body { font-size: 14px; }
+      pre { font-size: 11px; padding: 10px 12px; }
+    }
+
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">进程基础</div>
+  <a class="nav-item" href="#process">⚙️ 进程 (Process)</a>
+  <a class="nav-item" href="#thread">🧵 线程 (Thread)</a>
+  <a class="nav-item" href="#coroutine">🪶 协程 (Coroutine)</a>
+  <div class="nav-section">核心机制</div>
+  <a class="nav-item" href="#user-vs-kernel">🔄 用户态 vs 内核态</a>
+  <a class="nav-item" href="#scheduler">📊 Linux 调度 (CFS)</a>
+  <div class="nav-section">总结</div>
+  <a class="nav-item" href="#qa">❓ QA 真题</a>
+  <a class="nav-item" href="#summary">🎤 口播总结</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>📋 进程、线程与协程：操作系统并发三剑客</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>进程是<span class="handwrite" style="color:var(--accent);font-size:16px;">资源分配的最小单位</span>，线程是<span class="handwrite" style="color:var(--green);font-size:16px;">CPU调度的最小单位</span>，协程是<span class="handwrite" style="color:var(--purple);font-size:16px;">用户态轻量级线程</span>。三者的本质区别在于：<strong>隔离粒度、切换成本、调度归属</strong>。</p>
+  </div>
+  <div class="feynman">
+    <p><span class="analogy">🏢 大楼类比：</span>进程是<span class="handwrite" style="color:var(--accent);">整栋楼</span>（独立地址空间，有自己的围墙和门禁），线程是<span class="handwrite" style="color:var(--green);">楼里的房间</span>（共享水电气，但各自有独立工位），协程是<span class="handwrite" style="color:var(--purple);">房间里的办公桌</span>（更细粒度，切换时连门都不用出）。</p>
+  </div>
+
+  <h3>三者的核心区别</h3>
+  <table>
+    <tr><th>维度</th><th><span class="handwrite">进程 (Process)</span></th><th><span class="handwrite">线程 (Thread)</span></th><th><span class="handwrite">协程 (Coroutine)</span></th></tr>
+    <tr><td><strong>地址空间</strong></td><td>独立（虚拟地址空间隔离）</td><td>共享进程地址空间</td><td>共享线程地址空间</td></tr>
+    <tr><td><strong>调度者</strong></td><td>OS 内核调度器</td><td>OS 内核调度器</td><td>用户态运行时（程序自身）</td></tr>
+    <tr><td><strong>切换成本</strong></td><td>~1-10μs（TLB刷新+上下文切换）</td><td>~1-5μs（寄存器保存+恢复）</td><td>~200ns（函数调用级）</td></tr>
+    <tr><td><strong>栈大小</strong></td><td>固定~8MB（内核栈+用户栈）</td><td>固定~8MB（默认）</td><td>可增长（2KB起步~1GB）</td></tr>
+    <tr><td><strong>创建成本</strong></td><td>高（fork+exec，毫秒级）</td><td>中（pthread_create，微秒级）</td><td>极低（函数调用，纳秒级）</td></tr>
+    <tr><td><strong>通信方式</strong></td><td>IPC（pipe/socket/shared memory）</td><td>共享内存（需锁保护）</td><td>Channel / await / yield</td></tr>
+    <tr><td><strong>隔离性</strong></td><td>完全隔离（一个崩溃不影响其他）</td><td>部分隔离（一个崩溃可能影响整个进程）</td><td>不隔离（共享线程栈和堆）</td></tr>
+    <tr><td><strong>并发数</strong></td><td>几百到几千</td><td>几千到几万</td><td>百万级</td></tr>
+  </table>
+</section>
+
+<section id="process" class="section">
+  <h2>⚙️ 进程 (Process)：操作系统的"独立王国"</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏰 类比：</span>进程就像一座城堡——有独立的围墙（<strong>虚拟地址空间</strong>）、自己的资源（<strong>文件描述符表、信号处理器、环境变量</strong>）、以及完整的运行记录（<strong>PCB</strong>）。城堡间的通信只能通过信使（<strong>IPC</strong>）。</p>
+  </div>
+
+  <h3>PCB（进程控制块）— 进程的身份证</h3>
+  <p>每个进程在内核中都有一个 <span class="handwrite" style="color:var(--accent);font-size:16px;">task_struct</span>（Linux 中称为 PCB），包含：</p>
+  <table>
+    <tr><th>类别</th><th>字段</th><th>说明</th></tr>
+    <tr><td><strong>标识</strong></td><td>pid, tgid, ppid</td><td>进程ID、线程组ID、父进程ID</td></tr>
+    <tr><td><strong>状态</strong></td><td>state (TASK_RUNNING / TASK_INTERRUPTIBLE / TASK_UNINTERRUPTIBLE / EXIT_ZOMBIE / EXIT_DEAD)</td><td>当前运行状态</td></tr>
+    <tr><td><strong>调度</strong></td><td>prio, static_prio, normal_prio, rt_priority, policy</td><td>优先级和调度策略</td></tr>
+    <tr><td><strong>内存</strong></td><td>mm_struct（pgd, mmap, vm_area_struct）</td><td>虚拟内存空间（页表、VMA链表）</td></tr>
+    <tr><td><strong>文件</strong></td><td>files_struct（fd_array[NR_OPEN_DEFAULT]）</td><td>文件描述符表（打开的文件）</td></tr>
+    <tr><td><strong>信号</strong></td><td>signal_struct, pending</td><td>信号处理器和挂起信号</td></tr>
+    <tr><td><strong>时间</strong></td><td>utime, stime, start_time</td><td>用户态/内核态CPU时间、启动时间</td></tr>
+    <tr><td><strong>审计</strong></td><td>audit_context, loginuid</td><td>安全审计相关</td></tr>
+  </table>
+
+  <h3>进程五状态模型</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 780 340" style="max-width:780px;width:100%">
+      <defs>
+        <marker id="arrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3"><path d="M0,0 L8,3 L0,6 Z" fill="#58a6ff"/></marker>
+        <marker id="arrowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3"><path d="M0,0 L8,3 L0,6 Z" fill="#3fb950"/></marker>
+        <marker id="arrowRed" markerWidth="8" markerHeight="6" refX="8" refY="3"><path d="M0,0 L8,3 L0,6 Z" fill="#f87171"/></marker>
+        <marker id="arrowOrange" markerWidth="8" markerHeight="6" refX="8" refY="3"><path d="M0,0 L8,3 L0,6 Z" fill="#fbbf24"/></marker>
+      </defs>
+      <!-- 就绪态 -->
+      <rect x="35" y="120" width="140" height="70" rx="35" fill="rgba(88,166,255,0.1)" stroke="#58a6ff" stroke-width="2"/>
+      <text x="105" y="155" text-anchor="middle" fill="#58a6ff" font-size="15" font-weight="700">就绪</text>
+      <text x="105" y="173" text-anchor="middle" fill="#64748b" font-size="10">Ready</text>
+      <!-- 运行态 -->
+      <rect x="320" y="50" width="140" height="70" rx="35" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="2"/>
+      <text x="390" y="85" text-anchor="middle" fill="#3fb950" font-size="15" font-weight="700">运行</text>
+      <text x="390" y="103" text-anchor="middle" fill="#64748b" font-size="10">Running</text>
+      <!-- 阻塞态 -->
+      <rect x="320" y="200" width="140" height="70" rx="35" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="2"/>
+      <text x="390" y="235" text-anchor="middle" fill="#f87171" font-size="15" font-weight="700">阻塞</text>
+      <text x="390" y="253" text-anchor="middle" fill="#64748b" font-size="10">Blocked</text>
+      <!-- 新建 -->
+      <rect x="35" y="10" width="140" height="50" rx="25" fill="rgba(210,153,34,0.1)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="105" y="40" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="700">新建</text>
+      <!-- 终止 -->
+      <rect x="605" y="50" width="140" height="50" rx="25" fill="rgba(139,148,158,0.1)" stroke="#8b949e" stroke-width="2"/>
+      <text x="675" y="80" text-anchor="middle" fill="#8b949e" font-size="13" font-weight="700">终止</text>
+      <!-- 僵尸 -->
+      <rect x="605" y="120" width="140" height="50" rx="25" fill="rgba(139,148,158,0.06)" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="675" y="150" text-anchor="middle" fill="#8b949e" font-size="13" font-weight="700">僵尸</text>
+
+      <!-- 箭头 -->
+      <line x1="105" y1="60" x2="105" y2="115" stroke="#fbbf24" stroke-width="2" marker-end="url(#arrowOrange)"/>
+      <text x="120" y="92" fill="#fbbf24" font-size="9">fork/exec</text>
+
+      <line x1="175" y1="145" x2="315" y2="100" stroke="#3fb950" stroke-width="2" marker-end="url(#arrowGreen)"/>
+      <text x="230" y="108" fill="#3fb950" font-size="9">调度器选择</text>
+
+      <line x1="390" y1="120" x2="390" y2="195" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrowBlue)"/>
+      <text x="400" y="162" fill="#58a6ff" font-size="9">时间片用完 → 就绪</text>
+
+      <line x1="390" y1="270" x2="390" y2="285" stroke="#f87171" stroke-width="1.5"/>
+      <line x1="390" y1="285" x2="175" y2="285" stroke="#f87171" stroke-width="1.5"/>
+      <line x1="175" y1="285" x2="175" y2="195" stroke="#3fb950" stroke-width="2" marker-end="url(#arrowGreen)"/>
+      <text x="280" y="298" fill="#f87171" font-size="9">I/O完成 → 就绪</text>
+
+      <line x1="320" y1="85" x2="600" y2="75" stroke="#8b949e" stroke-width="2" marker-end="url(#arrowOrange)"/>
+      <text x="460" y="68" fill="#8b949e" font-size="9">exit → 终止</text>
+
+      <line x1="675" y1="100" x2="675" y2="115" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowOrange)"/>
+      <text x="685" y="112" fill="#8b949e" font-size="8">wait()</text>
+    </svg>
+    <div class="diagram-caption">进程五状态模型：<span class="badge badge-orange">新建</span> → <span class="badge badge-green">就绪</span> ↔ <span class="badge badge-green">运行</span> ↔ <span class="badge badge-red">阻塞</span> → <span class="badge badge-purple">终止</span></div>
+  </div>
+
+  <h3>上下文切换（Context Switch）</h3>
+  <p>当 CPU 从一个进程切换到另一个进程时，需要：</p>
+  <ol>
+    <li><strong>保存</strong>当前进程的 CPU 寄存器（PC、SP、通用寄存器等）到 PCB</li>
+    <li><strong>切换</strong>页表（TLB 刷新 — 这是最昂贵的操作之一）</li>
+    <li><strong>加载</strong>新进程的 PCB 到 CPU 寄存器</li>
+    <li><strong>刷新</strong>TLB（Translation Lookaside Buffer）</li>
+  </ol>
+  <div class="highlight-box">
+    <strong>⚠️ 关键数字：</strong>进程上下文切换 ≈ <strong>1-10μs</strong>，其中 TLB 刷新占了大头。这就是为什么"一个进程一个线程"的模式并发能力很差——来回切就切死了。
+  </div>
+
+  <h3>Linux /proc 文件系统</h3>
+  <p><code>/proc</code> 是虚拟文件系统，以文件形式暴露内核数据结构：</p>
+  <table>
+    <tr><th>路径</th><th>内容</th></tr>
+    <tr><td><code>/proc/[pid]/status</code></td><td>进程状态、内存使用、线程数、Capabilities</td></tr>
+    <tr><td><code>/proc/[pid]/maps</code></td><td>虚拟内存映射（每个 VMA 的起始地址、权限、偏移）</td></tr>
+    <tr><td><code>/proc/[pid]/fd/</code></td><td>进程打开的文件描述符（符号链接）</td></tr>
+    <tr><td><code>/proc/[pid]/sched</code></td><td>调度统计（优先级、时间片、运行次数）</td></tr>
+    <tr><td><code>/proc/[pid]/stack</code></td><td>内核栈回溯（调试死锁的神器）</td></tr>
+    <tr><td><code>/proc/cpuinfo</code></td><td>CPU 型号、核数、频率</td></tr>
+    <tr><td><code>/proc/meminfo</code></td><td>内存总量、空闲、缓存、Swap</td></tr>
+  </table>
+  <pre><code><span class="cm">// 查看进程状态（C 语言示例）</span>
+$ cat /proc/1/status
+Name:   systemd
+State:  S (sleeping)     <span class="cm">// S = TASK_INTERRUPTIBLE</span>
+Pid:    1
+PPid:   0
+VmPeak:  234168 kB       <span class="cm">// 虚拟内存峰值</span>
+VmSize:  234168 kB       <span class="cm">// 当前虚拟内存</span>
+Threads: 48              <span class="cm">// 线程数</span>
+FDSize: 128              <span class="cm">// 文件描述符表大小</span></code></pre>
+</section>
+
+<section id="thread" class="section">
+  <h2>🧵 线程 (Thread)：进程中的"轻量级工人"</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏭 类比：</span>进程是工厂（拥有厂房、设备、原材料），线程是工厂里的工人。工人们共享厂房和设备（地址空间、文件描述符），但每个工人有自己的工作台（<strong>栈、寄存器、PC</strong>）。</p>
+  </div>
+
+  <h3>线程的组成</h3>
+  <p>每个线程独享：<span class="badge badge-green">线程ID (TID)</span> <span class="badge badge-green">栈空间</span> <span class="badge badge-green">寄存器状态</span> <span class="badge badge-green">程序计数器 (PC)</span> <span class="badge badge-green">信号掩码</span> <span class="badge badge-green">errno</span></p>
+  <p>每个线程共享进程的：<span class="badge badge-orange">地址空间</span> <span class="badge badge-orange">文件描述符表</span> <span class="badge badge-orange">信号处理器</span> <span class="badge badge-orange">当前工作目录</span> <span class="badge badge-orange">UID/GID</span></p>
+
+  <h3>用户级线程 vs 内核级线程</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 810 360" style="max-width:810px;width:100%">
+      <defs>
+        <marker id="arw" markerWidth="7" markerHeight="5" refX="7" refY="2.5"><path d="M0,0 L7,2.5 L0,5 Z" fill="#58a6ff"/></marker>
+      </defs>
+      <!-- 1:1 模型 -->
+      <rect x="15" y="5" width="250" height="345" rx="10" fill="rgba(88,166,255,0.04)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="140" y="30" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">1:1 模型（内核级线程）</text>
+      <text x="140" y="48" text-anchor="middle" fill="#64748b" font-size="9">Linux pthread, Java Thread</text>
+      <!-- 用户线程 -->
+      <rect x="35" y="65" width="90" height="30" rx="6" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="80" y="84" text-anchor="middle" fill="#3fb950" font-size="10">用户线程T1</text>
+      <rect x="135" y="65" width="90" height="30" rx="6" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="180" y="84" text-anchor="middle" fill="#3fb950" font-size="10">用户线程T2</text>
+      <!-- 箭头 -->
+      <line x1="80" y1="95" x2="80" y2="128" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arw)"/>
+      <line x1="180" y1="95" x2="180" y2="128" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arw)"/>
+      <!-- 内核线程 -->
+      <rect x="35" y="135" width="90" height="30" rx="6" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="80" y="154" text-anchor="middle" fill="#a78bfa" font-size="10">内核线程KT1</text>
+      <rect x="135" y="135" width="90" height="30" rx="6" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="180" y="154" text-anchor="middle" fill="#a78bfa" font-size="10">内核线程KT2</text>
+      <!-- CPU -->
+      <rect x="135" y="190" width="90" height="30" rx="6" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="180" y="209" text-anchor="middle" fill="#f87171" font-size="10">CPU0</text>
+      <rect x="35" y="230" width="90" height="30" rx="6" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="80" y="249" text-anchor="middle" fill="#f87171" font-size="10">CPU1</text>
+      <line x1="80" y1="165" x2="80" y2="225" stroke="#58a6ff" stroke-width="1" stroke-dasharray="3,2"/>
+
+      <!-- N:1 模型 -->
+      <rect x="285" y="5" width="240" height="345" rx="10" fill="rgba(57,197,207,0.04)" stroke="#39c5cf" stroke-width="1.5"/>
+      <text x="405" y="30" text-anchor="middle" fill="#39c5cf" font-size="13" font-weight="700">N:1 模型（用户级线程）</text>
+      <text x="405" y="48" text-anchor="middle" fill="#64748b" font-size="9">纯用户态线程库（Green Threads）</text>
+      <!-- 用户线程 -->
+      <rect x="305" y="65" width="75" height="30" rx="6" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="342" y="84" text-anchor="middle" fill="#3fb950" font-size="10">T1</text>
+      <rect x="388" y="65" width="75" height="30" rx="6" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="425" y="84" text-anchor="middle" fill="#3fb950" font-size="10">T2</text>
+      <rect x="305" y="103" width="75" height="30" rx="6" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="342" y="122" text-anchor="middle" fill="#3fb950" font-size="10">T3</text>
+      <rect x="388" y="103" width="75" height="30" rx="6" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="425" y="122" text-anchor="middle" fill="#3fb950" font-size="10">T4</text>
+      <!-- 映射到单个 -->
+      <line x1="342" y1="133" x2="342" y2="158" stroke="#39c5cf" stroke-width="1" stroke-dasharray="3,2"/>
+      <line x1="425" y1="133" x2="425" y2="158" stroke="#39c5cf" stroke-width="1" stroke-dasharray="3,2"/>
+      <line x1="342" y1="103" x2="342" y2="158" stroke="#39c5cf" stroke-width="1" stroke-dasharray="3,2"/>
+      <line x1="425" y1="103" x2="425" y2="158" stroke="#39c5cf" stroke-width="1" stroke-dasharray="3,2"/>
+      <rect x="380" y="163" width="50" height="30" rx="6" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="405" y="182" text-anchor="middle" fill="#a78bfa" font-size="10">KT1</text>
+      <rect x="380" y="220" width="50" height="30" rx="6" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="405" y="239" text-anchor="middle" fill="#f87171" font-size="10">CPU</text>
+      <line x1="405" y1="193" x2="405" y2="215" stroke="#39c5cf" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="405" y="270" text-anchor="middle" fill="#f87171" font-size="9" font-weight="600">⚠️ 一个线程阻塞 = 全部阻塞</text>
+      <text x="405" y="290" text-anchor="middle" fill="#64748b" font-size="9">无法利用多核，已基本淘汰</text>
+
+      <!-- M:N 模型 -->
+      <rect x="545" y="5" width="250" height="345" rx="10" fill="rgba(249,115,22,0.04)" stroke="#f97316" stroke-width="1.5"/>
+      <text x="670" y="30" text-anchor="middle" fill="#f97316" font-size="13" font-weight="700">M:N 模型（混合）</text>
+      <text x="670" y="48" text-anchor="middle" fill="#64748b" font-size="9">Go GMP, Erlang 调度器</text>
+      <!-- 用户线程(G) -->
+      <rect x="565" y="65" width="70" height="26" rx="5" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="600" y="82" text-anchor="middle" fill="#3fb950" font-size="9">G1</text>
+      <rect x="642" y="65" width="70" height="26" rx="5" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="677" y="82" text-anchor="middle" fill="#3fb950" font-size="9">G2</text>
+      <rect x="565" y="98" width="70" height="26" rx="5" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="600" y="115" text-anchor="middle" fill="#3fb950" font-size="9">G3</text>
+      <rect x="642" y="98" width="70" height="26" rx="5" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="677" y="115" text-anchor="middle" fill="#3fb950" font-size="9">G4</text>
+      <rect x="565" y="131" width="70" height="26" rx="5" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="600" y="148" text-anchor="middle" fill="#3fb950" font-size="9">G5</text>
+      <!-- P 中间层 -->
+      <rect x="575" y="175" width="90" height="30" rx="6" fill="rgba(88,166,255,0.12)" stroke="#58a6ff" stroke-width="1.2"/>
+      <text x="620" y="194" text-anchor="middle" fill="#58a6ff" font-size="10">P0 (逻辑处理器)</text>
+      <rect x="575" y="213" width="90" height="30" rx="6" fill="rgba(88,166,255,0.12)" stroke="#58a6ff" stroke-width="1.2"/>
+      <text x="620" y="232" text-anchor="middle" fill="#58a6ff" font-size="10">P1 (逻辑处理器)</text>
+      <!-- 内核线程 M -->
+      <rect x="700" y="175" width="70" height="30" rx="6" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="735" y="194" text-anchor="middle" fill="#a78bfa" font-size="10">M0</text>
+      <rect x="700" y="213" width="70" height="30" rx="6" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="735" y="232" text-anchor="middle" fill="#a78bfa" font-size="10">M1</text>
+      <!-- CPU -->
+      <rect x="610" y="270" width="60" height="26" rx="5" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="640" y="287" text-anchor="middle" fill="#f87171" font-size="9">CPU0</text>
+      <rect x="680" y="270" width="60" height="26" rx="5" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="710" y="287" text-anchor="middle" fill="#f87171" font-size="9">CPU1</text>
+      <!-- 连接线 -->
+      <line x1="600" y1="157" x2="620" y2="172" stroke="#f97316" stroke-width="0.8" stroke-dasharray="2,2"/>
+      <line x1="677" y1="124" x2="620" y2="172" stroke="#f97316" stroke-width="0.8" stroke-dasharray="2,2"/>
+      <line x1="600" y1="157" x2="620" y2="210" stroke="#f97316" stroke-width="0.8" stroke-dasharray="2,2"/>
+      <line x1="677" y1="124" x2="620" y2="210" stroke="#f97316" stroke-width="0.8" stroke-dasharray="2,2"/>
+      <line x1="665" y1="190" x2="695" y2="190" stroke="#58a6ff" stroke-width="1.2" marker-end="url(#arw)"/>
+      <line x1="665" y1="228" x2="695" y2="228" stroke="#58a6ff" stroke-width="1.2" marker-end="url(#arw)"/>
+      <line x1="640" y1="296" x2="640" y2="305" stroke="#f87171" stroke-width="0.8"/>
+      <text x="640" y="320" text-anchor="middle" fill="#f97316" font-size="9">M个G映射到N个内核线程</text>
+      <text x="640" y="338" text-anchor="middle" fill="#64748b" font-size="9">最优方案：轻量 + 可并行</text>
+    </svg>
+    <div class="diagram-caption">三种线程模型：<span class="badge badge-green">1:1</span> 重量但可靠 · <span class="badge badge-cyan">N:1</span> 轻量但无法并行 · <span class="badge badge-orange">M:N</span> 兼具轻量和并行</div>
+  </div>
+
+  <h3>三种线程模型对比</h3>
+  <table>
+    <tr><th>维度</th><th><span class="badge badge-green">1:1 (内核级)</span></th><th><span class="badge badge-cyan">N:1 (用户级)</span></th><th><span class="badge badge-orange">M:N (混合)</span></th></tr>
+    <tr><td><strong>代表</strong></td><td>Linux pthread, Java Thread</td><td>GNU Pth, 早期Green Thread</td><td>Go GMP, Erlang 调度器</td></tr>
+    <tr><td><strong>调度者</strong></td><td>OS 内核（完全抢占）</td><td>用户态运行时（协作式）</td><td>用户态调度器 + 内核辅助</td></tr>
+    <tr><td><strong>切换成本</strong></td><td>1-5μs（系统调用 + 内核态切换）</td><td>~100ns（纯用户态函数调用）</td><td>~200ns（用户态调度）</td></tr>
+    <tr><td><strong>多核利用</strong></td><td>✅ 是（每个线程可跑在不同核上）</td><td>❌ 否（全部映射到一个内核线程）</td><td>✅ 是（M个线程可分布在N个核）</td></tr>
+    <tr><td><strong>阻塞影响</strong></td><td>仅阻塞自身线程</td><td>⚠️ 一个阻塞 → 全部阻塞</td><td>阻塞后创建新M承接P（Go handoff）</td></tr>
+    <tr><td><strong>创建成本</strong></td><td>高（每次调用clone系统调用）</td><td>极低（内存分配即可）</td><td>低（初始栈2KB）</td></tr>
+    <tr><td><strong>现状</strong></td><td>最广泛使用（默认选择）</td><td>基本淘汰（多核时代已死）</td><td>新兴语言主流（Go, Erlang, Kotlin）</td></tr>
+  </table>
+
+  <h3>C 语言示例：pthread 创建线程</h3>
+  <pre><code><span class="cm">// C: 内核级线程（1:1）—— 通过 clone() 系统调用</span>
+<span class="kw">#include</span> &lt;pthread.h&gt;
+<span class="kw">void</span>* worker(<span class="kw">void</span>* arg) {
+    <span class="kw">int</span> id = *(<span class="kw">int</span>*)arg;
+    printf(<span class="str">"Thread %d running on CPU %d\n"</span>, id, sched_getcpu());
+    <span class="kw">return</span> NULL;
+}
+
+<span class="kw">int</span> main() {
+    pthread_t t[4]; <span class="kw">int</span> ids[4];
+    <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 4; i++) {
+        ids[i] = i;
+        pthread_create(&amp;t[i], NULL, worker, &amp;ids[i]);  <span class="cm">// 系统调用 !</span>
+    }
+    <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 4; i++) pthread_join(t[i], NULL);
+    <span class="kw">return</span> 0;
+}</code></pre>
+</section>
+
+<section id="coroutine" class="section">
+  <h2>🪶 协程 (Coroutine)：用户态的"超轻量线程"</h2>
+  <div class="feynman">
+    <p><span class="analogy">🦅 类比：</span>如果说进程是重型运输机、线程是小型飞机，协程就是<strong>无人机群</strong>——成本极低、可大规模部署、操作灵活。协程的调度器不在机场塔台（内核），而在飞行员自己的遥控器（用户态运行时）上。</p>
+  </div>
+
+  <h3>三种主流协程实现对比</h3>
+  <table>
+    <tr><th>维度</th><th><span class="badge badge-green">Go goroutine</span></th><th><span class="badge badge-purple">Python coroutine</span></th><th><span class="badge badge-orange">Lua coroutine</span></th></tr>
+    <tr><td><strong>创建语法</strong></td><td><code>go f()</code></td><td><code>async def f()</code></td><td><code>coroutine.create(f)</code></td></tr>
+    <tr><td><strong>调度方式</strong></td><td>M:N 混合（GMP，可抢占）</td><td>单线程事件循环（asyncio）</td><td>协作式（yield 显式让出）</td></tr>
+    <tr><td><strong>能否抢占</strong></td><td>✅ 可（Go 1.14+ SIGURG）</td><td>❌ 否（必须 await 让出）</td><td>❌ 否（必须 yield 让出）</td></tr>
+    <tr><td><strong>多核利用</strong></td><td>✅ 是（多P绑定多M）</td><td>❌ 否（单线程事件循环）</td><td>❌ 否（单线程）</td></tr>
+    <tr><td><strong>初始栈</strong></td><td>~2KB（自动增长）</td><td>~8KB</td><td>~4KB（可配置）</td></tr>
+    <tr><td><strong>切换成本</strong></td><td>~200ns</td><td>~1μs（创建成本较高）</td><td>~100ns</td></tr>
+    <tr><td><strong>通信方式</strong></td><td>Channel（CSP 模型）</td><td>asyncio.Queue / Future</td><td>共享变量 / pipe</td></tr>
+    <tr><td><strong>栈实现</strong></td><td>有栈（连续栈，growstack）</td><td>无栈（状态机）</td><td>有栈（固定栈或可增长）</td></tr>
+  </table>
+
+  <h3>代码对比：三个语言创建 100 个并发任务</h3>
+  <pre><code><span class="cm">// Go: goroutine — 轻量，可并行，可抢占</span>
+<span class="kw">for</span> i := 0; i &lt; 100; i++ {
+    <span class="kw">go</span> <span class="kw">func</span>(id <span class="kw">int</span>) {
+        result := doWork(id)   <span class="cm">// 自动调度到多核</span>
+        results <- result
+    }(i)
+}
+
+<span class="cm"># Python: coroutine — 单线程，协作式，await 让出</span>
+<span class="kw">async def</span> worker(id):
+    result = <span class="kw">await</span> do_work(id)  <span class="cm"># 必须 await 才会让出</span>
+    <span class="kw">return</span> result
+
+tasks = [asyncio.create_task(worker(i)) <span class="kw">for</span> i <span class="kw">in</span> range(100)]
+results = <span class="kw">await</span> asyncio.gather(*tasks)
+
+<span class="cm">-- Lua: coroutine — 协作式，yield 显式让出</span>
+<span class="kw">local</span> co = coroutine.create(<span class="kw">function</span>(id)
+    <span class="kw">local</span> result = doWork(id)
+    coroutine.yield(result)  <span class="cm">-- 必须 yield</span>
+    <span class="kw">return</span> result
+<span class="kw">end</span>)</code></pre>
+
+  <h3>栈大小对比</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 700 200" style="max-width:700px;width:100%">
+      <text x="15" y="25" fill="#e6edf3" font-size="13" font-weight="600">栈大小对比（对数比例）</text>
+      <text x="15" y="50" fill="#64748b" font-size="10">OS线程 (Linux default)</text>
+      <rect x="15" y="55" width="500" height="20" rx="4" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="525" y="72" fill="#f87171" font-size="11" font-weight="700">8 MB</text>
+      <text x="15" y="100" fill="#64748b" font-size="10">Python 协程</text>
+      <rect x="15" y="105" width="25" height="20" rx="4" fill="rgba(163,113,247,0.12)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="48" y="122" fill="#a78bfa" font-size="11" font-weight="700">8 KB</text>
+      <text x="15" y="150" fill="#64748b" font-size="10">Lua 协程</text>
+      <rect x="15" y="155" width="15" height="20" rx="4" fill="rgba(210,153,34,0.12)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="38" y="172" fill="#fbbf24" font-size="11" font-weight="700">4 KB</text>
+      <text x="230" y="150" fill="#64748b" font-size="10">Go goroutine</text>
+      <rect x="230" y="155" width="8" height="20" rx="4" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="246" y="172" fill="#3fb950" font-size="10" font-weight="700">2 KB</text>
+      <line x1="15" y1="128" x2="525" y2="128" stroke="#8b949e" stroke-width="0.5" stroke-dasharray="4,2"/>
+      <text x="160" y="130" fill="#8b949e" font-size="8">OS线程比goroutine大 ~4000倍</text>
+    </svg>
+    <div class="diagram-caption">初始栈大小：OS 线程 ≈ 8000KB > Python 协程 ≈ 8KB > Lua 协程 ≈ 4KB > Go goroutine ≈ 2KB</div>
+  </div>
+
+  <div class="highlight-box">
+    <strong>💡 关键洞察：</strong>Go goroutine 的 2KB 初始栈是其"百万并发"能力的根基。8MB 的 OS 线程创建 100 万个需要 8TB 内存（不可能），而 Go 只需要 2GB（完全可行）。Go 的栈是动态增长的——不够用时 <code>runtime.morestack()</code> 会自动扩容。
+  </div>
+</section>
+
+<section id="user-vs-kernel" class="section">
+  <h2>🔄 用户态 vs 内核态：操作系统的"双面人生"</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏛️ 类比：</span>用户态是<strong>图书馆普通读者</strong>——只能在阅读区活动（受限地址空间），不能动管理员的资料。当需要拿一本锁在管理室的书时，必须通过<strong>管理员</strong>（系统调用）来取。内核态就是管理员——拥有全部权限，能访问所有数据。</p>
+  </div>
+
+  <h3>为什么需要用户态/内核态隔离？</h3>
+  <p>根本原因：<span class="handwrite" style="color:var(--accent);font-size:16px;">安全 + 稳定性</span></p>
+  <ul>
+    <li><strong>安全：</strong>用户程序不能随意访问任意内存地址，不能直接操作硬件设备</li>
+    <li><strong>稳定性：</strong>一个用户程序的崩溃不能拖垮整个系统（进程隔离）</li>
+    <li><strong>资源管控：</strong>OS 需要统一调度 CPU、内存、I/O 等资源</li>
+  </ul>
+
+  <h3>系统调用的完整流程</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" style="max-width:800px;width:100%">
+      <defs>
+        <marker id="arrDn" markerWidth="7" markerHeight="5" refX="7" refY="2.5"><path d="M0,0 L7,2.5 L0,5 Z" fill="#58a6ff"/></marker>
+        <marker id="arrUp" markerWidth="7" markerHeight="5" refX="7" refY="2.5"><path d="M0,5 L7,2.5 L0,0 Z" fill="#3fb950"/></marker>
+      </defs>
+      <!-- 用户态区域 -->
+      <rect x="15" y="10" width="770" height="130" rx="10" fill="rgba(63,185,80,0.04)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="400" y="35" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">用户态 (Ring 3)</text>
+      <text x="400" y="55" text-anchor="middle" fill="#64748b" font-size="9">权限受限 · 只能访问用户空间地址 · 不能执行特权指令</text>
+
+      <!-- 用户栈 -->
+      <rect x="60" y="75" width="140" height="40" rx="6" fill="rgba(88,166,255,0.08)" stroke="#58a6ff" stroke-width="1"/>
+      <text x="130" y="100" text-anchor="middle" fill="#58a6ff" font-size="11">用户栈 (user stack)</text>
+
+      <!-- 用户代码 -->
+      <rect x="260" y="75" width="200" height="40" rx="6" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1"/>
+      <text x="360" y="95" text-anchor="middle" fill="#3fb950" font-size="11">printf("Hello")</text>
+      <text x="360" y="108" text-anchor="middle" fill="#64748b" font-size="9">↓ 调用 write() 库函数</text>
+
+      <!-- 箭头跨越 -->
+      <line x1="360" y1="115" x2="360" y2="155" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrDn)"/>
+      <text x="375" y="140" fill="#fbbf24" font-size="9">int 0x80 / syscall</text>
+
+      <!-- 内核态区域 -->
+      <rect x="15" y="165" width="770" height="240" rx="10" fill="rgba(248,81,73,0.04)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="400" y="190" text-anchor="middle" fill="#f87171" font-size="14" font-weight="700">内核态 (Ring 0)</text>
+      <text x="400" y="210" text-anchor="middle" fill="#64748b" font-size="9">完整权限 · 可访问任意物理地址 · 可执行特权指令</text>
+
+      <!-- 内核栈 -->
+      <rect x="60" y="230" width="140" height="40" rx="6" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="130" y="255" text-anchor="middle" fill="#a78bfa" font-size="11">内核栈 (kernel stack)</text>
+
+      <!-- 系统调用处理 -->
+      <rect x="260" y="230" width="200" height="40" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1"/>
+      <text x="360" y="250" text-anchor="middle" fill="#f87171" font-size="11">sys_write() 处理</text>
+      <text x="360" y="263" text-anchor="middle" fill="#64748b" font-size="9">参数校验 → VFS → 设备驱动</text>
+
+      <!-- 内核操作步骤 -->
+      <rect x="60" y="290" width="450" height="80" rx="8" fill="rgba(30,41,59,0.4)" stroke="#2a2d3a" stroke-width="1"/>
+      <text x="285" y="310" text-anchor="middle" fill="#e6edf3" font-size="10" font-weight="600">syscall 处理流程</text>
+      <text x="285" y="328" text-anchor="middle" fill="#64748b" font-size="9">① 保存用户态寄存器（ss, rsp, rflags, cs, rip 到内核栈）</text>
+      <text x="285" y="344" text-anchor="middle" fill="#64748b" font-size="9">② 切换到内核栈 → ③ 权限检查 → ④ 执行内核函数</text>
+      <text x="285" y="360" text-anchor="middle" fill="#64748b" font-size="9">⑤ 结果写入寄存器 → ⑥ 恢复用户态寄存器 → ⑦ sysexit</text>
+
+      <!-- 返回箭头 -->
+      <line x1="360" y1="370" x2="360" y2="405" stroke="#3fb950" stroke-width="2" marker-end="url(#arrUp)"/>
+      <text x="380" y="400" fill="#3fb950" font-size="9">sysexit / iret</text>
+
+      <text x="400" y="418" text-anchor="middle" fill="#64748b" font-size="9">一次系统调用 ≈ 100-1000ns（取决于具体调用）</text>
+    </svg>
+    <div class="diagram-caption">系统调用流程：用户态 → 软中断/快速系统调用指令 → 内核态处理 → 返回用户态</div>
+  </div>
+
+  <h3>上下文切换开销对比</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 720 260" style="max-width:720px;width:100%">
+      <text x="20" y="28" fill="#e6edf3" font-size="13" font-weight="600">上下文切换开销（典型值，对数比例）</text>
+      <!-- 进程 -->
+      <rect x="20" y="45" width="640" height="40" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="30" y="70" fill="#f87171" font-size="12" font-weight="700">进程上下文切换</text>
+      <text x="670" y="70" fill="#f87171" font-size="12">~10μs</text>
+      <text x="30" y="90" fill="#64748b" font-size="9">TLB刷新 + 页表切换 + 寄存器保存/恢复 + 缓存预热</text>
+
+      <!-- 线程 -->
+      <rect x="20" y="105" width="320" height="40" rx="6" fill="rgba(210,153,34,0.08)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="30" y="130" fill="#fbbf24" font-size="12" font-weight="700">线程上下文切换</text>
+      <text x="350" y="130" fill="#fbbf24" font-size="12">~3μs</text>
+      <text x="30" y="150" fill="#64748b" font-size="9">共享地址空间 → 无需TLB刷新 → 只需寄存器保存/恢复</text>
+
+      <!-- 协程 -->
+      <rect x="20" y="165" width="80" height="40" rx="6" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="30" y="190" fill="#3fb950" font-size="12" font-weight="700">协程切换</text>
+      <text x="110" y="190" fill="#3fb950" font-size="12">~200ns</text>
+      <text x="30" y="210" fill="#64748b" font-size="9">纯用户态函数调用 → 无系统调用 → 无特权级切换</text>
+
+      <!-- scale -->
+      <line x1="20" y1="235" x2="660" y2="235" stroke="#2a2d3a" stroke-width="1"/>
+      <text x="20" y="250" fill="#8b949e" font-size="8">0 ns</text>
+      <text x="170" y="250" fill="#8b949e" font-size="8">~2μs</text>
+      <text x="420" y="250" fill="#8b949e" font-size="8">~6μs</text>
+      <text x="640" y="250" fill="#8b949e" font-size="8">~10μs</text>
+      <line x1="100" y1="228" x2="100" y2="240" stroke="#2a2d3a" stroke-width="0.8"/>
+      <line x1="324" y1="228" x2="324" y2="240" stroke="#2a2d3a" stroke-width="0.8"/>
+      <line x1="476" y1="228" x2="476" y2="240" stroke="#2a2d3a" stroke-width="0.8"/>
+
+      <text x="360" y="260" text-anchor="middle" fill="#8b949e" font-size="8">进程 : 线程 : 协程 ≈ 50 : 15 : 1</text>
+    </svg>
+    <div class="diagram-caption">进程 vs 线程 vs 协程的上下文切换开销：协程比进程快约 50 倍</div>
+  </div>
+
+  <h3>切换成本明细对比</h3>
+  <table>
+    <tr><th>切换层次</th><th>操作内容</th><th>进程</th><th>线程</th><th>协程</th></tr>
+    <tr><td><strong>寄存器保存</strong></td><td>PC, SP, 通用寄存器 → 内核栈/PCB</td><td>✅</td><td>✅</td><td>✅（用户态完成）</td></tr>
+    <tr><td><strong>TLB 刷新</strong></td><td>cr3 寄存器切换（页表切换）</td><td>✅ <span style="color:#f87171">(昂贵！)</span></td><td>❌ 共享地址空间</td><td>❌ 共享地址空间</td></tr>
+    <tr><td><strong>内核态切换</strong></td><td>Ring 3 → Ring 0（特权级提升）</td><td>✅</td><td>✅</td><td>❌ 纯用户态</td></tr>
+    <tr><td><strong>调度器运行</strong></td><td>schedule() 查找下一个可运行实体</td><td>✅</td><td>✅</td><td>❌ 用户态调度</td></tr>
+    <tr><td><strong>缓存渗透</strong></td><td>L1/L2 cache 可能失效</td><td>✅ <span style="color:#f87171">(高概率)</span></td><td>✅ <span style="color:#d29922">(中概率)</span></td><td>✅ <span style="color:#3fb950">(低概率)</span></td></tr>
+    <tr><td><strong>≈ 总开销</strong></td><td></td><td><span style="color:#f87171;font-weight:700">~10μs</span></td><td><span style="color:#d29922;font-weight:700">~3μs</span></td><td><span style="color:#3fb950;font-weight:700">~200ns</span></td></tr>
+  </table>
+</section>
+
+<section id="scheduler" class="section">
+  <h2>📊 Linux 调度器：CFS（完全公平调度器）</h2>
+  <div class="feynman">
+    <p><span class="analogy">🍕 类比：</span>CFS 就像一个给一群孩子分披萨的公正家长。每个孩子（进程）得到比例公平的披萨（CPU 时间），吃得少的孩子（优先级低/刚醒来）下次多分一点。CFS 用<strong>红黑树</strong>（Red-Black Tree）来维护"谁最该吃下一口"。</p>
+  </div>
+
+  <h3>核心概念</h3>
+  <table>
+    <tr><th>概念</th><th>含义</th><th>公式/说明</th></tr>
+    <tr><td><strong>vruntime</strong></td><td>虚拟运行时间（进程实际运行时间的加权值）</td><td><code>vruntime += actual_run_time × (NICE_0_LOAD / se.weight)</code></td></tr>
+    <tr><td><strong>nice 值</strong></td><td>优先级权重（-20 ~ 19，默认 0）</td><td>越低优先级越高：nice=-20 获得最多 CPU 时间</td></tr>
+    <tr><td><strong>权重 (weight)</strong></td><td>基于 nice 值的调度权重</td><td>nice 0 → weight=1024；每级差约 1.25 倍</td></tr>
+    <tr><td><strong>时间片</strong></td><td>动态计算的 CPU 执行时段</td><td><code>time_slice = (weight / total_weight) × period</code></td></tr>
+    <tr><td><strong>调度周期</strong></td><td>所有可运行进程执行一轮的时间</td><td>默认 ~6ms 到 ~48ms（取决于进程数）</td></tr>
+  </table>
+
+  <h3>CFS 红黑树调度示意</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 760 380" style="max-width:760px;width:100%">
+      <!-- 树节点 -->
+      <circle cx="380" cy="35" r="22" fill="rgba(248,81,73,0.15)" stroke="#f87171" stroke-width="2"/>
+      <text x="380" y="40" text-anchor="middle" fill="#f87171" font-size="11" font-weight="700">P4</text>
+      <text x="380" y="55" text-anchor="middle" fill="#64748b" font-size="8">vr=360ms</text>
+
+      <!-- 左子树 -->
+      <line x1="362" y1="55" x2="200" y2="95" stroke="#58a6ff" stroke-width="1.5"/>
+      <circle cx="200" cy="115" r="22" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="2"/>
+      <text x="200" y="120" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="700">P2</text>
+      <text x="200" y="135" text-anchor="middle" fill="#64748b" font-size="8">vr=245ms</text>
+
+      <line x1="182" y1="135" x2="100" y2="175" stroke="#58a6ff" stroke-width="1.5"/>
+      <circle cx="100" cy="195" r="22" fill="rgba(210,153,34,0.15)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="100" y="200" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700">P1</text>
+      <text x="100" y="215" text-anchor="middle" fill="#64748b" font-size="8">vr=120ms</text>
+
+      <line x1="218" y1="135" x2="300" y2="175" stroke="#58a6ff" stroke-width="1.5"/>
+      <circle cx="300" cy="195" r="22" fill="rgba(210,153,34,0.15)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="300" y="200" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700">P3</text>
+      <text x="300" y="215" text-anchor="middle" fill="#64748b" font-size="8">vr=320ms</text>
+
+      <!-- 右子树 -->
+      <line x1="398" y1="55" x2="520" y2="95" stroke="#58a6ff" stroke-width="1.5"/>
+      <circle cx="520" cy="115" r="22" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="2"/>
+      <text x="520" y="120" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="700">P5</text>
+      <text x="520" y="135" text-anchor="middle" fill="#64748b" font-size="8">vr=415ms</text>
+
+      <line x1="538" y1="135" x2="620" y2="175" stroke="#58a6ff" stroke-width="1.5"/>
+      <circle cx="620" cy="195" r="22" fill="rgba(248,81,73,0.15)" stroke="#f87171" stroke-width="2"/>
+      <text x="620" y="200" text-anchor="middle" fill="#f87171" font-size="11" font-weight="700">P6</text>
+      <text x="620" y="215" text-anchor="middle" fill="#64748b" font-size="8">vr=508ms</text>
+
+      <!-- 说明 -->
+      <rect x="30" y="255" width="700" height="110" rx="8" fill="rgba(30,41,59,0.3)" stroke="#2a2d3a" stroke-width="1"/>
+      <text x="380" y="278" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">调度原理</text>
+      <text x="380" y="298" text-anchor="middle" fill="#58a6ff" font-size="10">① CFS 选择 vruntime <span style="color:#fbbf24">最小</tspan> 的进程运行 → 最左侧节点 <span style="color:#fbbf24;font-weight:700">P1 (vr=120ms)</tspan></text>
+      <text x="380" y="316" text-anchor="middle" fill="#58a6ff" font-size="10">② 运行期间 P1 的 vruntime <span style="color:#f87171">递增</tspan> → 在红黑树中右移</text>
+      <text x="380" y="334" text-anchor="middle" fill="#58a6ff" font-size="10">③ 周期性检查 → 抢占 vruntime 更小的进程</text>
+      <text x="380" y="352" text-anchor="middle" fill="#64748b" font-size="9">红黑树插入/删除/查找时间复杂度：O(log N)</text>
+    </svg>
+    <div class="diagram-caption">CFS 用红黑树按 vruntime 组织进程，每次选择最左节点（vruntime 最小的进程）执行</div>
+  </div>
+
+  <h3>nice 值 & 时间片计算</h3>
+  <pre><code><span class="cm">// 内核权重表（部分）</span>
+<span class="kw">static const int</span> sched_prio_to_weight[40] = {
+    <span class="cm">/* -20 */</span> 88761, 71755, 56483, 46273, 36291,
+    <span class="cm">/* -15 */</span> 29154, 23254, 18705, 14949, 11916,
+    <span class="cm">/* -10 */</span>  9548,  7620,  6100,  4904,  3906,
+    <span class="cm">/*  -5 */</span>  3121,  2501,  1991,  1586,  1277,
+    <span class="cm">/*   0 */</span>  1024,   820,   655,   526,   423,
+    <span class="cm">/*   5 */</span>   335,   272,   215,   172,   137,
+    <span class="cm">/*  10 */</span>   110,    87,    70,    56,    45,
+    <span class="cm">/*  15 */</span>    36,    29,    23,    18,    15,
+};
+
+<span class="cm">// nice 0 (weight=1024) 获得的时间片比例</span>
+<span class="cm">// 假设 2 个进程，都是 nice 0</span>
+<span class="cm">// each: time_slice = period × (1024 / (1024+1024)) = period / 2</span>
+<span class="cm">// period ≈ 6ms → 每个进程得到 ~3ms</span>
+
+<span class="cm">// nice -5 (weight=3121) vs nice 5 (weight=335)</span>
+<span class="cm">// nice -5 获得: 6ms × (3121 / (3121+335)) ≈ 5.4ms</span>
+<span class="cm">// nice  5 获得: 6ms × (335 / (3121+335))  ≈ 0.6ms</span>
+<span class="cm">// 一级 nice 差 ≈ 1.25x CPU 时间差异</span></code></pre>
+
+  <h3>调度策略一览</h3>
+  <table>
+    <tr><th>调度策略</th><th>调度算法</th><th>适用场景</th></tr>
+    <tr><td><code>SCHED_OTHER</code> / <code>SCHED_NORMAL</code></td><td>CFS 完全公平调度</td><td>普通进程（默认，99% 的场景）</td></tr>
+    <tr><td><code>SCHED_BATCH</code></td><td>CFS + 批处理优化</td><td>CPU 密集型批处理任务（调度器倾向让其连续运行）</td></tr>
+    <tr><td><code>SCHED_IDLE</code></td><td>极低优先级</td><td>只在 CPU 空闲时才运行的进程</td></tr>
+    <tr><td><code>SCHED_FIFO</code></td><td>实时 FIFO（先入先出）</td><td>实时任务（优先级 1-99，比普通进程高）</td></tr>
+    <tr><td><code>SCHED_RR</code></td><td>实时轮转</td><td>实时任务（时间片轮转，同类优先级之间）</td></tr>
+    <tr><td><code>SCHED_DEADLINE</code></td><td>Earliest Deadline First (EDF)</td><td>硬实时任务（指定 deadline 的 GEDF 算法）</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>💡 CFS 的设计哲学</h4>
+    <p><strong>"理想的 CPU 应该让每个进程同时运行 1/N 的时间"</strong> —— 这是 CFS 的底层假设。但现实中，CFS 通过 <strong>vruntime</strong> 的加权比较，模拟了"理想多任务 CPU"的效果。进程睡得越久（I/O 密集型），vruntime 增长越慢，醒来时就越靠左，越容易被调度——这正是 Linux 对交互式进程响应快的根本原因。</p>
+  </div>
+</section>
+
+<section id="qa" class="section">
+  <h2>❓ QA：高频真题</h2>
+
+  <div class="qa-item">
+    <h4>Q1: 进程和线程的根本区别是什么？</h4>
+    <p><strong>A:</strong> 本质区别在于<strong>资源隔离粒度</strong>和<strong>调度单位</strong>。进程是<strong>资源分配</strong>的最小单位（独占地址空间、文件描述符表等），线程是<strong>CPU 调度</strong>的最小单位（共享进程资源，独享栈和寄存器）。从 Linux 内核角度，线程本质上是"共享地址空间的进程"（通过 <code>clone(CLONE_VM)</code> 系统调用创建）。</p>
+  </div>
+
+  <div class="qa-item">
+    <h4>Q2: 为什么协程比线程轻量这么多？</h4>
+    <p><strong>A:</strong> 三个核心原因：（1）<strong>调度在用户态</strong>— 不需要陷入内核，避免了昂贵的系统调用和权限切换；（2）<strong>共享地址空间</strong>— 无需 TLB 刷新，缓存命中率更高；（3）<strong>栈小且可增长</strong>— 初始栈仅 2KB（Go goroutine）对比 OS 线程的 8MB，内存成本低了三个数量级。总切换成本从微秒级降到纳秒级。</p>
+  </div>
+
+  <div class="qa-item">
+    <h4>Q3: 多线程模型中，1:1、N:1、M:N 各自有什么优缺点？</h4>
+    <p><strong>A:</strong> <strong>1:1</strong>（如 pthread）可靠且能利用多核，但创建/切换成本高，适合线程数可控的场景。<strong>N:1</strong>（如 Green Thread）用户态切换极快，但一个线程阻塞全部阻塞，且无法利用多核——在多核时代已基本淘汰。<strong>M:N</strong>（如 Go GMP）结合两者优点——用户态轻量调度 + 内核级多核并行 + 阻塞时 handoff 机制——是当前最优方案。</p>
+  </div>
+
+  <div class="qa-item">
+    <h4>Q4: Linux 的 CFS 如何确保"公平"？</h4>
+    <p><strong>A:</strong> CFS 的公平通过 <strong>vruntime</strong> 实现。每个进程的 vruntime 按权重加权增长（<code>vruntime += 实际时间 × NICE_0_LOAD / weight</code>）。调度器始终选择 vruntime <strong>最小</strong> 的进程（红黑树最左节点）。I/O 密集进程实际运行时间短 → vruntime 增长慢 → 醒来时自然靠左 → 优先调度。这使得交互式进程响应快，同时保证 CPU 密集进程按比例获得时间。</p>
+  </div>
+
+  <div class="qa-item">
+    <h4>Q5: 用户态和内核态切换到底做了什么？为什么那么贵？</h4>
+    <p><strong>A:</strong> 一次完整的模式切换包括：（1）CPU 保存用户态寄存器（ss, rsp, rflags, cs, rip）到内核栈；（2）切换到内核栈（rsp 切换）；（3）提升特权级（Ring 3 → Ring 0）；（4）执行系统调用处理函数；（5）完成后执行 sysexit/iret 恢复用户态。整个过程中需要 <strong>多次内存访问 + 特权级检查 + 栈切换</strong>，加上 cache 可能被污染，总计约 100-1000ns。这就是为什么高频系统调用（如 1M QPS 的场景）会成为性能瓶颈。</p>
+  </div>
+</section>
+
+<section id="summary" class="section">
+  <h2>🎤 口播总结</h2>
+  <div class="summary-box">
+    <p>大家好，今天我们用 <strong>15 分钟</strong>彻底理清操作系统里最重要的三个概念：<strong>进程、线程、协程</strong>。</p>
+
+    <p>首先，记住一句话：<strong>进程是资源分配的最小单位，线程是 CPU 调度的最小单位，协程是用户态的轻量级线程</strong>。</p>
+
+    <p>进程有自己独立的 <strong>PCB</strong>（在 Linux 里叫 task_struct），包含 PID、状态、内存映射、文件描述符表、信号处理器等一整套"身份信息"。进程之间通过 IPC（管道、共享内存、socket 等）通信，切换时因为要换页表、<strong>刷 TLB</strong>，所以最慢——大概要 10 微秒。</p>
+
+    <p>线程就更轻一些——共享进程的地址空间，切换的时候不用刷 TLB，所以大概 3 微秒。线程分为 <strong>1:1</strong>（一个用户线程对应一个内核线程，比如 pthread）、<strong>N:1</strong>（多个用户线程对应一个内核线程，基本被淘汰了）、和 <strong>M:N</strong>（比如 Go 的 GMP 模型，多个 goroutine 在多个内核线程上调度，既轻量又能利用多核）。</p>
+
+    <p>协程是最轻的——切换只要 200 纳秒左右。为什么？因为协程的调度在 <strong>用户态</strong>，没有系统调用，不用进内核，不需要 TLB 刷新。Go 的 goroutine 初始栈只要 <strong>2KB</strong>，对比 OS 线程的 8MB——这就是 Go 敢说"百万并发"的底气。</p>
+
+    <p>用户态和内核态隔离，本质是为了 <strong>安全</strong> 和 <strong>稳定</strong>——普通程序不能随便访问硬件和别人的内存。系统调用就是跨越这道"特权门"的通道，每次过门都要保存寄存器、切换栈、身份检查，成本不低。</p>
+
+    <p>最后说 Linux 的 <strong>CFS 调度器</strong>——它用红黑树管理进程，每个进程有个 <strong>vruntime</strong>（加权运行时间），<strong>谁的值最小谁就先跑</strong>。nice 值就是调节权重——每差一级 nice，获得的 CPU 时间大约差 1.25 倍。这就是 Linux 能同时做到"交互式响应快、CPU 密集型任务不饿死"的秘密。</p>
+
+    <p><strong>总结三句话：</strong></p>
+    <p>🔹 <strong>安全隔离用进程</strong>——每个进程一个独立的世界，崩溃不影响别人。</p>
+    <p>🔹 <strong>并行计算用线程</strong>——共享内存，多核并行，但要小心锁和死锁。</p>
+    <p>🔹 <strong>高并发用协程</strong>——百万级、用户态、轻量切换、配合异步 I/O 发挥最大威力。</p>
+
+    <p>搞懂这三者的关系和各自的取舍，操作系统并发这块你就算真正入门了。下次聊 Go 的 GMP 调度器，我们细致讲一下它怎么做到"工作窃取"和"系统调用 Handoff"。关注我，实战不迷路！</p>
+  </div>
+</section>
+
+</main>
+</div>
+<script src="/mobile.js"></script>
+
+<script src="/ebbinghaus.js"></script>
+
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'os-process-thread';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '⏰ '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

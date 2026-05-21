@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分布式事务实战 · 从入门到精通 · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .voice-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .voice-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) { .diagram svg { min-width: 420px; } }
+  .qa-q { cursor: pointer; user-select: none; }
+  .qa-q::after { content: ' ▾'; opacity: 0.5; }
+  .qa-q.open::after { content: ' ▴'; }
+  .qa-a { display: none; }
+  .qa-a.open { display: block; }
+  .flow-step { display: flex; align-items: flex-start; gap: 12px; margin: 12px 0; }
+  .flow-step .num { background: var(--accent); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .flow-step .num.green { background: var(--green); }
+  .flow-step .num.red { background: var(--red); }
+  .flow-step .num.orange { background: var(--orange); }
+  .flow-step .num.purple { background: var(--purple); }
+  .flow-step .num.cyan { background: var(--cyan); }
+  .flow-content { flex: 1; }
+  .flow-content p { margin: 0 0 4px; }
+  .flow-content .label { font-weight: 600; color: #e6edf3; }
+  .protocol-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin: 16px 0; }
+  .protocol-grid > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
+  .protocol-grid h4 { margin: 0 0 6px; font-size: 14px; }
+  .protocol-grid p { font-size: 12px; color: var(--muted); margin: 0; }
+  @media (max-width: 600px) { .protocol-grid { grid-template-columns: 1fr 1fr; } }
+  .go-tag { background: rgba(0,173,216,0.12); color: #00add8; }
+  .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0; }
+  .pros-cons > div { padding: 12px 16px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">核心方案</div>
+  <a class="nav-item" href="#why">🤔 为什么需要</a>
+  <a class="nav-item" href="#theory">🎯 CAP与FLP</a>
+  <a class="nav-item" href="#2pc">🔁 2PC/XA</a>
+  <a class="nav-item" href="#tcc">✂️ TCC模式</a>
+  <a class="nav-item" href="#saga">🎭 Saga模式</a>
+  <a class="nav-item" href="#msg">📨 事务消息</a>
+  <a class="nav-item" href="#golibs">🔧 Go开源库</a>
+  <div class="nav-section">练习</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ====== 总览 ====== -->
+<section class="section" id="overview">
+  <h2>📋 总览：分布式事务是什么</h2>
+  <p>分布式事务是指<strong>跨越多个独立数据库（或服务）的事务操作</strong>，保证它们要么全部成功，要么全部失败。在微服务架构中，一个业务操作往往涉及多个服务各自的数据源——传统的本地事务（ACID）无法跨服务生效。</p>
+  <div class="feynman">
+    <p>想象你给朋友跨行转账 1000 元：<span class="analogy">你的钱在 A 银行（账户扣 1000），朋友的钱在 B 银行（账户加 1000）。</span></p>
+    <p>如果 A 银行扣了钱，但 B 银行系统挂了没加上——那这 1000 元去哪了？<strong>分布式事务</strong>就是保证这种"跨行操作"要么两边都完成，要么都不发生，绝不出现"钱扣了没到账"的情况。</p>
+    <p><span class="analogy">就像寄一张双联支票——你和收件人各拿一联，要么两张同时生效，要么都作废。</span></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="380" fill="#0f172a" rx="8"/>
+      <text x="400" y="36" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">跨行转账：分布式事务的经典场景</text>
+      <rect x="30" y="60" width="100" height="40" rx="20" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="80" y="85" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">👤 小明</text>
+      <text x="80" y="145" text-anchor="middle" fill="#8b949e" font-size="10">转账 1000 元</text>
+      <text x="145" y="88" fill="#8b949e" font-size="20">→</text>
+      <rect x="170" y="60" width="120" height="40" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="230" y="85" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">转账请求</text>
+      <line x1="290" y1="80" x2="340" y2="80" stroke="#8b949e" stroke-width="2"/>
+      <line x1="290" y1="80" x2="340" y2="160" stroke="#8b949e" stroke-width="2"/>
+      <text x="315" y="73" fill="#3fb950" font-size="14">➡</text>
+      <text x="315" y="153" fill="#f87171" font-size="14">➡</text>
+      <rect x="350" y="55" width="200" height="55" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="2"/>
+      <text x="450" y="78" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">🏦 A 银行（扣款）</text>
+      <text x="450" y="100" text-anchor="middle" fill="#94a3b8" font-size="11">余额：5000 → 4000 ✅</text>
+      <rect x="350" y="135" width="200" height="55" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="2"/>
+      <text x="450" y="158" text-anchor="middle" fill="#f87171" font-size="14" font-weight="bold">🏦 B 银行（入账）</text>
+      <text x="450" y="180" text-anchor="middle" fill="#94a3b8" font-size="11">余额：2000 → 3000 ✅</text>
+      <line x1="550" y1="80" x2="600" y2="80" stroke="#8b949e" stroke-width="2"/>
+      <line x1="550" y1="160" x2="600" y2="160" stroke="#8b949e" stroke-width="2"/>
+      <text x="590" y="127" fill="#8b949e" font-size="20">⇩</text>
+      <rect x="295" y="190" width="210" height="40" rx="10" fill="#3fb950" opacity="0.12" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="400" y="216" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">✅ 事务成功：两边都完成</text>
+      <rect x="295" y="245" width="210" height="40" rx="10" fill="#f87171" opacity="0.12" stroke="#f87171" stroke-width="1.5"/>
+      <text x="400" y="271" text-anchor="middle" fill="#f87171" font-size="13" font-weight="bold">❌ 事务失败：两边都回滚</text>
+      <rect x="80" y="310" width="640" height="50" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="334" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">核心目标：跨服务的 ACID——要么全做，要么全不做</text>
+      <text x="400" y="352" text-anchor="middle" fill="#8b949e" font-size="11">绝不出现"A 扣了 B 没到账"或"A 没扣 B 到账了"的数据不一致</text>
+    </svg>
+    <div class="diagram-caption">图 1：跨行转账——分布式事务的典型场景，核心是保证多个参与者的数据一致性</div>
+  </div>
+
+  <div class="info-card">
+    <h4>🎯 分布式事务的两种类型</h4>
+    <p><strong>刚性事务</strong>：强一致性（ACID），典型代表 2PC/XA。适合对一致性要求极高、性能要求不高的场景。</p>
+    <p><strong>柔性事务</strong>：最终一致性（BASE），典型代表 TCC、Saga、事务消息。适合高性能、高可用的互联网场景。</p>
+    <p style="margin-top:8px"><span class="handwritten">核心选择：强一致性 vs 最终一致性，没有银弹。</span></p>
+  </div>
+</section>
+
+<!-- ====== 为什么需要 ====== -->
+<section class="section" id="why">
+  <h2>🤔 为什么需要分布式事务</h2>
+  <p>在单体应用时代，所有操作都在同一个数据库里——一条 SQL 搞定 <code>UPDATE account SET balance=balance-100 WHERE id=1</code> 和 <code>UPDATE account SET balance=balance+100 WHERE id=2</code>，数据库的 ACID 事务保证一切。</p>
+  <p>但到了微服务时代：用户服务、订单服务、支付服务、库存服务各用各的数据库——<strong>一个下单操作要扣库存、扣余额、创建订单、发优惠券</strong>，跨 4 个数据库，传统事务无力回天。</p>
+
+  <div class="compare">
+    <div>
+      <h4>🟢 单体应用</h4>
+      <ul>
+        <li>一个 MySQL 数据库</li>
+        <li><code>BEGIN TRANSACTION ... COMMIT</code></li>
+        <li>ACID 完美支持</li>
+        <li>本地事务就够了</li>
+        <li>性能高，一致性好</li>
+      </ul>
+    </div>
+    <div>
+      <h4>🔴 微服务架构</h4>
+      <ul>
+        <li>每个服务独立数据库</li>
+        <li>没有全局事务管理器</li>
+        <li>网络可能超时、宕机</li>
+        <li>部分成功 = 数据不一致</li>
+        <li>需要分布式事务方案</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>困境：网络不可靠 + 状态分布式</h3>
+  <p>分布式事务之所以"难"，根源在于两个核心挑战：</p>
+  <ul>
+    <li><strong>网络不可靠</strong>：请求可能丢失、超时、重试、乱序。你无法区分"对方处理了但回包丢了"和"对方根本没收到"。</li>
+    <li><strong>状态分布式</strong>：没有一台机器能看到全局状态。协调者只知道"我发了什么"，不知道"参与者实际执行了什么"。</li>
+  </ul>
+  <p>这两个挑战导致了一个理论上的"不可能"——我们接下来看 CAP 和 FLP 定理。</p>
+</section>
+
+<!-- ====== CAP与FLP ====== -->
+<section class="section" id="theory">
+  <h2>🎯 CAP 理论与 FLP 不可能定理</h2>
+  <p><strong>CAP 定理</strong>是分布式系统的"不可能三角"：<strong>一致性（Consistency）、可用性（Availability）、分区容错性（Partition Tolerance）</strong>三者最多同时满足两个。</p>
+  <p>分布式事务的选择本质是在 CAP 中做权衡：</p>
+  <ul>
+    <li><strong>CP 系统（放弃可用性）</strong>：2PC/XA — 保证强一致性，但协调者故障时整个系统不可用</li>
+    <li><strong>AP 系统（放弃强一致性）</strong>：TCC / Saga / 事务消息 — 保证最终一致性，系统始终可用</li>
+  </ul>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="420" fill="#0f172a" rx="8"/>
+      <text x="400" y="36" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">CAP 三角与分布式事务方案的定位</text>
+      <polygon points="400,70 170,370 630,370" fill="none" stroke="#475569" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <circle cx="400" cy="70" r="40" fill="#22d3ee" opacity="0.12" stroke="#22d3ee" stroke-width="2"/>
+      <text x="400" y="65" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">C</text>
+      <text x="400" y="82" text-anchor="middle" fill="#22d3ee" font-size="10">一致性</text>
+      <text x="400" y="97" text-anchor="middle" fill="#8b949e" font-size="9">所有节点数据一致</text>
+      <circle cx="170" cy="370" r="40" fill="#3fb950" opacity="0.12" stroke="#3fb950" stroke-width="2"/>
+      <text x="170" y="365" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">A</text>
+      <text x="170" y="382" text-anchor="middle" fill="#3fb950" font-size="10">可用性</text>
+      <text x="170" y="397" text-anchor="middle" fill="#8b949e" font-size="9">服务始终可访问</text>
+      <circle cx="630" cy="370" r="40" fill="#fbbf24" opacity="0.12" stroke="#fbbf24" stroke-width="2"/>
+      <text x="630" y="365" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="bold">P</text>
+      <text x="630" y="382" text-anchor="middle" fill="#fbbf24" font-size="10">分区容错</text>
+      <text x="630" y="397" text-anchor="middle" fill="#8b949e" font-size="9">网络分区仍工作</text>
+      <path d="M 400 70 L 170 370 L 400 370 Z" fill="#22d3ee" opacity="0.04"/>
+      <rect x="220" y="140" width="155" height="55" rx="8" fill="#22d3ee" opacity="0.1" stroke="#22d3ee" stroke-width="1"/>
+      <text x="297" y="162" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">CP：2PC / XA</text>
+      <text x="297" y="180" text-anchor="middle" fill="#8b949e" font-size="10">强一致性，牺牲可用性</text>
+      <path d="M 170 370 L 630 370 L 400 70 Z" fill="#3fb950" opacity="0.04"/>
+      <rect x="390" y="250" width="200" height="55" rx="8" fill="#3fb950" opacity="0.1" stroke="#3fb950" stroke-width="1"/>
+      <text x="490" y="272" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">AP：TCC / Saga / 消息</text>
+      <text x="490" y="290" text-anchor="middle" fill="#8b949e" font-size="10">最终一致性，保证可用性</text>
+      <rect x="50" y="300" width="700" height="55" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="322" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">BASE 理论（柔性事务的基础）</text>
+      <text x="400" y="342" text-anchor="middle" fill="#94a3b8" font-size="11">Basically Available（基本可用） | Soft State（软状态） | Eventually Consistent（最终一致）</text>
+    </svg>
+    <div class="diagram-caption">图 2：CAP 三角——分布式事务方案的选型本质是一致性与可用性的权衡</div>
+  </div>
+
+  <h3>FLP 不可能定理</h3>
+  <p>比 CAP 更底层的是 <strong>FLP 不可能定理</strong>（Fischer, Lynch, Paterson, 1985）：在异步通信系统中，即使只有一个进程可能故障，也不存在一个确定性的共识算法能保证所有非故障进程在有限时间内达成一致。</p>
+  <p>翻译成人话：<strong>在分布式系统中，你永远无法确定"对方真的挂了"还是"只是回得慢"。</strong> 这意味着所有分布式事务方案都是"有损的"——要么牺牲可用性（2PC 阻塞等待），要么牺牲一致性（最终一致），要么引入超时和重试（但超时的设定本身是猜测）。</p>
+  <div class="info-card">
+    <h4>💡 FLP 对分布式事务的启示</h4>
+    <ul>
+      <li><strong>2PC 的阻塞问题源于 FLP</strong>：协调者无法区分"参与者挂了"和"参与者慢"，只能等</li>
+      <li><strong>3PC 引入超时也没根治</strong>：超时只是一个"猜"的阈值，猜错了就数据不一致</li>
+      <li><strong>TCC/Saga 的补偿本质是"事后兜底"</strong>：承认无法实时达成一致，改为最终一致</li>
+      <li><strong>Paxos/Raft 能做共识，但只解决了状态复制，没解决业务原子性</strong></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== 2PC/XA ====== -->
+<section class="section" id="2pc">
+  <h2>🔁 2PC / XA —— 两阶段提交</h2>
+  <p><strong>两阶段提交（Two-Phase Commit）</strong>是最经典的分布式事务协议，由<strong>协调者（Coordinator）</strong>和多个<strong>参与者（Participant）</strong>组成。XA 是 X/Open 组织定义的分布式事务规范，2PC 是其核心实现。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">想象你组织一场公司团建聚餐：</span></p>
+    <p><strong>第一阶段（Prepare）：</strong>你（协调者）给所有人发消息："明天晚上 7 点去 XXX 餐厅，能来的请回复'确认'。"<br>
+    <strong>第二阶段（Commit/Abort）：</strong>大家回复后，你统计——<strong>如果所有人回复"确认"</strong>，你通知"好，确认去！"（Commit）；<strong>如果有人回复"去不了"或没回复</strong>，你通知"取消，计划作废"（Abort）。</p>
+    <p><span class="analogy">关键问题：如果有人回复确认后突然失联（挂了），你也不知道他明天到不到——这就是 2PC 的"阻塞"问题。</span></p>
+  </div>
+
+  <h3>2PC 详细状态机</h3>
+  <p>2PC 不是一个简单的"问一圈再决定"，它的内部状态机如下：</p>
+  <div class="protocol-grid">
+    <div>
+      <h4 style="color:#22d3ee">协调者</h4>
+      <p><code>INIT</code> → <code>WAITING</code> → <code>COMMITTED</code> 或 <code>ABORTED</code></p>
+    </div>
+    <div>
+      <h4 style="color:#3fb950">参与者</h4>
+      <p><code>INIT</code> → <code>PREPARED</code> → <code>COMMITTED</code> 或 <code>ABORTED</code></p>
+    </div>
+    <div>
+      <h4 style="color:#fbbf24">日志关键点</h4>
+      <p>参与者写入 <code>undo/redo</code> 日志后才回复 YES</p>
+    </div>
+    <div>
+      <h4 style="color:#f87171">脑裂场景</h4>
+      <p>协调者在 COMMIT 阶段挂了 → 参与者不确定提交还是回滚</p>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="460" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">2PC 两阶段提交流程</text>
+      <rect x="300" y="50" width="200" height="36" rx="8" fill="#a78bfa" opacity="0.15" stroke="#a78bfa" stroke-width="2"/>
+      <text x="400" y="74" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="bold">🎯 协调者（TM）</text>
+      <rect x="50" y="110" width="700" height="50" rx="8" fill="#fbbf24" opacity="0.08" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="80" y="132" fill="#fbbf24" font-size="13" font-weight="bold">阶段一：Prepare（准备）</text>
+      <text x="250" y="132" fill="#94a3b8" font-size="11">协调者向所有参与者发送"准备提交"请求</text>
+      <text x="80" y="150" fill="#8b949e" font-size="11">参与者执行事务但不提交，写 undo/redo 日志，回复 YES 或 NO</text>
+      <rect x="80" y="170" width="180" height="40" rx="8" fill="#22d3ee" opacity="0.1" stroke="#22d3ee" stroke-width="1"/>
+      <text x="170" y="194" text-anchor="middle" fill="#22d3ee" font-size="12">参与者 A：YES ✅</text>
+      <rect x="310" y="170" width="180" height="40" rx="8" fill="#3fb950" opacity="0.1" stroke="#3fb950" stroke-width="1"/>
+      <text x="400" y="194" text-anchor="middle" fill="#3fb950" font-size="12">参与者 B：YES ✅</text>
+      <rect x="540" y="170" width="180" height="40" rx="8" fill="#f87171" opacity="0.1" stroke="#f87171" stroke-width="1"/>
+      <text x="630" y="194" text-anchor="middle" fill="#f87171" font-size="12">参与者 C：NO ❌</text>
+      <text x="400" y="228" text-anchor="middle" fill="#8b949e" font-size="18">↓</text>
+      <rect x="50" y="240" width="700" height="50" rx="8" fill="#3fb950" opacity="0.08" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="80" y="262" fill="#3fb950" font-size="13" font-weight="bold">阶段二：Commit / Abort（提交或中止）</text>
+      <text x="250" y="262" fill="#94a3b8" font-size="11">协调者根据所有参与者回复做决策</text>
+      <text x="80" y="280" fill="#8b949e" font-size="11">全 YES → Commit（提交事务） | 任一 NO 或超时 → Abort（回滚事务）</text>
+      <rect x="80" y="300" width="300" height="55" rx="8" fill="#3fb950" opacity="0.08" stroke="#3fb950" stroke-width="1"/>
+      <text x="230" y="322" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">✅ 全部 YES → Commit</text>
+      <text x="230" y="342" text-anchor="middle" fill="#8b949e" font-size="11">所有参与者正式提交事务，释放锁</text>
+      <rect x="420" y="300" width="300" height="55" rx="8" fill="#f87171" opacity="0.08" stroke="#f87171" stroke-width="1"/>
+      <text x="570" y="322" text-anchor="middle" fill="#f87171" font-size="13" font-weight="bold">❌ 任一 NO → Abort</text>
+      <text x="570" y="342" text-anchor="middle" fill="#8b949e" font-size="11">所有参与者回滚事务，释放锁</text>
+      <rect x="50" y="375" width="330" height="70" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1"/>
+      <text x="215" y="397" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">✅ 优点</text>
+      <text x="65" y="418" fill="#94a3b8" font-size="11">• 原理简单，实现清晰</text>
+      <text x="65" y="436" fill="#94a3b8" font-size="11">• 强一致性，事务的 ACID 完整保留</text>
+      <rect x="420" y="375" width="330" height="70" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1"/>
+      <text x="585" y="397" text-anchor="middle" fill="#f87171" font-size="12" font-weight="bold">❌ 致命缺点</text>
+      <text x="435" y="418" fill="#94a3b8" font-size="11">• 同步阻塞：参与者等待协调者决策，锁资源</text>
+      <text x="435" y="436" fill="#94a3b8" font-size="11">• 单点故障：协调者挂了一直阻塞</text>
+    </svg>
+    <div class="diagram-caption">图 3：2PC 两阶段提交——Prepare 阶段询问，Commit/Abort 阶段执行</div>
+  </div>
+
+  <h3>2PC 的四大致命问题</h3>
+  <table>
+    <tr><th>问题</th><th>描述</th><th>发生场景</th></tr>
+    <tr><td><span class="badge badge-red">同步阻塞</span></td><td>Prepare 阶段参与者锁定资源，等待协调者决策</td><td>高并发下资源被长时间占用，系统吞吐骤降</td></tr>
+    <tr><td><span class="badge badge-red">单点故障</span></td><td>协调者挂了，参与者不知道是 Commit 还是 Abort</td><td>协调者进程 OOM、机器宕机</td></tr>
+    <tr><td><span class="badge badge-red">数据不一致</span></td><td>协调者发了 Commit，部分参与者因网络没收到</td><td>网络分区，参与者只收到了 Prepare 没收到 Commit</td></tr>
+    <tr><td><span class="badge badge-red">脑裂</span></td><td>协调者与一半参与者网络断开，两边各自决策</td><td>交换机故障导致集群分裂</td></tr>
+  </table>
+
+  <h3>3PC：为什么没能解决问题？</h3>
+  <p><strong>三阶段提交（3PC）</strong>在 2PC 的基础上引入<strong>超时机制</strong>和<strong>PreCommit 阶段</strong>，试图解决 2PC 的阻塞问题：</p>
+  <ol>
+    <li><strong>CanCommit</strong>：协调者问"能不能提交？"——参与者只需回复 yes/no，不需要写日志或锁资源</li>
+    <li><strong>PreCommit</strong>：协调者通知"准备提交"——参与者执行事务写 undo/redo 日志，回复 ACK</li>
+    <li><strong>DoCommit</strong>：协调者收到所有 ACK 后通知"正式提交"——参与者提交事务</li>
+  </ol>
+  <p>关键改进：参与者在 PreCommit 后如果超时没收到 DoCommit，<strong>自行提交</strong>（而不是像 2PC 那样一直等）。</p>
+  <div class="info-card" style="border-color:var(--red)">
+    <h4 style="color:var(--red)">⚠️ 3PC 仍然没有完全解决问题</h4>
+    <p><strong>问题 1</strong>：PreCommit 后，如果网络分区导致部分参与者收到了 DoCommit、部分没收到——没收到的参与者超时自行提交，但这时候协调者其实想 Abort（因为在 PreCommit 阶段已经有参与者超时了）。这就产生了<strong>数据不一致</strong>。</p>
+    <p><strong>问题 2</strong>：3PC 引入了更多的网络交互（3 轮 vs 2 轮），<strong>性能更差</strong>。</p>
+    <p><strong>问题 3</strong>：FLP 定理说"异步系统无法达成确定性共识"——3PC 只是在概率上降低了风险，但<strong>无法根除</strong>。</p>
+    <p><span class="handwritten">3PC 就像升级了"团建计划"：先问大家"想不想去？"（不锁资源）、再通知"准备去"、最后说"出发"。但如果你说"准备去"后失联，别人只能自己猜——猜错了就出问题。</span></p>
+  </div>
+
+  <h3>Go 代码：2PC 协调者伪代码</h3>
+  <pre><code>package twopc
+
+import (
+	"context"
+	"fmt"
+	"sync"
+	"time"
+)
+
+// Participant 定义事务参与者接口
+type Participant interface {
+	Prepare(ctx context.Context, txID string) error       // 阶段一：准备
+	Commit(ctx context.Context, txID string) error        // 阶段二：提交
+	Rollback(ctx context.Context, txID string) error      // 阶段二：回滚
+}
+
+// Coordinator 2PC 协调者
+type Coordinator struct {
+	mu           sync.Mutex
+	participants []Participant
+	timeout      time.Duration
+}
+
+func NewCoordinator(participants []Participant, timeout time.Duration) *Coordinator {
+	return &Coordinator{participants: participants, timeout: timeout}
+}
+
+// Execute 执行两阶段提交
+func (c *Coordinator) Execute(ctx context.Context, txID string) error {
+	// === 阶段一：Prepare ===
+	c.mu.Lock()
+	prepared := make([]int, 0, len(c.participants))
+	for i, p := range c.participants {
+		pCtx, cancel := context.WithTimeout(ctx, c.timeout)
+		if err := p.Prepare(pCtx, txID); err != nil {
+			cancel()
+			c.mu.Unlock()
+			// 任一 Prepare 失败 → 执行回滚
+			c.rollbackAll(ctx, txID, prepared)
+			return fmt.Errorf("prepare phase failed at participant %d: %w", i, err)
+		}
+		cancel()
+		prepared = append(prepared, i)
+	}
+	c.mu.Unlock()
+
+	// === 阶段二：Commit ===
+	for i, p := range c.participants {
+		if err := p.Commit(ctx, txID); err != nil {
+			// Commit 失败→数据已不一致，记录严重错误
+			// 实际生产需人工介入或重试
+			return fmt.Errorf("commit phase failed at participant %d: %w", i, err)
+		}
+	}
+	return nil
+}
+
+func (c *Coordinator) rollbackAll(ctx context.Context, txID string, prepared []int) {
+	for _, i := range prepared {
+		_ = c.participants[i].Rollback(ctx, txID)
+	}
+}</code></pre>
+
+  <div class="info-card">
+    <h4>💡 实际应用</h4>
+    <p>2PC/XA 在<strong>传统金融、银行核心系统</strong>中仍有应用（如 Tuxedo、WebLogic JTA）。但在互联网高并发场景中，几乎没人用 2PC——性能和可用性无法接受。取而代之的是 TCC、Saga 等柔性事务方案。</p>
+    <p><span class="handwritten">2PC 就像让所有人等你一个回复——在快节奏的互联网世界等不起。</span></p>
+  </div>
+</section>
+
+<!-- ====== TCC ====== -->
+<section class="section" id="tcc">
+  <h2>✂️ TCC 模式（Try-Confirm-Cancel）</h2>
+  <p><strong>TCC</strong> 是分布式事务中应用广泛的<strong>补偿型方案</strong>。它将一个分布式事务分成三个阶段：<strong>Try（预留资源）→ Confirm（确认执行）→ Cancel（取消回滚）</strong>。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">想象你在美团上预订酒店：</span></p>
+    <p><strong>Try 阶段：</strong>你提交订单——系统<strong>预占</strong>了一间房，但还没扣款。就像酒店前台说"好的，我先帮你锁一间房，保留 15 分钟"。<br>
+    <strong>Confirm 阶段：</strong>15 分钟内你确认入住——系统扣款，正式生成订单。酒店前台说"已确认入住，房间归你了"。<br>
+    <strong>Cancel 阶段：</strong>你取消订单——系统释放预占的房间，不扣钱。酒店前台说"好的，房间释放了"。</p>
+    <p><span class="analogy">关键是：Try 阶段是"占坑"而不是"干活"——把最危险的资源竞争变成资源预留。</span></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="400" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">TCC 三阶段：预订酒店的类比</text>
+      <rect x="30" y="60" width="220" height="130" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="140" y="85" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">🟡 Try（预占资源）</text>
+      <rect x="45" y="100" width="190" height="35" rx="6" fill="#22d3ee" opacity="0.1"/>
+      <text x="140" y="120" text-anchor="middle" fill="#22d3ee" font-size="11">订单服务：创建待支付订单</text>
+      <text x="140" y="140" text-anchor="middle" fill="#22d3ee" font-size="11">库存服务：预占库存</text>
+      <text x="140" y="158" text-anchor="middle" fill="#22d3ee" font-size="11">账户服务：冻结余额</text>
+      <text x="140" y="180" text-anchor="middle" fill="#8b949e" font-size="10">⚠️ 还没真正扣钱</text>
+      <text x="270" y="135" fill="#8b949e" font-size="20">→</text>
+      <rect x="295" y="60" width="220" height="130" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="2"/>
+      <text x="405" y="85" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">🟢 Confirm（确认执行）</text>
+      <rect x="310" y="100" width="190" height="35" rx="6" fill="#3fb950" opacity="0.1"/>
+      <text x="405" y="120" text-anchor="middle" fill="#3fb950" font-size="11">订单服务：订单状态→已支付</text>
+      <text x="405" y="140" text-anchor="middle" fill="#3fb950" font-size="11">库存服务：扣减库存</text>
+      <text x="405" y="158" text-anchor="middle" fill="#3fb950" font-size="11">账户服务：扣除冻结余额</text>
+      <text x="405" y="180" text-anchor="middle" fill="#8b949e" font-size="10">✅ 正式完成操作</text>
+      <text x="535" y="135" fill="#8b949e" font-size="20">→</text>
+      <rect x="560" y="60" width="220" height="130" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="670" y="85" text-anchor="middle" fill="#f87171" font-size="14" font-weight="bold">🔴 Cancel（取消回滚）</text>
+      <rect x="575" y="100" width="190" height="35" rx="6" fill="#f87171" opacity="0.1"/>
+      <text x="670" y="120" text-anchor="middle" fill="#f87171" font-size="11">订单服务：订单→已取消</text>
+      <text x="670" y="140" text-anchor="middle" fill="#f87171" font-size="11">库存服务：释放预占库存</text>
+      <text x="670" y="158" text-anchor="middle" fill="#f87171" font-size="11">账户服务：解冻余额</text>
+      <text x="670" y="180" text-anchor="middle" fill="#8b949e" font-size="10">⬅️ 回到操作前状态</text>
+      <rect x="50" y="215" width="700" height="60" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="240" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">TCC 核心思想：用"资源预留"代替"资源锁定"</text>
+      <text x="400" y="260" text-anchor="middle" fill="#94a3b8" font-size="11">Try 做好准备工作（预占） | Confirm 确认提交 | Cancel 回滚——业务方自己实现这三个接口</text>
+      <rect x="100" y="295" width="600" height="85" rx="8" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="318" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">TCC 优点 vs 缺点</text>
+      <text x="400" y="340" text-anchor="middle" fill="#3fb950" font-size="11">✅ 不阻塞资源（相比 2PC） | 性能好 | 最终一致性</text>
+      <text x="400" y="358" text-anchor="middle" fill="#f87171" font-size="11">❌ 业务侵入性强 | 需自行实现 Try/Confirm/Cancel | 空回滚和悬挂问题</text>
+      <text x="400" y="376" text-anchor="middle" fill="#8b949e" font-size="10">空回滚：没有 Try 就 Cancel | 悬挂：Cancel 后 Try 才到——都需要幂等和日志记录</text>
+    </svg>
+    <div class="diagram-caption">图 4：TCC 三阶段流程——Try 预占 → Confirm 确认 → Cancel 回滚</div>
+  </div>
+
+  <h3>空回滚（Hanging Rollback）与悬挂（Suspension）</h3>
+  <p>TCC 最容易被面试官追问的两个边界问题：</p>
+  <div class="compare">
+    <div>
+      <h4 style="color:var(--orange)">空回滚</h4>
+      <p>场景：网络超时导致 Try 请求丢失，协调者超时后直接调用了 Cancel。</p>
+      <p>问题：Cancel 执行时，Try 并没有被执行过——如果 Cancel 直接尝试"解冻余额"，而余额根本没被冻结过，就会导致数据错误。</p>
+      <p><strong>解决</strong>：在事务日志中记录 Try 的执行状态。Cancel 先查日志：如果没找到 Try 记录，标记为"空回滚"，直接返回成功。</p>
+    </div>
+    <div>
+      <h4 style="color:var(--red)">悬挂</h4>
+      <p>场景：Cancel 已经执行完（可能是空回滚），但 Try 请求因为网络延迟姗姗来迟。</p>
+      <p>问题：Try 不知道 Cancel 已经执行过了，正常执行预留操作——但这次预留永远不会有 Confirm 来消费它，变成了"孤儿资源"。</p>
+      <p><strong>解决</strong>：Try 方法先查事务日志，如果已存在 Cancel 记录，直接返回成功（不执行预留操作）。</p>
+    </div>
+  </div>
+
+  <h3>Go 代码：TCC 接口定义与空回滚处理</h3>
+  <pre><code>package tcc
+
+import (
+	"context"
+	"fmt"
+	"sync"
+)
+
+// TccService 每个参与者需要实现的 TCC 接口
+type TccService interface {
+	Try(ctx context.Context, txID string, bizPayload interface{}) error
+	Confirm(ctx context.Context, txID string) error
+	Cancel(ctx context.Context, txID string) error
+}
+
+// TxLog 事务日志——用于处理空回滚和悬挂
+type TxLog struct {
+	mu      sync.Mutex
+	records map[string]int // txID → 0=tryed, 1=canceled, 2=confirmed
+}
+
+func NewTxLog() *TxLog {
+	return &TxLog{records: make(map[string]int)}
+}
+
+func (l *TxLog) Set(txID string, state int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.records[txID] = state
+}
+
+func (l *TxLog) Get(txID string) (int, bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	s, ok := l.records[txID]
+	return s, ok
+}
+
+// AccountService 账户服务 TCC 实现——带空回滚/悬挂处理
+type AccountService struct {
+	TxLog *TxLog
+}
+
+func (a *AccountService) Try(ctx context.Context, txID string, _ interface{}) error {
+	state, exists := a.TxLog.Get(txID)
+	if exists && state == 1 { // Cancel 已执行→悬挂检测
+		fmt.Printf("[%s] 悬挂检测：Cancel已执行，跳过Try\n", txID)
+		return nil
+	}
+	// 正常执行：冻结余额
+	fmt.Printf("[%s] Try：冻结余额 100元\n", txID)
+	a.TxLog.Set(txID, 0)
+	return nil
+}
+
+func (a *AccountService) Confirm(ctx context.Context, txID string) error {
+	fmt.Printf("[%s] Confirm：扣除冻结余额\n", txID)
+	a.TxLog.Set(txID, 2)
+	return nil
+}
+
+func (a *AccountService) Cancel(ctx context.Context, txID string) error {
+	state, exists := a.TxLog.Get(txID)
+	if !exists { // Try 没执行→空回滚
+		fmt.Printf("[%s] 空回滚：无对应Try，直接返回\n", txID)
+		a.TxLog.Set(txID, 1)
+		return nil
+	}
+	if state != 0 { // 已经被处理过了→幂等
+		return nil
+	}
+	fmt.Printf("[%s] Cancel：解冻余额\n", txID)
+	a.TxLog.Set(txID, 1)
+	return nil
+}
+
+// TccCoordinator 协调者
+type TccCoordinator struct {
+	services []TccService
+}
+
+func (c *TccCoordinator) Execute(ctx context.Context, txID string, payload interface{}) error {
+	// Try 阶段
+	for _, s := range c.services {
+		if err := s.Try(ctx, txID, payload); err != nil {
+			// 任一 Try 失败→全部 Cancel
+			c.cancelAll(ctx, txID)
+			return fmt.Errorf("try failed: %w", err)
+		}
+	}
+	// Confirm 阶段
+	for _, s := range c.services {
+		if err := s.Confirm(ctx, txID); err != nil {
+			// Confirm 失败→重试，最终人工介入
+			return fmt.Errorf("confirm failed: %w", err)
+		}
+	}
+	return nil
+}
+
+func (c *TccCoordinator) cancelAll(ctx context.Context, txID string) {
+	for _, s := range c.services {
+		_ = s.Cancel(ctx, txID)
+	}
+}</code></pre>
+
+  <div class="info-card">
+    <h4>💡 TCC 的关键点</h4>
+    <p><strong>幂等性</strong>：Confirm 和 Cancel 可能被多次调用，必须保证幂等（多用事务日志或去重表）。<br>
+    <strong>空回滚</strong>：Cancel 可能在 Try 还没执行时就触发了（比如网络超时），Cancel 必须能正确处理"无操作可回滚"的情况。<br>
+    <strong>悬挂</strong>：Cancel 执行完后 Try 才到达，Try 要能检测到"已被取消"并拒绝执行。</p>
+  </div>
+</section>
+
+<!-- ====== Saga ====== -->
+<section class="section" id="saga">
+  <h2>🎭 Saga 模式（编排型/协同型）</h2>
+  <p><strong>Saga</strong> 是一种<strong>长事务（Long-Lived Transaction）</strong>解决方案，将一个分布式事务拆分为一系列<strong>本地事务</strong>，每个本地事务都有对应的<strong>补偿事务</strong>用于回滚。Saga 有两种实现方式：<strong>编排型（Choreography）</strong>和<strong>协同型（Orchestration）</strong>。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">想象你订了一份"旅行套餐"：机票 + 酒店 + 租车。</span></p>
+    <p>你用<strong>编排型 Saga</strong>（事件驱动）：<br>
+    订机票成功 → 发布"机票已订"事件 → 酒店服务监听到事件自动订房 → 酒店订成功发布"酒店已订"事件 → 租车服务监听到事件自动租车。</p>
+    <p>但如果租车失败了呢？<br>
+    租车服务发布"租车失败"事件 → 酒店服务监听到后<strong>取消预订（补偿）</strong> → 机票服务监听到后<strong>取消机票（补偿）</strong>。</p>
+    <p><span class="analogy">就像多米诺骨牌——往前推是正常流程，往后倒就是补偿回滚。</span></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="460" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Saga 模式：正向事务 + 补偿事务</text>
+      <text x="80" y="65" fill="#22d3ee" font-size="13" font-weight="bold">➡️ 正向流程</text>
+      <rect x="60" y="80" width="140" height="55" rx="8" fill="#3fb950" opacity="0.12" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="130" y="105" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">🎫 订机票 ✅</text>
+      <text x="130" y="122" text-anchor="middle" fill="#8b949e" font-size="10">事务 T1</text>
+      <text x="215" y="110" fill="#8b949e" font-size="18">→</text>
+      <rect x="240" y="80" width="140" height="55" rx="8" fill="#3fb950" opacity="0.12" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="310" y="105" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">🏨 订酒店 ✅</text>
+      <text x="310" y="122" text-anchor="middle" fill="#8b949e" font-size="10">事务 T2</text>
+      <text x="395" y="110" fill="#8b949e" font-size="18">→</text>
+      <rect x="420" y="80" width="140" height="55" rx="8" fill="#3fb950" opacity="0.12" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="490" y="105" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">🚗 租车 ✅</text>
+      <text x="490" y="122" text-anchor="middle" fill="#8b949e" font-size="10">事务 T3</text>
+      <text x="575" y="110" fill="#8b949e" font-size="18">→</text>
+      <rect x="600" y="80" width="150" height="55" rx="10" fill="#3fb950" opacity="0.2" stroke="#3fb950" stroke-width="2"/>
+      <text x="675" y="105" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">🎊 旅行成功！</text>
+      <text x="80" y="175" fill="#f87171" font-size="13" font-weight="bold">⬅️ 补偿流程（租车失败时）</text>
+      <rect x="600" y="190" width="150" height="55" rx="8" fill="#f87171" opacity="0.12" stroke="#f87171" stroke-width="1.5"/>
+      <text x="675" y="215" text-anchor="middle" fill="#f87171" font-size="12" font-weight="bold">🚗 租车失败 ❌</text>
+      <text x="675" y="232" text-anchor="middle" fill="#8b949e" font-size="10">C3 补偿取消</text>
+      <text x="575" y="220" fill="#8b949e" font-size="18">←</text>
+      <rect x="420" y="190" width="140" height="55" rx="8" fill="#f87171" opacity="0.12" stroke="#f87171" stroke-width="1.5"/>
+      <text x="490" y="215" text-anchor="middle" fill="#f87171" font-size="12" font-weight="bold">🏨 取消酒店 ⬅️</text>
+      <text x="490" y="232" text-anchor="middle" fill="#8b949e" font-size="10">C2 补偿取消</text>
+      <text x="395" y="220" fill="#8b949e" font-size="18">←</text>
+      <rect x="240" y="190" width="140" height="55" rx="8" fill="#f87171" opacity="0.12" stroke="#f87171" stroke-width="1.5"/>
+      <text x="310" y="215" text-anchor="middle" fill="#f87171" font-size="12" font-weight="bold">🎫 取消机票 ⬅️</text>
+      <text x="310" y="232" text-anchor="middle" fill="#8b949e" font-size="10">C1 补偿取消</text>
+      <text x="215" y="220" fill="#8b949e" font-size="18">←</text>
+      <rect x="60" y="190" width="140" height="55" rx="10" fill="#f87171" opacity="0.2" stroke="#f87171" stroke-width="2"/>
+      <text x="130" y="215" text-anchor="middle" fill="#f87171" font-size="13" font-weight="bold">💸 全额退款</text>
+      <rect x="50" y="275" width="330" height="165" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="1"/>
+      <text x="215" y="300" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">🔄 编排型（Choreography）</text>
+      <text x="65" y="322" fill="#94a3b8" font-size="11">• 基于事件驱动</text>
+      <text x="65" y="340" fill="#94a3b8" font-size="11">• 无中心协调者</text>
+      <text x="65" y="358" fill="#94a3b8" font-size="11">• 服务间通过消息队列通信</text>
+      <text x="65" y="376" fill="#94a3b8" font-size="11">• 耦合度低，但流程难跟踪</text>
+      <text x="65" y="394" fill="#94a3b8" font-size="11">• 适合简单、线性的业务流程</text>
+      <rect x="420" y="275" width="330" height="165" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1"/>
+      <text x="585" y="300" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">🎯 协同型（Orchestration）</text>
+      <text x="435" y="322" fill="#94a3b8" font-size="11">• 有中心协调者（Orchestrator）</text>
+      <text x="435" y="340" fill="#94a3b8" font-size="11">• 协调者告诉每个服务做什么</text>
+      <text x="435" y="358" fill="#94a3b8" font-size="11">• 流程集中管理，可观测性强</text>
+      <text x="435" y="376" fill="#94a3b8" font-size="11">• 协调者单点故障风险</text>
+      <text x="435" y="394" fill="#94a3b8" font-size="11">• 适合复杂、多分支业务流程</text>
+    </svg>
+    <div class="diagram-caption">图 5：Saga——正向事务依次执行，失败后补偿事务逆向回滚</div>
+  </div>
+
+  <h3>Saga 的隔离性问题</h3>
+  <p>Saga 最大的缺点是<strong>缺乏隔离性</strong>。不像 ACID 事务的"隔离"（I）——其他事务看不到中间状态，Saga 中每个本地事务提交后，其修改对其他事务<strong>立即可见</strong>。这可能导致：</p>
+  <ul>
+    <li><strong>丢失更新</strong>：事务 A 扣了库存（提交），事务 B 也扣了同一库存（提交），但事务 A 后来补偿回滚了——库存加了回来，相当于事务 B 的扣减被"丢失"。</li>
+    <li><strong>脏读</strong>：事务 A 创建了订单（提交），事务 B 读了这条订单并发了货，但事务 A 后来补偿回滚了订单——B 发了"不存在"的货。</li>
+  </ul>
+  <div class="info-card">
+    <h4>💡 解决方案：Countermeasure（对策）</h4>
+    <p><strong>语义锁</strong>：在数据上加一个"脏"标记，其他事务看到后能识别这是"未最终确认"的数据。</p>
+    <p><strong>交换式更新</strong>：使用可逆的操作而不是不可逆的操作（如"订单状态=已取消"而不是"删除订单行"）。</p>
+    <p><strong>重新读验证</strong>：在补偿前重新读取数据，如果发现数据已被其他事务修改，走人工审核。</p>
+  </div>
+
+  <h3>Go 代码：编排型 Saga 协调者</h3>
+  <pre><code>package saga
+
+import (
+	"context"
+	"fmt"
+)
+
+// SagaStep 定义 Saga 中的一个步骤
+type SagaStep struct {
+	Name       string
+	Action     func(ctx context.Context) error // 正向操作
+	Compensate func(ctx context.Context) error // 补偿操作
+}
+
+// SagaCoordinator 协同型 Saga 协调者
+type SagaCoordinator struct {
+	steps []SagaStep
+}
+
+func NewSagaCoordinator(steps []SagaStep) *SagaCoordinator {
+	return &SagaCoordinator{steps: steps}
+}
+
+// Execute 执行 Saga——依次执行 Action，任一失败就执行补偿
+func (s *SagaCoordinator) Execute(ctx context.Context) error {
+	completed := make([]int, 0, len(s.steps))
+
+	for i, step := range s.steps {
+		fmt.Printf("[Saga] 执行步骤 %d: %s\n", i, step.Name)
+		if err := step.Action(ctx); err != nil {
+			fmt.Printf("[Saga] 步骤 %d (%s) 失败: %v，开始补偿\n", i, step.Name, err)
+			// 逆向执行补偿
+			s.compensate(ctx, completed)
+			return fmt.Errorf("step %s failed: %w", step.Name, err)
+		}
+		completed = append(completed, i)
+	}
+	return nil
+}
+
+func (s *SagaCoordinator) compensate(ctx context.Context, completed []int) {
+	// 逆向遍历已完成的步骤
+	for i := len(completed) - 1; i >= 0; i-- {
+		step := s.steps[completed[i]]
+		fmt.Printf("[Saga] 补偿步骤 %d: %s\n", completed[i], step.Name)
+		if err := step.Compensate(ctx); err != nil {
+			// 补偿也可能失败→记录日志，最终人工介入
+			fmt.Printf("[Saga] ⚠️ 补偿步骤 %s 也失败了: %v\n", step.Name, err)
+		}
+	}
+}
+
+// 使用示例
+func Example() {
+	saga := NewSagaCoordinator([]SagaStep{
+		{
+			Name:       "创建订单",
+			Action:     func(ctx context.Context) error { return createOrder(ctx) },
+			Compensate: func(ctx context.Context) error { return cancelOrder(ctx) },
+		},
+		{
+			Name:       "扣减库存",
+			Action:     func(ctx context.Context) error { return deductStock(ctx) },
+			Compensate: func(ctx context.Context) error { return restoreStock(ctx) },
+		},
+		{
+			Name:       "扣减余额",
+			Action:     func(ctx context.Context) error { return deductBalance(ctx) },
+			Compensate: func(ctx context.Context) error { return restoreBalance(ctx) },
+		},
+	})
+
+	if err := saga.Execute(context.Background()); err != nil {
+		fmt.Printf("Saga 最终失败: %v\n", err)
+	} else {
+		fmt.Println("Saga 执行成功！")
+	}
+}</code></pre>
+
+  <div class="info-card">
+    <h4>💡 Saga 的注意事项</h4>
+    <p><strong>没有隔离性</strong>：Saga 不保证隔离性，所以其他事务可能看到中间状态。解决方案有<strong>语义锁</strong>和<strong>交换式更新</strong>。<br>
+    <strong>补偿必须是幂等的</strong>：补偿事务可能被执行多次，必须保证最终结果一致。<br>
+    <strong>Saga 是"向前恢复"</strong>：出错了不退回到初始状态，而是通过一系列补偿事务"对冲"到一致状态。</p>
+  </div>
+</section>
+
+<!-- ====== 事务消息 ====== -->
+<section class="section" id="msg">
+  <h2>📨 事务消息（RocketMQ 半消息 vs Kafka 事务）</h2>
+  <p><strong>事务消息</strong>将<strong>本地事务</strong>和<strong>消息发送</strong>绑定为一个原子操作——要么本地事务和消息都成功，要么都失败。RocketMQ 的事务消息是最经典的实现，通过<strong>半消息（Half Message）</strong>机制实现。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">想象你去邮局寄一封"挂号信"（需要回执的那种）：</span></p>
+    <p>你把信寄出，邮局给你一个回执——但这个时候信其实<strong>还没真正寄出</strong>，只是邮局系统里"暂存"着（半消息状态）。<br>
+    等你确认内容没问题了，打电话给邮局说"可以发了"——邮局才真正把信投递出去。<br>
+    如果你说"内容有误，取消"——邮局就把这封信销毁（回滚）。<br>
+    <span class="analogy">关键点是：邮局保证"你说发我才发，你说取消我就销毁"——这就是事务消息的"两阶段确认"。</span></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="420" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">RocketMQ 事务消息流程</text>
+      <rect x="30" y="55" width="170" height="45" rx="8" fill="#a78bfa" opacity="0.12" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="115" y="83" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="bold">📤 生产者（Producer）</text>
+      <rect x="315" y="55" width="170" height="45" rx="8" fill="#fbbf24" opacity="0.12" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="400" y="83" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="bold">📨 RocketMQ Broker</text>
+      <rect x="600" y="55" width="170" height="45" rx="8" fill="#3fb950" opacity="0.12" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="685" y="83" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">📥 消费者（Consumer）</text>
+      <line x1="200" y1="70" x2="315" y2="70" stroke="#22d3ee" stroke-width="1.5"/>
+      <polygon points="315,70 305,65 305,75" fill="#22d3ee"/>
+      <text x="257" y="62" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="bold">① 发送半消息</text>
+      <text x="257" y="100" text-anchor="middle" fill="#94a3b8" font-size="10">消息暂存，不可消费</text>
+      <line x1="200" y1="120" x2="315" y2="120" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <polygon points="315,120 305,115 305,125" fill="#3fb950"/>
+      <text x="257" y="135" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">③ 确认提交</text>
+      <rect x="30" y="110" width="170" height="45" rx="8" fill="#3fb950" opacity="0.08" stroke="#3fb950" stroke-width="1"/>
+      <text x="115" y="130" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">② 执行本地事务</text>
+      <text x="115" y="146" text-anchor="middle" fill="#8b949e" font-size="10">插入订单，扣减库存</text>
+      <line x1="485" y1="70" x2="600" y2="70" stroke="#3fb950" stroke-width="1.5"/>
+      <polygon points="600,70 590,65 590,75" fill="#3fb950"/>
+      <text x="542" y="62" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">④ 投递消息</text>
+      <text x="542" y="100" text-anchor="middle" fill="#94a3b8" font-size="10">消费者收到并消费</text>
+      <line x1="200" y1="150" x2="315" y2="150" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <polygon points="315,150 305,145 305,155" fill="#f87171"/>
+      <text x="257" y="168" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold">⚠️ 回滚</text>
+      <rect x="50" y="190" width="700" height="80" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="215" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">半消息机制核心流程</text>
+      <text x="60" y="240" fill="#94a3b8" font-size="11">1️⃣ Producer 发送半消息（Broker 存储但标记为"不可投递"）</text>
+      <text x="60" y="258" fill="#94a3b8" font-size="11">2️⃣ Producer 执行本地事务（订单入库、扣库存）</text>
+      <rect x="50" y="280" width="700" height="55" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="60" y="302" fill="#94a3b8" font-size="11">3️⃣ 本地事务成功 → 调用 Commit（Broker 将消息标记为可投递并发送给 Consumer）</text>
+      <text x="60" y="320" fill="#94a3b8" font-size="11">4️⃣ 本地事务失败或超时 → 调用 Rollback（Broker 删除半消息）</text>
+      <rect x="50" y="350" width="700" height="50" rx="8" fill="#fbbf24" opacity="0.08" stroke="#fbbf24" stroke-width="1"/>
+      <text x="400" y="372" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">🛡️ 反查机制（预防 Producer 宕机）</text>
+      <text x="400" y="390" text-anchor="middle" fill="#94a3b8" font-size="11">Broker 发现半消息长时间未被 Commit/Rollback → 主动回调 Producer 查询状态</text>
+    </svg>
+    <div class="diagram-caption">图 6：RocketMQ 事务消息——半消息 + 本地事务 + 反查机制</div>
+  </div>
+
+  <h3>RocketMQ 事务消息 vs Kafka 事务 Exactly-Once</h3>
+  <table>
+    <tr><th>特性</th><th>RocketMQ 事务消息</th><th>Kafka 事务（Exactly-Once）</th></tr>
+    <tr><td>核心机制</td><td>半消息 + 反查</td><td>事务 Coordinator + 幂等 Producer</td></tr>
+    <tr><td>本地事务绑定</td><td>通过 TransactionListener 回调</td><td>通过 Kafka 事务 API 绑定生产与消费</td></tr>
+    <tr><td>反查机制</td><td>Broker 主动回调 Producer</td><td>无，超时后 abort</td></tr>
+    <tr><td>跨服务消息</td><td>支持（半消息对其他消费者不可见）</td><td>支持（事务标记控制可见性）</td></tr>
+    <tr><td>性能开销</td><td>额外 1 次网络交互</td><td>额外 2 次网络交互（Init + Commit）</td></tr>
+    <tr><td>适用场景</td><td>下单送积分、注册送券</td><td>流处理 EOS、Kafka-to-Kafka</td></tr>
+  </table>
+
+  <h3>Go 代码：事务消息（模拟 RocketMQ 半消息）</h3>
+  <pre><code>package txmsg
+
+import (
+	"context"
+	"fmt"
+	"sync"
+	"time"
+)
+
+// HalfMessage 半消息——暂存在 Broker 中不可消费
+type HalfMessage struct {
+	Topic   string
+	Payload interface{}
+	Status  string // "pending" | "committed" | "rolledback"
+}
+
+// Broker 模拟消息队列
+type Broker struct {
+	mu       sync.Mutex
+	messages map[string]*HalfMessage
+}
+
+func NewBroker() *Broker {
+	return &Broker{messages: make(map[string]*HalfMessage)}
+}
+
+func (b *Broker) SendHalf(txID, topic string, payload interface{}) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.messages[txID] = &HalfMessage{
+		Topic:   topic,
+		Payload: payload,
+		Status:  "pending",
+	}
+	fmt.Printf("[半消息] 已暂存 tx=%s topic=%s (消费者不可见)\n", txID, topic)
+}
+
+func (b *Broker) Commit(txID string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if m, ok := b.messages[txID]; ok && m.Status == "pending" {
+		m.Status = "committed"
+		fmt.Printf("[事务消息] tx=%s 已提交，消息投递到消费者\n", txID)
+	}
+}
+
+func (b *Broker) Rollback(txID string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if m, ok := b.messages[txID]; ok && m.Status == "pending" {
+		m.Status = "rolledback"
+		fmt.Printf("[事务消息] tx=%s 已回滚，消息已删除\n", txID)
+	}
+}
+
+// TransactionProducer 事务消息生产者
+type TransactionProducer struct {
+	Broker    *Broker
+	LocalTxFn func(ctx context.Context) error // 本地事务
+}
+
+func (p *TransactionProducer) SendTransaction(ctx context.Context, txID, topic string, payload interface{}) error {
+	// 1. 发送半消息
+	p.Broker.SendHalf(txID, topic, payload)
+
+	// 2. 执行本地事务
+	if err := p.LocalTxFn(ctx); err != nil {
+		// 本地事务失败→回滚消息
+		p.Broker.Rollback(txID)
+		return fmt.Errorf("local tx failed, message rolled back: %w", err)
+	}
+
+	// 3. 本地事务成功→提交消息
+	p.Broker.Commit(txID)
+	return nil
+}
+
+// 使用示例
+func Example() {
+	broker := NewBroker()
+	producer := &TransactionProducer{
+		Broker: broker,
+		LocalTxFn: func(ctx context.Context) error {
+			// 模拟本地事务：创建订单
+			fmt.Println("[本地事务] 创建订单成功")
+			return nil
+		},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_ = producer.SendTransaction(ctx, "tx-001", "order-topic", map[string]string{"orderId": "123"})
+}</code></pre>
+
+  <div class="info-card">
+    <h4>💡 事务消息的核心优势</h4>
+    <p><strong>解耦</strong>：生产者和消费者通过消息队列解耦，生产者只保证"消息一定发出去"，消费者自行消费。<br>
+    <strong>高性能</strong>：相比 2PC 的同步阻塞，事务消息只需一次网络调用 + 本地事务，性能损失极小。<br>
+    <strong>可靠</strong>：半消息 + 反查机制解决了"生产者本地事务成功但没来得及提交消息"的问题。<br>
+    <span class="handwritten">适合场景：下单送积分、注册送优惠券——不需要强一致但必须最终一致。</span></p>
+  </div>
+</section>
+
+<!-- ====== Go Open Source Libraries ====== -->
+<section class="section" id="golibs">
+  <h2>🔧 Go 开源分布式事务库对比</h2>
+  <p>Go 生态有哪些成熟的分布式事务解决方案？以下对比 5 个主流库/方案：</p>
+
+  <table>
+    <tr><th>库</th><th style="text-align:center">支持模式</th><th>特点</th><th style="text-align:center">生产级别</th><th>适用场景</th></tr>
+    <tr>
+      <td><strong>DTM</strong><br><span style="font-size:11px;color:var(--muted)">github.com/dtm-labs/dtm</span></td>
+      <td style="text-align:center">TCC / Saga / 2PC / 事务消息</td>
+      <td>Go 原生实现，无侵入，支持 HTTP+gRPC，自带 Dashboard</td>
+      <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+      <td>通用微服务、Golang 技术栈</td>
+    </tr>
+    <tr>
+      <td><strong>Seata-Go</strong><br><span style="font-size:11px;color:var(--muted)">github.com/seata/seata-go</span></td>
+      <td style="text-align:center">AT / TCC / Saga / XA</td>
+      <td>Seata Go 移植版，AT 模式零侵入，与 Java Seata Server 互通</td>
+      <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+      <td>Spring Cloud 互通、多语言混合架构</td>
+    </tr>
+    <tr>
+      <td><strong>Go-Saga</strong><br><span style="font-size:11px;color:var(--muted)">github.com/topfreegames/saga</span></td>
+      <td style="text-align:center">Saga</td>
+      <td>轻量级 Saga 编排引擎，基于 Redis 做状态存储</td>
+      <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+      <td>简单的 Saga 场景、小团队</td>
+    </tr>
+    <tr>
+      <td><strong>Nacos + Redisson</strong></td>
+      <td style="text-align:center">2PC / TCC（手动）</td>
+      <td>Java 为主，Go 可通过 Redisson 分布式锁实现简单 2PC</td>
+      <td style="text-align:center"><span class="badge badge-orange">⚠️</span></td>
+      <td>简单场景、不想引入新框架</td>
+    </tr>
+    <tr>
+      <td><strong>etcd + 手动实现</strong></td>
+      <td style="text-align:center">自定义</td>
+      <td>基于 etcd lease 实现分布式锁+事务日志，高度定制</td>
+      <td style="text-align:center"><span class="badge badge-orange">⚠️</span></td>
+      <td>高度定制、学习目的</td>
+    </tr>
+  </table>
+
+  <h3>DTM 示例代码</h3>
+  <pre><code>package main
+
+import (
+	"github.com/lithammer/dtm/dtmcli"
+	"github.com/lithammer/dtm/dtmutil"
+)
+
+// DTM TCC 示例——只需要定义 Try/Confirm/Cancel 三个接口
+func main() {
+	server := dtmutil.NewServer()
+
+	// 定义 TCC 服务
+	server.GET("/api/tcc/trans_out_try", dtmutil.WrapHandler(func(c *dtmcli.Context) {
+		// Try：冻结转出金额
+		c.JSON(200, dtmcli.ResultSuccess)
+	}))
+	server.GET("/api/tcc/trans_out_confirm", dtmutil.WrapHandler(func(c *dtmcli.Context) {
+		// Confirm：扣减余额
+		c.JSON(200, dtmcli.ResultSuccess)
+	}))
+	server.GET("/api/tcc/trans_out_cancel", dtmutil.WrapHandler(func(c *dtmcli.Context) {
+		// Cancel：解冻余额
+		c.JSON(200, dtmcli.ResultSuccess)
+	}))
+
+	// TCC 全局事务调用
+	dtmcli.TccGlobalTransaction(dtmutil.DefaultServer, func(tcc *dtmcli.Tcc) error {
+		err := tcc.CallBranch(nil, "http://localhost:8080/api/tcc/trans_out_try",
+			"http://localhost:8080/api/tcc/trans_out_confirm",
+			"http://localhost:8080/api/tcc/trans_out_cancel")
+		return err
+	})
+}</code></pre>
+
+  <h3>Seata-Go 示例代码</h3>
+  <pre><code>package main
+
+import (
+	"context"
+	"github.com/seata/seata-go/pkg/client"
+	"github.com/seata/seata-go/pkg/tm"
+)
+
+func main() {
+	// 初始化 Seata 客户端
+	client.InitPath("./conf/seatago.yml")
+
+	// 使用 @GlobalTransactional 的 Go 等价实现
+	tm.WithGlobalTx(context.Background(), func(ctx context.Context) error {
+		// 扣库存（调用远程服务）
+		stockService.Deduct(ctx, 1001, 2)
+		// 扣余额（调用远程服务）
+		accountService.Debit(ctx, 2001, 99.9)
+		// 任一失败→自动回滚（Seata 通过 undo log 自动补偿）
+		return nil
+	})
+}
+
+// 在配置文件中配置数据源代理即可——Seata 自动生成 undo log
+// datasource:
+//   seata:
+//     enable: true
+//     proxy: AT</code></pre>
+
+  <h3>选型建议</h3>
+  <div class="pros-cons">
+    <div style="background:var(--card);border:1px solid var(--green);border-radius:10px">
+      <h4 style="color:var(--green);margin:0 0 8px">✅ Go 技术栈推荐</h4>
+      <p style="font-size:13px">优先选 <strong>DTM</strong>——纯 Go 实现，对 Go 开发者最友好，支持所有主流模式。如果不是纯 Go 环境（需要和 Java Spring Cloud 互通），选 <strong>Seata-Go</strong>。</p>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--orange);border-radius:10px">
+      <h4 style="color:var(--orange);margin:0 0 8px">⚠️ 不建议从零实现</h4>
+      <p style="font-size:13px">除非是学习目的，否则不要从零实现分布式事务框架。空回滚、悬挂、幂等、并发控制、超时重试等边界情况极其复杂——用成熟的 DTM 或 Seata-Go 比自己造轮子可靠得多。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====== 实战问答 ====== -->
+<section class="section" id="qa">
+  <h2>❓ 实战问答（8 题）</h2>
+  <p>点击问题展开答案，先自己想想再看解析 👇</p>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q1：面试官问你"2PC 有什么问题"，你怎么答才显得有深度？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">不要只说"同步阻塞"四个字——展示你对 2PC 状态机的理解：</p>
+      <ol class="a">
+        <li><strong>同步阻塞</strong>：Prepare 阶段参与者写了 undo/redo 日志、锁了资源，但不知道协调者下一步是 Commit 还是 Abort，只能阻塞等待</li>
+        <li><strong>单点故障</strong>：协调者在 Commit 阶段挂了——参与者处于"不确定状态"，日志已写但不知道提交还是回滚</li>
+        <li><strong>脑裂</strong>：网络分区导致协调者向一半参与者发了 Commit、另一半没收到——两边永久不一致</li>
+      </ol>
+      <p class="q">加分点：</p>
+      <p class="a">主动引出 <strong>FLP 不可能定理</strong>——"2PC 的问题本质上是异步系统无法达成确定性共识的体现。3PC 引入超时也没根除，因为超时阈值本身是猜的。" 这会让面试官眼前一亮。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q2：2PC 和 TCC 的核心区别是什么？什么场景选 TCC 而不是 2PC？</h4>
+    <div class="qa-a">
+      <p class="q">核心区别：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>维度</th><th>2PC</th><th>TCC</th></tr>
+        <tr><td>资源锁定</td><td>数据库锁（物理锁，同步阻塞）</td><td>业务预留（逻辑锁，不阻塞）</td></tr>
+        <tr><td>一致性</td><td>强一致性（ACID）</td><td>最终一致性（BASE）</td></tr>
+        <tr><td>性能</td><td>低（锁等待时间长）</td><td>极高（无锁，预留即可）</td></tr>
+        <tr><td>业务侵入</td><td>低（XA 接口由数据库实现）</td><td>高（需实现 Try/Confirm/Cancel）</td></tr>
+        <tr><td>适用范围</td><td>参与方都支持 XA 协议</td><td>任何有网络接口的服务</td></tr>
+      </table>
+      <p class="q">选 TCC 的场景：</p>
+      <ul class="a">
+        <li>高并发、低延迟要求（互联网核心交易链路）</li>
+        <li>参与者不支持 XA（如 Redis、MongoDB）</li>
+        <li>需要精确的资源控制（比如"预占库存 15 分钟"）</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q3：TCC 的空回滚和悬挂问题到底怎么解决？给我看代码思路。</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">用<strong>事务日志表</strong>记录每个 txID 的状态（Try / Cancel / Confirm），所有接口先查日志再执行：</p>
+      <p class="q">空回滚处理（Cancel 中）：</p>
+      <pre style="margin:8px 0"><code>func Cancel(ctx, txID) {
+    state := txLog.Get(txID)
+    if state == nil {
+        // Try 根本没执行过 → 空回滚
+        txLog.Set(txID, "canceled")
+        return nil // 直接成功，不要报错
+    }
+    if state != "tryed" {
+        return nil // 幂等：已经被处理过了
+    }
+    // 正常执行解冻
+    txLog.Set(txID, "canceled")
+}</code></pre>
+      <p class="q">悬挂处理（Try 中）：</p>
+      <pre style="margin:8px 0"><code>func Try(ctx, txID, ...) {
+    state := txLog.Get(txID)
+    if state == "canceled" {
+        // Cancel 已经执行过了 → 悬挂
+        return nil // 跳过预留操作
+    }
+    // 正常执行预留
+    txLog.Set(txID, "tryed")
+}</code></pre>
+      <p class="a">核心口诀：<span class="handwritten">空回滚：还没 Try 就别报错；悬挂：Cancel 过就别执行。</span></p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q4：Saga 的隔离性问题具体是什么？怎么补偿？</h4>
+    <div class="qa-a">
+      <p class="q">隔离性缺失的表现：</p>
+      <p class="a">Saga 中每个本地事务提交后，修改立即可见——没有"隔离"的保护：</p>
+      <ul class="a">
+        <li><strong>丢失更新</strong>：事务 A 和事务 B 同时扣库存。A 扣了 10 → 提交，B 扣了 10 → 提交。然后 A 补偿回滚，库存加了 10 回来——但 B 的 10 是合法扣减，被 A 的补偿"覆盖"了。</li>
+        <li><strong>脏读</strong>：事务 A 创建订单 → 提交，B 读取该订单并发了货。然后 A 补偿取消订单——B 发了"不存在"的货。</li>
+      </ul>
+      <p class="q">怎么补偿（解决）：</p>
+      <ul class="a">
+        <li><strong>语义锁</strong>：在每个行上加"脏"标记（如 <code>order.dirty = true</code>），其他事务看到后延迟处理</li>
+        <li><strong>交换式更新</strong>：用"增加一个补偿操作"代替"直接回滚"（加库存而不是恢复库存快照）</li>
+        <li><strong>后验检查</strong>：补偿前检查数据是否被其他事务修改过</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q5：RocketMQ 事务消息和 Kafka 事务（Exactly-Once）有什么区别？</h4>
+    <div class="qa-a">
+      <p class="q">核心区别：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>维度</th><th>RocketMQ 事务消息</th><th>Kafka 事务</th></tr>
+        <tr><td>设计目标</td><td>绑定本地事务和消息发送的原子性</td><td>流处理的 Exactly-Once 语义</td></tr>
+        <tr><td>核心机制</td><td>半消息（先存再确认） + 反查</td><td>事务 Coordinator + 幂等 Producer</td></tr>
+        <tr><td>反查</td><td>有（Broker 回调 Producer）</td><td>无（超时自动 Abort）</td></tr>
+        <tr><td>性能</td><td>1 次额外网络交互</td><td>2 次额外网络交互（Init + Commit）</td></tr>
+        <tr><td>典型场景</td><td>下单→发券（跨服务）</td><td>Kafka Streams 中的 EOS 语义</td></tr>
+      </table>
+      <p class="a">一句话：<strong>RocketMQ 事务消息适合"业务代码发消息"的场景，Kafka 事务适合"流处理框架内部"的场景。</strong> 如果你的业务是"用户下单后发一条消息通知积分服务"，用 RocketMQ 事务消息；如果你在 Kafka Streams 中做"读取→处理→写入"，用 Kafka 事务。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q6：DTM 的原理是什么？和 Seata 比有什么优劣？</h4>
+    <div class="qa-a">
+      <p class="q">DTM 原理：</p>
+      <p class="a"><strong>DTM</strong>（https://github.com/dtm-labs/dtm）是一个 Go 原生实现的分布式事务框架。核心架构：</p>
+      <ul class="a">
+        <li><strong>DTM Server</strong>（单独部署的协调者服务）：维护全局事务状态，调度子事务</li>
+        <li><strong>业务服务</strong>：只需暴露 Try/Confirm/Cancel（TCC）或 Action/Compensate（Saga）HTTP/gRPC 接口</li>
+        <li>DTM 通过<strong>子事务屏障（SubTransaction Barrier）</strong>实现空回滚/悬挂/幂等的自动处理</li>
+      </ul>
+      <p class="q">DTM vs Seata：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>维度</th><th>DTM</th><th>Seata</th></tr>
+        <tr><td>语言</td><td>Go（纯 Go 实现，无 Java 依赖）</td><td>Java（Seata-Go 是移植版）</td></tr>
+        <tr><td>协议</td><td>HTTP + gRPC</td><td>自研 TCP 协议</td></tr>
+        <tr><td>AT 模式</td><td>不支持</td><td>支持（零侵入）</td></tr>
+        <tr><td>子事务屏障</td><td>原生支持（防空回滚/悬挂）</td><td>需手动处理</td></tr>
+        <tr><td>学习成本</td><td>低（接口简单）</td><td>中（AT 模式复杂）</td></tr>
+      </table>
+      <p class="a"><span class="handwritten">如果你是全 Go 技术栈，选 DTM；如果需要和 Java Spring Cloud 互通，选 Seata。</span></p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q7：Seata AT 模式怎么实现"零侵入"分布式事务的？</h4>
+    <div class="qa-a">
+      <p class="q">核心原理：</p>
+      <p class="a">Seata AT 模式通过<strong>代理数据源 + 自动解析 SQL + undo log</strong> 实现零侵入：</p>
+      <ol class="a">
+        <li><strong>代理数据源</strong>：Seata 的 DataSourceProxy 拦截所有 SQL 执行</li>
+        <li><strong>前镜像</strong>：执行 SQL 前，自动查一次当前数据（如 <code>SELECT balance FROM account WHERE id=1</code>）</li>
+        <li><strong>执行业务 SQL</strong>：正常执行 <code>UPDATE account SET balance=balance-100 WHERE id=1</code></li>
+        <li><strong>后镜像</strong>：执行 SQL 后，再查一次当前数据</li>
+        <li><strong>生成 undo log</strong>：前镜像和后镜像的差异就是 undo log（用来恢复的"反向 SQL"）</li>
+        <li><strong>行锁</strong>：在 undo_log 表中写入行锁，防止其他全局事务修改同一行</li>
+        <li><strong>事务结束</strong>：成功则删除 undo log + 行锁；失败则用前镜像恢复数据</li>
+      </ol>
+      <p class="a">开发者只需要加一个 <code>@GlobalTransactional</code> 注解（Java 中）或 <code>tm.WithGlobalTx()</code>（Seata-Go 中），不需要写任何补偿逻辑。</p>
+      <p class="a"><span class="handwritten">AT 模式就像请了个自动记账员——你只管做业务，它偷偷拍"前后快照"，出错了自动恢复。</span></p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q8：我有一个 Go 微服务（订单 + 库存 + 支付），怎么选分布式事务方案？给我具体建议。</h4>
+    <div class="qa-a">
+      <p class="q">具体场景分析：</p>
+      <p class="a">假设你的业务是"用户下单 → 扣库存 → 扣余额 → 创建订单→ 发积分"。</p>
+      <p class="q">方案选型（按推荐顺序）：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>优先级</th><th>方案</th><th>理由</th></tr>
+        <tr><td>🥇 首选</td><td><strong>DTM TCC</strong></td><td>纯 Go，性能极高，Try 阶段预留库存/冻结余额，Confirm 阶段正式扣减，Cancel 阶段释放。DTM 自带子事务屏障处理空回滚/悬挂。</td></tr>
+        <tr><td>🥈 备选</td><td><strong>DTM Saga</strong></td><td>如果"发积分"是可选步骤（失败了不影响主流程），用 Saga。积分扣失败只补偿积分，不影响订单和库存。</td></tr>
+        <tr><td>🥉 简单场景</td><td><strong>事务消息</strong></td><td>如果只有"发积分"需要解耦——订单完成后发一条 RocketMQ 消息去发积分，用事务消息保证"订单一定创建了再发"。</td></tr>
+        <tr><td>❌ 避免</td><td><strong>2PC/XA</strong></td><td>高并发互联网场景下性能不可接受，资源锁定导致系统吞吐骤降。</td></tr>
+      </table>
+      <p class="a"><span class="handwritten">选型口诀：高性能用 TCC，长事务用 Saga，异步解耦用消息，强一致才用 2PC。</span></p>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>📌 核心要点</h4>
+    <p>读者问分布式事务时，最重要的是展示<strong>系统性的思考</strong>：</p>
+    <ul>
+      <li><strong>理解本质</strong>：从 CAP + FLP 出发，说明为什么分布式事务是必要且棘手的</li>
+      <li><strong>方案对比</strong>：能清晰对比 2PC / TCC / Saga / 事务消息的优缺点和边界问题</li>
+      <li><strong>实战经验</strong>：提到 DTM / Seata 框架和 Go 代码实践，展示你"写过"</li>
+      <li><strong>边界思考</strong>：主动提到 TCC 的空回滚/悬挂、Saga 的无隔离性、消息的幂等消费</li>
+      <li><strong>费曼类比</strong>：用银行转账、酒店预订等生活化类比让读者印象深刻</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== 口播总结 ====== -->
+<section class="section" id="summary">
+  <h2>🎙️ 口播总结</h2>
+  <div class="voice-summary">
+    <p>好，我们来快速捋一遍分布式事务的实战知识体系。</p>
+    <p><strong>第一，分布式事务为什么难？</strong>核心原因有两个：<strong>网络不可靠</strong>和<strong>状态分布式</strong>。CAP 定理告诉我们，一致性、可用性、分区容错性三者只能选两个。FLP 不可能定理更进一步——在异步系统中，你永远无法确定"对方挂了"还是"只是回得慢"，所以所有分布式事务方案都是"有损的"。</p>
+    <p><strong>第二，四大核心技术方案。</strong><strong>2PC</strong> 两阶段提交——协调者问一圈再决定，最大问题是同步阻塞和单点故障。理解它用<strong>团建聚餐</strong>来想：先问大家能不能来，再定去不去。3PC 引入超时也没根除问题——超时阈值本身是猜的。<strong>TCC</strong> 用 Try-Confirm-Cancel 三阶段——用<strong>酒店预订</strong>来理解：先占坑，再确认入住，或取消释放。特别注意<strong>空回滚</strong>（没 Try 就 Cancel）和<strong>悬挂</strong>（Cancel 了 Try 才到）。<strong>Saga</strong> 用正向事务+补偿事务——用<strong>旅行套餐</strong>来想：先订机票再订酒店，租车失败就反向取消一切。Saga 最大的坑是<strong>没有隔离性</strong>——小心丢失更新和脏读。<strong>事务消息</strong>用 RocketMQ 半消息——用<strong>挂号信</strong>来想：先写好感暂存，确认无误再真正投递。</p>
+    <p><strong>第三，Go 生态怎么做？</strong>推荐 <strong>DTM</strong>（纯 Go 实现，支持 TCC/Saga/2PC/事务消息，HTTP+gRPC）和 <strong>Seata-Go</strong>（和 Java Seata 互通）。不要从零自己造轮子——空回滚、悬挂、幂等、并发控制这些边界问题极其复杂，用成熟的框架比自己实现靠谱得多。</p>
+    <p>最后记住<strong>选型口诀</strong>：高性能用 TCC，长事务用 Saga，异步解耦用消息，强一致才用 2PC。实战时除了讲原理，一定要主动说出每种方案的<strong>缺点和边界问题</strong>——这才能体现你真的理解分布式事务的本质。</p>
+    <p>下一篇我们聊聊 <strong>Seata AT 模式底层原理——undo log 和行锁机制</strong>，看看 Seata 是如何在零侵入下实现分布式事务的。敬请期待！🎯</p>
+  </div>
+</section>
+
+</main>
+
+</div><!-- .app -->
+
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+<script>
+document.querySelectorAll('.qa-q').forEach(function(el) {
+  el.addEventListener('click', function() {
+    this.classList.toggle('open');
+    var answer = this.nextElementSibling;
+    if (answer && answer.classList) answer.classList.toggle('open');
+  });
+});
+</script>
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

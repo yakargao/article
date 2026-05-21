@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeetCode Top 100 · 按解法归类</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf; --pink: #db61a2;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 12px; background: #252830; padding: 1px 6px; border-radius: 4px; color: var(--orange); }
+
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 240px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 240px; flex: 1; padding: 32px 40px; max-width: 1100px; }
+
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--orange); }
+  .nav-section { padding: 4px 20px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 18px; margin-bottom: 4px; font-weight: 600; }
+  .nav-item { display: block; padding: 6px 20px; font-size: 13px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; text-decoration: none; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+
+  .section { margin-bottom: 48px; }
+  .section h2 { font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 6px; padding-bottom: 8px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .section h2 .count { font-size: 13px; color: var(--muted); font-weight: 400; }
+
+  .problem-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin: 8px 0; transition: all 0.15s; }
+  .problem-card:hover { border-color: var(--accent); }
+  .problem-card .id { font-size: 11px; color: var(--muted); margin-right: 8px; }
+  .problem-card .title { font-size: 14px; font-weight: 600; color: #e6edf3; }
+  .problem-card .difficulty { font-size: 10px; padding: 2px 8px; border-radius: 8px; font-weight: 600; margin-left: 8px; }
+  .diff-easy { background: rgba(63,185,80,0.12); color: var(--green); }
+  .diff-medium { background: rgba(210,153,34,0.12); color: var(--orange); }
+  .diff-hard { background: rgba(248,81,73,0.12); color: var(--red); }
+  .problem-card .idea { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.7; }
+  .problem-card .idea .key { color: var(--accent); font-weight: 600; }
+
+  .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .tag { font-size: 10px; padding: 2px 8px; border-radius: 6px; background: rgba(88,166,255,0.08); color: var(--accent); }
+
+  details.pattern { margin: 16px 0; }
+  details.pattern > summary { font-size: 16px; font-weight: 700; color: #e6edf3; cursor: pointer; padding: 8px 0; list-style: none; display: flex; align-items: center; gap: 8px; }
+  details.pattern > summary::-webkit-details-marker { display: none; }
+  details.pattern > summary::before { content: '▸'; font-size: 14px; color: var(--muted); transition: transform 0.2s; width: 16px; }
+  details.pattern[open] > summary::before { transform: rotate(90deg); }
+
+  .stats { display: flex; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; }
+  .stat { text-align: center; padding: 12px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+  .stat-num { font-size: 22px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 16px; max-width: 700px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 0; }
+  .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; }
+  .modal-header .m-title { font-size: 18px; font-weight: 700; color: #fff; }
+  .modal-header .m-id { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .modal-close { background: none; border: none; color: var(--muted); font-size: 24px; cursor: pointer; padding: 0 8px; line-height: 1; }
+  .modal-close:hover { color: #fff; }
+  .modal-body { padding: 20px 24px 24px; }
+  .modal-body h4 { color: var(--accent); font-size: 13px; margin: 16px 0 6px; }
+  .modal-body pre { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; font-size: 12px; margin: 8px 0; }
+  .modal-body code { font-family: 'Cascadia Code',monospace; font-size: 12px; }
+  .modal-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .modal .idea-box { background: rgba(63,185,80,0.06); border: 1px solid rgba(63,185,80,0.3); border-radius: 10px; padding: 14px 16px; margin: 16px 0; }
+  .modal .idea-box .key { color: var(--green); font-weight: 600; }
+
+
+
+  .code-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; margin: 12px 0; background: rgba(58,139,255,0.12); border: 1px solid rgba(58,139,255,0.3); border-radius: 8px; color: var(--accent); cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; }
+  .code-toggle:hover { background: rgba(58,139,255,0.2); }
+  .code-toggle::before { content: '▶'; font-size: 10px; transition: transform 0.2s; }
+  .code-toggle.open::before { transform: rotate(90deg); }
+  .code-block { display: none; margin: 8px 0 16px; }
+  .code-block.show { display: block; }
+  .code-block pre { background: #0d1117; border: 1px solid var(--border); border-radius: 10px; padding: 16px; font-size: 12px; line-height: 1.7; max-height: 400px; overflow-y: auto; }
+
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🏆 面<span>试刷题</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">核心模式</div>
+  <a class="nav-item" href="#hash">🗂️ 哈希表</a>
+  <a class="nav-item" href="#two-pointers">👆 双指针</a>
+  <a class="nav-item" href="#sliding-window">🪟 滑动窗口</a>
+  <a class="nav-item" href="#binary-search">🔍 二分查找</a>
+  <a class="nav-item" href="#stack">📚 单调栈/队列</a>
+  <a class="nav-item" href="#linked-list">🔗 链表</a>
+  <div class="nav-section">搜索与图</div>
+  <a class="nav-item" href="#tree">🌲 二叉树</a>
+  <a class="nav-item" href="#backtracking">🔙 回溯</a>
+  <a class="nav-item" href="#bfs-dfs">🗺️ BFS / DFS</a>
+  <div class="nav-section">动态规划</div>
+  <a class="nav-item" href="#dp">🧩 动态规划</a>
+  <div class="nav-section">其他高频</div>
+  <a class="nav-item" href="#greedy">🎯 贪心</a>
+  <a class="nav-item" href="#heap">⛰️ 堆 / Top K</a>
+  <a class="nav-item" href="#union-find">🤝 并查集</a>
+  <a class="nav-item" href="#bit">⚡ 位运算</a>
+  <a class="nav-item" href="#math">📐 数学 / 矩阵</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>🏆 LeetCode Top 100 · 按解法归类</h2>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-num">100</div><div class="stat-label">题目总数</div></div>
+    <div class="stat"><div class="stat-num">14</div><div class="stat-label">解法分类</div></div>
+    <div class="stat"><div class="stat-num">24</div><div class="stat-label">🟢 Easy</div></div>
+    <div class="stat"><div class="stat-num">54</div><div class="stat-label">🟡 Medium</div></div>
+    <div class="stat"><div class="stat-num">22</div><div class="stat-label">🔴 Hard</div></div>
+  </div>
+
+  <p style="color:var(--muted);font-size:13px">按<strong>解法模式</strong>重新组织 Top 100——同一模式的题本质上是同一道题换了张皮。学会模式，100 题变 14 题。</p>
+</section>
+
+<!-- ═══════ HASH TABLE ═══════ -->
+<section id="hash" class="section">
+  <h2>🗂️ 一、哈希表 / 前缀和 <span class="count">8 题</span></h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px"><strong>核心套路：</strong>空间换时间。把"找某个数"从 O(N) 降到 O(1)。配对问题 → 用补数；连续子数组 → 用前缀和。</p>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#1</span><span class="title">Two Sum</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：</span>遍历数组，对每个 num，查 <code>target - num</code> 是否在 HashMap 中。在 → 返回；不在 → 存入 <code>map[num]=index</code>。一遍扫描 O(N)。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#49</span><span class="title">Group Anagrams</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>字母异位词 → 排序后相同 / 计数编码相同。对每个单词，以 <code>排序后的字符串</code> 或 <code>"#2#1#0#0..." (26字母计数)</code> 为 key 分组。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#128</span><span class="title">Longest Consecutive Sequence</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>把所有数字放入 HashSet。<strong>关键优化：</strong>只从 <code>x-1 不在集合中</code> 的数字开始往后数。这样每个数字只被访问一次，O(N)。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#560</span><span class="title">Subarray Sum Equals K</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：前缀和 + HashMap。</span>维护 <code>preSum → count</code> 的映射。遍历时查 <code>preSum - k</code> 出现了几次。为什么不是滑动窗口？因为数组有负数，窗口扩大和不一定增长。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#347</span><span class="title">Top K Frequent Elements</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>HashMap 统计频率 → 桶排序（以频率为下标）或小顶堆。桶排序 O(N)；堆 O(N log K)。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#136</span><span class="title">Single Number</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：</span>异或：<code>a ⊕ a = 0</code>，<code>a ⊕ 0 = a</code>。所有数字异或一遍，成对的抵消，剩下的就是单身数字。O(N) 且 O(1) 空间。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#169</span><span class="title">Majority Element</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：摩尔投票。</span>候选人 candidate，计数 count。遇到相同 +1，不同 -1，count 归零换候选人。多数元素 > ⌊n/2⌋ → 最后剩下的就是它。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#41</span><span class="title">First Missing Positive</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：原地哈希。</span>把数字放到"它该在的位置"——值为 x 的数放到下标 x-1。然后扫描，第一个下标不对的位置 i+1 就是缺失的正数。O(N)，无额外空间。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ TWO POINTERS ═══════ -->
+<section id="two-pointers" class="section">
+  <h2>👆 二、双指针 <span class="count">9 题</span></h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px"><strong>核心套路：</strong>两个指针从数组两端向中间收（对撞指针），或一快一慢同向走。把二重循环 O(N²) 降为 O(N)。</p>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#11</span><span class="title">Container With Most Water</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：对撞指针。</span>left=0, right=n-1。每次移动<strong>较短</strong>的那根——因为面积由短板决定，移动长板不可能增大面积。O(N)。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#15</span><span class="title">3Sum</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：排序 + 固定一个 + 对撞指针。</span>排序后，固定 nums[i]，target=-nums[i]，在 i+1..n-1 用双指针找两数之和 = target。<strong>去重：</strong>跳过重复的 i 和双指针的重复值。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#42</span><span class="title">Trapping Rain Water</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：对撞指针。</span>left=0, right=n-1，维护 leftMax 和 rightMax。每次移动较低的一侧，当前位置的蓄水量 = <code>max(0, 该侧最大高度 - 当前高度)</code>。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#283</span><span class="title">Move Zeroes</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：快慢指针。</span>slow 指向"下一个非零元素应该放的位置"，fast 扫描。遇到非零 → 交换 slow 和 fast → slow++。所有零被推到末尾。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#75</span><span class="title">Sort Colors</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：三路快排 / 荷兰国旗。</span>三个指针：p0(0的右边界), p2(2的左边界), curr(扫描)。curr=0 → 交换 p0；curr=2 → 交换 p2；curr=1 → 跳过。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#234</span><span class="title">Palindrome Linked List</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：</span>快慢指针找中点 → 反转后半段 → 双指针比较前后两半。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#141</span><span class="title">Linked List Cycle</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：快慢指针。</span>slow 走一步，fast 走两步。有环必相遇（追及问题）。相遇后，slow 回到 head，两指针同步走，再次相遇点 = 环入口。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#142</span><span class="title">Linked List Cycle II</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：同上。</span>多一步：相遇后 slow=head，同步走直到相遇，那个点就是环的入口（数学证明：head→环入口 = 相遇点→环入口）。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#160</span><span class="title">Intersection of Two Linked Lists</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：双指针浪漫相遇。</span>pA 走 A→B，pB 走 B→A。走过相同总长度后必然在交点相遇（或同到 null）。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ SLIDING WINDOW ═══════ -->
+<section id="sliding-window" class="section">
+  <h2>🪟 三、滑动窗口 <span class="count">5 题</span></h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px"><strong>核心套路：</strong>右指针扩窗口，左指针收窗口。当窗口不满足条件时收缩左边界。维护一个"窗口内的状态"（HashMap 计数 / 单调队列）。</p>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#3</span><span class="title">Longest Substring Without Repeating Characters</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>right 向右扩，HashMap 记录字符最后出现的位置。遇到重复 → left 跳到 <code>max(left, 上次位置+1)</code>。每次更新 maxLen。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#76</span><span class="title">Minimum Window Substring</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：滑动窗口模板题。</span>need[] 记录目标字符需求，have[] 记录窗口内实际数量。match 计数当某字符满足 need 时 +1。当 match == 需要字符种数时，收缩 left 找最小窗口。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#239</span><span class="title">Sliding Window Maximum</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：单调递减队列。</span>队列存下标，保证队首始终是窗口最大值。新元素入队时，从队尾弹出所有 <code>小于等于</code> 它的元素（因为它们在窗口内不可能成为最大值）。队首下标过期(<code>i - k</code>)则弹出。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#438</span><span class="title">Find All Anagrams in a String</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：固定大小滑动窗口。</span>窗口大小 = p.length()。维护窗口内字符计数数组，每次滑动只修改进出窗口的两个字符的计数 → 比较是否相等。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#209</span><span class="title">Minimum Size Subarray Sum</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>right 扩展累加 sum，当 sum ≥ target → 更新 minLen → left 收缩减去 nums[left]。O(N)。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ BINARY SEARCH ═══════ -->
+<section id="binary-search" class="section">
+  <h2>🔍 四、二分查找 <span class="count">7 题</span></h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px"><strong>核心套路：</strong>在有序（或可二分）的搜索空间中，每次排除一半。关键不是模板，是判断"答案在左半还是右半"的逻辑。</p>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#33</span><span class="title">Search in Rotated Sorted Array</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>二分时，先判断 mid 落在左侧有序段还是右侧有序段。再判断 target 是否在该段范围内 → 决定收缩哪一侧。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#34</span><span class="title">Find First and Last Position of Element</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：两次二分。</span>① 找左边界：nums[mid] >= target → right=mid；② 找右边界：nums[mid] <= target → left=mid+1。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#74</span><span class="title">Search a 2D Matrix</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>把二维矩阵当成一维有序数组。下标映射：<code>matrix[mid/cols][mid%cols]</code>。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#4</span><span class="title">Median of Two Sorted Arrays</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：二分较短数组。</span>在 nums1 上二分分割点 i，nums2 的分割点 j = (m+n+1)/2 - i。保证 <code>nums1[i-1] ≤ nums2[j] && nums2[j-1] ≤ nums1[i]</code> 后取中位数。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#153</span><span class="title">Find Minimum in Rotated Sorted Array</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>二分比较 nums[mid] 和 nums[right]。nums[mid] > nums[right] → 最小值在右侧；否则在左侧。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#287</span><span class="title">Find the Duplicate Number</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：二分答案值。</span>猜一个 mid，统计 ≤mid 的数字个数。如果 > mid → 重复数在 [1,mid]；否则在 [mid+1,n]。也可以快慢指针看成链表找环。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#240</span><span class="title">Search a 2D Matrix II</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：Z 字形搜索。</span>从右上角开始：target > 当前 → 下移；target < 当前 → 左移。O(m+n)。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ STACK / MONOTONIC ═══════ -->
+<section id="stack" class="section">
+  <h2>📚 五、栈 / 单调栈 <span class="count">7 题</span></h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px"><strong>核心套路：</strong>单调栈：找"下一个更大/更小元素"的利器。栈内保持递增/递减，不满足单调性的弹出——弹出的元素找到了答案。</p>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#20</span><span class="title">Valid Parentheses</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：</span>左括号入栈，右括号时栈顶必须是匹配的左括号。最后栈空 → 合法。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#84</span><span class="title">Largest Rectangle in Histogram</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：单调递增栈。</span>遇到比栈顶低的柱子 → 栈顶的矩形"右边到头了" → 弹出并计算面积（高度×跨过的宽度）。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#739</span><span class="title">Daily Temperatures</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：单调递减栈。</span>栈存下标。遇到更高温度 → 栈顶找到了答案 → 弹出，距离 = i - pop。典型的"下一个更大元素"模板。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#394</span><span class="title">Decode String</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：双栈。</span>一个栈存倍数，一个栈存字符串。遇到 <code>[</code> 压栈，遇到 <code>]</code> 弹栈拼接。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#155</span><span class="title">Min Stack</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：辅助栈。</span>一个栈正常存值，另一个栈同步存"到目前为止的最小值"。push 时 <code>minStack.push(min(x, minStack.top()))</code>。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#32</span><span class="title">Longest Valid Parentheses</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：</span>栈存下标。遇 <code>(</code> 入栈；遇 <code>)</code> 弹出。弹出后栈空 → 当前下标入栈（新边界）；栈不空 → 用 <code>i - stack.top()</code> 更新最长。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#85</span><span class="title">Maximal Rectangle</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：</span>逐行转化为 #84 的柱状图问题。每行统计当前列向上的连续 1 个数作为高度，然后跑 Largest Rectangle in Histogram。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ LINKED LIST ═══════ -->
+<section id="linked-list" class="section">
+  <h2>🔗 六、链表 <span class="count">6 题</span></h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px"><strong>核心套路：</strong>哑节点(dummy)避免头节点特殊处理；快慢指针处理环和找中点；穿针引线处理反转。</p>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#206</span><span class="title">Reverse Linked List</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：迭代。</span>pre=null, cur=head。每次 <code>next=cur.next; cur.next=pre; pre=cur; cur=next</code>。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#21</span><span class="title">Merge Two Sorted Lists</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：</span>双指针比较 + dummy 节点。谁小接谁，最后接上剩余的。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#19</span><span class="title">Remove Nth Node From End</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>快指针先走 n 步，然后快慢一起走。快到头时慢在倒数第 n+1 个 → <code>slow.next = slow.next.next</code>。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#2</span><span class="title">Add Two Numbers</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>同时遍历两条链表，逐位相加 + 进位 carry。只要有一条没走完或 carry>0 就继续。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#148</span><span class="title">Sort List</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：归并排序。</span>快慢指针找中点 → 分成两半递归 → 合并两个有序链表。O(N log N)，O(log N) 递归栈。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#23</span><span class="title">Merge K Sorted Lists</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：小顶堆。</span>把每条链表的头节点放入堆。每次弹出最小值接上，再把它的 next 入堆。O(N log K)。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ TREE ═══════ -->
+<section id="tree" class="section">
+  <h2>🌲 七、二叉树 <span class="count">12 题</span></h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px"><strong>核心套路：</strong>递归是二叉树的灵魂——把问题分解为"左子树+当前节点+右子树"。中序遍历 BST = 有序序列；层序遍历 = BFS 队列；LCA = 后序遍历巧解。</p>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#94</span><span class="title">Binary Tree Inorder Traversal</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：</span>递归：左→根→右。迭代：栈模拟，一直向左走到底，弹出一个处理，然后转向右子树。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#98</span><span class="title">Validate BST</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>递归时传 <code>(min, max)</code> 区间。左子树必须 < 当前值，右子树必须 > 当前值。<strong>陷阱：</strong>不能只比较父子——必须是整个子树的范围。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#104</span><span class="title">Maximum Depth of Binary Tree</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：</span><code>1 + max(左深度, 右深度)</code>。BFS 也行：层序遍历，每层计数。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#101</span><span class="title">Symmetric Tree</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：</span>递归比较 <code>(left.left, right.right)</code> 和 <code>(left.right, right.left)</code>。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#102</span><span class="title">Binary Tree Level Order Traversal</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：BFS 队列。</span>每层先记录当前队列大小 size → 循环 size 次处理当前层的节点 → 把子节点入队。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#114</span><span class="title">Flatten Binary Tree to Linked List</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：后序遍历（右→左→根）。</span>维护一个 prev 指针。递归到最右 → prev=该节点 → 回溯时 <code>node.right=prev; node.left=null</code>。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#236</span><span class="title">Lowest Common Ancestor</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：后序遍历。</span>如果当前节点是 p 或 q → 返回当前节点。左子树和右子树各返回找到的节点。如果左右都非空 → 当前节点即 LCA。只有一边非空 → 返回那边。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#124</span><span class="title">Binary Tree Maximum Path Sum</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：后序遍历。</span>对每个节点算"以该节点为路径最高点的最大路径和" = max(0,左贡献)+max(0,右贡献)+当前值。递归返回"该节点能给父节点提供的最大单边贡献"。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#543</span><span class="title">Diameter of Binary Tree</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：</span>同 #124 简化版。直径 = max(左深度+右深度)。递归时同时计算深度和更新直径。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#105</span><span class="title">Construct Tree from Preorder and Inorder</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>preorder[0] 是根。在 inorder 中找到根的位置 → 左边是左子树，右边是右子树。递归构建。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#226</span><span class="title">Invert Binary Tree</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：</span><code>left=invert(right); right=invert(left)</code>，交换左右子树。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#437</span><span class="title">Path Sum III</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：前缀和 + DFS。</span>DFS 时维护从根到当前节点的路径前缀和，用 HashMap 计数。查 <code>curSum - targetSum</code> 出现的次数。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ BACKTRACKING ═══════ -->
+<section id="backtracking" class="section">
+  <h2>🔙 八、回溯 <span class="count">8 题</span></h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px"><strong>核心套路：</strong>做选择 → 递归 → 撤销选择。排列/组合/子集问题用同一模板，区别在于 start 参数和去重条件。</p>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#46</span><span class="title">Permutations</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>全排列模板。用 visited[] 或交换法。每次从未选的元素中选一个加入 path，递归完了撤销。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#78</span><span class="title">Subsets</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：子集模板。</span>递归函数带 start 参数，每次从 start 开始选。每一层的 path 都是一个有效子集（直接加入结果）。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#39</span><span class="title">Combination Sum</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>组合模板 + 无限选取。递归带 start，下次仍从 start 开始（因为可重复），sum > target 剪枝。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#79</span><span class="title">Word Search</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：DFS + 回溯。</span>每个格子作为起点 DFS，匹配一个字符就继续向四个方向走。访问过的标记为特殊字符（如 #），回溯时恢复。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#17</span><span class="title">Letter Combinations of a Phone Number</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>回溯。每个数字对应 3-4 个字母，逐位选择。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#22</span><span class="title">Generate Parentheses</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>回溯。两个计数器 left/right。left < n → 加 <code>(</code>；right < left → 加 <code>)</code>。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#51</span><span class="title">N-Queens</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：</span>逐行放置皇后。用三个集合记录列、主对角线(row-col)、副对角线(row+col) 是否被占用。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#131</span><span class="title">Palindrome Partitioning</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>回溯 + 回文判断。每次从 start 切一刀，切出的是回文 → 继续递归切剩余部分。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ BFS / DFS ═══════ -->
+<section id="bfs-dfs" class="section">
+  <h2>🗺️ 九、BFS / DFS（图与网格） <span class="count">7 题</span></h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px"><strong>核心套路：</strong>BFS 找最短路径（逐层扩散）；DFS 遍历所有可能（递归/栈）。网格题 DFS 常配合"淹没法"——访问过的格子改值避免重复访问。</p>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#200</span><span class="title">Number of Islands</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：DFS 淹没法。</span>遇到 '1' → 计数+1 → DFS 把相连的陆地全改成 '0'（沉岛）。也可 BFS/并查集。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#207</span><span class="title">Course Schedule</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：拓扑排序 / DFS 检测环。</span>建图（邻接表）+ 入度数组。BFS：把所有入度=0 的入队 → 逐个弹出，邻居入度-1 → 入度=0 入队。最后看是否所有节点都被处理。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#994</span><span class="title">Rotting Oranges</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：多源 BFS。</span>所有初始烂橘子同时入队。每层时间+1。BFS 完检查是否还有新鲜橘子。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#279</span><span class="title">Perfect Squares</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：BFS 或 DP。</span>BFS：从 n 开始，每层减去一个完全平方数，看多少步能到 0。DP：dp[i] = min(dp[i - j²] + 1)。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#695</span><span class="title">Max Area of Island</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：DFS。</span>和 #200 一样，但在沉岛时返回面积 = 1 + 四个方向的面积和。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#208</span><span class="title">Implement Trie</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：前缀树。</span>每个节点存 <code>children[26]</code> + <code>isEnd</code> 标记。插入/搜索都是逐字符走树。字符串集合的搜索神器。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#127</span><span class="title">Word Ladder</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：BFS 最短路径。</span>每个单词是一个节点。从 beginWord 开始，每步改变一个字母，在 wordSet 中找邻居。双向 BFS 可大幅优化——从两端同时开始，相遇即结束。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ DP ═══════ -->
+<section id="dp" class="section">
+  <h2>🧩 十、动态规划 <span class="count">18 题</span></h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px"><strong>核心套路：</strong>① 定义 dp[i] 的含义 ② 找到状态转移 ③ 初始化 ④ 确定遍历顺序。背包问题 = 选或不选；子序列 = 结尾在 i 的最优解；区间 DP = 小区间推大区间。</p>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#70</span><span class="title">Climbing Stairs</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：斐波那契。</span>dp[i] = dp[i-1] + dp[i-2]。可优化到 O(1) 空间。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#53</span><span class="title">Maximum Subarray</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>dp[i] = max(nums[i], dp[i-1] + nums[i])。要么把当前元素加入前面的子数组，要么重新开始。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#5</span><span class="title">Longest Palindromic Substring</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：中心扩散 / DP。</span>从每个字符（和每对字符）向两边扩。DP：dp[i][j] = s[i]==s[j] && dp[i+1][j-1]。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#300</span><span class="title">Longest Increasing Subsequence</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：DP O(N²) / 贪心+二分 O(N log N)。</span>DP：dp[i] = max(dp[j]+1) for j<i and nums[j]<nums[i]。优化：维护一个 tails 数组代表长度为 i 的子序列的最小结尾，用二分更新。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#72</span><span class="title">Edit Distance</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：</span>dp[i][j] = word1 前 i 字符 → word2 前 j 字符的最少操作。s[i]==s[j] → dp[i-1][j-1]；否则 min(插入,删除,替换)+1。经典二维 DP。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#322</span><span class="title">Coin Change</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：完全背包。</span>dp[i] = 组成金额 i 所需的最少硬币数。dp[i] = min(dp[i - coin] + 1) for each coin。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#198</span><span class="title">House Robber</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>dp[i] = max(dp[i-1], dp[i-2]+nums[i])。抢或不抢当前的。可 O(1) 空间。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#62</span><span class="title">Unique Paths</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>dp[i][j] = dp[i-1][j] + dp[i][j-1]。可压缩为一维数组。数学解 = C(m+n-2, m-1)。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#139</span><span class="title">Word Break</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>dp[i] = s[0..i) 能否被拆分。dp[i] = dp[j] && s[j..i)∈ wordSet。内层循环 j 从 i-1 往回遍历。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#64</span><span class="title">Minimum Path Sum</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>dp[i][j] = grid[i][j] + min(dp[i-1][j], dp[i][j-1])。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#152</span><span class="title">Maximum Product Subarray</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>同时维护以 i 结尾的最大乘积和最小乘积（因为负数乘负数变最大）。imax = max(num, imax×num, imin×num)。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#121</span><span class="title">Best Time to Buy and Sell Stock</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：</span>一次遍历，维护历史最低价格 minPrice。对每一天，利润 = price - minPrice，更新最大利润。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#309</span><span class="title">Best Time with Cooldown</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：状态 DP。</span>三个状态：持有、不持有（今天卖出，明天不能买）、不持有（非今天卖出）。画出状态转移图。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#416</span><span class="title">Partition Equal Subset Sum</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：0-1 背包。</span>能不能选出一些数使和 = total/2。dp[j] = dp[j] || dp[j-num]，逆序背包。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#494</span><span class="title">Target Sum</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>转化成背包：把数组分为 P（正号）和 N（负号），P-N=target, P+N=sum → P=(target+sum)/2。变成找和为 P 的子集数。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#221</span><span class="title">Maximal Square</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>dp[i][j] = 以 (i,j) 为右下角的最大正方形边长。dp[i][j] = min(左,上,左上) + 1。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#91</span><span class="title">Decode Ways</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>dp[i] = 前 i 个字符的解码方式数。当前字符单独解码 → +dp[i-1]；和前一个字符一起解码（10~26）→ +dp[i-2]。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#10</span><span class="title">Regular Expression Matching</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：</span>dp[i][j] = s 前 i 字符和 p 前 j 字符是否匹配。重点是 <code>*</code>：匹配 0 次（dp[i][j-2]）或匹配多次（dp[i-1][j] 且当前匹配）。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ GREEDY ═══════ -->
+<section id="greedy" class="section">
+  <h2>🎯 十一、贪心 <span class="count">5 题</span></h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px"><strong>核心套路：</strong>每一步做局部最优选择，最终得到全局最优。关键是证明"局部最优 → 全局最优"。跳跃游戏、任务调度、股票买卖是经典场景。</p>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#55</span><span class="title">Jump Game</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>维护最远能跳到的位置 maxReach。遍历 i ≤ maxReach，更新 maxReach = max(maxReach, i+nums[i])。maxReach ≥ n-1 → 可达。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#45</span><span class="title">Jump Game II</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>维护当前步能到的最远边界 curEnd，和下一步能到的最远 maxReach。走到 curEnd 时步数+1，curEnd=maxReach。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#122</span><span class="title">Best Time II（可多次交易）</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>只要明天的价格高于今天 → 今天就买明天卖。把所有上升段累加 = 总和。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#621</span><span class="title">Task Scheduler</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>找到最高频任务（次数 maxFreq，有 maxCount 个任务都是这个频率）。结果 = max(任务总数, (maxFreq-1)×(n+1) + maxCount)。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#406</span><span class="title">Queue Reconstruction by Height</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>按身高降序、k 升序排列。然后逐个插入到结果列表的第 k 个位置——因为在插入当前矮个时，前面都是高个，k 就是它前面应有的高个数量。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ HEAP ═══════ -->
+<section id="heap" class="section">
+  <h2>⛰️ 十二、堆 / Top K <span class="count">4 题</span></h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px"><strong>核心套路：</strong>小顶堆处理 Top K 大；大顶堆处理 Top K 小。数据流中位数 = 双堆（大顶堆存小半 + 小顶堆存大半）。</p>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#215</span><span class="title">Kth Largest Element</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：小顶堆 O(N log K) / 快速选择 O(N)。</span>堆：维护大小为 K 的小顶堆，堆顶就是第 K 大。快速选择：基于 partition，每次确定 pivot 的最终位置。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#295</span><span class="title">Find Median from Data Stream</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：双堆。</span>大顶堆存左半（较小的一半），小顶堆存右半。保持 size 差 ≤ 1。中位数 = 堆顶（相等时）或较大堆的堆顶（不等时）。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#253</span><span class="title">Meeting Rooms II</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：小顶堆存结束时间。</span>按开始时间排序。遍历每个会议 → 如果堆顶（最早结束的）结束时间 ≤ 当前开始 → 弹出（复用房间）→ 当前结束时间入堆。堆大小就是需要的房间数。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#218</span><span class="title">The Skyline Problem</span><span class="difficulty diff-hard">Hard</span>
+    <div class="idea"><span class="key">思路：扫描线 + 大顶堆。</span>把每栋楼拆成 (x, -高度, 进入事件) 和 (x, 高度, 离开事件)。按 x 排序，用大顶堆维护当前高度。当前最高变化时记录轮廓点。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ UNION FIND ═══════ -->
+<section id="union-find" class="section">
+  <h2>🤝 十三、并查集 <span class="count">2 题</span></h2>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:12px"><strong>核心套路：</strong>并查集三件套：① find(x)——路径压缩；② union(x,y)——按秩合并；③ connected(x,y)——查是否同组。用于连通性、分组问题。</p>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#547</span><span class="title">Number of Provinces</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>遍历矩阵，如果 isConnected[i][j]==1 → union(i,j)。最后统计独立联通分量个数（i == find(i) 的节点数）。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#399</span><span class="title">Evaluate Division</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：带权并查集 / 图 DFS。</span>并查集：每个节点存它到父节点的权重。a/b=2 → parent[a]=b, weight[a]=2。查询时通过路径压缩更新权重，找到比值。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ BIT ═══════ -->
+<section id="bit" class="section">
+  <h2>⚡ 十四、位运算 <span class="count">3 题</span></h2>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#461</span><span class="title">Hamming Distance</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：</span><code>x ^ y</code> 然后数 1 的个数：<code>while n: n &= n-1; count++</code>（Brian Kernighan 算法）。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#338</span><span class="title">Counting Bits</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：DP + 位运算。</span>dp[i] = dp[i >> 1] + (i & 1)。或 dp[i] = dp[i & (i-1)] + 1。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#191</span><span class="title">Number of 1 Bits</span><span class="difficulty diff-easy">Easy</span>
+    <div class="idea"><span class="key">思路：同上。</span>n & (n-1) 每次消掉最低位的 1。</div>
+  </div>
+
+  </details>
+</section>
+
+<!-- ═══════ MATH ═══════ -->
+<section id="math" class="section">
+  <h2>📐 十五、数学 / 矩阵 <span class="count">5 题</span></h2>
+
+  <details class="pattern" open><summary>题目列表</summary>
+
+  <div class="problem-card">
+    <span class="id">#48</span><span class="title">Rotate Image</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>转置（交换 matrix[i][j] 和 matrix[j][i]）+ 水平翻转（每行反转）。顺时针 90° = 转置 + 水平翻转。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#54</span><span class="title">Spiral Matrix</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>四边界：top, bottom, left, right。顺时针遍历 → 每走完一边，边界收缩。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#73</span><span class="title">Set Matrix Zeroes</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：</span>用第一行和第一列做标记。先检查第一行/列是否需要置零，再遍历内部 → 标记到第一行/列 → 按标记置零 → 处理第一行/列。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#50</span><span class="title">Pow(x, n)</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：快速幂。</span>n 为偶数：xⁿ = (x²)^(⁰/²)；n 为奇数：xⁿ = x × (x²)^((n-1)/2)。递归或迭代。注意 n 可能是负数。</div>
+  </div>
+
+  <div class="problem-card">
+    <span class="id">#238</span><span class="title">Product of Array Except Self</span><span class="difficulty diff-medium">Medium</span>
+    <div class="idea"><span class="key">思路：前缀积 × 后缀积。</span>第一遍从左到右存前缀积到 answer[i]；第二遍从右到左，用一个 suffix 变量乘到 answer[i] 上。不用除法。</div>
+  </div>
+
+  </details>
+</section>
+
+</main>
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div><div class="m-id" id="modalId"></div><div class="m-title" id="modalTitle"></div></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const problems = {
+1:{title:"Two Sum",diff:"Easy",desc:"给定整数数组 nums 和目标 target，找出和为 target 的两个数的下标。",in:"nums = [2,7,11,15], target = 9",out:"[0,1]",tags:["哈希表"],idea:"遍历数组，查 target-num 是否在 HashMap 中。",code:"def twoSum(nums, target):\n    seen = {}\n    for i, num in enumerate(nums):\n        if target - num in seen:\n            return [seen[target - num], i]\n        seen[num] = i"},
+2:{title:"Add Two Numbers",diff:"Medium",desc:"两个链表表示逆序整数，相加并返回链表。",in:"l1=[2,4,3], l2=[5,6,4]",out:"[7,0,8] (342+465=807)",tags:["链表"],idea:"逐位相加+进位carry。只要有一条没走完或carry>0就继续。",code:"def addTwoNumbers(l1, l2):\n    dummy = ListNode(0)\n    cur, carry = dummy, 0\n    while l1 or l2 or carry:\n        v1 = l1.val if l1 else 0\n        v2 = l2.val if l2 else 0\n        carry, val = divmod(v1+v2+carry, 10)\n        cur.next = ListNode(val)\n        cur = cur.next\n        l1 = l1.next if l1 else None\n        l2 = l2.next if l2 else None\n    return dummy.next"},
+3:{title:"Longest Substring Without Repeating Characters",diff:"Medium",desc:"找出不含重复字符的最长子串长度。",in:"s = 'abcabcbb'",out:"3 (abc)",tags:["滑动窗口","哈希表"],idea:"right向右扩，HashMap记录字符最后位置。遇到重复→left跳到max(left,上次位置+1)。",code:"def lengthOfLongestSubstring(s):\n    seen, left, res = {}, 0, 0\n    for right, ch in enumerate(s):\n        if ch in seen and seen[ch] >= left:\n            left = seen[ch] + 1\n        seen[ch] = right\n        res = max(res, right - left + 1)\n    return res"},
+4:{title:"Median of Two Sorted Arrays",diff:"Hard",desc:"两个正序数组的中位数。O(log(m+n))。",in:"nums1=[1,3], nums2=[2]",out:"2.0",tags:["二分"],idea:"二分较短数组，确定分割点i，另一数组j=(m+n+1)/2-i。交叉≤条件满足后取中位数。"},
+5:{title:"Longest Palindromic Substring",diff:"Medium",desc:"找出最长回文子串。",in:"s = 'babad'",out:"'bab' 或 'aba'",tags:["DP","双指针"],idea:"中心扩散：从每个字符(和每对字符)向两边扩。DP：dp[i][j]=s[i]==s[j]&&dp[i+1][j-1]。",code:"def longestPalindrome(s):\n    def expand(l, r):\n        while l>=0 and r<len(s) and s[l]==s[r]:\n            l-=1; r+=1\n        return s[l+1:r]\n    res = ''\n    for i in range(len(s)):\n        s1=expand(i,i); s2=expand(i,i+1)\n        res = max(res,s1,s2,key=len)\n    return res"},
+10:{title:"Regular Expression Matching",diff:"Hard",desc:"实现支持 '.' 和 '*' 的正则匹配。",in:"s='aa', p='a*'",out:"true",tags:["DP"],idea:"dp[i][j]=前i和前j是否匹配。*匹配0次(dp[i][j-2])或多次(dp[i-1][j]且当前匹配)。"},
+11:{title:"Container With Most Water",diff:"Medium",desc:"两条线与x轴围成容器的最多水。",in:"height=[1,8,6,2,5,4,8,3,7]",out:"49",tags:["双指针","贪心"],idea:"对撞指针。每次移动较短的那根。",code:"def maxArea(height):\n    l,r,res=0,len(height)-1,0\n    while l<r:\n        res=max(res,min(height[l],height[r])*(r-l))\n        if height[l]<height[r]: l+=1\n        else: r-=1\n    return res"},
+15:{title:"3Sum",diff:"Medium",desc:"找出所有和为0的不重复三元组。",in:"nums=[-1,0,1,2,-1,-4]",out:"[[-1,-1,2],[-1,0,1]]",tags:["双指针","排序"],idea:"排序+固定一个+对撞指针。去重跳过重复值。",code:"def threeSum(nums):\n    nums.sort()\n    res,n=[],len(nums)\n    for i in range(n-2):\n        if i>0 and nums[i]==nums[i-1]: continue\n        l,r=i+1,n-1\n        while l<r:\n            s=nums[i]+nums[l]+nums[r]\n            if s<0: l+=1\n            elif s>0: r-=1\n            else:\n                res.append([nums[i],nums[l],nums[r]])\n                while l<r and nums[l]==nums[l+1]: l+=1\n                while l<r and nums[r]==nums[r-1]: r-=1\n                l+=1; r-=1\n    return res"},
+17:{title:"Letter Combinations of a Phone Number",diff:"Medium",desc:"给定2-9数字字符串，返回所有字母组合。",in:"digits='23'",out:"['ad','ae','af','bd','be','bf','cd','ce','cf']",tags:["回溯"],idea:"回溯。每个数字对应3-4个字母，逐位选择。"},
+19:{title:"Remove Nth Node From End",diff:"Medium",desc:"删除链表倒数第n个节点。",in:"head=[1,2,3,4,5], n=2",out:"[1,2,3,5]",tags:["链表","双指针"],idea:"快指针先走n步，然后快慢一起走。",code:"def removeNthFromEnd(head, n):\n    dummy=ListNode(0,head)\n    fast=slow=dummy\n    for _ in range(n): fast=fast.next\n    while fast.next:\n        fast=fast.next; slow=slow.next\n    slow.next=slow.next.next\n    return dummy.next"},
+20:{title:"Valid Parentheses",diff:"Easy",desc:"判断括号字符串是否有效。",in:"s='()[]{}'",out:"true",tags:["栈"],idea:"左括号入栈，右括号时栈顶必须匹配。",code:"def isValid(s):\n    stack,pairs=[],{')':'(',']':'[','}':'{'}\n    for ch in s:\n        if ch in pairs:\n            if not stack or stack.pop()!=pairs[ch]: return False\n        else: stack.append(ch)\n    return not stack"},
+21:{title:"Merge Two Sorted Lists",diff:"Easy",desc:"合并两个升序链表。",in:"l1=[1,2,4], l2=[1,3,4]",out:"[1,1,2,3,4,4]",tags:["链表"],idea:"双指针+dummy节点。谁小接谁。",code:"def mergeTwoLists(l1,l2):\n    dummy=ListNode(0); cur=dummy\n    while l1 and l2:\n        if l1.val<l2.val:\n            cur.next=l1; l1=l1.next\n        else:\n            cur.next=l2; l2=l2.next\n        cur=cur.next\n    cur.next=l1 or l2\n    return dummy.next"},
+22:{title:"Generate Parentheses",diff:"Medium",desc:"生成n对括号的所有有效组合。",in:"n=3",out:"['((()))','(()())','(())()','()(())','()()()']",tags:["回溯"],idea:"回溯。left<n→加(；right<left→加)。",code:"def generateParenthesis(n):\n    res=[]\n    def backtrack(s,left,right):\n        if len(s)==2*n:\n            res.append(s); return\n        if left<n: backtrack(s+'(',left+1,right)\n        if right<left: backtrack(s+')',left,right+1)\n    backtrack('',0,0)\n    return res"},
+23:{title:"Merge K Sorted Lists",diff:"Hard",desc:"合并k个升序链表。",in:"lists=[[1,4,5],[1,3,4],[2,6]]",out:"[1,1,2,3,4,4,5,6]",tags:["堆","链表"],idea:"小顶堆。所有链表头入堆，每次弹出最小值接上。",code:"def mergeKLists(lists):\n    import heapq\n    heap=[]\n    for i,node in enumerate(lists):\n        if node: heapq.heappush(heap,(node.val,i,node))\n    dummy=ListNode(0); cur=dummy\n    while heap:\n        _,i,node=heapq.heappop(heap)\n        cur.next=node; cur=cur.next\n        if node.next: heapq.heappush(heap,(node.next.val,i,node.next))\n    return dummy.next"},
+32:{title:"Longest Valid Parentheses",diff:"Hard",desc:"最长有效括号子串长度。",in:"s=')()())'",out:"4",tags:["栈","DP"],idea:"栈存下标。遇)弹出，栈空→入栈；栈不空→用i-stack.top()更新。"},
+33:{title:"Search in Rotated Sorted Array",diff:"Medium",desc:"旋转有序数组中搜索target。O(log N)。",in:"nums=[4,5,6,7,0,1,2], target=0",out:"4",tags:["二分"],idea:"二分判断mid在左侧有序段还是右侧有序段。",code:"def search(nums,target):\n    l,r=0,len(nums)-1\n    while l<=r:\n        m=(l+r)//2\n        if nums[m]==target: return m\n        if nums[l]<=nums[m]:\n            if nums[l]<=target<nums[m]: r=m-1\n            else: l=m+1\n        else:\n            if nums[m]<target<=nums[r]: l=m+1\n            else: r=m-1\n    return -1"},
+34:{title:"Find First and Last Position",diff:"Medium",desc:"升序数组中target的起始和结束位置。O(log N)。",in:"nums=[5,7,7,8,8,10], target=8",out:"[3,4]",tags:["二分"],idea:"两次二分。左边界：>=target时right=mid；右边界：<=target时left=mid+1。",code:"def searchRange(nums,target):\n    def findFirst():\n        l,r=0,len(nums)-1\n        while l<r:\n            m=(l+r)//2\n            if nums[m]>=target: r=m\n            else: l=m+1\n        return l if nums and nums[l]==target else -1\n    def findLast():\n        l,r=0,len(nums)-1\n        while l<r:\n            m=(l+r+1)//2\n            if nums[m]<=target: l=m\n            else: r=m-1\n        return l if nums and nums[l]==target else -1\n    return [findFirst(),findLast()]"},
+39:{title:"Combination Sum",diff:"Medium",desc:"找出所有和为target的组合(数字可重复)。",in:"candidates=[2,3,6,7], target=7",out:"[[2,2,3],[7]]",tags:["回溯"],idea:"组合模板+无限选取。递归带start，sum>target剪枝。",code:"def combinationSum(candidates,target):\n    res=[]\n    def backtrack(start,path,total):\n        if total==target:\n            res.append(path[:]); return\n        if total>target: return\n        for i in range(start,len(candidates)):\n            path.append(candidates[i])\n            backtrack(i,path,total+candidates[i])\n            path.pop()\n    backtrack(0,[],0)\n    return res"},
+41:{title:"First Missing Positive",diff:"Hard",desc:"缺失的最小正整数。O(N)时间O(1)空间。",in:"nums=[3,4,-1,1]",out:"2",tags:["原地哈希"],idea:"原地哈希。把值x放到下标x-1处。扫描找到第一个下标不对的位置。"},
+42:{title:"Trapping Rain Water",diff:"Hard",desc:"计算下雨后能接多少水。",in:"height=[0,1,0,2,1,0,1,3,2,1,2,1]",out:"6",tags:["双指针","单调栈"],idea:"对撞指针。维护leftMax和rightMax，移动较低一侧。",code:"def trap(height):\n    l,r=0,len(height)-1\n    lmax=rmax=res=0\n    while l<r:\n        if height[l]<height[r]:\n            lmax=max(lmax,height[l])\n            res+=lmax-height[l]; l+=1\n        else:\n            rmax=max(rmax,height[r])\n            res+=rmax-height[r]; r-=1\n    return res"},
+45:{title:"Jump Game II",diff:"Medium",desc:"最小跳跃次数到达数组末尾。",in:"nums=[2,3,1,1,4]",out:"2",tags:["贪心"],idea:"维护当前步边界curEnd和下一步最远maxReach。走到边界时步数+1。"},
+46:{title:"Permutations",diff:"Medium",desc:"返回所有可能的全排列。",in:"nums=[1,2,3]",out:"[[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]",tags:["回溯"],idea:"全排列模板。visited[]标记已选元素。",code:"def permute(nums):\n    res=[]\n    def backtrack(path,used):\n        if len(path)==len(nums):\n            res.append(path[:]); return\n        for i,n in enumerate(nums):\n            if used[i]: continue\n            used[i]=True; path.append(n)\n            backtrack(path,used)\n            path.pop(); used[i]=False\n    backtrack([],[False]*len(nums))\n    return res"},
+48:{title:"Rotate Image",diff:"Medium",desc:"矩阵顺时针旋转90度(原地)。",in:"matrix=[[1,2,3],[4,5,6],[7,8,9]]",out:"[[7,4,1],[8,5,2],[9,6,3]]",tags:["矩阵"],idea:"转置+水平翻转=顺时针90°。",code:"def rotate(matrix):\n    n=len(matrix)\n    for i in range(n):\n        for j in range(i+1,n):\n            matrix[i][j],matrix[j][i]=matrix[j][i],matrix[i][j]\n    for row in matrix: row.reverse()"},
+49:{title:"Group Anagrams",diff:"Medium",desc:"把字母异位词分组。",in:"strs=['eat','tea','tan','ate','nat','bat']",out:"[['eat','tea','ate'],['tan','nat'],['bat']]",tags:["哈希表"],idea:"排序后相同→以排序后的字符串为key分组。",code:"def groupAnagrams(strs):\n    from collections import defaultdict\n    groups=defaultdict(list)\n    for s in strs:\n        key=''.join(sorted(s))\n        groups[key].append(s)\n    return list(groups.values())"},
+50:{title:"Pow(x, n)",diff:"Medium",desc:"实现pow(x,n)，计算x的n次幂。",in:"x=2.0, n=10",out:"1024.0",tags:["数学"],idea:"快速幂。n偶数：(x²)^(n/2)；n奇数：x×(x²)^((n-1)/2)。"},
+51:{title:"N-Queens",diff:"Hard",desc:"n皇后问题的所有解。",in:"n=4",out:"[[.Q..,...Q,Q...,..Q.],[..Q.,Q...,...Q,.Q..]]",tags:["回溯"],idea:"逐行放皇后。三个集合记录列、主对角线(row-col)、副对角线(row+col)。"},
+53:{title:"Maximum Subarray",diff:"Medium",desc:"最大和的连续子数组。",in:"nums=[-2,1,-3,4,-1,2,1,-5,4]",out:"6 ([4,-1,2,1])",tags:["DP"],idea:"dp[i]=max(nums[i],dp[i-1]+nums[i])。",code:"def maxSubArray(nums):\n    cur=res=nums[0]\n    for n in nums[1:]:\n        cur=max(n,cur+n)\n        res=max(res,cur)\n    return res"},
+54:{title:"Spiral Matrix",diff:"Medium",desc:"顺时针螺旋顺序返回矩阵元素。",in:"matrix=[[1,2,3],[4,5,6],[7,8,9]]",out:"[1,2,3,6,9,8,7,4,5]",tags:["矩阵"],idea:"四边界top/bottom/left/right，每走完一边收缩。",code:"def spiralOrder(matrix):\n    res=[]\n    top,bottom,left,right=0,len(matrix)-1,0,len(matrix[0])-1\n    while top<=bottom and left<=right:\n        for j in range(left,right+1): res.append(matrix[top][j])\n        top+=1\n        for i in range(top,bottom+1): res.append(matrix[i][right])\n        right-=1\n        if top<=bottom:\n            for j in range(right,left-1,-1): res.append(matrix[bottom][j])\n            bottom-=1\n        if left<=right:\n            for i in range(bottom,top-1,-1): res.append(matrix[i][left])\n            left+=1\n    return res"},
+55:{title:"Jump Game",diff:"Medium",desc:"判断能否跳到数组最后一个位置。",in:"nums=[2,3,1,1,4]",out:"true",tags:["贪心"],idea:"维护最远能跳到的位置maxReach。i≤maxReach时更新。",code:"def canJump(nums):\n    max_reach=0\n    for i,n in enumerate(nums):\n        if i>max_reach: return False\n        max_reach=max(max_reach,i+n)\n    return True"},
+56:{title:"Merge Intervals",diff:"Medium",desc:"合并所有重叠区间。",in:"intervals=[[1,3],[2,6],[8,10],[15,18]]",out:"[[1,6],[8,10],[15,18]]",tags:["排序"],idea:"按左端点排序。当前左≤上一个右→合并。",code:"def merge(intervals):\n    intervals.sort(key=lambda x:x[0])\n    res=[intervals[0]]\n    for s,e in intervals[1:]:\n        if s<=res[-1][1]:\n            res[-1][1]=max(res[-1][1],e)\n        else: res.append([s,e])\n    return res"},
+62:{title:"Unique Paths",diff:"Medium",desc:"机器人从m×n网格左上到右下的路径数。",in:"m=3, n=7",out:"28",tags:["DP"],idea:"dp[i][j]=dp[i-1][j]+dp[i][j-1]。数学解=C(m+n-2,m-1)。",code:"def uniquePaths(m,n):\n    dp=[1]*n\n    for _ in range(1,m):\n        for j in range(1,n):\n            dp[j]+=dp[j-1]\n    return dp[-1]"},
+64:{title:"Minimum Path Sum",diff:"Medium",desc:"网格左上到右下最小路径和。",in:"grid=[[1,3,1],[1,5,1],[4,2,1]]",out:"7",tags:["DP"],idea:"dp[i][j]=grid[i][j]+min(dp[i-1][j],dp[i][j-1])。"},
+70:{title:"Climbing Stairs",diff:"Easy",desc:"爬n阶楼梯，每次1或2阶，多少种方法。",in:"n=3",out:"3",tags:["DP"],idea:"斐波那契。dp[i]=dp[i-1]+dp[i-2]。",code:"def climbStairs(n):\n    a,b=1,1\n    for _ in range(n-1):\n        a,b=b,a+b\n    return b"},
+72:{title:"Edit Distance",diff:"Hard",desc:"word1转换成word2的最少操作次数。",in:"word1='horse', word2='ros'",out:"3",tags:["DP"],idea:"dp[i][j]=前i→前j最少操作。==→dp[i-1][j-1]；否则min+1。",code:"def minDistance(w1,w2):\n    m,n=len(w1),len(w2)\n    dp=[[0]*(n+1) for _ in range(m+1)]\n    for i in range(m+1): dp[i][0]=i\n    for j in range(n+1): dp[0][j]=j\n    for i in range(1,m+1):\n        for j in range(1,n+1):\n            if w1[i-1]==w2[j-1]: dp[i][j]=dp[i-1][j-1]\n            else: dp[i][j]=1+min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1])\n    return dp[m][n]"},
+73:{title:"Set Matrix Zeroes",diff:"Medium",desc:"元素为0则所在行列全置0(原地)。",in:"matrix=[[1,1,1],[1,0,1],[1,1,1]]",out:"[[1,0,1],[0,0,0],[1,0,1]]",tags:["矩阵"],idea:"用第一行和第一列做标记。"},
+74:{title:"Search a 2D Matrix",diff:"Medium",desc:"有序矩阵中搜索target。",in:"matrix=[[1,3,5,7],[10,11,16,20],[23,30,34,60]], target=3",out:"true",tags:["二分"],idea:"二维→一维。下标映射matrix[mid/cols][mid%cols]。"},
+75:{title:"Sort Colors",diff:"Medium",desc:"0/1/2数组原地排序(一趟扫描)。",in:"nums=[2,0,2,1,1,0]",out:"[0,0,1,1,2,2]",tags:["双指针"],idea:"荷兰国旗。p0(0的右边界),p2(2的左边界),curr扫描。",code:"def sortColors(nums):\n    p0,p2,i=0,len(nums)-1,0\n    while i<=p2:\n        if nums[i]==0:\n            nums[i],nums[p0]=nums[p0],nums[i]\n            p0+=1; i+=1\n        elif nums[i]==2:\n            nums[i],nums[p2]=nums[p2],nums[i]\n            p2-=1\n        else: i+=1"},
+76:{title:"Minimum Window Substring",diff:"Hard",desc:"s中包含t所有字符的最小子串。",in:"s='ADOBECODEBANC', t='ABC'",out:"'BANC'",tags:["滑动窗口","哈希表"],idea:"need记录需求，have记录窗口内。match计数。满足时收缩left。",code:"def minWindow(s,t):\n    from collections import Counter\n    need=Counter(t); missing=len(t)\n    left=start=0; min_len=float('inf')\n    for right,ch in enumerate(s):\n        if need[ch]>0: missing-=1\n        need[ch]-=1\n        if missing==0:\n            while need[s[left]]<0:\n                need[s[left]]+=1; left+=1\n            if right-left+1<min_len:\n                min_len=right-left+1; start=left\n    return s[start:start+min_len] if min_len!=float('inf') else ''"},
+78:{title:"Subsets",diff:"Medium",desc:"返回数组所有子集(幂集)。",in:"nums=[1,2,3]",out:"[[],[1],[2],[1,2],[3],[1,3],[2,3],[1,2,3]]",tags:["回溯"],idea:"子集模板。递归带start，每层path直接加入结果。",code:"def subsets(nums):\n    res=[]\n    def backtrack(start,path):\n        res.append(path[:])\n        for i in range(start,len(nums)):\n            path.append(nums[i])\n            backtrack(i+1,path)\n            path.pop()\n    backtrack(0,[])\n    return res"},
+79:{title:"Word Search",diff:"Medium",desc:"二维字符网格中搜索单词。",in:"board=[[A,B,C,E],[S,F,C,S],[A,D,E,E]], word='ABCCED'",out:"true",tags:["DFS","回溯"],idea:"每个格子起点DFS。标记已访问为#，回溯恢复。",code:"def exist(board,word):\n    r,c=len(board),len(board[0])\n    def dfs(i,j,k):\n        if k==len(word): return True\n        if i<0 or i>=r or j<0 or j>=c or board[i][j]!=word[k]: return False\n        tmp=board[i][j]; board[i][j]='#'\n        found=dfs(i+1,j,k+1) or dfs(i-1,j,k+1) or dfs(i,j+1,k+1) or dfs(i,j-1,k+1)\n        board[i][j]=tmp\n        return found\n    for i in range(r):\n        for j in range(c):\n            if dfs(i,j,0): return True\n    return False"},
+84:{title:"Largest Rectangle in Histogram",diff:"Hard",desc:"柱状图中最大矩形面积。",in:"heights=[2,1,5,6,2,3]",out:"10",tags:["单调栈"],idea:"单调递增栈。遇到更低的柱子→栈顶矩形右边到头→弹出计算面积。",code:"def largestRectangleArea(heights):\n    stack,res=[],0\n    heights.append(0)\n    for i,h in enumerate(heights):\n        while stack and heights[stack[-1]]>h:\n            idx=stack.pop()\n            w=i if not stack else i-stack[-1]-1\n            res=max(res,heights[idx]*w)\n        stack.append(i)\n    return res"},
+85:{title:"Maximal Rectangle",diff:"Hard",desc:"0/1矩阵中最大全1矩形面积。",in:"matrix=[[1,0,1,0,0],[1,0,1,1,1],[1,1,1,1,1],[1,0,0,1,0]]",out:"6",tags:["单调栈","DP"],idea:"逐行转化为#84柱状图问题。"},
+91:{title:"Decode Ways",diff:"Medium",desc:"数字字符串的解码方式数(A=1...Z=26)。",in:"s='226'",out:"3",tags:["DP"],idea:"dp[i]=前i解码数。单独解码+dp[i-1]；一起(10~26)+dp[i-2]。"},
+94:{title:"Binary Tree Inorder Traversal",diff:"Easy",desc:"二叉树中序遍历。",in:"root=[1,null,2,3]",out:"[1,3,2]",tags:["树","栈"],idea:"迭代：栈模拟，一直向左到底，弹出一个处理，转右子树。",code:"def inorderTraversal(root):\n    res,stack=[],[]\n    cur=root\n    while cur or stack:\n        while cur:\n            stack.append(cur); cur=cur.left\n        cur=stack.pop()\n        res.append(cur.val)\n        cur=cur.right\n    return res"},
+98:{title:"Validate BST",diff:"Medium",desc:"判断是否为有效二叉搜索树。",in:"root=[5,1,4,null,null,3,6]",out:"false",tags:["树","DFS"],idea:"递归传(min,max)区间。不能只比较父子。",code:"def isValidBST(root):\n    def dfs(node,lo,hi):\n        if not node: return True\n        if node.val<=lo or node.val>=hi: return False\n        return dfs(node.left,lo,node.val) and dfs(node.right,node.val,hi)\n    return dfs(root,float('-inf'),float('inf'))"},
+101:{title:"Symmetric Tree",diff:"Easy",desc:"判断二叉树是否轴对称。",in:"root=[1,2,2,3,4,4,3]",out:"true",tags:["树"],idea:"递归比较(left.left,right.right)和(left.right,right.left)。",code:"def isSymmetric(root):\n    def mirror(a,b):\n        if not a and not b: return True\n        if not a or not b: return False\n        return a.val==b.val and mirror(a.left,b.right) and mirror(a.right,b.left)\n    return mirror(root,root)"},
+102:{title:"Binary Tree Level Order",diff:"Medium",desc:"二叉树层序遍历。",in:"root=[3,9,20,null,null,15,7]",out:"[[3],[9,20],[15,7]]",tags:["树","BFS"],idea:"BFS队列。每层记录队列大小，循环处理。",code:"def levelOrder(root):\n    from collections import deque\n    if not root: return []\n    q,res=deque([root]),[]\n    while q:\n        level=[]\n        for _ in range(len(q)):\n            node=q.popleft()\n            level.append(node.val)\n            if node.left: q.append(node.left)\n            if node.right: q.append(node.right)\n        res.append(level)\n    return res"},
+104:{title:"Maximum Depth",diff:"Easy",desc:"二叉树最大深度。",in:"root=[3,9,20,null,null,15,7]",out:"3",tags:["树"],idea:"1+max(左深度,右深度)。",code:"def maxDepth(root):\n    if not root: return 0\n    return 1+max(maxDepth(root.left),maxDepth(root.right))"},
+105:{title:"Construct Tree from Preorder and Inorder",diff:"Medium",desc:"根据前序和中序遍历构造二叉树。",in:"preorder=[3,9,20,15,7], inorder=[9,3,15,20,7]",out:"[3,9,20,null,null,15,7]",tags:["树","分治"],idea:"preorder[0]是根。在inorder中找到根位置，左右递归。",code:"def buildTree(preorder,inorder):\n    if not preorder: return None\n    root=TreeNode(preorder[0])\n    idx=inorder.index(preorder[0])\n    root.left=buildTree(preorder[1:1+idx],inorder[:idx])\n    root.right=buildTree(preorder[1+idx:],inorder[idx+1:])\n    return root"},
+114:{title:"Flatten Binary Tree to Linked List",diff:"Medium",desc:"二叉树展开为链表(先序)。",in:"root=[1,2,5,3,4,null,6]",out:"[1,null,2,null,3,null,4,null,5,null,6]",tags:["树"],idea:"后序遍历(右→左→根)。维护prev，node.right=prev。",code:"def flatten(root):\n    prev=None\n    def dfs(node):\n        nonlocal prev\n        if not node: return\n        dfs(node.right); dfs(node.left)\n        node.right=prev; node.left=None\n        prev=node\n    dfs(root)"},
+121:{title:"Best Time to Buy and Sell Stock",diff:"Easy",desc:"一次交易的最大利润。",in:"prices=[7,1,5,3,6,4]",out:"5",tags:["贪心"],idea:"维护历史最低价，每天利润=price-minPrice。",code:"def maxProfit(prices):\n    min_p,res=float('inf'),0\n    for p in prices:\n        min_p=min(min_p,p)\n        res=max(res,p-min_p)\n    return res"},
+122:{title:"Best Time II",diff:"Medium",desc:"可多次交易的最大总利润。",in:"prices=[7,1,5,3,6,4]",out:"7",tags:["贪心"],idea:"只要明天>今天就买。累加所有上升段。",code:"def maxProfit(prices):\n    return sum(max(0,prices[i]-prices[i-1]) for i in range(1,len(prices)))"},
+124:{title:"Binary Tree Maximum Path Sum",diff:"Hard",desc:"二叉树中任意节点间最大路径和。",in:"root=[-10,9,20,null,null,15,7]",out:"42",tags:["树","DFS"],idea:"后序遍历。节点贡献=max(0,左)+max(0,右)+当前。全局max更新。",code:"def maxPathSum(root):\n    res=float('-inf')\n    def dfs(node):\n        nonlocal res\n        if not node: return 0\n        left=max(0,dfs(node.left))\n        right=max(0,dfs(node.right))\n        res=max(res,node.val+left+right)\n        return node.val+max(left,right)\n    dfs(root)\n    return res"},
+127:{title:"Word Ladder",diff:"Hard",desc:"从beginWord到endWord的最短转换序列。",in:"beginWord='hit', endWord='cog', wordList=['hot','dot','dog','lot','log','cog']",out:"5",tags:["BFS"],idea:"BFS最短路径。双向BFS从两端同时开始，相遇即结束。"},
+128:{title:"Longest Consecutive Sequence",diff:"Medium",desc:"未排序数组中最长连续序列长度。O(N)。",in:"nums=[100,4,200,1,3,2]",out:"4",tags:["哈希表"],idea:"所有数字放入Set。只从x-1不在集合中的数字开始往后数。",code:"def longestConsecutive(nums):\n    s=set(nums); res=0\n    for n in s:\n        if n-1 not in s:\n            cur,cnt=n,1\n            while cur+1 in s:\n                cur+=1; cnt+=1\n            res=max(res,cnt)\n    return res"},
+131:{title:"Palindrome Partitioning",diff:"Medium",desc:"分割字符串为回文子串的所有方案。",in:"s='aab'",out:"[['a','a','b'],['aa','b']]",tags:["回溯"],idea:"回溯+回文判断。从start切一刀，是回文→继续递归。"},
+136:{title:"Single Number",diff:"Easy",desc:"找出只出现一次的数字。",in:"nums=[4,1,2,1,2]",out:"4",tags:["位运算"],idea:"异或：a^a=0, a^0=a。全异或一遍。",code:"def singleNumber(nums):\n    res=0\n    for n in nums: res^=n\n    return res"},
+139:{title:"Word Break",diff:"Medium",desc:"字符串能否拆分为字典中的单词。",in:"s='leetcode', wordDict=['leet','code']",out:"true",tags:["DP"],idea:"dp[i]=前i能否拆分。dp[i]=dp[j]&&s[j:i]∈set。",code:"def wordBreak(s,wordDict):\n    words=set(wordDict)\n    dp=[False]*(len(s)+1)\n    dp[0]=True\n    for i in range(1,len(s)+1):\n        for j in range(i):\n            if dp[j] and s[j:i] in words:\n                dp[i]=True; break\n    return dp[-1]"},
+141:{title:"Linked List Cycle",diff:"Easy",desc:"判断链表是否有环。",in:"head=[3,2,0,-4], pos=1",out:"true",tags:["链表","双指针"],idea:"快慢指针。slow走1步fast走2步。有环必相遇。",code:"def hasCycle(head):\n    slow=fast=head\n    while fast and fast.next:\n        slow=slow.next; fast=fast.next.next\n        if slow==fast: return True\n    return False"},
+142:{title:"Linked List Cycle II",diff:"Medium",desc:"找出链表环的入口节点。",in:"head=[3,2,0,-4], pos=1",out:"节点值为2",tags:["链表","双指针"],idea:"相遇后slow回head，同步走直到再相遇=环入口。",code:"def detectCycle(head):\n    slow=fast=head\n    while fast and fast.next:\n        slow=slow.next; fast=fast.next.next\n        if slow==fast:\n            slow=head\n            while slow!=fast:\n                slow=slow.next; fast=fast.next\n            return slow\n    return None"},
+146:{title:"LRU Cache",diff:"Medium",desc:"实现LRU缓存。get和put必须O(1)。",in:"LRUCache(2); put(1,1); put(2,2); get(1); put(3,3); get(2)",out:"1, -1",tags:["哈希表","链表"],idea:"HashMap+双向链表。访问/插入移到头；超容量删尾。"},
+148:{title:"Sort List",diff:"Medium",desc:"O(N log N)排序链表。",in:"head=[4,2,1,3]",out:"[1,2,3,4]",tags:["链表","排序"],idea:"归并排序。快慢找中点→分两半递归→合并。",code:"def sortList(head):\n    if not head or not head.next: return head\n    slow,fast=head,head.next\n    while fast and fast.next:\n        slow=slow.next; fast=fast.next.next\n    mid=slow.next; slow.next=None\n    return mergeTwoLists(sortList(head),sortList(mid))"},
+152:{title:"Maximum Product Subarray",diff:"Medium",desc:"乘积最大的连续子数组。",in:"nums=[2,3,-2,4]",out:"6",tags:["DP"],idea:"同时维护最大乘积和最小乘积(负数乘负数变最大)。",code:"def maxProduct(nums):\n    imax=imin=res=nums[0]\n    for n in nums[1:]:\n        candidates=(n,imax*n,imin*n)\n        imax=max(candidates)\n        imin=min(candidates)\n        res=max(res,imax)\n    return res"},
+153:{title:"Find Minimum in Rotated Sorted Array",diff:"Medium",desc:"旋转有序数组中找最小值。",in:"nums=[4,5,6,7,0,1,2]",out:"0",tags:["二分"],idea:"二分比较nums[mid]和nums[right]。mid>right→在右侧。",code:"def findMin(nums):\n    l,r=0,len(nums)-1\n    while l<r:\n        m=(l+r)//2\n        if nums[m]>nums[r]: l=m+1\n        else: r=m\n    return nums[l]"},
+155:{title:"Min Stack",diff:"Medium",desc:"设计O(1)获取最小元素的栈。",in:"push(-2);push(0);push(-3);getMin();pop();top();getMin()",out:"-3, 0, -2",tags:["栈"],idea:"辅助栈同步存当前最小值。push时min(min,x)。",code:"class MinStack:\n    def __init__(self):\n        self.stack=[]; self.mins=[]\n    def push(self,x):\n        self.stack.append(x)\n        self.mins.append(min(x,self.mins[-1] if self.mins else x))\n    def pop(self): self.stack.pop(); self.mins.pop()\n    def top(self): return self.stack[-1]\n    def getMin(self): return self.mins[-1]"},
+160:{title:"Intersection of Two Linked Lists",diff:"Easy",desc:"两个单链表相交的起始节点。",in:"listA=[4,1,8,4,5], listB=[5,6,1,8,4,5]",out:"节点值为8",tags:["链表","双指针"],idea:"双指针浪漫相遇。pA走A→B，pB走B→A，走过相同总长度后必在交点相遇。",code:"def getIntersectionNode(headA,headB):\n    a,b=headA,headB\n    while a!=b:\n        a=a.next if a else headB\n        b=b.next if b else headA\n    return a"},
+169:{title:"Majority Element",diff:"Easy",desc:"出现次数超过⌊n/2⌋的元素。",in:"nums=[2,2,1,1,1,2,2]",out:"2",tags:["投票"],idea:"摩尔投票。candidate+count。遇相同+1不同-1。",code:"def majorityElement(nums):\n    cand,cnt=0,0\n    for n in nums:\n        if cnt==0: cand=n\n        cnt+=1 if n==cand else -1\n    return cand"},
+191:{title:"Number of 1 Bits",diff:"Easy",desc:"二进制中1的个数。",in:"n=11 (1011)",out:"3",tags:["位运算"],idea:"n&(n-1)每次消掉最低位的1。"},
+198:{title:"House Robber",diff:"Medium",desc:"不能偷相邻房子，求最高金额。",in:"nums=[2,7,9,3,1]",out:"12",tags:["DP"],idea:"dp[i]=max(dp[i-1],dp[i-2]+nums[i])。",code:"def rob(nums):\n    prev,curr=0,0\n    for n in nums:\n        prev,curr=curr,max(curr,prev+n)\n    return curr"},
+200:{title:"Number of Islands",diff:"Medium",desc:"网格中计算岛屿数量。",in:"grid=[[1,1,0,0,0],[1,1,0,0,0],[0,0,1,0,0],[0,0,0,1,1]]",out:"3",tags:["DFS","BFS","并查集"],idea:"DFS淹没法。遇'1'→计数+1→DFS把相连陆地全改'0'。",code:"def numIslands(grid):\n    def dfs(r,c):\n        if r<0 or r>=len(grid) or c<0 or c>=len(grid[0]) or grid[r][c]!='1': return\n        grid[r][c]='0'\n        dfs(r+1,c); dfs(r-1,c); dfs(r,c+1); dfs(r,c-1)\n    res=0\n    for r in range(len(grid)):\n        for c in range(len(grid[0])):\n            if grid[r][c]=='1':\n                res+=1; dfs(r,c)\n    return res"},
+206:{title:"Reverse Linked List",diff:"Easy",desc:"反转单链表。",in:"head=[1,2,3,4,5]",out:"[5,4,3,2,1]",tags:["链表"],idea:"pre=null,cur=head。每次nxt=cur.next;cur.next=pre。",code:"def reverseList(head):\n    prev,cur=None,head\n    while cur:\n        nxt=cur.next\n        cur.next=prev\n        prev=cur; cur=nxt\n    return prev"},
+207:{title:"Course Schedule",diff:"Medium",desc:"判断能否完成所有课程(有先修要求)。",in:"numCourses=2, prereqs=[[1,0]]",out:"true",tags:["BFS","图"],idea:"拓扑排序。入度数组+BFS。入度0入队→处理→邻居入度-1。",code:"def canFinish(n,prereqs):\n    from collections import defaultdict,deque\n    g=defaultdict(list); ind=[0]*n\n    for a,b in prereqs:\n        g[b].append(a); ind[a]+=1\n    q=deque([i for i in range(n) if ind[i]==0])\n    taken=0\n    while q:\n        c=q.popleft(); taken+=1\n        for nxt in g[c]:\n            ind[nxt]-=1\n            if ind[nxt]==0: q.append(nxt)\n    return taken==n"},
+208:{title:"Implement Trie",diff:"Medium",desc:"实现前缀树。",in:"insert('apple'); search('apple'); startsWith('app')",out:"true, true",tags:["Trie"],idea:"每个节点存children[26]+isEnd。逐字符走树。"},
+215:{title:"Kth Largest Element",diff:"Medium",desc:"数组中第K大的元素。",in:"nums=[3,2,1,5,6,4], k=2",out:"5",tags:["堆","快选"],idea:"小顶堆O(N log K)。维护大小K的堆，堆顶=第K大。",code:"def findKthLargest(nums,k):\n    import heapq\n    heap=[]\n    for n in nums:\n        heapq.heappush(heap,n)\n        if len(heap)>k: heapq.heappop(heap)\n    return heap[0]"},
+221:{title:"Maximal Square",diff:"Medium",desc:"0/1矩阵中最大全1正方形面积。",in:"matrix=[[1,0,1,0,0],[1,0,1,1,1],[1,1,1,1,1],[1,0,0,1,0]]",out:"4",tags:["DP"],idea:"dp[i][j]=min(左,上,左上)+1。面=边长²。",code:"def maximalSquare(matrix):\n    if not matrix: return 0\n    r,c=len(matrix),len(matrix[0])\n    dp=[[0]*(c+1) for _ in range(r+1)]\n    side=0\n    for i in range(r):\n        for j in range(c):\n            if matrix[i][j]=='1':\n                dp[i+1][j+1]=min(dp[i][j],dp[i][j+1],dp[i+1][j])+1\n                side=max(side,dp[i+1][j+1])\n    return side*side"},
+226:{title:"Invert Binary Tree",diff:"Easy",desc:"翻转二叉树。",in:"root=[4,2,7,1,3,6,9]",out:"[4,7,2,9,6,3,1]",tags:["树"],idea:"left=invert(right);right=invert(left)。",code:"def invertTree(root):\n    if not root: return None\n    root.left,root.right=invertTree(root.right),invertTree(root.left)\n    return root"},
+234:{title:"Palindrome Linked List",diff:"Easy",desc:"判断链表是否为回文。",in:"head=[1,2,2,1]",out:"true",tags:["链表","双指针"],idea:"快慢找中点→反转后半段→双指针比较。",code:"def isPalindrome(head):\n    slow=fast=head\n    while fast and fast.next:\n        slow=slow.next; fast=fast.next.next\n    prev=None\n    while slow:\n        nxt=slow.next; slow.next=prev; prev=slow; slow=nxt\n    l,r=head,prev\n    while r:\n        if l.val!=r.val: return False\n        l=l.next; r=r.next\n    return True"},
+236:{title:"Lowest Common Ancestor",diff:"Medium",desc:"二叉树中两个节点的最近公共祖先。",in:"root=[3,5,1,6,2,0,8,null,null,7,4], p=5, q=1",out:"3",tags:["树"],idea:"后序遍历。左右都非空→当前即LCA；只有一边→返回那边。",code:"def LCA(root,p,q):\n    if not root or root==p or root==q: return root\n    left=LCA(root.left,p,q)\n    right=LCA(root.right,p,q)\n    if left and right: return root\n    return left or right"},
+238:{title:"Product of Array Except Self",diff:"Medium",desc:"除自身外数组乘积(不能除法)。",in:"nums=[1,2,3,4]",out:"[24,12,8,6]",tags:["前缀"],idea:"前缀积×后缀积。两遍扫描。",code:"def productExceptSelf(nums):\n    n=len(nums); res=[1]*n\n    p=1\n    for i in range(n):\n        res[i]=p; p*=nums[i]\n    p=1\n    for i in range(n-1,-1,-1):\n        res[i]*=p; p*=nums[i]\n    return res"},
+239:{title:"Sliding Window Maximum",diff:"Hard",desc:"滑动窗口大小为k的每个位置最大值。",in:"nums=[1,3,-1,-3,5,3,6,7], k=3",out:"[3,3,5,5,6,7]",tags:["单调队列"],idea:"单调递减队列存下标。新元素从队尾弹出≤它的。队首过期弹出。",code:"def maxSlidingWindow(nums,k):\n    from collections import deque\n    q,res=deque(),[]\n    for i,n in enumerate(nums):\n        while q and nums[q[-1]]<=n: q.pop()\n        q.append(i)\n        if q[0]<=i-k: q.popleft()\n        if i>=k-1: res.append(nums[q[0]])\n    return res"},
+240:{title:"Search a 2D Matrix II",diff:"Medium",desc:"每行每列递增矩阵搜索target。",in:"target=5, matrix=[[1,4,7],[2,5,8],[3,6,9]]",out:"true",tags:["二分","矩阵"],idea:"Z字形搜索。从右上角开始：>target下移；<target左移。",code:"def searchMatrix(matrix,target):\n    if not matrix: return False\n    r,c=0,len(matrix[0])-1\n    while r<len(matrix) and c>=0:\n        if matrix[r][c]==target: return True\n        elif matrix[r][c]<target: r+=1\n        else: c-=1\n    return False"},
+253:{title:"Meeting Rooms II",diff:"Medium",desc:"最少需要多少个会议室。",in:"intervals=[[0,30],[5,10],[15,20]]",out:"2",tags:["堆","排序"],idea:"小顶堆存结束时间。按开始排序。堆顶≤当前开始→复用。"},
+279:{title:"Perfect Squares",diff:"Medium",desc:"和为n的最少完全平方数个数。",in:"n=12",out:"3 (4+4+4)",tags:["DP","BFS"],idea:"dp[i]=min(dp[i-j²]+1)。",code:"def numSquares(n):\n    dp=[float('inf')]*(n+1); dp[0]=0\n    for i in range(1,n+1):\n        j=1\n        while j*j<=i:\n            dp[i]=min(dp[i],dp[i-j*j]+1)\n            j+=1\n    return dp[n]"},
+283:{title:"Move Zeroes",diff:"Easy",desc:"将0移到末尾，保持非零顺序。",in:"nums=[0,1,0,3,12]",out:"[1,3,12,0,0]",tags:["双指针"],idea:"快慢指针。slow指向下一个非零位置，fast扫描。",code:"def moveZeroes(nums):\n    slow=0\n    for fast in range(len(nums)):\n        if nums[fast]!=0:\n            nums[slow],nums[fast]=nums[fast],nums[slow]\n            slow+=1"},
+287:{title:"Find the Duplicate Number",diff:"Medium",desc:"找出唯一重复数(不能修改数组,O(1)空间)。",in:"nums=[3,1,3,4,2]",out:"3",tags:["二分","快慢指针"],idea:"快慢指针看成链表找环入口。",code:"def findDuplicate(nums):\n    slow=fast=nums[0]\n    while True:\n        slow=nums[slow]; fast=nums[nums[fast]]\n        if slow==fast: break\n    slow=nums[0]\n    while slow!=fast:\n        slow=nums[slow]; fast=nums[fast]\n    return slow"},
+295:{title:"Find Median from Data Stream",diff:"Hard",desc:"数据流中位数。",in:"addNum(1);addNum(2);findMedian();addNum(3);findMedian()",out:"1.5, 2.0",tags:["堆"],idea:"双堆。大顶堆存左半，小顶堆存右半。保持size差≤1。",code:"class MedianFinder:\n    def __init__(self):\n        import heapq\n        self.lo=[]; self.hi=[]\n    def addNum(self,num):\n        heapq.heappush(self.lo,-num)\n        heapq.heappush(self.hi,-heapq.heappop(self.lo))\n        if len(self.hi)>len(self.lo):\n            heapq.heappush(self.lo,-heapq.heappop(self.hi))\n    def findMedian(self):\n        if len(self.lo)>len(self.hi): return -self.lo[0]\n        return (-self.lo[0]+self.hi[0])/2"},
+297:{title:"Serialize and Deserialize Binary Tree",diff:"Hard",desc:"二叉树的序列化与反序列化。",in:"root=[1,2,3,null,null,4,5]",out:"[1,2,3,null,null,4,5]",tags:["树"],idea:"先序遍历。空节点用null。反序列化按相同顺序递归。"},
+300:{title:"Longest Increasing Subsequence",diff:"Medium",desc:"最长递增子序列长度。",in:"nums=[10,9,2,5,3,7,101,18]",out:"4 ([2,3,7,101])",tags:["DP","二分"],idea:"DP O(N²)。贪心+二分O(N log N)：tails数组存各长度最小结尾。",code:"def lengthOfLIS(nums):\n    import bisect\n    tails=[]\n    for n in nums:\n        i=bisect.bisect_left(tails,n)\n        if i==len(tails): tails.append(n)\n        else: tails[i]=n\n    return len(tails)"},
+309:{title:"Best Time with Cooldown",diff:"Medium",desc:"可多次买卖但有冷冻期1天。",in:"prices=[1,2,3,0,2]",out:"3",tags:["DP"],idea:"状态DP。三个状态：持有、不持有(刚卖)、不持有(非刚卖)。"},
+322:{title:"Coin Change",diff:"Medium",desc:"最少硬币数凑出金额。",in:"coins=[1,2,5], amount=11",out:"3 (5+5+1)",tags:["DP"],idea:"完全背包。dp[i]=min(dp[i-coin]+1)。",code:"def coinChange(coins,amount):\n    dp=[float('inf')]*(amount+1); dp[0]=0\n    for c in coins:\n        for i in range(c,amount+1):\n            dp[i]=min(dp[i],dp[i-c]+1)\n    return dp[amount] if dp[amount]!=float('inf') else -1"},
+338:{title:"Counting Bits",diff:"Easy",desc:"0到n每个数字二进制中1的个数。",in:"n=5",out:"[0,1,1,2,1,2]",tags:["位运算","DP"],idea:"dp[i]=dp[i>>1]+(i&1)。",code:"def countBits(n):\n    dp=[0]*(n+1)\n    for i in range(1,n+1):\n        dp[i]=dp[i>>1]+(i&1)\n    return dp"},
+347:{title:"Top K Frequent Elements",diff:"Medium",desc:"出现频率最高的k个元素。",in:"nums=[1,1,1,2,2,3], k=2",out:"[1,2]",tags:["哈希表","堆"],idea:"统计频率→桶排序(频率下标)或小顶堆。",code:"def topKFrequent(nums,k):\n    from collections import Counter\n    cnt=Counter(nums)\n    buckets=[[] for _ in range(len(nums)+1)]\n    for num,freq in cnt.items():\n        buckets[freq].append(num)\n    res=[]\n    for i in range(len(buckets)-1,0,-1):\n        for num in buckets[i]:\n            res.append(num)\n            if len(res)==k: return res"},
+394:{title:"Decode String",diff:"Medium",desc:"解码k[encoded_string]。",in:"s='3[a2[c]]'",out:"'accaccacc'",tags:["栈"],idea:"双栈。一个存倍数，一个存字符串。[压栈，]弹栈拼接。",code:"def decodeString(s):\n    stack,cur_num,cur_str=[],0,''\n    for ch in s:\n        if ch.isdigit():\n            cur_num=cur_num*10+int(ch)\n        elif ch=='[':\n            stack.append((cur_str,cur_num))\n            cur_str,cur_num='',0\n        elif ch==']':\n            prev_str,num=stack.pop()\n            cur_str=prev_str+cur_str*num\n        else: cur_str+=ch\n    return cur_str"},
+399:{title:"Evaluate Division",diff:"Medium",desc:"变量除法求值。",in:"equations=[['a','b'],['b','c']], values=[2.0,3.0], queries=[['a','c']]",out:"[6.0]",tags:["并查集","图"],idea:"带权并查集。节点存到父节点的权重。"},
+406:{title:"Queue Reconstruction by Height",diff:"Medium",desc:"按(h,k)重建队列。",in:"people=[[7,0],[4,4],[7,1],[5,0],[6,1],[5,2]]",out:"[[5,0],[7,0],[5,2],[6,1],[4,4],[7,1]]",tags:["贪心"],idea:"按身高降序k升序排列。逐个插入到第k个位置。"},
+416:{title:"Partition Equal Subset Sum",diff:"Medium",desc:"数组能否分成两个和相等的子集。",in:"nums=[1,5,11,5]",out:"true",tags:["DP","背包"],idea:"0-1背包。能否选一些数和=total/2。dp[j]=dp[j]||dp[j-num]。",code:"def canPartition(nums):\n    total=sum(nums)\n    if total%2: return False\n    target=total//2\n    dp=[True]+[False]*target\n    for n in nums:\n        for i in range(target,n-1,-1):\n            dp[i]|=dp[i-n]\n    return dp[target]"},
+437:{title:"Path Sum III",diff:"Medium",desc:"二叉树中路径和=targetSum的数量。",in:"root=[10,5,-3,3,2,null,11,3,-2,null,1], target=8",out:"3",tags:["树","前缀和"],idea:"前缀和+DFS。维护路径前缀和HashMap。查curSum-target。",code:"def pathSum(root,target):\n    from collections import defaultdict\n    prefix=defaultdict(int); prefix[0]=1\n    def dfs(node,cur):\n        if not node: return 0\n        cur+=node.val\n        cnt=prefix[cur-target]\n        prefix[cur]+=1\n        cnt+=dfs(node.left,cur)+dfs(node.right,cur)\n        prefix[cur]-=1\n        return cnt\n    return dfs(root,0)"},
+438:{title:"Find All Anagrams in a String",diff:"Medium",desc:"s中所有是p的字母异位词的子串起始索引。",in:"s='cbaebabacd', p='abc'",out:"[0,6]",tags:["滑动窗口"],idea:"固定窗口大小=p.length()。滑动时只修改进出窗口的两个字符。",code:"def findAnagrams(s,p):\n    from collections import Counter\n    need,win=Counter(p),Counter()\n    left,res=0,[]\n    for right,ch in enumerate(s):\n        win[ch]+=1\n        if right-left+1>len(p):\n            win[s[left]]-=1\n            if win[s[left]]==0: del win[s[left]]\n            left+=1\n        if win==need: res.append(left)\n    return res"},
+448:{title:"Find All Numbers Disappeared",diff:"Easy",desc:"找出1~n中未出现的数字。",in:"nums=[4,3,2,7,8,2,3,1]",out:"[5,6]",tags:["原地哈希"],idea:"出现的数字作下标，标记为负。扫描正数位置i+1即缺失。"},
+461:{title:"Hamming Distance",diff:"Easy",desc:"两整数二进制位不同的数量。",in:"x=1(0001), y=4(0100)",out:"2",tags:["位运算"],idea:"x^y后数1的个数：n&(n-1)。",code:"def hammingDistance(x,y):\n    n=x^y; cnt=0\n    while n:\n        n&=n-1; cnt+=1\n    return cnt"},
+494:{title:"Target Sum",diff:"Medium",desc:"给数字加+/-号使结果=target的方案数。",in:"nums=[1,1,1,1,1], target=3",out:"5",tags:["DP","背包"],idea:"P-N=target,P+N=sum→P=(target+sum)/2。找和为P的子集数。"},
+543:{title:"Diameter of Binary Tree",diff:"Easy",desc:"二叉树的直径(最长路径)。",in:"root=[1,2,3,4,5]",out:"3",tags:["树"],idea:"直径=max(左深度+右深度)。递归同时计算深度和更新直径。",code:"def diameterOfBinaryTree(root):\n    res=0\n    def dfs(node):\n        nonlocal res\n        if not node: return 0\n        l=dfs(node.left); r=dfs(node.right)\n        res=max(res,l+r)\n        return 1+max(l,r)\n    dfs(root)\n    return res"},
+560:{title:"Subarray Sum Equals K",diff:"Medium",desc:"和为k的连续子数组个数。",in:"nums=[1,2,3], k=3",out:"2",tags:["哈希表","前缀和"],idea:"前缀和+HashMap。遍历查preSum-k出现的次数。",code:"def subarraySum(nums,k):\n    from collections import defaultdict\n    prefix=defaultdict(int); prefix[0]=1\n    cur,res=0,0\n    for n in nums:\n        cur+=n\n        res+=prefix[cur-k]\n        prefix[cur]+=1\n    return res"},
+581:{title:"Shortest Unsorted Continuous Subarray",diff:"Medium",desc:"需要排序的最短连续子数组长度。",in:"nums=[2,6,4,8,10,9,15]",out:"5",tags:["双指针"],idea:"从左找第一个降序点，从右找第一个升序破点。"},
+617:{title:"Merge Two Binary Trees",diff:"Easy",desc:"合并两棵二叉树。",in:"root1=[1,3,2,5], root2=[2,1,3,null,4,null,7]",out:"[3,4,5,5,4,null,7]",tags:["树"],idea:"递归。空→返回另一边；都不空→值相加，左右递归合并。"},
+621:{title:"Task Scheduler",diff:"Medium",desc:"CPU执行任务的最短时间(同任务间隔n)。",in:"tasks=['A','A','A','B','B','B'], n=2",out:"8",tags:["贪心"],idea:"最高频maxFreq，maxCount个同频率。max(总数,(maxFreq-1)*(n+1)+maxCount)。",code:"def leastInterval(tasks,n):\n    from collections import Counter\n    freq=list(Counter(tasks).values())\n    mf=max(freq); mc=freq.count(mf)\n    return max(len(tasks),(mf-1)*(n+1)+mc)"},
+647:{title:"Palindromic Substrings",diff:"Medium",desc:"回文子串总数。",in:"s='aaa'",out:"6",tags:["双指针"],idea:"中心扩散。每个字符和每对字符作中心，向外扩计数。"},
+739:{title:"Daily Temperatures",diff:"Medium",desc:"每天等多少天后温度更高。",in:"temps=[73,74,75,71,69,72,76,73]",out:"[1,1,4,2,1,1,0,0]",tags:["单调栈"],idea:"单调递减栈存下标。遇到更高→栈顶找到答案，距离=i-pop。",code:"def dailyTemperatures(temps):\n    stack,res=[],[0]*len(temps)\n    for i,t in enumerate(temps):\n        while stack and temps[stack[-1]]<t:\n            idx=stack.pop()\n            res[idx]=i-idx\n        stack.append(i)\n    return res"},
+763:{title:"Partition Labels",diff:"Medium",desc:"尽可能多片段，同一字母在一个片段内。",in:"s='ababcbacadefegdehijhklij'",out:"[9,7,8]",tags:["贪心"],idea:"记录每个字母最后位置。遍历更新end，i走到end时切一片。"},
+994:{title:"Rotting Oranges",diff:"Medium",desc:"烂橘子每分钟感染相邻新鲜橘子，求全部烂掉的最少时间。",in:"grid=[[2,1,1],[1,1,0],[0,1,1]]",out:"4",tags:["BFS"],idea:"多源BFS。所有初始烂橘子同时入队。每层时间+1。",code:"def orangesRotting(grid):\n    from collections import deque\n    r,c=len(grid),len(grid[0])\n    q=deque(); fresh=0\n    for i in range(r):\n        for j in range(c):\n            if grid[i][j]==2: q.append((i,j,0))\n            elif grid[i][j]==1: fresh+=1\n    if fresh==0: return 0\n    while q:\n        i,j,t=q.popleft()\n        for di,dj in [(1,0),(-1,0),(0,1),(0,-1)]:\n            ni,nj=i+di,j+dj\n            if 0<=ni<r and 0<=nj<c and grid[ni][nj]==1:\n                grid[ni][nj]=2; fresh-=1\n                if fresh==0: return t+1\n                q.append((ni,nj,t+1))\n    return -1"}
+};
+
+let currentId = null;
+
+function showProblem(id) {
+  const p = problems[id];
+  if (!p) return;
+  currentId = id;
+  document.getElementById('modalId').textContent = '#' + id + ' · ' + p.diff;
+  document.getElementById('modalTitle').textContent = p.title;
+  let html = '<p style="color:var(--text);font-size:14px;line-height:1.9">' + p.desc + '</p>';
+  html += '<h4>示例输入</h4><pre><code>' + p.in + '</code></pre>';
+  html += '<h4>示例输出</h4><pre><code>' + p.out + '</code></pre>';
+  html += '<div class="idea-box"><span class="key">💡 解题思路：</span>' + p.idea + '</div>';
+  if (p.code) {
+    html += '<button class="code-toggle" onclick="toggleCode(event)">查看示例代码</button>';
+    html += '<div class="code-block"><pre><code>' + p.code.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</code></pre></div>';
+  }
+  if (p.tags && p.tags.length) {
+    html += '<div class="modal-tags">';
+    p.tags.forEach(t => { html += '<span class="tag">' + t + '</span>'; });
+    html += '</div>';
+  }
+  html += '<p style="margin-top:12px;font-size:11px;color:var(--muted)">🔗 <a href="https://leetcode.cn/problems/' + p.title.toLowerCase().replace(/ /g,'-') + '" target="_blank" style="color:var(--accent)">在 LeetCode 打开</a></p>';
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('active');
+  document.body.style.overflow = '';
+  currentId = null;
+}
+
+// Event delegation: click on any .problem-card
+document.querySelector('.main').addEventListener('click', function(e) {
+  const card = e.target.closest('.problem-card');
+  if (!card) return;
+  const idSpan = card.querySelector('.id');
+  if (!idSpan) return;
+  const id = parseInt(idSpan.textContent.replace('#','').trim());
+  if (id) showProblem(id);
+});
+
+// Close modal on overlay click
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+function toggleCode(e) {
+  const btn = e.target;
+  const block = btn.nextElementSibling;
+  btn.classList.toggle('open');
+  block.classList.toggle('show');
+}
+
+// Close on Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && currentId) closeModal();
+});
+</script>
+
+</body>
+</html>

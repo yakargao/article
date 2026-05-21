@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📚 栈 & 单调栈 · LeetCode 解法模式 · 费曼学习法</title>
+<style>  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 40px 20px 80px; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .back { color: var(--muted); font-size: 13px; text-decoration: none; display: inline-block; margin-bottom: 24px; }
+  .back:hover { color: var(--accent); }
+  h1 { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 32px; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; overflow-x: auto; margin: 10px 0; font-size: 12px; line-height: 1.5; }
+  pre code { background: none; color: var(--text); padding: 0; }
+
+  .desc-box { background: linear-gradient(135deg,rgba(88,166,255,0.06),rgba(163,113,247,0.04)); border:1px solid rgba(88,166,255,0.2); border-radius:12px; padding:20px 24px; margin-bottom:32px; position:relative; }
+  .desc-box::before { content:'💡 核心思想'; position:absolute; top:-11px; left:20px; background:var(--bg); padding:2px 12px; border-radius:10px; font-size:12px; font-weight:600; color:var(--accent); }
+  .desc-box .tip { color:var(--green); font-size:13px; margin-top:8px; }
+
+  .diagram { background:#0a0c13; border:1px solid var(--border); border-radius:12px; padding:12px; margin:24px 0; text-align:center; overflow-x:auto; }
+  .diagram-caption { font-size:12px; color:var(--muted); margin-top:8px; }
+
+  .prob-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; margin-top:24px; }
+  .prob-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 18px; cursor:pointer; transition:all .15s; position:relative; }
+  .prob-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .prob-id { font-size:11px; color:var(--muted); font-weight:600; }
+  .prob-title { font-size:15px; font-weight:600; color:#fff; margin:4px 0 8px; }
+  .prob-idea { font-size:12px; color:var(--muted); line-height:1.6; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .prob-meta { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .prob-diff { font-size:10px; padding:2px 8px; border-radius:8px; font-weight:600; }
+  .diff-Easy { background:rgba(63,185,80,0.12); color:var(--green); }
+  .diff-Medium { background:rgba(210,153,34,0.12); color:var(--orange); }
+  .diff-Hard { background:rgba(248,81,73,0.12); color:var(--red); }
+  .card-tag { font-size:10px; padding:2px 7px; border-radius:8px; font-weight:600; background:rgba(163,113,247,0.10); color:var(--purple); }
+
+  /* Modal */
+  .modal { display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.7); align-items:center; justify-content:center; }
+  .modal.active { display:flex; }
+  .modal-content { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:28px 32px; max-width:700px; width:92%; max-height:85vh; overflow-y:auto; }
+  .modal-close { float:right; background:none; border:none; color:var(--muted); font-size:22px; cursor:pointer; }
+  .modal h3 { font-size:20px; color:#fff; margin-bottom:12px; }
+  .modal h4 { font-size:14px; color:var(--accent); margin:16px 0 8px; }
+  .idea-box { background:rgba(88,166,255,0.06); border-left:3px solid var(--accent); padding:10px 14px; border-radius:0 8px 8px 0; margin:10px 0; font-size:13px; }
+  .key { color:var(--green); font-weight:600; }
+  .code-toggle { background:var(--card); border:1px solid var(--border); color:var(--accent); padding:6px 14px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; margin:8px 0; }
+  .code-block { display:none; }
+  .code-block.show { display:block; }
+  @media (max-width:768px) { body{padding:20px 12px 80px;} .prob-grid{grid-template-columns:1fr;} .modal-content{padding:18px;} }</style>
+</head>
+<body>
+<div class="container">
+<a href="/leetcode-patterns.html" class="back">← 所有模式</a>
+<h1>📚 栈 & 单调栈</h1>
+<p class="subtitle">9 道题 · LeetCode Top 100 解法模式</p>
+<div class="desc-box">
+<p>后进先出的核心数据结构。括号匹配、表达式求值是基础，单调栈（每日温度、最大矩形）是进阶——维护栈内元素的单调性。</p>
+<p class="tip">💡 核心技巧：单调栈：找下一个更大/更小元素</p>
+</div>
+<div class="diagram">
+<svg viewBox="0 0 700 180" style="max-width:700px;width:100%"><rect x="50" y="20" width="120" height="140" rx="6" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="1.5"/><rect x="56" y="120" width="108" height="34" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/><text x="110" y="142" text-anchor="middle" fill="#3fb950" font-size="10" font-weight="600">元素 1</text><rect x="56" y="80" width="108" height="34" rx="4" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="1"/><text x="110" y="102" text-anchor="middle" fill="#22d3ee" font-size="10" font-weight="600">元素 2</text><rect x="56" y="40" width="108" height="34" rx="4" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1"/><text x="110" y="62" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="600">元素 3</text><text x="110" y="175" text-anchor="middle" fill="#64748b" font-size="9">LIFO 后进先出</text><text x="230" y="80" fill="#a78bfa" font-size="20">←</text><rect x="270" y="40" width="120" height="100" rx="6" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="1.5"/><rect x="276" y="80" width="108" height="20" rx="4" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="1"/><rect x="276" y="58" width="108" height="20" rx="4" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1"/><rect x="276" y="36" width="108" height="20" rx="4" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1"/><text x="330" y="110" text-anchor="middle" fill="#64748b" font-size="9">单调栈：递减</text><rect x="440" y="50" width="230" height="80" rx="8" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1"/><text x="555" y="80" text-anchor="middle" fill="#4ade80" font-size="11" font-weight="600">单调栈场景</text><text x="555" y="102" text-anchor="middle" fill="#94a3b8" font-size="9">找下一个更大/更小元素 O(N)</text><text x="555" y="120" text-anchor="middle" fill="#64748b" font-size="8">每日温度 · 最大矩形 · 接雨水</text></svg>
+<div class="diagram-caption">栈 & 单调栈 模式图解</div>
+</div>
+<h3 style="margin-top:32px">📝 题目列表（9 题）</h3>
+<div class="prob-grid">
+<div class="prob-card" onclick="showProblem(20)">
+<div class="prob-id">#20 <span class="prob-diff diff-Easy">Easy</span></div>
+<div class="prob-title">Valid Parentheses</div>
+<div class="prob-idea">左括号入栈，右括号时栈顶必须匹配。</div>
+<div class="prob-meta"><span class="card-tag">栈</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(94)">
+<div class="prob-id">#94 <span class="prob-diff diff-Easy">Easy</span></div>
+<div class="prob-title">Binary Tree Inorder Traversal</div>
+<div class="prob-idea">迭代：栈模拟，一直向左到底，弹出一个处理，转右子树。</div>
+<div class="prob-meta"><span class="card-tag">树</span><span class="card-tag">栈</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(155)">
+<div class="prob-id">#155 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Min Stack</div>
+<div class="prob-idea">辅助栈同步存当前最小值。push时min(min,x)。</div>
+<div class="prob-meta"><span class="card-tag">栈</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(394)">
+<div class="prob-id">#394 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Decode String</div>
+<div class="prob-idea">双栈。一个存倍数，一个存字符串。[压栈，]弹栈拼接。</div>
+<div class="prob-meta"><span class="card-tag">栈</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(739)">
+<div class="prob-id">#739 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Daily Temperatures</div>
+<div class="prob-idea">单调递减栈存下标。遇到更高→栈顶找到答案，距离=i-pop。</div>
+<div class="prob-meta"><span class="card-tag">单调栈</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(32)">
+<div class="prob-id">#32 <span class="prob-diff diff-Hard">Hard</span></div>
+<div class="prob-title">Longest Valid Parentheses</div>
+<div class="prob-idea">栈存下标。遇)弹出，栈空→入栈；栈不空→用i-stack.top()更新。</div>
+<div class="prob-meta"><span class="card-tag">栈</span><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(42)">
+<div class="prob-id">#42 <span class="prob-diff diff-Hard">Hard</span></div>
+<div class="prob-title">Trapping Rain Water</div>
+<div class="prob-idea">对撞指针。维护leftMax和rightMax，移动较低一侧。</div>
+<div class="prob-meta"><span class="card-tag">双指针</span><span class="card-tag">单调栈</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(84)">
+<div class="prob-id">#84 <span class="prob-diff diff-Hard">Hard</span></div>
+<div class="prob-title">Largest Rectangle in Histogram</div>
+<div class="prob-idea">单调递增栈。遇到更低的柱子→栈顶矩形右边到头→弹出计算面积。</div>
+<div class="prob-meta"><span class="card-tag">单调栈</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(85)">
+<div class="prob-id">#85 <span class="prob-diff diff-Hard">Hard</span></div>
+<div class="prob-title">Maximal Rectangle</div>
+<div class="prob-idea">逐行转化为#84柱状图问题。</div>
+<div class="prob-meta"><span class="card-tag">单调栈</span><span class="card-tag">DP</span></div>
+</div>
+</div>
+</div>
+
+<div class="modal" id="modal"><div class="modal-content"><button class="modal-close" onclick="closeModal()">✕</button><div id="modalBody"></div></div></div>
+
+<script src="/leetcode-data.js"></script>
+<script>
+let currentId=null;
+function showProblem(id){currentId=id;const p=PROBLEMS[id];if(!p)return;
+let h='<h3>#'+p.id+' '+p.title+' <span class="prob-diff diff-'+p.diff+'" style="display:inline-block;vertical-align:middle">'+p.diff+'</span></h3>';
+h+='<p style="color:var(--text);line-height:1.9">'+p.desc+'</p>';
+h+='<h4>输入</h4><pre><code>'+p.inp+'</code></pre><h4>输出</h4><pre><code>'+p.out+'</code></pre>';
+h+='<div class="idea-box"><span class="key">💡 解题思路：</span>'+p.idea+'</div>';
+if(p.code){h+='<button class="code-toggle" onclick="this.nextElementSibling.classList.toggle('show')">查看代码</button>';
+h+='<div class="code-block"><pre><code>'+p.code.replace(/</g,'&lt;')+'</code></pre></div>';}
+if(p.tags){h+='<div class="modal-tags" style="margin-top:12px">';p.tags.forEach(t=>{h+='<span class="card-tag">'+t+'</span>';});h+='</div>';}
+document.getElementById('modalBody').innerHTML=h;document.getElementById('modal').classList.add('active');document.body.style.overflow='hidden';}
+function closeModal(){document.getElementById('modal').classList.remove('active');document.body.style.overflow='';currentId=null;}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&currentId)closeModal();});
+</script>
+</body>
+</html>

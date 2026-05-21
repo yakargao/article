@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangChain + LangGraph · 从入门到精通 · 费曼学习法</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf; --pink: #db61a2;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+
+  /* 苏格拉底提问 */
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+
+  .level-badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; margin-right: 6px; }
+  .l1 { background: rgba(63,185,80,0.15); color: var(--green); }
+  .l2 { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .l3 { background: rgba(248,81,73,0.15); color: var(--red); }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🦜 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览 & 学习路线</a>
+  <div class="nav-section">LangChain 基础</div>
+  <a class="nav-item" href="#lc-intro">🔗 什么是 LangChain</a>
+  <a class="nav-item" href="#lc-chain">⛓️ Chain：流水线</a>
+  <a class="nav-item" href="#lc-tool">🔧 Tool：工具箱</a>
+  <div class="nav-section">LangGraph 核心</div>
+  <a class="nav-item" href="#lg-intro">🕸️ 为什么需要 LangGraph</a>
+  <a class="nav-item" href="#lg-stategraph">📊 StateGraph：状态机</a>
+  <a class="nav-item" href="#lg-edges">🔀 边 & 条件分支</a>
+  <a class="nav-item" href="#lg-agent">🤖 构建 Agent 实战</a>
+  <div class="nav-section">进阶</div>
+  <a class="nav-item" href="#lg-human">👤 Human-in-the-Loop</a>
+  <a class="nav-item" href="#lg-memory">💾 Memory & Checkpointer</a>
+  <a class="nav-item" href="#lg-multiagent">👥 多 Agent 协作</a>
+  <a class="nav-item" href="#lg-streaming">📡 Streaming</a>
+  <a class="nav-item" href="#lg-deepagent">🧬 Deep Agents：深度智能体</a>
+  <div class="nav-section">总结</div>
+  <a class="nav-item" href="#lg-qa">❓ 核心题 & 最佳实践</a>
+  <a class="nav-item" href="#lg-summary">🎙️ 口播总结</a>
+  <a class="nav-item" href="/mysql.html" style="margin-top:20px; font-size:12px; color:var(--muted)">← MySQL 复习</a>
+</aside>
+
+<main class="main">
+
+<!-- ═══════ Overview ═══════ -->
+<section id="overview" class="section">
+  <h2>📋 LangChain + LangGraph</h2>
+  <div class="feynman">
+    <p><strong>一句话定位：</strong>LangChain 让你用搭积木的方式构建 LLM 应用。LangGraph 让你用画流程图的方式构建复杂的 Agent。</p>
+    <p>二者关系：LangChain = 瑞士军刀（单个工具很强大），LangGraph = 工厂流水线（把工具串起来，加入循环和分支）。</p>
+  </div>
+
+  <h3>学习路线</h3>
+  <table>
+    <tr><th>阶段</th><th>内容</th><th>时间</th></tr>
+    <tr><td><span class="level-badge l1">入门</span></td><td>LLM → Prompt → Chain → Tool</td><td>30min</td></tr>
+    <tr><td><span class="level-badge l2">核心</span></td><td>StateGraph → Node → Edge → Conditional Edge → Agent</td><td>1h</td></tr>
+    <tr><td><span class="level-badge l3">进阶</span></td><td>Human-in-Loop → Checkpointer → Multi-Agent → Streaming</td><td>1h</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 1. LangChain 基础 ═══════ -->
+<section id="lc-intro" class="section">
+  <h2>🔗 LangChain：给 LLM 装上方向盘</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🚗 类比：</span>裸调 OpenAI API 就像坐在一辆没有方向盘的车上——你能让车跑，但控制不了方向。</p>
+    <p>LangChain 给这辆车装上：<strong>方向盘</strong>（Prompt模板）、<strong>导航</strong>（Chain流程）、<strong>工具箱</strong>（Tool调用）、<strong>记忆座椅</strong>（Memory）。</p>
+  </div>
+
+  <h3>核心四件套</h3>
+  <table>
+    <tr><th>组件</th><th>作用</th><th>类比</th></tr>
+    <tr><td><code>LLM / ChatModel</code></td><td>大模型接口统一封装</td><td>发动机</td></tr>
+    <tr><td><code>PromptTemplate</code></td><td>把变量注入提示词模板</td><td>方向盘</td></tr>
+    <tr><td><code>Chain</code></td><td>把多个步骤串起来 (A→B→C)</td><td>流水线</td></tr>
+    <tr><td><code>Tool</code></td><td>让 LLM 调用外部函数/API</td><td>工具箱</td></tr>
+  </table>
+
+  <h4>最小可运行示例</h4>
+  <pre><code><span class="cm"># 1. 裸调 LLM</span>
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+llm = ChatOpenAI(model=<span class="str">"gpt-4o"</span>)
+response = llm.invoke(<span class="str">"你好"</span>)           <span class="cm"># 最简单用法</span>
+
+<span class="cm"># 2. 加 Prompt 模板</span>
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"你是{role}专家"</span>),
+    (<span class="str">"user"</span>, <span class="str">"{question}"</span>)
+])
+chain = prompt | llm                     <span class="cm"># LCEL 管道语法</span>
+result = chain.invoke({<span class="str">"role"</span>: <span class="str">"MySQL"</span>, <span class="str">"question"</span>: <span class="str">"什么是B+Tree"</span>})
+
+<span class="cm"># 3. 加输出解析器</span>
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+chain = prompt | llm | StrOutputParser()  <span class="cm"># 自动提取字符串</span></code></pre>
+
+  <h3>LCEL：LangChain 的管道语法</h3>
+  <div class="feynman">
+    <p><span class="analogy">🔧 类比：</span>Unix 管道的 AI 版。就像 <code>cat file | grep error | wc -l</code>，LCEL 让你用 <code>|</code> 把组件串起来。</p>
+  </div>
+  <pre><code>chain = prompt | llm | output_parser    <span class="cm"># 数据从左流到右</span>
+<span class="cm"># 等价于：output_parser(llm(prompt(input)))</span></code></pre>
+</section>
+
+<!-- ═══════ 2. Chain ═══════ -->
+<section id="lc-chain" class="section">
+  <h2>⛓️ Chain：AI 应用的流水线</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏭 类比：</span>汽车装配流水线——工位1装发动机 → 工位2装轮胎 → 工位3喷漆。每个工位只做一件事，输出传给下一个。</p>
+    <p>Chain 就是这样的流水线：<code>Prompt 模板</code> → <code>LLM 调用</code> → <code>输出解析</code> → <code>存入数据库</code>。</p>
+  </div>
+
+  <h3>Chain 类型速查</h3>
+  <table>
+    <tr><th>类型</th><th>场景</th><th>关键词</th></tr>
+    <tr><td><code>LLMChain</code></td><td>最简单的：提示词→LLM</td><td>入门</td></tr>
+    <tr><td><code>SequentialChain</code></td><td>A的输出是B的输入</td><td>顺序执行</td></tr>
+    <tr><td><code>RouterChain</code></td><td>根据输入内容选不同下游</td><td>if-else</td></tr>
+    <tr><td><code>RetrievalQA</code></td><td>RAG：检索文档→LLM回答</td><td>知识库问答</td></tr>
+    <tr><td><code>ConversationChain</code></td><td>带记忆的多轮对话</td><td>聊天机器人</td></tr>
+  </table>
+
+  <h4>RAG 实战（检索增强生成）</h4>
+  <pre><code><span class="kw">from</span> langchain_community.vectorstores <span class="kw">import</span> Chroma
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> OpenAIEmbeddings
+
+<span class="cm"># 1. 文档切片 → 2. 向量化 → 3. 存向量库</span>
+vectorstore = Chroma.from_documents(docs, OpenAIEmbeddings())
+
+<span class="cm"># 4. 检索相关文档 → 5. 拼到 Prompt → 6. LLM 回答</span>
+retriever = vectorstore.as_retriever()
+<span class="kw">from</span> langchain.chains <span class="kw">import</span> RetrievalQA
+qa = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
+qa.invoke(<span class="str">"公司年假政策是什么？"</span>)  <span class="cm"># 基于文档回答</span></code></pre>
+</section>
+
+<!-- ═══════ 3. Tool ═══════ -->
+<section id="lc-tool" class="section">
+  <h2>🔧 Tool：给 LLM 装上"手"</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🤖 类比：</span>LLM 是一个超级聪明的大脑，但它没有手——不能查数据库、不能发邮件、不能调 API。</p>
+    <p>Tool = 给 LLM 装上机械臂。LLM 决定"该用什么工具、传什么参数"，工具执行动作，结果还给 LLM。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 180" style="max-width:820px;width:100%">
+      <defs><marker id="at" markerWidth="8" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#22d3ee"/></marker></defs>
+      <rect x="20" y="40" width="150" height="60" rx="8" fill="rgba(8,51,68,0.3)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="95" y="65" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">User</text>
+      <text x="95" y="82" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">"今天北京天气？"</text>
+
+      <line x1="170" y1="70" x2="230" y2="70" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#at)"/>
+
+      <rect x="235" y="40" width="180" height="60" rx="8" fill="rgba(6,78,59,0.2)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="325" y="65" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">LLM (大脑)</text>
+      <text x="325" y="82" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">"需要调天气API"</text>
+
+      <line x1="415" y1="45" x2="500" y2="15" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#at)"/>
+      <line x1="415" y1="90" x2="500" y2="125" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#at)"/>
+
+      <rect x="505" y="0" width="150" height="42" rx="6" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="580" y="26" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">🔧 查天气 Tool</text>
+
+      <rect x="505" y="60" width="150" height="42" rx="6" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="580" y="86" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">🔧 搜资料 Tool</text>
+
+      <rect x="505" y="120" width="150" height="42" rx="6" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="580" y="146" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">🔧 数据库 Tool</text>
+
+      <line x1="505" y1="25" x2="415" y2="50" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="455" y="32" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">结果</text>
+
+      <text x="690" y="75" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="11">LLM决定用什么</text>
+      <text x="690" y="100" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="10">→ Tool执行动作</text>
+      <text x="690" y="120" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="10">→ 结果返回LLM</text>
+      <text x="690" y="140" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="10">→ LLM生成最终回答</text>
+    </svg>
+    <div class="diagram-caption">Tool Calling 流程：LLM 选择工具 → 执行 → 返回结果 → 生成回答</div>
+  </div>
+
+  <h4>定义 Tool 的两种方式</h4>
+  <pre><code><span class="cm"># 方式1：@tool 装饰器（推荐）</span>
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+
+<span class="kw">@tool</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(city: str) -> str:
+    <span class="str">"""查询指定城市的天气"""</span>        <span class="cm"># ← docstring 就是 Tool 描述！</span>
+    <span class="kw">return</span> f<span class="str">"{city}: 晴 25°C"</span>
+
+<span class="cm"># 方式2：StructuredTool（更灵活）</span>
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> StructuredTool
+<span class="kw">def</span> <span class="fn">search_db</span>(query: str, limit: int = 10) -> list:
+    <span class="kw">return</span> db.execute(query)[:limit]
+
+search_tool = StructuredTool.from_function(
+    func=search_db,
+    name=<span class="str">"search_database"</span>,
+    description=<span class="str">"在数据库中搜索，参数 query 是SQL，limit 是返回条数"</span>
+)
+
+<span class="cm"># 绑定工具到 LLM</span>
+llm_with_tools = llm.bind_tools([get_weather, search_tool])</code></pre>
+</section>
+
+<!-- ═══════ 4. LangGraph 入门 ═══════ -->
+<section id="lg-intro" class="section">
+  <h2>🕸️ 为什么需要 LangGraph？Chain 不够吗？</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🚇 类比：</span>Chain 是"单行道"——A→B→C，只能直走。但真实 Agent 需要"地铁网络"——到了某站可以换乘、可以掉头、可以循环。</p>
+    <p>LangGraph = 用<strong>节点（Node）+ 边（Edge）</strong>画一个有向图。节点是处理逻辑，边决定去哪——支持循环和条件分支。</p>
+  </div>
+
+  <div class="compare">
+    <div><h4>❌ Chain 的局限</h4><ul><li>只能 A→B→C 顺序执行</li><li>不能"如果XX就回到A"</li><li>不能"做完B再决定去C还是D"</li><li>Agent 循环靠 while True 黑盒</li></ul></div>
+    <div><h4>✅ LangGraph 的能力</h4><ul><li>图结构：节点+边，任意拓扑</li><li>条件边：根据状态决定下一步</li><li>循环：Agent 反复思考-执行</li><li>持久化：任意节点可暂停/恢复</li><li>流式：每个节点可实时输出</li></ul></div>
+  </div>
+</section>
+
+<!-- ═══════ 5. StateGraph ═══════ -->
+<section id="lg-stategraph" class="section">
+  <h2>📊 StateGraph：像快递包裹一样传递状态</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📦 类比：</span>快递包裹（State）在物流中心之间流转。每个中心（Node）打开包裹→修改内容→重新打包→传给下一站（Edge）。</p>
+    <p>State 是一个字典/对象，所有节点共享并修改它。比如 <code>{"messages": [...], "next": "tool"}</code>。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 220" style="max-width:820px;width:100%">
+      <defs><marker id="aB" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#a78bfa"/></marker></defs>
+      <!-- State box -->
+      <rect x="20" y="10" width="140" height="80" rx="8" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="90" y="38" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">State 包裹</text>
+      <text x="90" y="56" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">{messages: [...]}</text>
+      <text x="90" y="72" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">{next: "action"}</text>
+      <text x="90" y="86" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">状态在节点间流动</text>
+
+      <!-- NODE 1 -->
+      <line x1="160" y1="50" x2="220" y2="50" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#aB)"/>
+      <rect x="225" y="25" width="130" height="50" rx="8" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="290" y="47" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">Node: agent</text>
+      <text x="290" y="64" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">LLM 思考 → 输出</text>
+
+      <!-- NODE 2 -->
+      <line x1="355" y1="50" x2="415" y2="50" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#aB)"/>
+      <rect x="420" y="25" width="130" height="50" rx="8" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="485" y="47" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">Node: tools</text>
+      <text x="485" y="64" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">执行工具调用</text>
+
+      <!-- Loop back -->
+      <path d="M 485 75 Q 485 130 290 130 Q 225 130 225 105" fill="none" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#aB)"/>
+      <text x="350" y="125" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="9">循环：工具结果返回 LLM</text>
+
+      <!-- END -->
+      <line x1="550" y1="50" x2="610" y2="50" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aB)"/>
+      <rect x="615" y="25" width="80" height="50" rx="8" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="655" y="52" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">END</text>
+
+      <!-- Conditional edge label -->
+      <text x="590" y="95" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">条件边：需要工具？</text>
+      <text x="590" y="110" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">是→tools 否→END</text>
+
+      <!-- Bottom: state accumulation -->
+      <rect x="20" y="160" width="780" height="50" rx="8" fill="rgba(76,29,149,0.06)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="40" y="185" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">State 定义：TypedDict 或 Pydantic → 每个节点返回部分更新 → LangGraph 自动合并（reducer）</text>
+    </svg>
+    <div class="diagram-caption">StateGraph 流程：State 在节点间传递，条件边决定去向，支持循环</div>
+  </div>
+
+  <h3>定义 State</h3>
+  <pre><code><span class="kw">from</span> typing <span class="kw">import</span> TypedDict, Annotated
+<span class="kw">from</span> langgraph.graph.message <span class="kw">import</span> add_messages
+
+<span class="kw">class</span> <span class="fn">AgentState</span>(TypedDict):
+    messages: Annotated[list, add_messages]  <span class="cm"># add_messages = 追加而非覆盖</span>
+    next: str                                <span class="cm"># 决定下一个节点</span></code></pre>
+
+  <h3>构建第一个图</h3>
+  <pre><code><span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, END
+
+builder = StateGraph(AgentState)
+
+<span class="cm"># 1. 加节点</span>
+builder.add_node(<span class="str">"agent"</span>, call_model)     <span class="cm"># LLM 思考节点</span>
+builder.add_node(<span class="str">"tools"</span>, call_tools)     <span class="cm"># 工具执行节点</span>
+
+<span class="cm"># 2. 加边</span>
+builder.set_entry_point(<span class="str">"agent"</span>)         <span class="cm"># 入口</span>
+builder.add_conditional_edges(             <span class="cm"># 条件边：路由到哪</span>
+    <span class="str">"agent"</span>, router, {
+        <span class="str">"tools"</span>: <span class="str">"tools"</span>,               <span class="cm"># 需要工具 → 去 tools 节点</span>
+        <span class="str">"end"</span>: END                      <span class="cm"># 不需要 → 结束</span>
+    }
+)
+builder.add_edge(<span class="str">"tools"</span>, <span class="str">"agent"</span>)       <span class="cm"># 工具执行完回到 agent 循环</span>
+
+graph = builder.compile()                 <span class="cm"># 编译！</span></code></pre>
+</section>
+
+<!-- ═══════ 6. 边 & 条件分支 ═══════ -->
+<section id="lg-edges" class="section">
+  <h2>🔀 边与条件分支：Agent 的导航系统</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🚦 类比：</span>开车到路口——直行去公司、左转去超市、右转回家。条件边 = 路口的红绿灯 + 导航决策，根据当前位置（State）决定走哪条路。</p>
+  </div>
+
+  <h3>三种边</h3>
+  <table>
+    <tr><th>类型</th><th>代码</th><th>何时用</th></tr>
+    <tr><td><strong>普通边</strong></td><td><code>add_edge("A", "B")</code></td><td>A 完了一定去 B</td></tr>
+    <tr><td><strong>条件边</strong></td><td><code>add_conditional_edges("A", router, {"x":"B","y":"C"})</code></td><td>A 结束后根据状态决定去 B 还是 C</td></tr>
+    <tr><td><strong>入口边</strong></td><td><code>set_entry_point("A")</code></td><td>图从哪个节点开始</td></tr>
+  </table>
+
+  <h3>Router 函数——条件边的"大脑"</h3>
+  <pre><code><span class="kw">def</span> <span class="fn">router</span>(state: AgentState) -> str:
+    <span class="str">"""根据 State 中的 messages 决定下一步"""</span>
+    last_msg = state[<span class="str">"messages"</span>][-1]
+
+    <span class="cm"># LLM 返回了 tool_calls？→ 去执行工具</span>
+    <span class="kw">if</span> hasattr(last_msg, <span class="str">"tool_calls"</span>) <span class="kw">and</span> last_msg.tool_calls:
+        <span class="kw">return</span> <span class="str">"tools"</span>
+
+    <span class="cm"># 没有 tool_calls → 对话结束</span>
+    <span class="kw">return</span> <span class="str">"end"</span></code></pre>
+
+  <div class="info-card">
+    <h4>Router 函数签名模板</h4>
+    <p><code>(state: StateType) → str</code> 返回的是 <code>add_conditional_edges</code> 映射字典里的 key。</p>
+    <p>映射字典：<code>{"tools": "tools", "end": END, "human": "human_approval"}</code></p>
+  </div>
+</section>
+
+<!-- ═══════ 7. Agent 实战 ═══════ -->
+<section id="lg-agent" class="section">
+  <h2>🤖 构建 Agent：完整实战</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🧠 类比：</span>Agent = 大脑(LLM) + 手(Tools) + 记忆(State)。大脑思考→决定动手→看结果→再思考→直到满意。</p>
+    <p>这就是经典的 <strong>ReAct 模式</strong>：Reasoning（推理）+ Acting（行动）循环。</p>
+  </div>
+
+  <h3>完整 Agent 代码（20行核心）</h3>
+  <pre><code><span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> create_react_agent
+
+<span class="cm"># 最简方式：用预构建的 ReAct Agent</span>
+agent = create_react_agent(
+    model=llm,
+    tools=[get_weather, search_db, send_email]
+)
+
+<span class="cm"># 运行</span>
+result = agent.invoke({
+    <span class="str">"messages"</span>: [HumanMessage(content=<span class="str">"查一下北京天气，如果下雨就发邮件提醒老王"</span>)]
+})
+
+<span class="cm"># ---------- 手动构建版（理解原理） ----------</span>
+<span class="kw">def</span> <span class="fn">call_model</span>(state: AgentState):
+    response = llm_with_tools.invoke(state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [response]}
+
+<span class="kw">def</span> <span class="fn">call_tools</span>(state: AgentState):
+    last_msg = state[<span class="str">"messages"</span>][-1]
+    <span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> ToolNode
+    <span class="kw">return</span> ToolNode(tools).invoke({<span class="str">"messages"</span>: [last_msg]})
+
+graph = StateGraph(AgentState)
+graph.add_node(<span class="str">"agent"</span>, call_model)
+graph.add_node(<span class="str">"tools"</span>, call_tools)
+graph.set_entry_point(<span class="str">"agent"</span>)
+graph.add_conditional_edges(<span class="str">"agent"</span>, router, {<span class="str">"tools"</span>:<span class="str">"tools"</span>,<span class="str">"end"</span>:END})
+graph.add_edge(<span class="str">"tools"</span>, <span class="str">"agent"</span>)
+app = graph.compile()</code></pre>
+</section>
+
+<!-- ═══════ 8. Human-in-Loop ═══════ -->
+<section id="lg-human" class="section">
+  <h2>👤 Human-in-the-Loop：关键操作要审批</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">✍️ 类比：</span>公司报销流程——员工填单 → 主管审批 → 财务打款。Agent 也一样，发邮件、删数据、大额交易等操作，应该先"打断"让人确认。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 170" style="max-width:820px;width:100%">
+      <defs><marker id="aH" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
+      <rect x="20" y="40" width="130" height="50" rx="8" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="85" y="62" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">Agent 思考</text>
+      <text x="85" y="78" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">"要发邮件"</text>
+
+      <line x1="150" y1="65" x2="210" y2="65" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aH)"/>
+
+      <rect x="215" y="40" width="150" height="50" rx="8" fill="rgba(251,146,60,0.15)" stroke="#fb923c" stroke-width="1.5"/>
+      <text x="290" y="62" text-anchor="middle" fill="#fb923c" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">⏸️ interrupt()</text>
+      <text x="290" y="78" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">暂停，等待审批</text>
+
+      <line x1="365" y1="65" x2="425" y2="65" stroke="#fb923c" stroke-width="1.5" marker-end="url(#aH)"/>
+
+      <rect x="430" y="40" width="120" height="50" rx="8" fill="rgba(163,113,247,0.12)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="490" y="62" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">👤 人工审核</text>
+      <text x="490" y="78" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">批准 / 拒绝</text>
+
+      <line x1="550" y1="65" x2="610" y2="65" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#aH)"/>
+
+      <rect x="615" y="40" width="90" height="50" rx="8" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="660" y="67" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="14" font-weight="700">✅ 执行</text>
+
+      <!-- Code-like annotation -->
+      <text x="20" y="130" fill="#fb923c" font-family="JetBrains Mono,monospace" font-size="12">interrupt_before=["tools"]</text>
+      <text x="20" y="148" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="11">→ graph 在进入 tools 节点前自动暂停，等待人工继续</text>
+    </svg>
+    <div class="diagram-caption">Human-in-the-Loop：interrupt() 在关键节点前暂停</div>
+  </div>
+
+  <pre><code><span class="cm"># 方式1：编译时指定中断点</span>
+app = graph.compile(interrupt_before=[<span class="str">"tools"</span>])
+
+<span class="cm"># 方式2：在节点内手动中断</span>
+<span class="kw">from</span> langgraph.types <span class="kw">import</span> interrupt
+<span class="kw">def</span> <span class="fn">sensitive_action</span>(state):
+    answer = interrupt(<span class="str">"确认发邮件给老王？"</span>)  <span class="cm"># 暂停，等待人输入</span>
+    <span class="kw">if</span> answer == <span class="str">"yes"</span>:
+        send_email()</code></pre>
+</section>
+
+<!-- ═══════ 9. Memory ═══════ -->
+<section id="lg-memory" class="section">
+  <h2>💾 Memory & Checkpointer：Agent 的存档功能</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🎮 类比：</span>玩 RPG 游戏——打 BOSS 前存档（Checkpoint），死了从这里重来，不用从开头打。Checkpointer = 每个节点做完后的自动存档。</p>
+  </div>
+
+  <h3>一句话理解</h3>
+  <p>加一个 <code>checkpointer</code> → 每次 <code>.invoke()</code> 后自动保存 State → 下次用同一个 <code>thread_id</code> 调用，从断点继续。</p>
+
+  <pre><code><span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> MemorySaver
+
+checkpointer = MemorySaver()                     <span class="cm"># 开发环境用内存</span>
+<span class="cm"># from langgraph.checkpoint.postgres import PostgresSaver  # 生产用 PG</span>
+
+app = graph.compile(checkpointer=checkpointer)
+
+<span class="cm"># 所有调用带上 config（thread_id 标识会话）</span>
+config = {<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"user-123"</span>}}
+app.invoke({<span class="str">"messages"</span>: [HumanMessage(content=<span class="str">"你好"</span>)]}, config)
+app.invoke({<span class="str">"messages"</span>: [HumanMessage(content=<span class="str">"还记得我吗"</span>)]}, config)
+<span class="cm"># ↑ 同一个 thread_id → 自动加载之前的 State → "记得！"</span></code></pre>
+
+  <h4>支持的 Checkpointer 后端</h4>
+  <table>
+    <tr><th>后端</th><th>场景</th></tr>
+    <tr><td><code>MemorySaver</code></td><td>开发测试（进程重启丢失）</td></tr>
+    <tr><td><code>SqliteSaver</code></td><td>单机持久化</td></tr>
+    <tr><td><code>PostgresSaver</code></td><td>生产环境、多实例共享</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 10. Multi-Agent ═══════ -->
+<section id="lg-multiagent" class="section">
+  <h2>👥 多 Agent 协作：专家团队模式</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏢 类比：</span>公司项目——产品经理写 PRD → 架构师设计方案 → 工程师写代码 → QA 测试。每个人（Agent）专精不同领域，通过交接文档（State）协作。</p>
+  </div>
+
+  <h3>两种多 Agent 架构</h3>
+  <div class="compare">
+    <div>
+      <h4>Supervisor 模式</h4>
+      <p>一个主管 Agent 分配任务给子 Agent，收集结果汇总。</p>
+      <pre><code>Supervisor
+  ├─ 研究员 Agent
+  ├─ 写手 Agent
+  └─ 审核员 Agent</code></pre>
+    </div>
+    <div>
+      <h4>Swarm 模式</h4>
+      <p>Agent 之间直接握手交接，像击鼓传花。</p>
+      <pre><code>客服Agent → 技术Agent
+    ↘ 售后Agent</code></pre>
+    <p style="font-size:12px;color:var(--muted)">用 handoff 工具转移控制权</p>
+    </div>
+  </div>
+
+  <h4>Supervisor 架构示例</h4>
+  <pre><code><span class="kw">from</span> langgraph_supervisor <span class="kw">import</span> create_supervisor
+
+<span class="cm"># 创建子 Agent（每个都是独立的 graph）</span>
+researcher = create_react_agent(llm, [search_tool])
+writer = create_react_agent(llm, [write_tool])
+
+<span class="cm"># 创建 Supervisor（管理子 Agent）</span>
+supervisor = create_supervisor(
+    agents=[researcher, writer],
+    model=llm,
+    prompt=<span class="str">"先让研究员搜资料，再让写手写文章"</span>
+)
+
+<span class="cm"># Supervisors 本身也是 graph → 可以再加 checkpointer 等</span>
+app = supervisor.compile(checkpointer=checkpointer)</code></pre>
+</section>
+
+<!-- ═══════ 11. Streaming ═══════ -->
+<section id="lg-streaming" class="section">
+  <h2>📡 Streaming：实时看到 Agent 在想什么</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📺 类比：</span>Chain 是"录播"——全部做完才给你看结果。Streaming 是"直播"——每做一个步骤就实时推送，用户能看到进度条。</p>
+  </div>
+
+  <h3>四种 Stream Mode</h3>
+  <table>
+    <tr><th>Mode</th><th>返回时机</th><th>用途</th></tr>
+    <tr><td><code>"values"</code></td><td>每个节点执行后，推送<strong>完整 State</strong></td><td>看每一步的完整状态</td></tr>
+    <tr><td><code>"updates"</code></td><td>每个节点执行后，推送<strong>State 变更</strong></td><td>只看增量变化</td></tr>
+    <tr><td><code>"messages"</code></td><td>LLM 每生成一个 token 就推送</td><td>打字机效果（核心！）</td></tr>
+    <tr><td><code>"custom"</code></td><td>节点内用 <code>writer()</code> 自定义推送</td><td>推送进度/日志等</td></tr>
+  </table>
+
+  <pre><code><span class="cm"># 打字机效果：LLM 逐 token 输出</span>
+<span class="kw">for</span> chunk, metadata <span class="kw">in</span> app.stream(
+    {<span class="str">"messages"</span>: [HumanMessage(content=<span class="str">"写一首诗"</span>)]},
+    config,
+    stream_mode=<span class="str">"messages"</span>           <span class="cm"># ← 关键参数</span>
+):
+    <span class="kw">print</span>(chunk.content, end=<span class="str">""</span>, flush=<span class="kw">True</span>)  <span class="cm"># 逐字输出</span></code></pre>
+
+  <h4>常用组合</h4>
+  <pre><code><span class="cm"># 同时用两种 mode：打字机效果 + 节点切换通知</span>
+<span class="kw">for</span> event <span class="kw">in</span> app.stream_events(input, config, version=<span class="str">"v2"</span>):
+    kind = event[<span class="str">"event"</span>]
+    <span class="kw">if</span> kind == <span class="str">"on_chat_model_stream"</span>:
+        <span class="kw">print</span>(event[<span class="str">"data"</span>][<span class="str">"chunk"</span>].content, end=<span class="str">""</span>)  <span class="cm"># token</span>
+    <span class="kw">elif</span> kind == <span class="str">"on_tool_start"</span>:
+        <span class="kw">print</span>(f<span class="str">"\n🔧 调用工具：{event['name']}"</span>)</code></pre>
+</section>
+
+<!-- ═══════ 12. Deep Agents ═══════ -->
+<section id="lg-deepagent" class="section">
+  <h2>🧬 Deep Agents：让 Agent 会规划、会反思、会自我纠错</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🧠 类比：</span>普通 Agent 像「打工人」——接到任务就做，做错了重来。Deep Agent 像「老工程师」——先想再做、做完检查、做错了复盘改进，下次不再犯同样的错。</p>
+    <p>核心区别：Deep Agent 在"行动"之外多了<strong>规划（Plan）、反思（Reflect）、纠错（Self-Correct）</strong>三个能力。</p>
+  </div>
+
+  <h3>Deep Agent 四大模式</h3>
+  <table>
+    <tr><th>模式</th><th>核心思路</th><th>适用场景</th></tr>
+    <tr><td><strong>Plan-and-Execute</strong></td><td>先制定完整计划 → 再逐步执行 → 执行中可调整</td><td>复杂多步任务（写代码、做调研）</td></tr>
+    <tr><td><strong>Reflexion</strong></td><td>执行后自我评估 → 总结教训 → 写进记忆 → 下次改进</td><td>需要迭代优化的任务</td></tr>
+    <tr><td><strong>Self-Correction</strong></td><td>输出后自检 → 发现错误 → 自动修正 → 重新输出</td><td>代码生成、数学推理</td></tr>
+    <tr><td><strong>Tree-of-Thought</strong></td><td>同时探索多条路径 → 评估每条 → 选择最优 → 回溯</td><td>复杂决策、策略规划</td></tr>
+  </table>
+
+  <h3>🌳 架构全景图</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 480" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="aDA" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker>
+        <marker id="aRef" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#fbbf24"/></marker>
+        <marker id="aCorr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#f87171"/></marker>
+      </defs>
+
+      <!-- User input -->
+      <rect x="310" y="5" width="140" height="40" rx="8" fill="rgba(88,166,255,0.12)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="380" y="30" text-anchor="middle" fill="#58a6ff" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">👤 用户任务</text>
+
+      <line x1="380" y1="45" x2="380" y2="70" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#aDA)"/>
+
+      <!-- Plan -->
+      <rect x="280" y="75" width="200" height="55" rx="8" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="380" y="98" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">📋 规划阶段 Plan</text>
+      <text x="380" y="116" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">分解任务 → 生成步骤 → 预估资源</text>
+
+      <line x1="380" y1="130" x2="380" y2="155" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aDA)"/>
+
+      <!-- Execute -->
+      <rect x="280" y="160" width="200" height="55" rx="8" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="380" y="183" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">⚡ 执行阶段 Execute</text>
+      <text x="380" y="201" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">ReAct：思考 → 工具调用 → 观察 → 循环</text>
+
+      <line x1="380" y1="215" x2="380" y2="240" stroke="#3fb950" stroke-width="1.5" marker-end="url(#aDA)"/>
+
+      <!-- Reflect -->
+      <rect x="280" y="245" width="200" height="55" rx="8" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="380" y="268" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">🪞 反思阶段 Reflect</text>
+      <text x="380" y="286" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">结果评估 → 总结教训 → 写入记忆</text>
+
+      <!-- Branch: OK vs not OK -->
+      <line x1="380" y1="300" x2="380" y2="320" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="395" y="314" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">结果OK？</text>
+
+      <line x1="380" y1="320" x2="260" y2="340" stroke="#3fb950" stroke-width="1.5" marker-end="url(#aDA)"/>
+      <line x1="380" y1="320" x2="500" y2="340" stroke="#f87171" stroke-width="1.5" marker-end="url(#aCorr)"/>
+
+      <!-- Output -->
+      <rect x="180" y="345" width="160" height="40" rx="8" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="260" y="370" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">✅ 输出结果</text>
+
+      <!-- Self-correct loop -->
+      <rect x="420" y="345" width="160" height="40" rx="8" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="500" y="370" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">🔄 自我纠错</text>
+
+      <!-- Long arrow back up -->
+      <path d="M 580 365 Q 720 365 720 250 Q 720 170 490 170" fill="none" stroke="#f87171" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#aCorr)"/>
+      <text x="730" y="270" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="9">修正后重新执行</text>
+
+      <!-- Reflexion path back to Plan -->
+      <path d="M 180 365 Q 100 365 100 250 Q 100 100 270 100" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="30" y="230" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="9">教训写入记忆</text>
+
+      <!-- Long-term memory -->
+      <rect x="20" y="420" width="140" height="40" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="90" y="445" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">💾 长期记忆</text>
+
+      <line x1="90" y1="420" x2="90" y2="100" stroke="#a78bfa" stroke-width="0.8" stroke-dasharray="2,4"/>
+
+      <!-- Legend -->
+      <text x="600" y="440" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">📋 Plan → ⚡ Execute → 🪞 Reflect</text>
+      <text x="600" y="458" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">✅ 正确 → 输出 | ❌ 错误 → 纠错重试</text>
+    </svg>
+    <div class="diagram-caption">Deep Agent 核心循环：Plan → Execute → Reflect → Self-Correct</div>
+  </div>
+
+  <h3>🔷 模式一：Plan-and-Execute（规划执行）</h3>
+  <div class="feynman">
+    <p><span class="analogy">🏗️ 类比：</span>盖楼先画图纸——规划 Agent 拆解任务为 N 个步骤，执行 Agent 按步骤干活。干到一半发现不对劲？回到规划调整再继续。</p>
+  </div>
+
+  <pre><code><span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> create_react_agent
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, END
+<span class="kw">from</span> typing <span class="kw">import</span> TypedDict, Annotated
+
+<span class="cm"># State：包含计划列表和当前步骤</span>
+<span class="kw">class</span> <span class="fn">PlanState</span>(TypedDict):
+    task: str
+    plan: list[str]              <span class="cm"># [\"步骤1\", \"步骤2\", ...]</span>
+    current_step: int            <span class="cm"># 当前执行到第几步</span>
+    results: Annotated[list, <span class="kw">lambda</span> x, y: x + y]
+    final_answer: str
+
+<span class="kw">def</span> <span class="fn">planner</span>(state: PlanState):
+    <span class="str">\"\"\"LLM 生成执行计划\"\"\"</span>
+    prompt = f<span class="str">\"将任务拆成 3-5 个步骤：{state['task']}\"</span>
+    response = llm.invoke(prompt)
+    <span class="cm"># 解析 LLM 输出的步骤列表</span>
+    steps = [s.strip() <span class="kw">for</span> s <span class="kw">in</span> response.content.split(<span class="str">\"\\n\"</span>) <span class="kw">if</span> s.strip()]
+    <span class="kw">return</span> {<span class="str">\"plan\"</span>: steps, <span class="str">\"current_step\"</span>: 0}
+
+<span class="kw">def</span> <span class="fn">executor</span>(state: PlanState):
+    <span class="str">\"\"\"执行当前步骤\"\"\"</span>
+    step = state[<span class="str">\"plan\"</span>][state[<span class="str">\"current_step\"</span>]]
+    result = agent.invoke({<span class="str">\"messages\"</span>: [step]})
+    <span class="kw">return</span> {
+        <span class="str">\"results\"</span>: [result],
+        <span class="str">\"current_step\"</span>: state[<span class="str">\"current_step\"</span>] + 1
+    }
+
+<span class="kw">def</span> <span class="fn">should_continue</span>(state: PlanState) -> str:
+    <span class="kw">if</span> state[<span class="str">\"current_step\"</span>] >= len(state[<span class="str">\"plan\"</span>]):
+        <span class="kw">return</span> <span class="str">\"summarize\"</span>      <span class="cm"># 全部完成，汇总</span>
+    <span class="kw">return</span> <span class="str">\"executor\"</span>           <span class="cm"># 继续下一步</span>
+
+graph = StateGraph(PlanState)
+graph.add_node(<span class="str">\"planner\"</span>, planner)
+graph.add_node(<span class="str">\"executor\"</span>, executor)
+graph.add_node(<span class="str">\"summarize\"</span>, summarize)
+graph.set_entry_point(<span class="str">\"planner\"</span>)
+graph.add_edge(<span class="str">\"planner\"</span>, <span class="str">\"executor\"</span>)
+graph.add_conditional_edges(<span class="str">\"executor\"</span>, should_continue, {
+    <span class="str">\"executor\"</span>: <span class="str">\"executor\"</span>, <span class="str">\"summarize\"</span>: <span class="str">\"summarize\"</span>
+})
+graph.add_edge(<span class="str">\"summarize\"</span>, END)
+app = graph.compile()</code></pre>
+
+  <h3>🔷 模式二：Reflexion（反思改进）</h3>
+  <div class="feynman">
+    <p><span class="analogy">📝 类比：</span>学生做错题 → 看答案分析原因 → 把错题记到错题本 → 下次遇到同类题不再错。Reflexion = 给 Agent 加一个"错题本"。</p>
+  </div>
+
+  <pre><code><span class=\"kw\">class</span> <span class=\"fn\">ReflexionState</span>(TypedDict):
+    task: str
+    attempt: int                    <span class=\"cm\"># 第几次尝试</span>
+    output: str                     <span class=\"cm\"># 本次输出</span>
+    reflections: Annotated[list, <span class=\"kw\">lambda</span> x, y: x + y]  <span class=\"cm\"># 教训累积</span>
+
+<span class=\"kw\">def</span> <span class=\"fn\">actor</span>(state):
+    <span class=\"str\">\"\"\"执行任务（带历史教训）\"\"\"</span>
+    tips = <span class=\"str\">\"\\n教训：\"</span> + <span class=\"str\">\"\\n\"</span>.join(state[<span class=\"str\">\"reflections\"</span>]) \
+            <span class=\"kw\">if</span> state[<span class=\"str\">\"reflections\"</span>] <span class=\"kw\">else</span> <span class=\"str\">\"\"</span>
+    response = llm.invoke(f<span class=\"str\">\"{state['task']}{tips}\"</span>)
+    <span class=\"kw\">return</span> {<span class=\"str\">\"output\"</span>: response.content, <span class=\"str\">\"attempt\"</span>: state[<span class=\"str\">\"attempt\"</span>] + 1}
+
+<span class=\"kw\">def</span> <span class=\"fn\">evaluator</span>(state):
+    <span class=\"str\">\"\"\"评估输出质量\"\"\"</span>
+    score_prompt = f<span class=\"str\">\"评估质量（0-10）：{state['output']}\"</span>
+    score = int(llm.invoke(score_prompt).content)
+    <span class=\"kw\">return</span> {<span class=\"str\">\"score\"</span>: score}
+
+<span class=\"kw\">def</span> <span class=\"fn\">reflect</span>(state):
+    <span class=\"str\">\"\"\"如果不满意，生成改进建议\"\"\"</span>
+    <span class=\"kw\">if</span> state[<span class=\"str\">\"score\"</span>] >= 8:
+        <span class=\"kw\">return</span> {<span class=\"str\">\"reflections\"</span>: [<span class=\"str\">\"✅ 已完成\"</span>]}  <span class=\"cm\"># 达标</span>
+    lesson = llm.invoke(f<span class=\"str\">\"为什么质量只有{state['score']}分？给一条改进建议\"</span>)
+    <span class=\"kw\">return</span> {<span class=\"str\">\"reflections\"</span>: [lesson.content]}
+
+<span class=\"kw\">def</span> <span class=\"fn\">route_after_reflect</span>(state):
+    <span class=\"kw\">if</span> state[<span class=\"str\">\"score\"</span>] >= 8 <span class=\"kw\">or</span> state[<span class=\"str\">\"attempt\"</span>] >= 3:
+        <span class=\"kw\">return</span> END
+    <span class=\"kw\">return</span> <span class=\"str\">\"actor\"</span>  <span class=\"cm\"># 带着教训重试</span></code></pre>
+
+  <div class="info-card">
+    <h4>🧬 Reflexion 的三要素</h4>
+    <ol>
+      <li><strong>Actor（执行者）</strong>：接收任务 + 历史教训，生成输出</li>
+      <li><strong>Evaluator（评估者）</strong>：给输出打分（正确性、完整性、质量）</li>
+      <li><strong>Reflector（反思者）</strong>：如果不及格，分析失败原因，生成"教训"文本</li>
+    </ol>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px">教训以纯文本追加到 State，下次 Actor 执行时拼到 Prompt 里 → <strong>Agent 越用越聪明</strong></p>
+  </div>
+
+  <h3>🔷 模式三：Self-Correction（自我纠错）</h3>
+  <div class="feynman">
+    <p><span class="analogy">🔍 类比：</span>写完代码跑一下 linter——发现 bug → 自动 fix → 再跑。Self-Correction 内建了一个"质量检查器"，每次输出后自动审一遍，有问题当场改。</p>
+  </div>
+
+  <pre><code><span class=\"kw\">def</span> <span class=\"fn\">generate</span>(state):
+    <span class=\"str\">\"\"\"生成初始输出\"\"\"</span>
+    response = llm.invoke(state[<span class=\"str\">\"task\"</span>])
+    <span class=\"kw\">return</span> {<span class=\"str\">\"output\"</span>: response.content}
+
+<span class=\"kw\">def</span> <span class=\"fn\">critique</span>(state):
+    <span class=\"str\">\"\"\"自检输出中的问题\"\"\"</span>
+    check = llm.invoke(
+        f<span class=\"str\">\"检查以下内容是否有错误或改进空间：\\n{state['output']}\"</span>
+    )
+    <span class=\"kw\">return</span> {<span class=\"str\">\"critique\"</span>: check.content}
+
+<span class=\"kw\">def</span> <span class=\"fn\">revise</span>(state):
+    <span class=\"str\">\"\"\"根据自检结果修正\"\"\"</span>
+    revised = llm.invoke(
+        f<span class=\"str\">\"原始输出：{state['output']}\\n问题：{state['critique']}\\n请修正\"</span>
+    )
+    <span class=\"kw\">return</span> {<span class=\"str\">\"output\"</span>: revised.content, <span class=\"str\">\"revision_count\"</span>: state[<span class=\"str\">\"revision_count\"</span>] + 1}
+
+<span class=\"cm\"># 流程：Generate → Critique → Revise → Critique → ... → Final</span>
+graph.add_edge(<span class=\"str\">\"generate\"</span>, <span class=\"str\">\"critique\"</span>)
+graph.add_conditional_edges(<span class=\"str\">\"critique\"</span>, needs_revision, {
+    <span class=\"str\">\"revise\"</span>: <span class=\"str\">\"revise\"</span>,     <span class=\"cm\"># 有问题 → 去修正</span>
+    <span class=\"str\">\"done\"</span>: END            <span class=\"cm\"># 完美 → 结束</span>
+})
+graph.add_edge(<span class=\"str\">\"revise\"</span>, <span class=\"str\">\"critique\"</span>)   <span class=\"cm\"># 修正后再自检</span></code></pre>
+
+  <h3>🔷 模式四：Tree-of-Thought（思维树搜索）</h3>
+  <div class="feynman">
+    <p><span class="analogy">🌳 类比：</span>下棋时在脑子里推演——走 A 三步后是什么局面？走 B 呢？选最优的走。ToT 让 Agent 同时探索多条推理路径，评估每条的质量，选最好的继续。</p>
+  </div>
+
+  <pre><code><span class=\"cm\"># 核心思想（伪代码）</span>
+<span class=\"kw\">def</span> <span class=\"fn\">tree_of_thought</span>(problem, breadth=3, depth=4):
+    thoughts = [{<span class=\"str\">\"text\"</span>: problem, <span class=\"str\">\"score\"</span>: 10}]
+
+    <span class=\"kw\">for</span> step <span class=\"kw\">in</span> range(depth):
+        <span class=\"cm\"># 1. 为每个当前思路生成 breadth 个下一步思路</span>
+        candidates = []
+        <span class=\"kw\">for</span> t <span class=\"kw\">in</span> thoughts:
+            next_steps = llm.invoke(
+                f<span class=\"str\">\"当前思路：{t['text']}\\n给出{breadth}个下一步思考方向\"</span>
+            )
+            candidates.extend(parse_steps(next_steps))
+
+        <span class=\"cm\"># 2. 评估每个候选思路的质量</span>
+        <span class=\"kw\">for</span> c <span class=\"kw\">in</span> candidates:
+            c[<span class=\"str\">\"score\"</span>] = int(llm.invoke(
+                f<span class=\"str\">\"评分(0-10)：{c['text']}\"</span>
+            ).content)
+
+        <span class=\"cm\"># 3. 只保留 top-breadth 个最优思路</span>
+        candidates.sort(key=<span class=\"kw\">lambda</span> x: x[<span class=\"str\">\"score\"</span>], reverse=<span class=\"kw\">True</span>)
+        thoughts = candidates[:breadth]
+
+        <span class=\"cm\"># 4. 如果某条思路得分够高，提前结束</span>
+        <span class=\"kw\">if</span> thoughts[0][<span class=\"str\">\"score\"</span>] >= 9:
+            <span class=\"kw\">return</span> thoughts[0]
+
+    <span class=\"kw\">return</span> thoughts[0]  <span class=\"cm\"># 返回最优解</span></code></pre>
+
+  <div class="info-card">
+    <h4>🧬 Deep Agents 选型速查</h4>
+    <table>
+      <tr><th>场景</th><th>推荐模式</th><th>原因</th></tr>
+      <tr><td>写代码 / PRD / 调研报告</td><td><strong>Plan-and-Execute</strong></td><td>任务天然可分步</td></tr>
+      <tr><td>数学推理 / 逻辑题</td><td><strong>Self-Correction</strong></td><td>答案对错明确，可自我验证</td></tr>
+      <tr><td>策略规划 / 创意写作</td><td><strong>Tree-of-Thought</strong></td><td>需要探索多条路径</td></tr>
+      <tr><td>长期自主任务</td><td><strong>Reflexion</strong></td><td>需要从失败中持续学习</td></tr>
+    </table>
+  </div>
+
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(163,113,247,0.08),rgba(88,166,255,0.04));border-color:rgba(163,113,247,0.4)">
+    <p><strong>🎯 一句话总结：</strong>Deep Agents = Agent + Plan（规划）+ Reflect（反思）+ Self-Correct（纠错）。核心是把单次"思考-行动"循环升级为"规划→执行→评估→改进"的多层循环，让 Agent 从"会做"变成"会做好、会改进"。</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:6px">LangGraph 天然支持这些模式——StateGraph 的循环和条件边是构建 Deep Agent 的完美基础设施。</p>
+  </div>
+
+</section>
+
+<!-- ═══════ 13. 核心题 ═══════ -->
+<section id="lg-qa" class="section">
+  <h2>❓ 核心题 & 最佳实践</h2>
+
+  <div class="qa"><div class="q">Q1: LangChain 和 LangGraph 的关系？什么时候用哪个？</div><div class="a"><strong>LangChain</strong> 是 LLM 应用的 SDK（提示词模板、链、工具封装）。<strong>LangGraph</strong> 是 Agent 编排框架（图结构的状态机）。简单线性流程用 LangChain；需要循环、分支、多人审批的复杂 Agent 用 LangGraph。</div></div>
+
+  <div class="qa"><div class="q">Q2: StateGraph 的核心概念？</div><div class="a"><strong>State（状态字典）→ Node（处理函数）→ Edge（连接）→ Conditional Edge（条件路由）→ Compile（编译运行）</strong>。State 是全局可变的，所有 Node 读写它。Reducer 控制 State 字段的合并方式（覆盖 vs 追加）。</div></div>
+
+  <div class="qa"><div class="q">Q3: 怎么实现 Agent 的工具调用循环？</div><div class="a">条件边 + Router 函数。Agent Node 调用 LLM → Router 检查是否有 tool_calls → 有就去 Tools Node → Tools Node 执行完回到 Agent Node → 循环直到 Router 返回 END。</div></div>
+
+  <div class="qa"><div class="q">Q4: Human-in-the-Loop 怎么实现？</div><div class="a">两种方式：① <code>compile(interrupt_before=["节点名"])</code> 在指定节点前自动暂停；② 节点内调用 <code>interrupt("确认？")</code> 暂停并等人工输入。暂停后 graph 状态持久化到 Checkpointer。</div></div>
+
+  <div class="qa"><div class="q">Q5: 多 Agent 怎么通信？</div><div class="a"><strong>Supervisor 模式</strong>：一个主管 Agent 用条件边分派任务。Agent 之间靠 State 共享信息。<strong>Swarm 模式</strong>：用 handoff 工具直接移交控制权给另一个 Agent。推荐用 <code>langgraph_supervisor</code> 库。</div></div>
+
+  <div class="qa"><div class="q">Q6: 生产环境 Checkpointer 怎么选？</div><div class="a"><code>PostgresSaver</code>。单机开发用 <code>MemorySaver</code> 或 <code>SqliteSaver</code>。生产必须用持久化存储（PostgreSQL），支持多实例共享、断点恢复、状态查询。</div></div>
+
+  <div class="qa"><div class="q">Q7: 怎么处理长对话 Token 爆炸？</div><div class="a">① 在 Node 中手动裁剪 <code>state["messages"][-20:]</code>；② 用 <code>TrimMessages</code> 或 <code>FilterMessages</code>；③ 摘要压缩：定期调用 LLM 把历史消息总结成一段。</div></div>
+
+  <h3 style="margin-top:40px">🦜 生产环境最佳实践清单</h3>
+  <div class="info-card">
+    <ol>
+      <li><strong>State 用 Pydantic 不要用 TypedDict</strong>：类型安全 + 验证</li>
+      <li><strong>checkpointer 必须持久化</strong>：别用 MemorySaver 上生产</li>
+      <li><strong>加超时和重试</strong>：LLM 调用可能超时，用 <code>with_retry</code></li>
+      <li><strong>工具执行要容错</strong>：try/except 包住每个 Tool，返回错误消息而非抛异常</li>
+      <li><strong>限制 Agent 循环次数</strong>：<code>compile(interrupt_after=20)</code> 防止死循环烧钱</li>
+      <li><strong>记录所有 State 变更</strong>：方便排查"Agent 为什么做了这个决策"</li>
+      <li><strong>Streaming 给前端</strong>：用户体验提升巨大，打字机效果是标配</li>
+    </ol>
+  </div>
+</section>
+
+<p style="text-align:center;color:var(--muted);margin-top:60px;padding-bottom:40px;font-size:12px">
+  🦜 LangChain + LangGraph 复习完成 · 费曼说：能画出来的才是真理解<br>
+  更多模块：<a href="/mysql.html" style="color:var(--accent)">📘 MySQL 复习</a> ·  <a href="#lg-socratic" style="color:var(--accent)">💬 苏格拉底提问</a> · <a href="/" style="color:var(--accent)">← 返回首页</a>
+</p>
+
+
+<!-- ═══════ 苏格拉底式提问 ═══════ -->
+<section id="lg-socratic" class="section">
+  <h2>💬 苏格拉底式提问 —— 检验真理解</h2>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:20px">以下问题用来逼你追问本质。先自己想 30 秒，再点开验证。</p>
+  <details class="socratic"><summary>Agent 为什么用"图"而不是"链"来编排？<span class="socratic-num">Q1</span></summary><div class="socratic-a"><span class="highlight">链（Chain）的局限：</span>Chain 是线性的 A→B→C，无法处理条件分支和循环。Agent 的核心是"根据观察决定下一步"，本质上是<span class="highlight">有环有分支的有向图</span>。<br><span class="highlight">图的优势：</span>① 条件边 → 根据 LLM 输出路由；② 循环 → "观察-思考-行动"循环；③ 并行 → 同时调用多个工具。<br><span class="highlight">一句话：</span>Chain 是"流水线"，Graph 是"决策树+循环"。</div></details>
+  <details class="socratic"><summary>Human-in-the-loop 为什么是必选项？<span class="socratic-num">Q2</span></summary><div class="socratic-a">三个硬理由：<br><span class="highlight">① 安全边界：</span>Agent 可能执行危险操作，关键操作前暂停等人工确认是最低成本的保险。<br><span class="highlight">② 质量兜底：</span>LLM 有幻觉率（5-15%），人类审核关键决策可大幅降低错误传播。<br><span class="highlight">③ 渐进信任：</span>先在关键节点加 human check → 运行稳定后逐步去掉 → 最终全自动。这不是"功能不完善"，而是"工程化的信任构建策略"。</div></details>
+  <details class="socratic"><summary>Tool Calling 和手工解析 JSON 的本质区别？<span class="socratic-num">Q3</span></summary><div class="socratic-a"><span class="highlight">手工 JSON：</span>让 LLM 输出 JSON → 解析 → 调用。JSON 不一定合法（漏括号、多逗号），需要大量容错和重试。<br><span class="highlight">Tool Calling：</span>模型被微调过，输出特殊的 function_call token，保证格式<span class="highlight">结构化、可预测</span>。<br><span class="highlight">本质：</span>Tool Calling = 原生协议，手工 JSON = prompt hack。前者是合同，后者是祈祷。</div></details>
+</section>
+
+
+<div class="feynman" style="margin-top:40px;background:linear-gradient(135deg,rgba(163,113,247,0.06),rgba(76,29,149,0.04));border-color:rgba(163,113,247,0.3)">
+  <p style="font-size:11px;color:#c4b5fd;margin-bottom:8px;font-weight:700">📖 本文思想来源</p>
+  <p style="font-size:12px;line-height:1.9">
+    <strong>LangChain / LangGraph 官方文档</strong><br>
+    • <span style="color:#a78bfa">LangGraph 概念指南</span>：StateGraph、Conditional Edge、Human-in-the-loop 的官方定义<br>
+    • <span style="color:#a78bfa">LangChain Expression Language (LCEL)</span>：Chain 组合的底层设计哲学<br>
+    • <span style="color:#94a3b8">另见：</span>Anthropic 的 Tool Use 文档、OpenAI Function Calling 规范、Harrison Chase 的 TED 演讲
+  </p>
+</div>
+
+<section id="lg-summary" class="section" style="margin-top:40px">
+  <h2>🎙️ 口播总结</h2>
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(248,81,73,0.04));border-color:rgba(251,191,36,0.3)">
+    <p style="font-size:15px;line-height:2"><strong>这篇文章把 LangChain 和 LangGraph 从入门到精通讲透了。</strong></p>
+    <p>LangChain 是给 LLM 装上方向盘——Prompt 模板做输入、Chain 串流程、Tool 让 LLM 调外部函数。核心是 LCEL 管道语法，用竖线把组件串起来，数据从左流到右。</p>
+    <p>LangGraph 解决 Chain 的致命缺陷：Chain 只能直走，不能循环和分支。LangGraph 用图结构——Node 是处理节点，Edge 是连接，Conditional Edge 根据 State 决定下一步。State 就像快递包裹在所有节点之间流转。最经典的 Agent 模式就是 LLM 节点和 Tool 节点之间的无限循环：思考→调用工具→看结果→再思考，直到不需要工具为止。</p>
+    <p>进阶内容覆盖了 Human-in-the-Loop（关键操作暂停等人工审批）、Checkpointer（游戏存档、随时断点续传）、多 Agent 协作（Supervisor 主管模式）、Streaming 四种模式。</p>
+    <p><strong>如果只能记住一个概念，那就是"StateGraph"。</strong>理解了 State→Node→ConditionalEdge→Compile 这个流程，就知道怎么用 LangGraph 构建任意复杂的 Agent 工作流。</p>
+  </div>
+</section>
+
+
+</main>
+</div>
+
+<script src="/mobile.js"></script>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

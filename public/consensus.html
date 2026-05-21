@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分布式一致性协议 · 费曼学习法</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascada Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+
+  /* 苏格拉底提问 */
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🗳️ 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">第一章：基础理论</div>
+  <a class="nav-item" href="#dc-why">❓ 为什么需要共识</a>
+  <a class="nav-item" href="#dc-flp">🚫 FLP 不可能定理</a>
+  <a class="nav-item" href="#dc-quorum">🗳️ 多数派 (Quorum)</a>
+  <div class="nav-section">第二章：经典协议</div>
+  <a class="nav-item" href="#dc-paxos">📜 Paxos</a>
+  <a class="nav-item" href="#dc-raft">🚢 Raft</a>
+  <a class="nav-item" href="#dc-zab">🦓 ZAB</a>
+  <div class="nav-section">第三章：最终一致</div>
+  <a class="nav-item" href="#dc-gossip">💬 Gossip 协议</a>
+  <a class="nav-item" href="#dc-crdt">🧩 CRDT</a>
+  <div class="nav-section">第四章：实战对比</div>
+  <a class="nav-item" href="#dc-compare">⚖️ 协议对比总表</a>
+  <a class="nav-item" href="#dc-apps">🔧 工程实现</a>
+  <a class="nav-item" href="#dc-qa">❓ 核心题</a>
+  <a class="nav-item" href="#dc-summary">🎙️ 口播总结</a>
+  <a class="nav-item" href="#dc-socratic">💬 苏格拉底提问</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>🗳️ 分布式一致性协议</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>一致性协议 = 让多个节点在不可靠的网络上对同一个值达成一致。</p>
+    <p>核心矛盾：网络会延迟/分区、节点会崩溃、消息会乱序——但系统还是要"看起来像一个整体"。</p>
+  </div>
+</section>
+
+<!-- ═══════ 1. 为什么 ═══════ -->
+<section id="dc-why" class="section">
+  <h2>❓ 为什么需要共识协议？</h2>
+  <div class="feynman">
+    <p><span class="analogy">👨‍👩‍👦 类比：</span>三兄弟分家产，大哥说房子归我，二哥说不行归我，小弟也说归我——意见不统一。共识协议 = 一套规则，让三兄弟最终都同意"房子归大哥"（即使二哥小弟一开始不同意）。</p>
+  </div>
+
+  <h3>共识协议的三个要求</h3>
+  <table>
+    <tr><th>要求</th><th>含义</th><th>反例</th></tr>
+    <tr><td><strong>终止性</strong></td><td>最终一定会做出决定（不死循环）</td><td>一直投票没结果</td></tr>
+    <tr><td><strong>一致性</strong></td><td>所有节点做出的决定相同</td><td>A 认为主是 N1，B 认为主是 N2</td></tr>
+    <tr><td><strong>有效性</strong></td><td>决定的值必须是某个节点提出的</td><td>无中生有一个值</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 2. FLP ═══════ -->
+<section id="dc-flp" class="section">
+  <h2>🚫 FLP 不可能定理：异步网络不存在完美共识</h2>
+  <div class="feynman">
+    <p><span class="analogy">📞 类比：</span>你打电话给朋友商量晚上去哪吃——电话中途可能断线（节点崩溃），断多久也不确定（异步网络）。FLP 说：在纯异步环境中，只要有一个节点可能故障，就无法保证在有限时间内达成共识。</p>
+  </div>
+  <p><strong>FLP 定理的实践意义：</strong>不是共识不可能，而是<strong>共识协议必须在安全性和活性之间权衡</strong>。Paxos/Raft 通过引入超时（部分同步假设）绕过了 FLP 的绝对限制。</p>
+</section>
+
+<!-- ═══════ 3. Quorum ═══════ -->
+<section id="dc-quorum" class="section">
+  <h2>🗳️ 多数派 (Quorum)：共识的数学基础</h2>
+  <p>N 个节点要达成一致，至少需要 <strong>⌊N/2⌋+1</strong>（超过半数）同意。这就是 Quorum。</p>
+
+  <table>
+    <tr><th>节点数 N</th><th>Quorum</th><th>容忍故障</th><th>为什么奇数好？</th></tr>
+    <tr><td>3</td><td>2</td><td>1</td><td>—</td></tr>
+    <tr><td>4</td><td>3</td><td>1</td><td>和 3 节点容忍一样，浪费一台</td></tr>
+    <tr><td>5</td><td>3</td><td>2</td><td>推荐</td></tr>
+    <tr><td>7</td><td>4</td><td>3</td><td>大集群</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 4. Paxos ═══════ -->
+<section id="dc-paxos" class="section">
+  <h2>📜 Paxos：共识协议的鼻祖</h2>
+  <div class="feynman">
+    <p><span class="analogy">📜 类比：</span>古希腊议会制——任何人都可以提交法案（Proposer），但必须获得多数长老（Acceptor）的批准才能成为法律。整个流程分两步：第一步"预约提案号"，第二步"正式提案"。两阶段的设计目的只有一个：<strong>防止多个提案同时通过导致冲突</strong>。</p>
+  </div>
+
+  <h3>三个角色</h3>
+  <table>
+    <tr><th>角色</th><th>职责</th><th>数量</th></tr>
+    <tr><td><strong>Proposer</strong>（提案者）</td><td>发起提案，推动共识达成</td><td>可以多个（竞争）</td></tr>
+    <tr><td><strong>Acceptor</strong>（接受者）</td><td>对提案投票（接受/拒绝），存储已接受的值</td><td>N 个（通常 3/5/7）</td></tr>
+    <tr><td><strong>Learner</strong>（学习者）</td><td>学习最终达成的共识值，通知客户端</td><td>多个</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🎯 核心设计目标</h4>
+    <p>Paxos 保证：<strong>一旦某个值被多数 Acceptor 接受（Chosen），后续任何提案只能提出这个值</strong>。这是 Paxos 最精妙的地方——不管有多少 Proposer 同时提案，最终只有一个值能通过。</p>
+  </div>
+
+  <h3>提案编号机制</h3>
+  <p>每个提案有唯一编号 <code>n</code>，<strong>编号越大优先级越高</strong>。Acceptor 只接受编号 <strong>≥</strong> 自己见过的最大编号的提案——这是协议安全性的根基。</p>
+  <pre><code><span class="cm"># Acceptor 的状态（每个节点维护）</span>
+min_proposal = 0          <span class="cm"># 见到的最小提案号，拒绝 < 此号的 Prepare</span>
+accepted_proposal = 0     <span class="cm"># 上次接受的提案编号</span>
+accepted_value = None     <span class="cm"># 上次接受的值</span></code></pre>
+
+  <h3>🔷 两阶段协议 —— 逐步骤拆解</h3>
+
+  <h4>Phase 1：Prepare（预约阶段）——"我要提案，谁支持？"</h4>
+  <table>
+    <tr><th>步骤</th><th>谁 → 谁</th><th>消息</th><th>含义</th></tr>
+    <tr><td>1.1</td><td>Proposer → 所有 Acceptor</td><td><code>Prepare(n)</code></td><td>"我准备用编号 n 提案，给我反馈"</td></tr>
+    <tr><td>1.2</td><td>Acceptor → Proposer</td><td><code>Promise(n, v_accepted)</code> 或 忽略</td><td>"我承诺不接受 &lt;n 的提案，另外我之前接受了值 v"（若没接受过则为 null）</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>💡 Acceptor 收到 Prepare(n) 后的逻辑</h4>
+    <pre><code><span class="kw">def</span> <span class="fn">on_prepare</span>(n):
+    <span class="kw">if</span> n &lt;= min_proposal:
+        <span class="kw">return</span> IGNORE        <span class="cm"># 拒绝：你编号太小/过时了</span>
+    min_proposal = n          <span class="cm"># 更新"最小接受号"，承诺不再接受 &lt;n</span>
+    <span class="kw">return</span> Promise(n, accepted_proposal, accepted_value)
+    <span class="cm"># 返回当前最大编号 + 上次接受的值（如果有）</span></code></pre>
+  </div>
+
+  <p><strong>关键点：</strong>Phase 1 不传值，只"占坑"。Proposer 需要收到 <strong>Quorum（多数）</strong> 个 Promise 才能进入 Phase 2。</p>
+
+  <h4>Phase 2：Accept（接受阶段）——"现在正式提案"</h4>
+  <table>
+    <tr><th>步骤</th><th>谁 → 谁</th><th>消息</th><th>含义</th></tr>
+    <tr><td>2.1</td><td>Proposer → 所有 Acceptor</td><td><code>Accept(n, value)</code></td><td>"我正式提案：编号 n，值为 value"</td></tr>
+    <tr><td>2.2</td><td>Acceptor → Proposer</td><td><code>Accepted(n, value)</code> 或 忽略</td><td>"我接受这个值" 或 "我已经承诺过更大的编号了"</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>💡 Acceptor 收到 Accept(n, v) 后的逻辑</h4>
+    <pre><code><span class="kw">def</span> <span class="fn">on_accept</span>(n, v):
+    <span class="kw">if</span> n &lt; min_proposal:
+        <span class="kw">return</span> IGNORE        <span class="cm"># 拒绝：我已经承诺过更大的编号</span>
+    accepted_proposal = n
+    accepted_value = v
+    <span class="kw">return</span> Accepted(n, v)</code></pre>
+  </div>
+
+  <p><strong>最关键的决策逻辑：Proposer 选什么值来提案？</strong></p>
+  <pre><code><span class="cm"># Proposer 收集到多数 Promise 后</span>
+<span class="kw">def</span> <span class="fn">choose_value</span>(promises):
+    <span class="cm"># 从所有 Promise 中找出 accepted_proposal 最大的那个值</span>
+    highest = max(promises, key=<span class="kw">lambda</span> p: p.accepted_proposal)
+    <span class="kw">if</span> highest.accepted_value <span class="kw">is</span> <span class="kw">not</span> None:
+        <span class="kw">return</span> highest.accepted_value  <span class="cm"># ✅ 有旧值，必须沿用！</span>
+    <span class="kw">else</span>:
+        <span class="kw">return</span> my_own_value            <span class="cm"># 可以提自己的值</span></code></pre>
+
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(248,81,73,0.06),rgba(251,191,36,0.04));border-color:rgba(248,81,73,0.3)">
+    <p><strong>⚠️ 这是 Paxos 最难理解也最精妙的地方：</strong>如果 Proposer 在收集的 Promise 中发现某个 Acceptor 已经接受过值了，那它<strong>不能</strong>提自己的值——<strong>必须沿用那个已经被部分接受的值</strong>。这就是为什么无论多少 Proposer 同时跑，最终只有一个值能通过。</p>
+  </div>
+
+  <h3>🎬 完整示例：正常流程</h3>
+  <p><strong>场景：</strong>3 个 Acceptor（A1, A2, A3），P1 想提案值 "X"。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 280" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="aPP" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#fbbf24"/></marker>
+        <marker id="aAA" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#3fb950"/></marker>
+      </defs>
+
+      <!-- Phase 1 -->
+      <text x="10" y="20" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">Phase 1: Prepare</text>
+
+      <!-- Proposer -->
+      <rect x="20" y="35" width="140" height="45" rx="8" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="90" y="55" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">P1 (Proposer)</text>
+      <text x="90" y="72" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">提案号 n=5</text>
+
+      <!-- Prepare arrows -->
+      <line x1="160" y1="50" x2="220" y2="50" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#aPP)"/>
+      <line x1="90" y1="80" x2="90" y2="120" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#aPP)"/>
+      <line x1="160" y1="65" x2="220" y2="125" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#aPP)"/>
+
+      <!-- Acceptors -->
+      <rect x="225" y="35" width="160" height="45" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="305" y="55" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">A1 (Acceptor)</text>
+      <text x="305" y="72" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9">seen=0, acc=null</text>
+
+      <rect x="225" y="100" width="160" height="45" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="305" y="120" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">A2 (Acceptor)</text>
+      <text x="305" y="137" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9">seen=0, acc=null</text>
+
+      <rect x="225" y="165" width="160" height="45" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="305" y="185" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">A3 (Acceptor)</text>
+      <text x="305" y="202" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9">seen=0, acc=null</text>
+
+      <!-- Promise replies -->
+      <line x1="385" y1="55" x2="440" y2="55" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,2"/>
+      <line x1="385" y1="120" x2="440" y2="120" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,2"/>
+      <line x1="385" y1="185" x2="440" y2="185" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,2"/>
+
+      <text x="450" y="50" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="10">Promise(n=5, old=null) → 3/3 ✓ (quorum)</text>
+
+      <!-- Phase 2 -->
+      <text x="620" y="20" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">Phase 2: Accept</text>
+
+      <rect x="620" y="35" width="140" height="45" rx="8" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="690" y="55" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">P1 (Proposer)</text>
+      <text x="690" y="72" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">选值="X"</text>
+
+      <!-- Accept arrows -->
+      <line x1="620" y1="55" x2="560" y2="55" stroke="#3fb950" stroke-width="1.5" marker-end="url(#aAA)"/>
+      <line x1="690" y1="80" x2="690" y2="100" stroke="#3fb950" stroke-width="1.5" marker-end="url(#aAA)"/>
+      <line x1="620" y1="70" x2="560" y2="185" stroke="#3fb950" stroke-width="1.5" marker-end="url(#aAA)"/>
+
+      <text x="580" y="50" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="10">Accept(n=5, v="X")</text>
+
+      <!-- Accepted -->
+      <text x="580" y="230" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">▶ A1,A2,A3 → Accepted!  ✅ 共识达成：值="X"</text>
+
+      <!-- Bottom -->
+      <rect x="20" y="250" width="780" height="24" rx="6" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="410" y="267" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10">Learner 从 Acceptor 学习到最终值 "X" → 通知客户端</text>
+    </svg>
+    <div class="diagram-caption">完整流程：Phase 1 Prepare → Phase 2 Accept → Learner 学习</div>
+  </div>
+
+  <h3>🎬 冲突示例：两个 Proposer 同时提案</h3>
+  <p><strong>场景：</strong>P1（n=5，想提 "X"）和 P2（n=8，想提 "Y"）几乎同时发起。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 340" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="aC1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#f87171"/></marker>
+        <marker id="aC2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#3fb950"/></marker>
+        <marker id="aC3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#fbbf24"/></marker>
+      </defs>
+
+      <!-- Timeline -->
+      <line x1="50" y1="20" x2="50" y2="310" stroke="#475569" stroke-width="1"/>
+      <text x="48" y="315" text-anchor="end" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">时间↓</text>
+
+      <!-- Step 1: P1 Phase1 -->
+      <rect x="80" y="18" width="230" height="30" rx="5" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="195" y="38" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10">① P1 Prepare(n=5) → 多数 Promise ✓</text>
+
+      <!-- Step 2: P1 Phase2 (partial) -->
+      <rect x="80" y="55" width="230" height="30" rx="5" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="195" y="75" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10">② P1 Accept(5,"X") → A1 接受</text>
+
+      <!-- Step 3: P2 Phase1 -->
+      <rect x="80" y="92" width="230" height="30" rx="5" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="195" y="112" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10">③ P2 Prepare(n=8) → 多数 Promise ✓</text>
+
+      <!-- Step 4: P2 Promise detail -->
+      <rect x="340" y="130" width="440" height="45" rx="5" fill="rgba(34,211,238,0.05)" stroke="#22d3ee" stroke-width="0.8"/>
+      <text x="360" y="148" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10">④ A1 返回 Promise(n=8, accepted_value="X") ← 注意：带了旧值！</text>
+      <text x="360" y="165" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">A2/A3 返回 Promise(n=8, null)</text>
+
+      <!-- Step 5: P2 must use X -->
+      <rect x="340" y="185" width="440" height="30" rx="5" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="560" y="205" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="10">⑤ P2 发现 Promise 中有 "X"（A1接受的）→ 必须沿用！Accept(8,"X")</text>
+
+      <!-- Step 6: P2 Phase2 succeeds -->
+      <rect x="80" y="225" width="230" height="30" rx="5" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="195" y="245" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10">⑥ P2 Accept(8,"X") → 多数 Accepted ✅</text>
+
+      <!-- Step 7: P1 fails on A2/A3 -->
+      <rect x="340" y="265" width="440" height="30" rx="5" fill="rgba(248,81,73,0.06)" stroke="#f87171" stroke-width="1"/>
+      <text x="560" y="285" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10">⑦ P1 Accept(5,"X") 发到 A2/A3 → 被拒绝！（A2/A3 已承诺 &gt;= 8）</text>
+
+      <!-- Result -->
+      <rect x="80" y="305" width="700" height="30" rx="5" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="430" y="325" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">🎯 最终共识值 = "X"  （虽然 P2 本想提 "Y"，但协议强制沿用了已部分接受的 "X"）</text>
+    </svg>
+    <div class="diagram-caption">冲突场景：P1 先部分成功 → P2 继承 P1 的值 → 最终一致</div>
+  </div>
+
+  <h3>🔐 Paxos 的安全性证明（口头版）</h3>
+  <div class="feynman">
+    <p><strong>为什么 Paxos 安全？</strong>归结为一句话：<strong>如果一个值 v 已经被多数 Acceptor 接受，那么后续任何通过 Phase 1 的 Proposer，其收集的 Promise 中一定至少有一个 Acceptor 带有 v，从而强制沿用 v。</strong></p>
+    <p>数学原因：任意两个 Quorum（多数集）必有交集。第一个值的 Acceptor 多数集 ∩ 第二个 Proposer 拿 Promise 的多数集 ≠ ∅，所以必然"撞上"旧值。</p>
+  </div>
+
+  <h3>Multi-Paxos：从单次共识到连续日志</h3>
+  <div class="feynman">
+    <p><span class="analogy">🏭 类比：</span>Basic Paxos 是"每次选一个值都要重新投票"——效率太低。Multi-Paxos 是"先选出一个常任主席（Leader），以后所有提案由主席优先处理，不走 Phase 1"，效率直接翻倍。</p>
+  </div>
+
+  <pre><code><span class="cm">Basic Paxos:  每个值 → Phase1 + Phase2  (两轮RPC)</span>
+<span class="cm">Multi-Paxos:  先选Leader → 之后每个值只需 Phase2  (一轮RPC)</span>
+
+<span class="cm"># Multi-Paxos 的核心优化</span>
+<span class="cm"># 1. 选出一个 Leader（通过 Basic Paxos 选）</span>
+<span class="cm"># 2. Leader 在连续提案中跳过 Prepare，直接用 Accept</span>
+<span class="cm"># 3. 如果 Leader 崩溃 → 重新选 Leader（又是一轮 Basic Paxos）</span>
+
+<span class="cm"># Raft 本质上就是 Multi-Paxos + 三大拆分：</span>
+<span class="cm">#  Leader Election  ·  Log Replication  ·  Safety</span></code></pre>
+
+  <div class="info-card">
+    <h4>📐 Paxos vs Multi-Paxos vs Raft</h4>
+    <table>
+      <tr><th></th><th>Basic Paxos</th><th>Multi-Paxos</th><th>Raft</th></tr>
+      <tr><td>单值共识</td><td>2 RTT</td><td>2 RTT（首值）/ 1 RTT</td><td>1 RTT</td></tr>
+      <tr><td>领导者</td><td>无固定</td><td>有（选出来的）</td><td>有（Term + 投票）</td></tr>
+      <tr><td>复杂度</td><td>⭐ 最难理解</td><td>⭐⭐⭐ 工程实现复杂</td><td>⭐⭐ 相对简单</td></tr>
+      <tr><td>适用</td><td>教学</td><td>Chubby / Spanner</td><td>etcd / TiKV / Consul</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════ 5. Raft ═══════ -->
+<section id="dc-raft" class="section">
+  <h2>🚢 Raft：可理解性优先的共识协议</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏫 类比：</span>班级选班长（Leader Election）→ 班长在黑板上写通知（Log Replication）→ 下面同学抄到笔记本上（Commit）。Raft 把共识拆成三个独立的子问题，比 Paxos 好理解十倍。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" style="max-width:820px;width:100%">
+      <defs><marker id="aRF" markerWidth="7" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#22d3ee"/></marker></defs>
+      <!-- Leader -->
+      <rect x="30" y="20" width="150" height="60" rx="8" fill="rgba(63,185,80,0.18)" stroke="#3fb950" stroke-width="2.5"/>
+      <text x="105" y="45" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="14" font-weight="700">👑 Leader</text>
+      <text x="105" y="65" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">Term=5 · 处理所有写请求</text>
+
+      <!-- Followers -->
+      <rect x="230" y="20" width="150" height="60" rx="8" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="305" y="45" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13" font-weight="600">Follower 1</text>
+      <text x="305" y="65" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">Term=5 · Log OK</text>
+
+      <rect x="430" y="20" width="150" height="60" rx="8" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="505" y="45" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13" font-weight="600">Follower 2</text>
+      <text x="505" y="65" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">Term=5 · Log OK</text>
+
+      <rect x="630" y="20" width="150" height="60" rx="8" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="705" y="45" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13" font-weight="600">Follower 3</text>
+      <text x="705" y="65" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">Term=5 · Log OK</text>
+
+      <!-- Log flow -->
+      <line x1="105" y1="80" x2="105" y2="110" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aRF)"/>
+      <line x1="305" y1="80" x2="305" y2="110" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,2"/>
+      <line x1="505" y1="80" x2="505" y2="110" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,2"/>
+      <line x1="705" y1="80" x2="705" y2="110" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,2"/>
+
+      <!-- Log entries -->
+      <rect x="20" y="115" width="780" height="50" rx="8" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1"/>
+      <text x="40" y="140" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">Log 复制：Leader 收到写请求 → 追加到本地 Log → AppendEntries RPC 发给 Followers → 多数确认 → Commit → 返回客户端</text>
+
+      <!-- Leader election -->
+      <rect x="30" y="185" width="370" height="100" rx="8" fill="rgba(248,81,73,0.05)" stroke="#f87171" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="215" y="210" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">⚡ Leader 选举（任期制）</text>
+      <text x="50" y="235" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">① Follower 超时未收到心跳 → 变成 Candidate</text>
+      <text x="50" y="255" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">② Candidate Term++ → 给自己投票 → 向其他节点 RequestVote</text>
+      <text x="50" y="275" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">③ 收到多数票 → 当选 Leader（每个 Term 只有一个 Leader）</text>
+
+      <!-- Safety rules -->
+      <rect x="420" y="185" width="380" height="100" rx="8" fill="rgba(251,191,36,0.05)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="610" y="210" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">🛡️ 安全性保证</text>
+      <text x="440" y="235" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">• 选举限制：只有 Log 最新的节点才能当选 Leader</text>
+      <text x="440" y="255" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">• 提交限制：Leader 只能提交当前 Term 的日志</text>
+      <text x="440" y="275" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">• 已提交的日志永远不会被覆盖（Leader 强制覆盖 Follower 不一致的日志）</text>
+    </svg>
+    <div class="diagram-caption">Raft：Leader 选举 + Log 复制 + 安全性保证，三大子问题独立解决</div>
+  </div>
+
+  <h3>Raft 的三大子问题</h3>
+  <table>
+    <tr><th>子问题</th><th>核心机制</th><th>关键细节</th></tr>
+    <tr><td><strong>Leader Election</strong></td><td>随机超时 + Term + RequestVote RPC</td><td>150-300ms 随机超时防止分裂投票</td></tr>
+    <tr><td><strong>Log Replication</strong></td><td>AppendEntries RPC + committedIndex</td><td>Leader 强制 Follower 日志与自己一致</td></tr>
+    <tr><td><strong>Safety</strong></td><td>选举限制 + 提交限制</td><td>只有拥有所有已提交日志的节点才能当选</td></tr>
+  </table>
+
+  <h4>Raft 为什么比 Paxos 成功？</h4>
+  <p><strong>可理解性。</strong>Paxos 的论文极其难懂，Lamport 本人后来不得不写一篇"Paxos Made Simple"来解释。Raft 的设计目标就是"让研究生能看懂"，把共识拆成独立的 Leader 选举、日志复制、安全性三个模块。</p>
+</section>
+
+<!-- ═══════ 6. ZAB ═══════ -->
+<section id="dc-zab" class="section">
+  <h2>🦓 ZAB：ZooKeeper 的共识引擎</h2>
+  <p>ZAB = ZooKeeper Atomic Broadcast。和 Raft 本质相似但有细微区别：</p>
+  <table>
+    <tr><th>特性</th><th>Raft</th><th>ZAB</th></tr>
+    <tr><td>Leader 选举完成</td><td>数据可能有空洞需补</td><td>新 Leader 必须拥有所有已提交事务</td></tr>
+    <tr><td>日志提交</td><td>多数派确认即可提交</td><td>所有 Follower 确认后才能提交（更严格）</td></tr>
+    <tr><td>读请求</td><td>可走 Follower（可能 stale）</td><td>默认走 Leader（保证线性一致）</td></tr>
+    <tr><td>实现</td><td>—</td><td>ZK 专有，和 ZK 强绑定</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 7. Gossip ═══════ -->
+<section id="dc-gossip" class="section">
+  <h2>💬 Gossip 协议：一传十，十传百</h2>
+  <div class="feynman">
+    <p><span class="analogy">🗣️ 类比：</span>村里传话——张三告诉李四"村口有免费西瓜"，李四又告诉王五、赵六。几分钟后全村都知道了。没有中心节点，不需要所有人同时在线。</p>
+  </div>
+
+  <h3>Gossip 的特点</h3>
+  <table>
+    <tr><th>特性</th><th>说明</th></tr>
+    <tr><td><strong>最终一致性</strong></td><td>不是强一致——存在传播延迟窗口</td></tr>
+    <tr><td><strong>去中心化</strong></td><td>每个节点对等，无 Leader</td></tr>
+    <tr><td><strong>容错性极强</strong></td><td>节点随便挂，剩下的继续传</td></tr>
+    <tr><td><strong>指数传播</strong></td><td>O(log N) 轮覆盖所有节点</td></tr>
+  </table>
+
+  <h4>谁在用 Gossip？</h4>
+  <p>Redis Cluster 的节点发现、Cassandra 的集群状态同步、Consul 的成员管理、Bitcoin 的区块传播。</p>
+</section>
+
+<!-- ═══════ 8. CRDT ═══════ -->
+<section id="dc-crdt" class="section">
+  <h2>🧩 CRDT：不用共识也能达成一致</h2>
+  <div class="feynman">
+    <p><span class="analogy">➕ 类比：</span>加法满足交换律——A 加 5、B 加 3，无论谁先算，总和都是 8。CRDT = 设计一种满足交换律、结合律、幂等律的数据结构，让并发修改自动收敛到相同结果，不需要协商。</p>
+  </div>
+
+  <table>
+    <tr><th>类型</th><th>操作</th><th>合并方式</th><th>例子</th></tr>
+    <tr><td><strong>GCounter</strong></td><td>只能加</td><td>取 max</td><td>点赞计数</td></tr>
+    <tr><td><strong>PNCounter</strong></td><td>可加可减</td><td>两个 GCounter 分别合并</td><td>库存计数</td></tr>
+    <tr><td><strong>GSet</strong></td><td>只能添加</td><td>取并集</td><td>去重集合</td></tr>
+    <tr><td><strong>ORSet</strong></td><td>可添加可删除</td><td>带墓碑的并集</td><td>购物车</td></tr>
+  </table>
+  <p>CRDT 适合<strong>不需要强一致、但对可用性要求极高</strong>的场景（如协同编辑、分布式计数器）。</p>
+</section>
+
+<!-- ═══════ 9. 对比总表 ═══════ -->
+<section id="dc-compare" class="section">
+  <h2>⚖️ 协议对比总表</h2>
+  <table>
+    <tr><th>协议</th><th>一致性</th><th>复杂度</th><th>中心化？</th><th>代表实现</th><th>何时用</th></tr>
+    <tr><td><strong>Paxos</strong></td><td>强</td><td>⭐⭐⭐⭐⭐</td><td>有 Leader</td><td>Chubby</td><td>理论参考，实际少直接用</td></tr>
+    <tr><td><strong>Raft</strong></td><td>强</td><td>⭐⭐⭐</td><td>强 Leader</td><td>etcd, TiKV, Consul</td><td>配置管理、分布式锁、元数据</td></tr>
+    <tr><td><strong>ZAB</strong></td><td>强</td><td>⭐⭐⭐⭐</td><td>强 Leader</td><td>ZooKeeper</td><td>ZK 专用</td></tr>
+    <tr><td><strong>Gossip</strong></td><td>最终</td><td>⭐⭐</td><td>❌ 去中心</td><td>Cassandra, Redis Cluster</td><td>集群成员、元数据同步</td></tr>
+    <tr><td><strong>CRDT</strong></td><td>最终（强收敛）</td><td>⭐⭐⭐</td><td>❌ 去中心</td><td>Riak, Redis CRDB</td><td>计数器、协同编辑</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 10. 工程实现 ═══════ -->
+<section id="dc-apps" class="section">
+  <h2>🔧 工程实现：这些系统用了什么协议？</h2>
+  <table>
+    <tr><th>系统</th><th>协议</th><th>用途</th><th>Go 生态</th></tr>
+    <tr><td><strong>etcd</strong></td><td>Raft</td><td>K8s 配置存储、分布式锁、服务发现</td><td>✅ 原生 Go</td></tr>
+    <tr><td><strong>Consul</strong></td><td>Raft + Gossip</td><td>服务发现、健康检查</td><td>✅ 原生 Go</td></tr>
+    <tr><td><strong>TiKV</strong></td><td>Raft</td><td>分布式 KV 存储（TiDB 底层）</td><td>✅ Rust（Go 客户端）</td></tr>
+    <tr><td><strong>CockroachDB</strong></td><td>Raft（每个 Range）</td><td>分布式 SQL</td><td>✅ 原生 Go</td></tr>
+    <tr><td><strong>ZooKeeper</strong></td><td>ZAB</td><td>分布式协调</td><td>❌ Java</td></tr>
+    <tr><td><strong>Redis Cluster</strong></td><td>Gossip</td><td>集群成员发现、故障检测</td><td>—</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>etcd 使用 Raft 的简化版</h4>
+    <p>etcd 的 Raft 库是 Go 生态的<strong>事实标准</strong>。CockroachDB、TiKV 都基于它。它提供：</p>
+    <ul>
+      <li><code>raft.NewNode()</code> — 创建一个 Raft 节点</li>
+      <li><code>node.Propose(ctx, data)</code> — 提案一个值</li>
+      <li>自动处理 Leader 选举、日志复制、快照</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════ 11. 核心题 ═══════ -->
+<section id="dc-qa" class="section">
+  <h2>❓ 高频考题</h2>
+
+  <div class="qa"><div class="q">Q1: 为什么需要分布式共识？举一个具体场景</div><div class="a">
+    <strong>选主：</strong>3 个节点的主从集群，主节点挂了，谁当新主？如果两个从节点同时认为自己是主 → 脑裂 → 数据写坏。共识协议保证<strong>同一时刻只有一个节点被选为 Leader</strong>。etcd/ZK 就是这么做分布式锁和配置管理的。
+  </div></div>
+
+  <div class="qa"><div class="q">Q2: Raft 的 Term（任期）是什么？为什么重要？</div><div class="a">
+    Term 是一个<strong>全局单调递增的整数</strong>（逻辑时钟）。每次选举 Term++。作用：① 区分不同任期——旧 Term 的 Leader 发的心跳被拒绝 ② 防止脑裂——一个 Term 最多一个 Leader ③ 日志一致性——Log Entry 带 Term 号，冲突时 Term 大的优先。
+  </div></div>
+
+  <div class="qa"><div class="q">Q3: Paxos 和 Raft 的本质区别？</div><div class="a">
+    <strong>Paxos：</strong>非 Leader 驱动，任何人都可以提案，两阶段每次都要走。Multi-Paxos 加了 Leader 优化。<br>
+    <strong>Raft：</strong>强 Leader 驱动，日常只需一轮 AppendEntries。把选举、复制、安全拆成三个独立模块。<br>
+    <strong>核心区别：</strong>设计哲学——Paxos 追求理论的优雅，Raft 追求工程的可理解性。
+  </div></div>
+
+  <div class="qa"><div class="q">Q4: 为什么 Raft 要求奇数节点？</div><div class="a">
+    偶数浪费。3 节点容 1 个故障（Quorum=2），4 节点也只容 1 个故障（Quorum=3）。<strong>可用性相同，多一台机器的成本。</strong>4 节点的唯一好处是读性能高一点，但写性能反而下降（需要等 3 个确认而不是 2 个）。
+  </div></div>
+
+  <div class="qa"><div class="q">Q5: Gossip 协议怎么保证消息一定传到所有节点？</div><div class="a">
+    <strong>不保证"一定"，保证"极高概率"。</strong>每个节点每轮随机选 K 个节点传播（通常 K=3）。传播轮数 ≈ log(N)。比如 10000 个节点，约 10 轮覆盖全部。如果某条消息丢了？没关系——定期全量同步（反熵）兜底。
+  </div></div>
+
+  <div class="qa"><div class="q">Q6: 用 Paxos/Raft 实现一个可靠的分布式锁，和 Redis 的锁有什么区别？</div><div class="a">
+    <strong>CP 系统锁（Paxos/Raft）：</strong>绝对互斥——即使网络分区，也不会有两个客户端同时拿到锁。代价：性能低（毫秒级），依赖多数派。<br>
+    <strong>AP 系统锁（Redis）：</strong>性能高（微秒级），但在网络分区或主从切换时可能丢锁。选哪个取决于业务：<strong>扣库存必须 CP，防重复提交用 AP 就行。</strong>
+  </div></div>
+</section>
+
+<p style="text-align:center;color:var(--muted);margin-top:60px;padding-bottom:40px;font-size:12px">
+  🗳️ 分布式一致性协议复习完成 · Paxos → Raft → ZAB → Gossip → CRDT<br>
+  <a href="/" style="color:var(--accent)">← 返回首页</a>
+</p>
+
+
+<!-- ═══════ 苏格拉底式提问 ═══════ -->
+<section id="dc-socratic" class="section">
+  <h2>💬 苏格拉底式提问 —— 检验真理解</h2>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:20px">以下问题用来逼你追问本质。先自己想 30 秒，再点开验证。</p>
+  <details class="socratic"><summary>Raft 为什么需要强 Leader？<span class="socratic-num">Q1</span></summary><div class="socratic-a"><span class="highlight">可以没有 Leader（如 Paxos），但 Raft 选择 Leader 是为了"可理解性"。</span><br>① <strong>简化决策：</strong>所有写通过 Leader → 日志顺序由 Leader 确定。<br>② <strong>减少通信：</strong>1→N 推送，不是 N²。<br>③ <strong>可读性：</strong>Follower 可直接响应读请求。<br><span class="highlight">代价：</span>Leader 宕机需选举 → 选举期间不可写。但"简单易懂"比"理论上更优"更重要。</div></details>
+  <details class="socratic"><summary>Paxos 过时了吗？<span class="socratic-num">Q2</span></summary><div class="socratic-a"><span class="highlight">没过时，但多数场景用 Raft。</span><br><span class="highlight">选 Raft：</span>大多数工程场景（etcd、TiKV、Consul）。<br><span class="highlight">Paxos 仍有价值：</span>• 无 Leader Paxos（EPaxos）→ 对延迟极敏感；• Google Chubby/Spanner 用 Paxos 变体；• 学术研究。<br><span class="highlight">一句话：</span>新项目无脑 Raft。只有"Leader 是瓶颈"成为具体约束时，才考虑 Paxos 变体。</div></details>
+  <details class="socratic"><summary>CRDT 能替代共识协议吗？<span class="socratic-num">Q3</span></summary><div class="socratic-a"><span class="highlight">不同问题。</span><br><span class="highlight">共识协议：</span>对"操作顺序"达成一致。代价 = Leader 协调 + 分区牺牲可用性。<br><span class="highlight">CRDT：</span>数据结构保证合并不冲突，不需协调。代价 = 只能用 CRDT 数据结构。<br><span class="highlight">CRDT 适用：</span>协作编辑、最终一致性计数器、多活的非关键数据。<br><span class="highlight">Raft 适用：</span>强一致、操作顺序关键、元数据存储。<br><span class="highlight">可共存：</span>Raft 管元数据，CRDT 管可冲突的用户数据。</div></details>
+</section>
+
+
+<div class="feynman" style="margin-top:40px;background:linear-gradient(135deg,rgba(251,191,36,0.06),rgba(107,70,17,0.04));border-color:rgba(251,191,36,0.3)">
+  <p style="font-size:11px;color:#fbbf24;margin-bottom:8px;font-weight:700">📖 本文思想来源</p>
+  <p style="font-size:12px;line-height:1.9">
+    <strong>《设计数据密集型应用》DDIA</strong> —— Martin Kleppmann<br>
+    • <span style="color:#fcd34d">第 9 章「一致性与共识」★★★</span>：本文最核心的原料。Kleppmann 对 Paxos、Raft、ZAB 的对比分析比 Raft 论文更易读——他用 30 页把 Leslie Lamport 的数学论文翻译成了工程师能懂的语言。<br>
+    • <span style="color:#fcd34d">第 8 章第 4 节「拜占庭故障」</span>：为什么大多数分布式系统不需要拜占庭容错<br>
+    • <span style="color:#94a3b8">另见：</span>Raft 论文（Ongaro 2014）原文、Paxos Made Simple（Lamport 2001）、etcd 源码 raft 模块、TiKV 文档
+  </p>
+</div>
+
+<section id="dc-summary" class="section" style="margin-top:40px">
+  <h2>🎙️ 口播总结</h2>
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(248,81,73,0.04));border-color:rgba(251,191,36,0.3)">
+    <p style="font-size:15px;line-height:2"><strong>这篇文章梳理了分布式一致性协议的全家桶。</strong></p>
+    <p>共识协议解决的核心问题是：在不可靠的网络上，让多个节点对同一个值达成一致。FLP 定理告诉我们纯异步网络不可能完美共识，但 Paxos 和 Raft 通过引入超时绕过了这个限制。Quorum 多数派是共识的数学基础——N 个节点需要超过半数同意才能做决定。</p>
+    <p>Paxos 是共识协议的鼻祖，两阶段提交：先 Prepare 申请提案号，再 Accept 正式提案。但论文极其难懂，所以有了 Raft。Raft 的设计哲学是可理解性优先——把共识拆成三个独立子问题：Leader 选举用随机超时避免分裂投票、Log 复制靠强 Leader 强制同步、安全性保证日志最新的节点才能当选。etcd、TiKV、CockroachDB 都是 Raft 的工程实现。</p>
+    <p>Gossip 是另一种思路——不强求一致，追求最终一致。每个节点每轮随机告诉几个邻居，指数级传播，O(log N) 轮覆盖全集群。Redis Cluster 用它做节点发现。</p>
+    <p><strong>选型口诀：需要强一致用 Raft（etcd），能接受最终一致用 Gossip（Redis Cluster），极致可用性用 CRDT（无冲突数据结构）。</strong></p>
+  </div>
+</section>
+
+
+</main>
+</div>
+
+<script src="/mobile.js"></script>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分布式数据一致性 · 从理论到落地 · 知识库</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  .kw { color: #ff7b72; }
+  .str { color: #a5d6ff; }
+  .num { color: #79c0ff; }
+  .cm, .comment { color: #8b949e; font-style: italic; }
+  .fn { color: #d2a8ff; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .sidebar-logo-link { text-decoration: none; }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; text-decoration: none; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+
+  @media (max-width: 768px) {
+    .sidebar { width: 200px; }
+    .main { margin-left: 200px; padding: 20px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+<script src="mobile.js" defer></script>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" class="sidebar-logo-link"><div class="sidebar-logo">🔗 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">理论基础</div>
+  <a class="nav-item" href="#what-is-consistency">🎯 什么是一致性</a>
+  <a class="nav-item" href="#cap">📐 CAP 定理的真相</a>
+  <a class="nav-item" href="#consistency-spectrum">🌈 一致性谱系</a>
+  <div class="nav-section">强一致性方案</div>
+  <a class="nav-item" href="#2pc">🔐 2PC / 3PC</a>
+  <a class="nav-item" href="#xa">📦 XA 分布式事务</a>
+  <a class="nav-item" href="#consensus">🏛️ 共识算法（链接）</a>
+  <div class="nav-section">最终一致性方案</div>
+  <a class="nav-item" href="#idempotent">🔄 幂等性设计</a>
+  <a class="nav-item" href="#outbox">📬 Outbox + CDC</a>
+  <a class="nav-item" href="#saga">📖 Saga 模式</a>
+  <a class="nav-item" href="#tcc">✂️ TCC 模式</a>
+  <div class="nav-section">决策与实战</div>
+  <a class="nav-item" href="#decision-tree">🧭 方案选型决策树</a>
+  <a class="nav-item" href="#qa-section">❓ 高频考题</a>
+  <a class="nav-item" href="#socratic">💬 苏格拉底提问</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>🔗 分布式数据一致性</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>分布式系统里，数据一致性不是"有"和"没有"的二元选择——它是一个从"随时正确"到"最终差不多正确"的<strong>连续谱</strong>。你的工作不是追求"完全一致"，而是<strong>在一致性、可用性和性能之间找到业务能接受的平衡点</strong>。</p>
+    <p>这篇文章从 CAP 定理出发，覆盖 2PC、XA、Saga、TCC、Outbox、幂等设计 6 种主流方案，最后给你一套决策框架——"什么场景用什么方案"。</p>
+  </div>
+</section>
+
+<!-- ═══════ 1. 什么是一致性 ═══════ -->
+<section id="what-is-consistency" class="section">
+  <h2>🎯 什么是一致性？——先搞清楚你在说什么</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏦 类比：</span>一致性 = 你去银行查余额。柜台 A 说 1000，柜台 B 也说 1000，ATM 也显示 1000——这就叫一致。如果柜台 A 说 1000，ATM 说 500，你就懵了——这就是不一致。</p>
+  </div>
+
+  <p>在分布式系统中，<strong>"一致性"这个词在不同的上下文中含义完全不同</strong>。必须先把术语锚定清楚：</p>
+
+  <table>
+    <tr><th style="width:22%">一致性类型</th><th>核心问题</th><th>关心什么</th><th>典型场景</th></tr>
+    <tr>
+      <td><strong>ACID 中的 C（Consistency）</strong></td>
+      <td>事务前后数据满足所有约束</td>
+      <td>"转账后总金额不变"</td>
+      <td>单机数据库事务</td>
+    </tr>
+    <tr>
+      <td><strong>CAP 中的 C（Consistency）</strong></td>
+      <td>所有节点在同一时刻看到相同数据</td>
+      <td>"读任何副本都返回最新写入"</td>
+      <td>分布式存储、共识系统</td>
+    </tr>
+    <tr>
+      <td><strong>最终一致性</strong></td>
+      <td>如果没有新写入，最终所有副本会一致</td>
+      <td>"等一会儿就会一致"</td>
+      <td>DNS、CDN、用户资料</td>
+    </tr>
+    <tr>
+      <td><strong>因果一致性</strong></td>
+      <td>有因果关系的操作按顺序看到</td>
+      <td>"先发帖再评论，看到评论时一定能看到帖"</td>
+      <td>社交网络 Feed</td>
+    </tr>
+  </table>
+
+  <p>本文讨论的是 <strong>CAP 意义下的一致性</strong>——多个副本之间如何保持数据一致。这是分布式系统的核心难题：<strong>网络分区 + 节点故障 + 并发写入 = 一致性地狱。</strong></p>
+</section>
+
+<!-- ═══════ 2. CAP ═══════ -->
+<section id="cap" class="section">
+  <h2>📐 CAP 定理的真相：不是"三选二"那么简单</h2>
+  <div class="feynman">
+    <p><span class="analogy">🌩️ 类比：</span>三个朋友在不同城市打电话做决定。C = 所有人都得出相同结论；A = 任何时候都有人接电话；P = 电话线可能断。当电话线断了（P 发生），你只能在"即使联系不上也硬做决定（牺牲 C）"和"不接新电话等线路恢复（牺牲 A）"之间选择。</p>
+  </div>
+
+  <h4>CAP 不是三选二，是"当 P 发生时你选 C 还是 A"</h4>
+  <p>大多数人背"CAP 只能同时满足两个"，这个说法<strong>容易误导</strong>。更准确的表述：</p>
+  <ul>
+    <li><strong>没有网络分区（P 未发生）：</strong>系统可以同时拥有 C 和 A</li>
+    <li><strong>网络分区发生（P 发生）：</strong>你必须在 C 和 A 之间选择——要么拒绝写入（选 C 牺牲 A），要么接受可能读到旧数据（选 A 牺牲 C）</li>
+  </ul>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 360" style="max-width:800px; width:100%">
+      <!-- Three circles -->
+      <circle cx="280" cy="170" r="110" fill="none" stroke="#58a6ff" stroke-width="2" opacity="0.6"/>
+      <text x="280" y="90" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="700">一致性 C</text>
+
+      <circle cx="420" cy="240" r="110" fill="none" stroke="#3fb950" stroke-width="2" opacity="0.6"/>
+      <text x="480" y="330" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">可用性 A</text>
+
+      <circle cx="350" cy="300" r="110" fill="none" stroke="#d29922" stroke-width="2" opacity="0.6"/>
+      <text x="400" y="355" text-anchor="middle" fill="#d29922" font-size="14" font-weight="700">分区容忍 P</text>
+
+      <!-- Partition area -->
+      <rect x="50" y="80" width="170" height="80" rx="8" fill="rgba(248,113,73,0.08)" stroke="#f87173" stroke-width="1"/>
+      <text x="135" y="110" text-anchor="middle" fill="#fca5a5" font-size="11" font-weight="600">P 未发生</text>
+      <text x="135" y="130" text-anchor="middle" fill="#94a3b8" font-size="9">可同时满足 C+A</text>
+      <text x="135" y="148" text-anchor="middle" fill="#64748b" font-size="8">（CA 区 = 三圆交集）</text>
+
+      <!-- After partition -->
+      <line x1="50" y1="175" x2="230" y2="175" stroke="#334155" stroke-width="0.5" stroke-dasharray="4,3"/>
+      <text x="140" y="195" text-anchor="middle" fill="#64748b" font-size="9">▼ P 发生（网络分区）</text>
+
+      <rect x="50" y="210" width="170" height="130" rx="8" fill="rgba(59,130,246,0.06)" stroke="#3b82f6" stroke-width="1"/>
+      <text x="135" y="238" text-anchor="middle" fill="#60a5fa" font-size="11" font-weight="600">选 C → CP 系统</text>
+      <text x="135" y="258" text-anchor="middle" fill="#94a3b8" font-size="9">拒绝写入</text>
+      <text x="135" y="276" text-anchor="middle" fill="#64748b" font-size="8">牺牲可用性</text>
+      <text x="135" y="298" text-anchor="middle" fill="#64748b" font-size="8">如：ZooKeeper, etcd</text>
+      <text x="135" y="316" text-anchor="middle" fill="#64748b" font-size="8">HBase, 金融交易系统</text>
+
+      <rect x="250" y="210" width="170" height="130" rx="8" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1"/>
+      <text x="335" y="238" text-anchor="middle" fill="#4ade80" font-size="11" font-weight="600">选 A → AP 系统</text>
+      <text x="335" y="258" text-anchor="middle" fill="#94a3b8" font-size="9">接受写入</text>
+      <text x="335" y="276" text-anchor="middle" fill="#64748b" font-size="8">牺牲强一致性</text>
+      <text x="335" y="298" text-anchor="middle" fill="#64748b" font-size="8">如：Cassandra, DynamoDB</text>
+      <text x="335" y="316" text-anchor="middle" fill="#64748b" font-size="8">用户资料, 社交媒体</text>
+
+      <!-- Right side: PACELC -->
+      <rect x="480" y="80" width="300" height="260" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="630" y="108" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="600">PACELC 扩展</text>
+      <text x="630" y="130" text-anchor="middle" fill="#94a3b8" font-size="9">CAP 只关心分区时的选择</text>
+      <text x="630" y="148" text-anchor="middle" fill="#94a3b8" font-size="9">PACELC 还问了：</text>
+      <text x="630" y="168" text-anchor="middle" fill="#94a3b8" font-size="9">正常运行（无分区）时</text>
+      <text x="630" y="186" text-anchor="middle" fill="#94a3b8" font-size="9">你选延迟(Latency)还是一致性(C)?</text>
+      <line x1="510" y1="200" x2="750" y2="200" stroke="#334155" stroke-width="0.5"/>
+      <text x="630" y="222" text-anchor="middle" fill="#fcd34d" font-size="10" font-weight="600">PA/EL 系统</text>
+      <text x="630" y="242" text-anchor="middle" fill="#94a3b8" font-size="9">分区时选 A，平时选 L</text>
+      <text x="630" y="260" text-anchor="middle" fill="#64748b" font-size="8">Cassandra, DynamoDB</text>
+      <text x="630" y="282" text-anchor="middle" fill="#fcd34d" font-size="10" font-weight="600">PC/EC 系统</text>
+      <text x="630" y="302" text-anchor="middle" fill="#94a3b8" font-size="9">分区时选 C，平时也选 C</text>
+      <text x="630" y="320" text-anchor="middle" fill="#64748b" font-size="8">ZooKeeper, etcd, HBase</text>
+    </svg>
+    <div class="diagram-caption">CAP 定理 + PACELC 扩展：真相比"三选二"更精细</div>
+  </div>
+  <p>📖 更详细的 CAP 分析和分布式锁中 CAP 的实战应用，参见 <a href="/distributed-lock.html" style="color:var(--accent)">分布式锁</a> 和 <a href="/ddia.html" style="color:var(--accent)">DDIA 第9章</a>。</p>
+</section>
+
+<!-- ═══════ 3. 一致性谱系 ═══════ -->
+<section id="consistency-spectrum" class="section">
+  <h2>🌈 一致性谱系：不是非黑即白</h2>
+  <div class="feynman">
+    <p><span class="analogy">🎚️ 类比：</span>一致性像音响的音量旋钮——不是"静音"和"最大声"两个档，而是一个连续调节。你可以根据场景把旋钮拧到你需要的精确位置。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 160" style="max-width:800px; width:100%">
+      <!-- Spectrum bar -->
+      <defs>
+        <linearGradient id="specGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#3fb950"/>
+          <stop offset="40%" stop-color="#d29922"/>
+          <stop offset="80%" stop-color="#f87173"/>
+          <stop offset="100%" stop-color="#8b949e"/>
+        </linearGradient>
+      </defs>
+      <rect x="30" y="55" width="740" height="14" rx="7" fill="url(#specGrad)" opacity="0.3"/>
+      <rect x="30" y="55" width="740" height="14" rx="7" fill="none" stroke="url(#specGrad)" stroke-width="1"/>
+
+      <!-- Labels -->
+      <text x="30" y="40" text-anchor="middle" fill="#4ade80" font-size="13" font-weight="700">强一致</text>
+      <text x="215" y="40" text-anchor="middle" fill="#fcd34d" font-size="13" font-weight="700">顺序一致</text>
+      <text x="400" y="40" text-anchor="middle" fill="#fca5a5" font-size="13" font-weight="700">因果一致</text>
+      <text x="585" y="40" text-anchor="middle" fill="#fca5a5" font-size="12">读己之写</text>
+      <text x="770" y="40" text-anchor="middle" fill="#8b949e" font-size="13" font-weight="700">最终一致</text>
+
+      <!-- Methods below bar -->
+      <text x="30" y="100" text-anchor="middle" fill="#94a3b8" font-size="9">Linearizability</text>
+      <text x="30" y="118" text-anchor="middle" fill="#64748b" font-size="8">→ 2PC / Paxos / Raft</text>
+      <text x="400" y="100" text-anchor="middle" fill="#94a3b8" font-size="9">Causal Consistency</text>
+      <text x="400" y="118" text-anchor="middle" fill="#64748b" font-size="8">→ Version Vector</text>
+      <text x="770" y="100" text-anchor="middle" fill="#94a3b8" font-size="9">Eventual Consistency</text>
+      <text x="770" y="118" text-anchor="middle" fill="#64748b" font-size="8">→ Async Replication / Gossip</text>
+
+      <!-- Cost arrow -->
+      <line x1="30" y1="140" x2="770" y2="140" stroke="#334155" stroke-width="1" marker-end="url(#arrCost)"/>
+      <text x="400" y="155" text-anchor="middle" fill="#64748b" font-size="9">← 性能越好 · 实现越简单 · 一致性越弱 →</text>
+    </svg>
+    <div class="diagram-caption">一致性谱系：从强一致到最终一致，每一档都有对应的工程方案</div>
+  </div>
+</section>
+
+<!-- ═══════ 4. 2PC / 3PC ═══════ -->
+<section id="2pc" class="section">
+  <h2>🔐 两阶段提交 (2PC) 与三阶段提交 (3PC)</h2>
+  <div class="feynman">
+    <p><span class="analogy">💒 类比：</span>2PC = 婚礼上的"你愿意吗？"——牧师先问双方（Prepare 阶段），双方都说愿意（Vote Yes），牧师宣布"现在你们是夫妻了"（Commit）。有一个人说"不"，婚礼取消。</p>
+  </div>
+
+  <h4>2PC 的两个阶段</h4>
+  <div class="diagram">
+    <svg viewBox="0 0 800 300" style="max-width:800px; width:100%">
+      <defs>
+        <marker id="arr2pc" markerWidth="7" markerHeight="5" refX="3.5" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#64748b"/></marker>
+      </defs>
+      <!-- Coordinator -->
+      <rect x="300" y="10" width="200" height="36" rx="8" fill="rgba(88,166,255,0.12)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="400" y="33" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="700">协调者 (Coordinator)</text>
+
+      <!-- Phase 1 -->
+      <rect x="30" y="68" width="740" height="86" rx="8" fill="rgba(63,185,80,0.04)" stroke="#3fb950" stroke-width="1"/>
+      <text x="50" y="90" fill="#4ade80" font-size="12" font-weight="700">Phase 1: Prepare（投票）</text>
+
+      <line x1="350" y1="46" x2="130" y2="78" stroke="#64748b" stroke-width="1" marker-end="url(#arr2pc)"/>
+      <text x="240" y="62" text-anchor="middle" fill="#64748b" font-size="8">① 发送 Prepare</text>
+      <rect x="50" y="85" width="140" height="24" rx="4" fill="rgba(30,41,59,0.4)"/>
+      <text x="120" y="101" text-anchor="middle" fill="#94a3b8" font-size="9">参与者 A：写入 undo/redo</text>
+      <text x="120" y="120" text-anchor="middle" fill="#64748b" font-size="8">→ Vote YES</text>
+
+      <line x1="350" y1="46" x2="400" y2="78" stroke="#64748b" stroke-width="1" marker-end="url(#arr2pc)"/>
+      <rect x="320" y="85" width="140" height="24" rx="4" fill="rgba(30,41,59,0.4)"/>
+      <text x="390" y="101" text-anchor="middle" fill="#94a3b8" font-size="9">参与者 B：写入 undo/redo</text>
+      <text x="390" y="120" text-anchor="middle" fill="#64748b" font-size="8">→ Vote YES</text>
+
+      <line x1="450" y1="46" x2="670" y2="78" stroke="#64748b" stroke-width="1" marker-end="url(#arr2pc)"/>
+      <rect x="590" y="85" width="140" height="24" rx="4" fill="rgba(30,41,59,0.4)"/>
+      <text x="660" y="101" text-anchor="middle" fill="#94a3b8" font-size="9">参与者 C：写入 undo/redo</text>
+      <text x="660" y="120" text-anchor="middle" fill="#64748b" font-size="8">→ Vote YES</text>
+
+      <!-- Phase 2 -->
+      <rect x="30" y="170" width="740" height="86" rx="8" fill="rgba(88,166,255,0.04)" stroke="#58a6ff" stroke-width="1"/>
+      <text x="50" y="192" fill="#58a6ff" font-size="12" font-weight="700">Phase 2: Commit（提交）</text>
+
+      <line x1="400" y1="160" x2="130" y2="180" stroke="#58a6ff" stroke-width="1" marker-end="url(#arr2pc)"/>
+      <text x="265" y="168" text-anchor="middle" fill="#58a6ff" font-size="8">② 发送 Commit →</text>
+      <rect x="50" y="188" width="140" height="40" rx="4" fill="rgba(63,185,80,0.08)"/>
+      <text x="120" y="206" text-anchor="middle" fill="#4ade80" font-size="9">A: 提交 ✓</text>
+      <text x="120" y="222" text-anchor="middle" fill="#64748b" font-size="8">→ ACK</text>
+
+      <rect x="320" y="188" width="140" height="40" rx="4" fill="rgba(63,185,80,0.08)"/>
+      <text x="390" y="206" text-anchor="middle" fill="#4ade80" font-size="9">B: 提交 ✓</text>
+      <text x="390" y="222" text-anchor="middle" fill="#64748b" font-size="8">→ ACK</text>
+
+      <rect x="590" y="188" width="140" height="40" rx="4" fill="rgba(63,185,80,0.08)"/>
+      <text x="660" y="206" text-anchor="middle" fill="#4ade80" font-size="9">C: 提交 ✓</text>
+      <text x="660" y="222" text-anchor="middle" fill="#64748b" font-size="8">→ ACK</text>
+
+      <!-- Problem callout -->
+      <rect x="30" y="272" width="740" height="22" rx="4" fill="rgba(248,113,73,0.06)"/>
+      <text x="400" y="287" text-anchor="middle" fill="#fca5a5" font-size="9">⚠️ 致命缺陷：Prepare 后协调者宕机 → 参与者阻塞等待，资源锁死</text>
+    </svg>
+    <div class="diagram-caption">2PC 流程：一次提交 = 两次网络往返 + 协调者单点阻塞风险</div>
+  </div>
+
+  <h4>2PC vs 3PC</h4>
+  <table>
+    <tr><th style="width:18%">特性</th><th>2PC</th><th>3PC</th></tr>
+    <tr><td><strong>阶段数</strong></td><td>Prepare → Commit</td><td>CanCommit → PreCommit → DoCommit</td></tr>
+    <tr><td><strong>优点</strong></td><td>逻辑简单，实现广泛</td><td>引入超时机制，减少阻塞</td></tr>
+    <tr><td><strong>致命缺陷</strong></td><td>协调者单点故障 → 参与者<strong>无限阻塞</strong></td><td>多一次网络往返 + 网络分区场景仍有问题</td></tr>
+    <tr><td><strong>实际使用</strong></td><td>XA 事务、部分 MQ 事务消息</td><td>理论方案，<strong>几乎无人实际部署</strong></td></tr>
+    <tr><td><strong>能否容忍网络分区</strong></td><td><span class="badge-red">不能</span></td><td><span class="badge-red">不能</span></td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 5. XA ═══════ -->
+<section id="xa" class="section">
+  <h2>📦 XA 分布式事务：2PC 的工业实现</h2>
+  <div class="feynman">
+    <p><span class="analogy">📋 类比：</span>XA = 银行的跨行转账协议。你从工行转 1000 到建行，需要工行扣款 + 建行入账同时成功或同时失败。XA 定义了银行间通信的标准流程（2PC 的标准化实现），由交易管理器（TM）协调各银行的资源管理器（RM）。</p>
+  </div>
+
+  <table>
+    <tr><th>角色</th><th>干什么</th><th>例子</th></tr>
+    <tr><td><strong>TM</strong> 事务管理器</td><td>协调整个分布式事务</td><td>应用服务器的事务管理器、Seata TC</td></tr>
+    <tr><td><strong>RM</strong> 资源管理器</td><td>管理具体资源（通常是 DB）</td><td>MySQL InnoDB、PostgreSQL、MQ Broker</td></tr>
+  </table>
+
+  <h4>XA 的核心问题——为什么互联网公司几乎不用？</h4>
+  <div class="compare">
+    <div>
+      <h4>✅ XA 能做到的</h4>
+      <ul style="font-size:13px">
+        <li>跨数据库的原子提交</li>
+        <li>ACID 的严格保证</li>
+        <li>标准接口（JDBC、JTA）</li>
+      </ul>
+    </div>
+    <div>
+      <h4>❌ XA 做不到的</h4>
+      <ul style="font-size:13px">
+        <li><strong>性能极差：</strong>Prepare 阶段锁住资源，事务期间所有操作阻塞</li>
+        <li><strong>单点故障：</strong>TM 宕机 → 所有参与者锁死直到 TM 恢复</li>
+        <li><strong>不支持水平扩展：</strong>数据量大时锁范围线性增长</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>🎯 XA 的现实定位</h4>
+    <p><strong>传统行业（银行核心系统、ERP）还在用 XA</strong>——因为他们需要绝对正确，数据量可控，可以接受停机维护。<strong>互联网公司几乎不用 XA</strong>——用 Saga、TCC、本地消息表等最终一致性方案替代。唯一例外是部分数据库中间件（如 ShardingSphere）在 XA 模式下处理简单的跨库事务。</p>
+  </div>
+</section>
+
+<!-- ═══════ 6. 共识算法 ═══════ -->
+<section id="consensus" class="section">
+  <h2>🏛️ 共识算法：Paxos / Raft（链接）</h2>
+  <p>共识算法解决的是<strong>"多个节点如何就一个值达成一致"</strong>——这是实现强一致性的基础。详情见：</p>
+  <p>📖 <a href="/consensus.html" style="color:var(--accent); font-size:15px">→ 共识算法：Paxos · Raft · ZAB · Multi-Paxos 完整讲解</a></p>
+  <p>共识算法用于：分布式锁（etcd/ZooKeeper）、配置中心、Leader 选举、分布式数据库的元数据管理。它和本文其他方案的关系是：共识提供<strong>强一致性基础设施</strong>，Saga/TCC/Outbox 在其上构建<strong>业务级一致性</strong>。</p>
+</section>
+
+<!-- ═══════ 7. 幂等性 ═══════ -->
+<section id="idempotent" class="section">
+  <h2>🔄 幂等性设计：最终一致性的基石</h2>
+  <div class="feynman">
+    <p><span class="analogy">🔘 类比：</span>电梯按钮——按 1 次和按 100 次，结果都是去 5 楼。这就是幂等。不是所有操作天然幂等：扣款不是幂等（扣两次就双倍了），但"设置余额=100"是幂等（设多少次都是 100）。</p>
+  </div>
+
+  <p><strong>为什么幂等性是一致性的前提？</strong>分布式系统中，网络超时意味着"不确定是否成功"——你必须重试。如果操作不幂等，重试 = 重复执行 = 数据不一致。</p>
+
+  <h4>五种实现幂等的方式</h4>
+  <table>
+    <tr><th style="width:16%">方式</th><th>原理</th><th>适用场景</th><th>Go 示例</th></tr>
+    <tr>
+      <td><strong>唯一索引</strong></td>
+      <td>DB 唯一约束天然去重</td>
+      <td>创建类操作（注册、下单）</td>
+      <td><code>INSERT ... ON DUPLICATE KEY UPDATE</code></td>
+    </tr>
+    <tr>
+      <td><strong>Token / 幂等键</strong></td>
+      <td>客户端生成唯一 ID，服务端处理前先查是否已处理</td>
+      <td>支付、转账、任何写操作</td>
+      <td><code>INSERT INTO idempotent_keys(key,result)</code></td>
+    </tr>
+    <tr>
+      <td><strong>版本号（乐观锁）</strong></td>
+      <td>数据带 version 字段，更新时 CAS</td>
+      <td>更新操作</td>
+      <td><code>UPDATE SET x=?, version=version+1 WHERE id=? AND version=?</code></td>
+    </tr>
+    <tr>
+      <td><strong>状态机</strong></td>
+      <td>操作只能从特定状态迁移，重复执行不改变已迁移的状态</td>
+      <td>订单、工单等状态流转</td>
+      <td><code>UPDATE SET status='paid' WHERE id=? AND status='pending'</code></td>
+    </tr>
+    <tr>
+      <td><strong>去重表 / Redis</strong></td>
+      <td>请求 ID 写入 Redis（SETNX），已存在则跳过</td>
+      <td>MQ 消费、API 回调</td>
+      <td><code>redis.SetNX(msgID, "1", ttl)</code></td>
+    </tr>
+  </table>
+
+  <div class="info-card">
+    <h4>⚠️ 幂等键的常见坑</h4>
+    <p>① 幂等键本身要持久化（别存在内存里丢了）。② 幂等键要设置合理的过期时间（否则无限增长）。③ "先查幂等键再执行业务"不是原子操作——需要<strong>唯一索引兜底</strong>。④ 幂等键生成要包含业务语义（如 orderID+operation），不能是随机 UUID。</p>
+  </div>
+</section>
+
+<!-- ═══════ 8. Outbox + CDC ═══════ -->
+<section id="outbox" class="section">
+  <h2>📬 Outbox 模式 + CDC：可靠消息的终极方案</h2>
+  <div class="feynman">
+    <p><span class="analogy">📮 类比：</span>Outbox = 邮局的发件箱。你把信投进发件箱（写入 outbox 表）就算寄出了，不用关心邮递员什么时候来取（异步发送）。CDC = 邮局的自动分拣机——它监听发件箱的变化，自动把每封信送到正确的管道（MQ Topic）。</p>
+  </div>
+
+  <p><strong>核心问题：</strong>你要在 MySQL 里创建订单 + 发一条 Kafka 消息通知下游。如果"写 MySQL"和"发 MQ"分开做，任何一个失败都会导致不一致。Outbox 把这两个操作变成一个<strong>原子操作</strong>。</p>
+
+  <h4>Outbox 模式流程图</h4>
+  <div class="diagram">
+    <svg viewBox="0 0 800 220" style="max-width:800px; width:100%">
+      <defs>
+        <marker id="arrBox" markerWidth="7" markerHeight="5" refX="3.5" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#64748b"/></marker>
+      </defs>
+      <!-- Step 1 -->
+      <rect x="20" y="25" width="170" height="65" rx="8" fill="rgba(88,166,255,0.08)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="105" y="50" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">① 业务写入</text>
+      <text x="105" y="68" text-anchor="middle" fill="#94a3b8" font-size="9">INSERT INTO orders ...</text>
+      <text x="105" y="82" text-anchor="middle" fill="#94a3b8" font-size="9">INSERT INTO outbox ...</text>
+      <text x="105" y="88" text-anchor="middle" fill="#4ade80" font-size="8">（同一事务！）</text>
+
+      <!-- Arrow -->
+      <line x1="190" y1="58" x2="240" y2="58" stroke="#64748b" stroke-width="1" marker-end="url(#arrBox)"/>
+
+      <!-- Step 2 -->
+      <rect x="245" y="15" width="130" height="85" rx="8" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="310" y="40" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="600">② CDC 捕获</text>
+      <text x="310" y="58" text-anchor="middle" fill="#94a3b8" font-size="9">Debezium / Canal</text>
+      <text x="310" y="74" text-anchor="middle" fill="#94a3b8" font-size="9">监听 binlog →</text>
+      <text x="310" y="90" text-anchor="middle" fill="#94a3b8" font-size="9">解析 outbox 变更</text>
+
+      <!-- Arrow -->
+      <line x1="375" y1="58" x2="425" y2="58" stroke="#64748b" stroke-width="1" marker-end="url(#arrBox)"/>
+
+      <!-- Step 3 -->
+      <rect x="430" y="25" width="140" height="65" rx="8" fill="rgba(251,191,36,0.06)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="500" y="50" text-anchor="middle" fill="#fcd34d" font-size="11" font-weight="600">③ 发送 MQ</text>
+      <text x="500" y="68" text-anchor="middle" fill="#94a3b8" font-size="9">按 outbox 记录</text>
+      <text x="500" y="82" text-anchor="middle" fill="#94a3b8" font-size="9">投递到 Kafka/RocketMQ</text>
+
+      <!-- Arrow -->
+      <line x1="570" y1="58" x2="620" y2="58" stroke="#64748b" stroke-width="1" marker-end="url(#arrBox)"/>
+
+      <!-- Step 4 -->
+      <rect x="625" y="25" width="155" height="65" rx="8" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1"/>
+      <text x="702" y="50" text-anchor="middle" fill="#4ade80" font-size="11" font-weight="600">④ 下游消费</text>
+      <text x="702" y="68" text-anchor="middle" fill="#94a3b8" font-size="9">库存/通知/对账</text>
+      <text x="702" y="82" text-anchor="middle" fill="#94a3b8" font-size="9">消费消息 + 幂等</text>
+
+      <!-- Key insight -->
+      <rect x="20" y="130" width="760" height="75" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="40" y="155" fill="#e2e8f0" font-size="11" font-weight="600">🔑 关键：订单表和 outbox 表在同一个 DB 的同一个事务中写入</text>
+      <text x="40" y="178" fill="#94a3b8" font-size="9">→ 要么都成功（订单 + 消息一起持久化），要么都失败（事务回滚）。不存在"订单写了但消息没发"的不一致状态。</text>
+      <text x="40" y="196" fill="#94a3b8" font-size="9">→ CDC 异步发送，即使 MQ 挂了也不丢数据（outbox 里有完整的待发送记录）。下游消费需要幂等——消息至少投递一次。</text>
+    </svg>
+    <div class="diagram-caption">Outbox + CDC：让"写DB"和"发MQ"变成一个原子操作</div>
+  </div>
+
+  <h4>Outbox 模式的三种实现方式</h4>
+  <table>
+    <tr><th>方式</th><th>原理</th><th>优点</th><th>缺点</th></tr>
+    <tr>
+      <td><strong>轮询 Outbox</strong></td>
+      <td>定时任务扫 outbox 表，发送后标记为已发送</td>
+      <td>简单，不依赖外部组件</td>
+      <td>延迟大（轮询间隔），扫全表压力</td>
+    </tr>
+    <tr>
+      <td><strong>事务消息</strong></td>
+      <td>RocketMQ 等支持事务消息：先发半消息（prepare），业务成功后再提交（commit/rollback）</td>
+      <td>延迟低，不用单独部署 CDC</td>
+      <td>依赖 MQ 的事务消息特性（Kafka 不支持）</td>
+    </tr>
+    <tr>
+      <td><strong>CDC（推荐）</strong></td>
+      <td>Debezium / Canal 监听 binlog，自动捕获 outbox 表的 INSERT 并发送</td>
+      <td>零侵入、实时、可靠</td>
+      <td>需要部署 CDC 组件、运维复杂度增加</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ═══════ 9. Saga ═══════ -->
+<section id="saga" class="section">
+  <h2>📖 Saga 模式：长事务的救星</h2>
+  <div class="feynman">
+    <p><span class="analogy">✈️ 类比：</span>旅行社帮你订"机票+酒店+租车"套餐。订机票成功→订酒店成功→租车失败！Saga 不是回滚数据库——而是自动<strong>取消</strong>酒店（调用取消接口）和<strong>退票</strong>（调用退票接口）。这就是"补偿事务"：正向操作有对应的反向操作。</p>
+  </div>
+
+  <h4>Saga 的两种实现方式</h4>
+  <div class="compare">
+    <div>
+      <h4>🎻 编排式 (Choreography)</h4>
+      <p>每个服务做完自己的事后，发一条事件到 MQ，下一个服务监听该事件自动触发。</p>
+      <p style="color:var(--green);font-size:13px">✅ 松耦合，无中心节点</p>
+      <p style="color:var(--red);font-size:13px">❌ 流程散落在各服务中，难以追踪全局状态</p>
+      <p style="color:var(--muted);font-size:12px">适合：简单流程（3-5 步），服务间关系清晰</p>
+    </div>
+    <div>
+      <h4>🎼 编排式 (Orchestration)</h4>
+      <p>引入一个 Saga 协调器（Orchestrator），由它按顺序调用各服务，并处理补偿。</p>
+      <p style="color:var(--green);font-size:13px">✅ 流程集中管理，易追踪和重试</p>
+      <p style="color:var(--red);font-size:13px">❌ 协调器自身可能成为瓶颈或单点</p>
+      <p style="color:var(--muted);font-size:12px">适合：复杂流程（5+ 步），需要全局状态管理</p>
+    </div>
+  </div>
+
+  <h4>Saga 补偿示例</h4>
+  <pre><code><span class="cm">// 创建订单 Saga：正向操作 + 补偿操作</span>
+Step1:  订单服务.createOrder()         → 补偿: 订单服务.cancelOrder()
+Step2:  库存服务.reserveStock()        → 补偿: 库存服务.releaseStock()
+Step3:  支付服务.processPayment()      → 补偿: 支付服务.refund()
+Step4:  物流服务.createShipment()      → 补偿: 物流服务.cancelShipment()
+
+<span class="cm">// 如果 Step3 失败，按逆序执行补偿：refund() → releaseStock() → cancelOrder()</span></code></pre>
+
+  <div class="info-card">
+    <h4>⚠️ Saga 的三大陷阱</h4>
+    <p>① <strong>补偿也可能失败：</strong>取消酒店时酒店系统挂了？需要重试机制 + 人工介入。</p>
+    <p>② <strong>隔离性缺失：</strong>Saga 不是隔离的——Step1 完成后、Step3 失败前，Step1 的效果对外可见（订了机票，但最终可能被取消）。这在某些场景不可接受。</p>
+    <p>③ <strong>补偿幂等：</strong>补偿操作可能被重复调用，必须保证幂等。</p>
+  </div>
+</section>
+
+<!-- ═══════ 10. TCC ═══════ -->
+<section id="tcc" class="section">
+  <h2>✂️ TCC 模式：每步都是一次"尝试-确认-取消"</h2>
+  <div class="feynman">
+    <p><span class="analogy">🛒 类比：</span>电商下单的"预占库存"。你下单时不直接扣库存（那会导致超卖），而是"锁定"一件库存。支付成功后才真正扣掉，支付超时或取消则释放锁。这就是 TCC 的思想——<strong>先用 Try 占位，再决定 Confirm 还是 Cancel。</strong></p>
+  </div>
+
+  <h4>TCC 的三阶段</h4>
+  <table>
+    <tr><th style="width:14%">阶段</th><th>干什么</th><th>关键约束</th><th>库存例子</th></tr>
+    <tr>
+      <td><strong>Try</strong></td><td>预留资源、检查可行性</td><td>必须是"软状态"，不能直接生效</td>
+      <td><code>UPDATE stock SET frozen=frozen+1 WHERE available>=1</code></td>
+    </tr>
+    <tr>
+      <td><strong>Confirm</strong></td><td>真正执行，把预留转为实际</td><td>必须幂等，不能依赖 Try 的上下文</td>
+      <td><code>UPDATE stock SET available=available-1, frozen=frozen-1</code></td>
+    </tr>
+    <tr>
+      <td><strong>Cancel</strong></td><td>释放预留资源，回滚 Try</td><td>必须幂等，不能假设 Confirm 没执行过</td>
+      <td><code>UPDATE stock SET frozen=frozen-1 WHERE frozen>0</code></td>
+    </tr>
+  </table>
+
+  <h4>TCC vs Saga vs 2PC</h4>
+  <table>
+    <tr><th>特性</th><th>TCC</th><th>Saga</th><th>2PC</th></tr>
+    <tr><td><strong>资源锁定</strong></td><td>Try 阶段锁定</td><td>不锁定，直接执行</td><td>Prepare 阶段锁定</td></tr>
+    <tr><td><strong>隔离性</strong></td><td>较好（Try 锁定资源）</td><td>差（中间状态对外可见）</td><td>好（Prepare 锁定到 Commit）</td></tr>
+    <tr><td><strong>性能</strong></td><td>中（Try 短暂锁定）</td><td><span class="badge-green">高</span>（无锁）</td><td><span class="badge-red">低</span>（全程锁）</td></tr>
+    <tr><td><strong>实现复杂度</strong></td><td>高（3 个接口 + 幂等）</td><td>中（2 个接口 + 幂等）</td><td>低（标准接口）</td></tr>
+    <tr><td><strong>适用场景</strong></td><td>资金/库存等需要"预留"的场景</td><td>长流程、跨服务协调</td><td>强一致性要求、数据量小</td></tr>
+  </table>
+
+  <p>💡 <strong>TCC 的核心价值不是"比 Saga 更一致"，而是"用 Try 的短暂锁换来更高的业务正确性"</strong>——关键是 Try 的锁定时间要短（秒级），否则退化成 2PC。</p>
+</section>
+
+<!-- ═══════ 11. 决策树 ═══════ -->
+<section id="decision-tree" class="section">
+  <h2>🧭 方案选型决策树：开始之前先问自己 4 个问题</h2>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 440" style="max-width:800px; width:100%">
+      <!-- Q1 -->
+      <rect x="290" y="10" width="220" height="50" rx="10" fill="rgba(88,166,255,0.12)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="400" y="32" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">① 需要强一致性吗？</text>
+      <text x="400" y="50" text-anchor="middle" fill="#94a3b8" font-size="9">（银行转账 / 库存扣减）</text>
+
+      <!-- Yes branch -->
+      <line x1="310" y1="60" x2="100" y2="100" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="200" y="78" text-anchor="middle" fill="#3fb950" font-size="10" font-weight="600">是</text>
+      <rect x="25" y="100" width="170" height="55" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="110" y="122" text-anchor="middle" fill="#4ade80" font-size="11" font-weight="600">跨资源吗？</text>
+      <!-- TCC -->
+      <line x1="50" y1="155" x2="50" y2="190" stroke="#64748b" stroke-width="0.8"/>
+      <rect x="10" y="190" width="100" height="55" rx="6" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="60" y="212" text-anchor="middle" fill="#c4b5fd" font-size="10" font-weight="600">是</text>
+      <text x="60" y="230" text-anchor="middle" fill="#94a3b8" font-size="9">→ TCC</text>
+      <!-- 2PC -->
+      <line x1="160" y1="155" x2="160" y2="190" stroke="#64748b" stroke-width="0.8"/>
+      <rect x="110" y="190" width="100" height="55" rx="6" fill="rgba(248,113,73,0.06)" stroke="#f87173" stroke-width="1"/>
+      <text x="160" y="212" text-anchor="middle" fill="#fca5a5" font-size="10" font-weight="600">否</text>
+      <text x="160" y="230" text-anchor="middle" fill="#94a3b8" font-size="9">→ 2PC / XA</text>
+
+      <!-- No branch from Q1 -->
+      <line x1="490" y1="60" x2="700" y2="100" stroke="#f87173" stroke-width="1.5"/>
+      <text x="600" y="78" text-anchor="middle" fill="#f87173" font-size="10" font-weight="600">否</text>
+
+      <!-- Q2 -->
+      <rect x="580" y="100" width="210" height="50" rx="10" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="685" y="122" text-anchor="middle" fill="#fcd34d" font-size="11" font-weight="600">② 涉及多少服务？</text>
+      <text x="685" y="140" text-anchor="middle" fill="#94a3b8" font-size="9">跨服务？还是单服务内？</text>
+
+      <!-- Single service -->
+      <line x1="610" y1="150" x2="610" y2="185" stroke="#64748b" stroke-width="0.8"/>
+      <rect x="560" y="185" width="100" height="45" rx="6" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1"/>
+      <text x="610" y="207" text-anchor="middle" fill="#4ade80" font-size="10" font-weight="600">单服务</text>
+      <text x="610" y="222" text-anchor="middle" fill="#94a3b8" font-size="9">→ Outbox</text>
+
+      <!-- Multi service -->
+      <line x1="760" y1="150" x2="760" y2="185" stroke="#64748b" stroke-width="0.8"/>
+      <rect x="710" y="185" width="100" height="45" rx="6" fill="rgba(210,153,34,0.06)" stroke="#d29922" stroke-width="1"/>
+      <text x="760" y="207" text-anchor="middle" fill="#fcd34d" font-size="10" font-weight="600">多服务</text>
+      <text x="760" y="222" text-anchor="middle" fill="#94a3b8" font-size="9">→ Q3</text>
+
+      <!-- Q3 -->
+      <line x1="760" y1="230" x2="760" y2="270" stroke="#64748b" stroke-width="0.8"/>
+      <rect x="580" y="270" width="210" height="50" rx="10" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="685" y="292" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="600">③ 流程多长？</text>
+      <text x="685" y="310" text-anchor="middle" fill="#94a3b8" font-size="9">短流程（3-5步）还是长流程？</text>
+
+      <!-- Short -->
+      <line x1="610" y1="320" x2="610" y2="355" stroke="#64748b" stroke-width="0.8"/>
+      <rect x="560" y="355" width="100" height="45" rx="6" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1"/>
+      <text x="610" y="377" text-anchor="middle" fill="#4ade80" font-size="10" font-weight="600">短流程</text>
+      <text x="610" y="392" text-anchor="middle" fill="#94a3b8" font-size="9">→ Choreography Saga</text>
+
+      <!-- Long -->
+      <line x1="760" y1="320" x2="760" y2="355" stroke="#64748b" stroke-width="0.8"/>
+      <rect x="710" y="355" width="100" height="45" rx="6" fill="rgba(210,153,34,0.06)" stroke="#d29922" stroke-width="1"/>
+      <text x="760" y="377" text-anchor="middle" fill="#fcd34d" font-size="10" font-weight="600">长流程</text>
+      <text x="760" y="392" text-anchor="middle" fill="#94a3b8" font-size="9">→ Orchestration Saga</text>
+    </svg>
+    <div class="diagram-caption">分布式一致性方案选型决策树：4 个问题找到最优解</div>
+  </div>
+
+  <div class="info-card">
+    <h4>🎯 速查矩阵</h4>
+    <table>
+      <tr><th>场景</th><th>推荐方案</th><th>关键词</th></tr>
+      <tr><td>同 DB 内的跨表事务</td><td>本地事务</td><td>别想太多</td></tr>
+      <tr><td>必须绝对正确、可以慢</td><td>2PC / XA</td><td>银行、ERP</td></tr>
+      <tr><td>需要预留资源（库存/资金）</td><td>TCC</td><td>Try 锁定，Confirm 扣款</td></tr>
+      <tr><td>长事务、多服务协调</td><td>Saga + 补偿</td><td>订票、下单流程</td></tr>
+      <tr><td>需要发可靠消息</td><td>Outbox + CDC</td><td>DB+MQ 原子性</td></tr>
+      <tr><td>简单状态同步</td><td>幂等 + 重试</td><td>80% 场景这样就够了</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════ 12. 高频考题 ═══════ -->
+<section id="qa-section" class="section">
+  <h2>❓ 高频考题</h2>
+
+  <div class="qa"><div class="q">Q1: 转账场景（A 减 100，B 加 100），在分布式环境下如何保证一致性？</div><div class="a">
+    <strong>分层回答：</strong><br>
+    ① 如果 A 和 B 在同一个 DB → 本地事务 ACID 保证。<br>
+    ② 如果 A 在 MySQL，B 在 Redis → 需要最终一致性方案。<br>
+    ③ <strong>推荐方案：Outbox + Saga。</strong>A 服务：扣款 + 写入 outbox 表（同一事务）。CDC 捕获 outbox → 发送"转账成功"事件 → B 服务消费事件 → 入账（幂等处理）。如果 B 入账失败 → 补偿：A 退款（调用退款接口 + 写入新的 outbox 事件）。<br>
+    ④ <strong>不可用 2PC</strong>：Redis 不支持 XA 协议。
+  </div></div>
+
+  <div class="qa"><div class="q">Q2: Outbox 模式中，CDC 组件挂了怎么办？消息会丢吗？</div><div class="a">
+    <strong>不会丢。</strong>CDC（如 Debezium）的核心设计是<strong>从 binlog 的某个 offset 开始读取</strong>。即使 CDC 挂了重启，它只需要从上次记录的 binlog offset 继续读——<strong>binlog 本身就是持久化的 WAL</strong>。唯一的问题是<strong>延迟</strong>：CDC 挂了 → 消息暂时不投递 → 下游看不到新数据，但恢复后所有积压的消息都会投递。真正的风险是 outbox 表的数据无限增长——需要定期归档已投递的记录。
+  </div></div>
+
+  <div class="qa"><div class="q">Q3: TCC 的 Try 阶段锁定库存太久怎么办？</div><div class="a">
+    这是 TCC 的核心难点。解法：<strong>① 设置 Try 超时</strong>——超时未 Confirm 则自动 Cancel，释放预留。② <strong>Try 不做真正的锁定</strong>——只是插入一条"预占记录"（不实际修改 available 字段），Confirm 时才校验并扣减。③ <strong>分层设计</strong>——Try 只做基础检查（库存 > 0），Confirm 时再做精确扣减 + 乐观锁 CAS。④ 如果业务允许，<strong>不用 TCC 用 Saga</strong>——下单时不锁库存，发货时才校验+扣减，超卖的发货失败退款。
+  </div></div>
+
+  <div class="qa"><div class="q">Q4: 分布式事务和本地事务在性能上差多少？</div><div class="a">
+    <strong>数量级差异：</strong>本地事务 ~0.1ms。2PC 涉及 2 次网络往返 + 日志刷盘 → <strong>10-100ms</strong>，差 100-1000 倍。Saga/Outbox 的延迟取决于 MQ 延迟 + CDC 延迟 → 通常 <strong>10-500ms</strong>。这也是互联网公司不用 XA 的根本原因——不是做不出来，是<strong>做了就活不下去</strong>。
+  </div></div>
+</section>
+
+<!-- ═══════ 13. 苏格拉底提问 ═══════ -->
+<section id="socratic" class="section">
+  <h2>💬 苏格拉底式提问 —— 检验真理解</h2>
+
+  <details class="socratic">
+    <summary>既然最终一致性已经能覆盖 90% 的场景，为什么还要学 2PC 和强一致性？<span class="socratic-num">Q1</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">因为剩下的 10% 是"不能错"的场景。</span><br><br>
+      金融行业的转账、证券交易、医疗系统的处方——这些场景的<strong>错误成本远高于性能成本</strong>。一次错误的转账可能引发法律诉讼，一次错误的处方可能致命。<br><br>
+      但关键是<strong>区分"强一致性的范围"</strong>：不是整个系统都需要 2PC，只是<strong>核心交易链路</strong>需要。你可以在核心转账用 2PC（几十 QPS），非核心的查询、报表、通知全用最终一致性。<br><br>
+      学 2PC 的另一个原因是：理解<strong>为什么 Internet 公司不用它</strong>。只有理解了锁阻塞 + 单点故障 + 网络分区的致命组合，你才能真正理解 TCC 的 Try 阶段为什么必须"秒级超时"。
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>幂等设计最大的坑不是技术上的，而是思维上的——你觉得是什么？<span class="socratic-num">Q2</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">把"幂等"当成"去重"。</span><br><br>
+      很多人理解的幂等：收到重复请求 → 返回上次的结果。但真正的问题是：<strong>怎么判断两次请求是"同一个"？</strong><br>
+      简单场景可以用请求 ID 去重，但复杂场景下：<br>
+      ① 用户连续点了两次"下单"——两次是不同的操作（要下两个单），还是同一个操作的重复提交？<br>
+      ② 同样的扣款请求，第一次余额 1000 扣 500 成功，第二次余额 300 扣 500——应该返回"上次的结果（成功）"还是"余额不足"？<br><br>
+      幂等的本质不是技术去重，而是 <strong>业务语义的清晰定义</strong>。技术实现只是最后一步。
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>Saga 的补偿逻辑失败后，系统会进入什么状态？这是 Saga 的阿喀琉斯之踵吗？<span class="socratic-num">Q3</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">会进入"部分完成"的中间状态——这就是 Saga 的致命弱点。</span><br><br>
+      机票订了、酒店订了、租车失败 → 退酒店也失败（酒店系统挂了）→ 用户看到"机票已订 + 酒店已订"但实际套餐没下成功。<br><br>
+      应对策略是分层防御：<br>
+      ① <strong>自动重试</strong>——补偿操作失败？指数退避重试（1s→2s→4s→8s→放弃）。<br>
+      ② <strong>异步补偿</strong>——重试耗尽后写入"待补偿任务"表，后台 Job 持续重试直到成功。因为补偿操作通常不依赖时效性（退票晚几分钟无所谓）。<br>
+      ③ <strong>人工介入</strong>——真正死都补偿不了的，进入工单系统，人工处理。<br>
+      ④ <strong>设计层面</strong>——把<strong>最容易失败的操作放在 Saga 最前面</strong>。如果租车最常失败，就先订租车，失败直接终止 Saga，避免后续的补偿地狱。
+    </div>
+  </details>
+</section>
+
+</main>
+</div>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

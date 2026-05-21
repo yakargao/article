@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>微服务架构实战 · 服务拆分/API网关/gRPC/Istio · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; transition: width 0.25s ease; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; transition: margin-left 0.25s ease; }
+
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; text-decoration: none; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) { .diagram svg { min-width: 420px; } }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+  .voice-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .voice-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+    .toggle-btn { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<!-- ═══════ 侧边栏 ═══════ -->
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">基础</div>
+  <a class="nav-item" href="#why">🔪 为什么微服务</a>
+  <a class="nav-item" href="#split">🧩 服务拆分</a>
+  <a class="nav-item" href="#gateway">🚪 API网关</a>
+  <a class="nav-item" href="#communication">📡 服务通信</a>
+  <a class="nav-item" href="#discovery">🔍 服务发现与配置</a>
+  <a class="nav-item" href="#istio">🌐 Istio服务网格</a>
+  <a class="nav-item" href="#pitfalls">⚠️ 痛点与对策</a>
+  <div class="nav-section">实战</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ═══════ 总览 ═══════ -->
+<section id="overview" class="section">
+  <h2>📋 微服务架构实战</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>微服务不是"把单体拆小"，而是<strong>按业务能力拆分独立服务</strong>，每个服务独自开发、部署、伸缩。</p>
+    <p>和单体架构的本质区别：单体就像一个<strong>大超市</strong>——所有东西塞在一起，改一样要重启全部。微服务就像<strong>美食城</strong>——每个摊位独立运营，一个摊位关门不影响其他。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="msArr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#58a6ff"/></marker>
+      </defs>
+      <!-- Monolith -->
+      <rect x="30" y="30" width="340" height="240" rx="12" fill="rgba(248,81,73,0.06)" stroke="#f85149" stroke-width="2"/>
+      <text x="200" y="58" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="15" font-weight="700">🗿 单体架构</text>
+      <rect x="55" y="75" width="290" height="32" rx="6" fill="rgba(248,81,73,0.10)" stroke="#f87171" stroke-width="1"/>
+      <text x="200" y="95" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="11">用户模块 · 订单模块 · 支付模块 · 商品模块</text>
+      <rect x="55" y="115" width="290" height="32" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1"/>
+      <text x="200" y="135" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="11">共享数据库 · 共享缓存 · 共享内存</text>
+      <rect x="55" y="155" width="290" height="32" rx="6" fill="rgba(248,81,73,0.06)" stroke="#f87171" stroke-width="1"/>
+      <text x="200" y="175" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="11">部署为一个 WAR/JAR 包</text>
+      <text x="200" y="215" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="10">⚠️ 改一行代码 → 全量部署</text>
+      <text x="200" y="235" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="10">⚠️ 模块间强耦合 · 无法独立扩展</text>
+      <text x="200" y="255" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="10">⚠️ 技术栈绑定 · 团队协作困难</text>
+
+      <!-- Arrow -->
+      <path d="M 380 150 Q 410 150 420 150" fill="none" stroke="#d29922" stroke-width="2.5" marker-end="url(#msArr)"/>
+      <text x="400" y="140" text-anchor="middle" fill="#d29922" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">拆分</text>
+
+      <!-- Microservices -->
+      <rect x="435" y="20" width="360" height="260" rx="12" fill="rgba(57,197,207,0.06)" stroke="#39c5cf" stroke-width="2"/>
+      <text x="615" y="48" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="15" font-weight="700">🏗️ 微服务架构</text>
+
+      <rect x="450" y="62" width="160" height="38" rx="6" fill="rgba(163,113,247,0.10)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="530" y="76" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">用户服务</text>
+      <text x="530" y="92" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">用户 DB（独立）</text>
+
+      <rect x="620" y="62" width="160" height="38" rx="6" fill="rgba(248,81,73,0.10)" stroke="#f87171" stroke-width="1"/>
+      <text x="700" y="76" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">订单服务</text>
+      <text x="700" y="92" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">订单 DB（独立）</text>
+
+      <rect x="450" y="108" width="160" height="38" rx="6" fill="rgba(57,197,207,0.10)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="530" y="122" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">商品服务</text>
+      <text x="530" y="138" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">商品 DB（独立）</text>
+
+      <rect x="620" y="108" width="160" height="38" rx="6" fill="rgba(63,185,80,0.10)" stroke="#4ade80" stroke-width="1"/>
+      <text x="700" y="122" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">支付服务</text>
+      <text x="700" y="138" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">支付 DB（独立）</text>
+
+      <rect x="450" y="154" width="160" height="38" rx="6" fill="rgba(251,191,36,0.10)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="530" y="168" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">库存服务</text>
+      <text x="530" y="184" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">库存 DB（独立）</text>
+
+      <rect x="620" y="154" width="160" height="38" rx="6" fill="rgba(210,153,34,0.10)" stroke="#d29922" stroke-width="1"/>
+      <text x="700" y="168" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">通知服务</text>
+      <text x="700" y="184" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">通知 DB（独立）</text>
+
+      <text x="615" y="222" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="10">✅ 独立开发 · 独立部署</text>
+      <text x="615" y="242" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="10">✅ 独立伸缩 · 技术异构</text>
+      <text x="615" y="262" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="10">✅ 故障隔离 · 局部可扩展</text>
+    </svg>
+    <div class="diagram-caption">单体 vs 微服务：从大超市到美食城——每个服务独立运营</div>
+  </div>
+</section>
+
+<!-- ═══════ 1. 为什么微服务 ═══════ -->
+<section id="why" class="section">
+  <h2>🔪 为什么微服务？—— 切蛋糕的哲学</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🎂 类比：</span>一个 20 人的生日蛋糕——如果是一整块（单体），每个人都得凑到同一张桌子前切着吃。但如果提前切成小块（微服务），每个人端走自己那份，想吃冷的/热的/甜的/咸的都可以各搞各的。微服务就是用"切蛋糕"的方式，把大系统切成独立可管理的小块。</p>
+  </div>
+
+  <h3>单体架构的四个痛点</h3>
+  <div class="compare">
+    <div>
+      <h4>😰 代码耦合</h4>
+      <p>改订单功能可能影响用户模块——边界模糊，牵一发而动全身。</p>
+    </div>
+    <div>
+      <h4>🐢 部署缓慢</h4>
+      <p>改一行代码要全量部署。大项目编译+测试+部署动辄 30 分钟。</p>
+    </div>
+    <div>
+      <h4>📉 伸缩困难</h4>
+      <p>只有登录模块是热点，却要把整个应用水平扩展——浪费资源。</p>
+    </div>
+    <div>
+      <h4>👥 团队阻塞</h4>
+      <p>10 人团队改同一个代码库，合并冲突多，发布需要排期协调。</p>
+    </div>
+  </div>
+
+  <h3>微服务带来的五大收益</h3>
+  <table>
+    <tr><th>收益</th><th>描述</th><th>场景举例</th></tr>
+    <tr><td><span class="badge badge-green">独立部署</span></td><td>每个服务可独立 CI/CD</td><td>订单服务修复 bug，无需重启其他服务</td></tr>
+    <tr><td><span class="badge badge-cyan">独立伸缩</span></td><td>只扩展热点服务</td><td>秒杀时只扩展订单+库存服务</td></tr>
+    <tr><td><span class="badge badge-purple">故障隔离</span></td><td>一个服务崩溃不影响全局</td><td>推荐服务宕机，核心下单流程正常</td></tr>
+    <tr><td><span class="badge badge-orange">技术异构</span></td><td>不同服务可用不同技术栈</td><td>搜索服务用 Go（高性能），报表服务用 Python（方便数据分析）</td></tr>
+    <tr><td><span class="badge badge-red">团队自治</span></td><td>小团队全权负责一个服务</td><td>6 人团队拥有"订单服务"的代码库、DB、部署</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>⚠️ 微服务不适合的场景</h4>
+    <p>团队 < 10 人、业务逻辑简单（CRUD 为主）、迭代频率低、没有明确的业务边界。小项目强行上微服务 ≈ 用原子弹打苍蝇。</p>
+  </div>
+</section>
+
+<!-- ═══════ 2. 服务拆分 ═══════ -->
+<section id="split" class="section">
+  <h2>🧩 服务拆分原则 —— 蛋糕怎么切才不碎？</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🔪 类比：</span>切蛋糕不是随便砍——顺着"自然缝隙"切，蛋糕才不会碎。微服务的拆分也要找业务领域的"自然缝隙"——DDD 限界上下文就是这些缝隙。</p>
+    <p>一句话原则：<strong>按业务能力拆分，而不是按技术层拆分。</strong>不要把"控制层、服务层、DAO 层"拆成微服务——那是分层架构，不是微服务。</p>
+  </div>
+
+  <h3>三大拆分方法</h3>
+  <table>
+    <tr><th>方法</th><th>核心思想</th><th>优点</th><th>缺点</th></tr>
+    <tr>
+      <td><strong>领域驱动（DDD）</strong></td>
+      <td>按限界上下文拆分——订单、商品、支付各自独立</td>
+      <td>业务语义清晰，团队自治</td>
+      <td>前期建模成本高</td>
+    </tr>
+    <tr>
+      <td><strong>按业务功能</strong></td>
+      <td>用户管理、订单管理、内容管理</td>
+      <td>直观、容易上手</td>
+      <td>容易和技术分层混淆</td>
+    </tr>
+    <tr>
+      <td><strong>按子域类型</strong></td>
+      <td>核心子域（订单）、支撑子域（通知）、通用子域（认证）</td>
+      <td>区分优先级，核心域投入更多</td>
+      <td>需要领域专家参与</td>
+    </tr>
+  </table>
+
+  <h3>服务拆分的六条铁律</h3>
+  <ol>
+    <li><strong>每个服务独立数据库</strong>——不共享表，只通过 API/事件访问其他服务的数据。</li>
+    <li><strong>一个服务一个团队</strong>——"两个比萨原则"：一个微服务最多由 6-8 人团队维护。</li>
+    <li><strong>服务间通信标准化</strong>——统一协议（gRPC/REST）、统一认证、统一日志。</li>
+    <li><strong>避免分布式事务</strong>——接受最终一致性，用 Saga 模式代替强事务。</li>
+    <li><strong>先单体后拆分</strong>——初期先用模块化单体，等边界清晰了再逐步拆解。</li>
+    <li><strong>拆分粒度适当</strong>——微服务不是越细越好。太细 = 严重的分布式复杂性。</li>
+  </ol>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 350" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="spArr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#3fb950"/></marker>
+      </defs>
+      <!-- Monolith block -->
+      <rect x="30" y="20" width="200" height="310" rx="10" fill="rgba(63,185,80,0.05)" stroke="#3fb950" stroke-width="2"/>
+      <text x="130" y="48" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="14" font-weight="700">单体应用</text>
+      <text x="130" y="70" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="10">一个代码库 · 一个数据库</text>
+      <rect x="50" y="85" width="160" height="28" rx="5" fill="rgba(248,81,73,0.10)" stroke="#f87171" stroke-width="1"/>
+      <text x="130" y="103" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10">用户模块</text>
+      <rect x="50" y="120" width="160" height="28" rx="5" fill="rgba(210,153,34,0.10)" stroke="#d29922" stroke-width="1"/>
+      <text x="130" y="138" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="10">订单模块</text>
+      <rect x="50" y="155" width="160" height="28" rx="5" fill="rgba(163,113,247,0.10)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="130" y="173" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10">商品模块</text>
+      <rect x="50" y="190" width="160" height="28" rx="5" fill="rgba(57,197,207,0.10)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="130" y="208" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10">支付模块</text>
+      <rect x="50" y="225" width="160" height="28" rx="5" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1"/>
+      <text x="130" y="243" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10">库存模块</text>
+      <rect x="50" y="260" width="160" height="28" rx="5" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="130" y="278" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="10">通知模块</text>
+      <text x="130" y="315" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">共享数据库</text>
+
+      <!-- Split arrows -->
+      <text x="245" y="175" fill="#d29922" font-family="JetBrains Mono,monospace" font-size="18" font-weight="700">→</text>
+
+      <!-- Microservices -->
+      <text x="285" y="48" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="14" font-weight="700">微服务集群</text>
+      <text x="285" y="66" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">每个服务独立部署、独立 DB</text>
+
+      <!-- User -->
+      <rect x="280" y="80" width="150" height="42" rx="6" fill="rgba(248,81,73,0.10)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="355" y="98" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">👤 用户服务</text>
+      <text x="355" y="116" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">用户 DB</text>
+
+      <!-- Order -->
+      <rect x="440" y="80" width="150" height="42" rx="6" fill="rgba(210,153,34,0.10)" stroke="#d29922" stroke-width="1.5"/>
+      <text x="515" y="98" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">📦 订单服务</text>
+      <text x="515" y="116" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">订单 DB</text>
+
+      <!-- Product -->
+      <rect x="600" y="80" width="160" height="42" rx="6" fill="rgba(163,113,247,0.10)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="680" y="98" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">🏷️ 商品服务</text>
+      <text x="680" y="116" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">商品 DB</text>
+
+      <!-- Payment -->
+      <rect x="280" y="135" width="150" height="42" rx="6" fill="rgba(57,197,207,0.10)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="355" y="153" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">💰 支付服务</text>
+      <text x="355" y="171" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">支付 DB</text>
+
+      <!-- Inventory -->
+      <rect x="440" y="135" width="150" height="42" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="515" y="153" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">📊 库存服务</text>
+      <text x="515" y="171" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">库存 DB</text>
+
+      <!-- Notification -->
+      <rect x="600" y="135" width="160" height="42" rx="6" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="680" y="153" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">🔔 通知服务</text>
+      <text x="680" y="171" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">通知 DB</text>
+
+      <!-- Gateway on top -->
+      <rect x="330" y="200" width="340" height="40" rx="8" fill="rgba(88,166,255,0.10)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="500" y="218" text-anchor="middle" fill="#93c5fd" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">🚪 API 网关 —— 统一入口</text>
+      <text x="500" y="234" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">鉴权 · 限流 · 路由 · 熔断</text>
+
+      <!-- Service Bus / Mesh -->
+      <rect x="330" y="255" width="340" height="40" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="500" y="273" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">🌐 服务网格 (Istio) —— 通信基础设施</text>
+      <text x="500" y="289" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">服务发现 · 负载均衡 · 可观测性 · 安全</text>
+
+      <!-- DB layer -->
+      <rect x="280" y="310" width="480" height="28" rx="6" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1"/>
+      <text x="520" y="328" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="10">独立数据库 · 无共享 · API/事件通信</text>
+    </svg>
+    <div class="diagram-caption">从单体到微服务的拆分映射：每个模块变成独立服务，通过网关和服务网格互联</div>
+  </div>
+</section>
+
+<!-- ═══════ 3. API 网关 ═══════ -->
+<section id="gateway" class="section">
+  <h2>🚪 API 网关 —— 微服务的"大门"</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏢 类比：</span>想象一个写字楼——大楼正门就是 API 网关。访客在门口登记（鉴权），前台指引去哪个楼层（路由），高峰期限制进入人数（限流），某个公司办公室停电了直接挂"暂停服务"（熔断）。没有网关，访客就得自行摸索每个办公室的位置——微服务的所有内部细节都暴露了。</p>
+  </div>
+
+  <h3>网关的六大职责</h3>
+  <table>
+    <tr><th>功能</th><th>说明</th><th>技术实现</th></tr>
+    <tr><td>🔐 统一鉴权</td><td>所有请求在网关层认证，后端服务无需重复实现</td><td>JWT / OAuth2 Token 校验</td></tr>
+    <tr><td>🧭 请求路由</td><td>根据 URL/Header 将请求转发到对应微服务</td><td>Path 匹配 → Service A、Header 匹配 → Service B</td></tr>
+    <tr><td>⚖️ 负载均衡</td><td>将流量分发到服务的多个实例</td><td>轮询、加权、最小连接数</td></tr>
+    <tr><td>🔁 熔断限流</td><td>防止雪崩：检测到下游故障时快速失败</td><td>Sentinel / Hystrix / 令牌桶</td></tr>
+    <tr><td>📝 日志监控</td><td>统一收集请求日志和调用链</td><td>ELK + 链路追踪 Trace ID</td></tr>
+    <tr><td>🔄 协议转换</td><td>将外部 HTTP 转成内部 gRPC</td><td>HTTP → gRPC 转码</td></tr>
+  </table>
+
+  <h3>三种网关模式</h3>
+  <div class="compare">
+    <div>
+      <h4>🌐 统一网关</h4>
+      <p>所有客户端共享一个网关入口。<br>优点：简单统一。<br>缺点：移动端和 Web 端的请求差异不好处理。</p>
+    </div>
+    <div>
+      <h4>📱 BFF（Backend For Frontend）</h4>
+      <p>每个端（Web、iOS、Android）有自己的网关。<br>优点：各端按需裁剪数据，提升前端体验。<br>缺点：维护多套网关。</p>
+    </div>
+    <div>
+      <h4>🏗️ KONG / APISIX</h4>
+      <p>企业级开源 API 网关，基于插件架构。<br>优点：插件生态丰富（限流、缓存、日志）。<br>缺点：运维复杂度高。</p>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" style="max-width:820px;width:100%">
+      <!-- Clients -->
+      <text x="100" y="35" text-anchor="middle" fill="#c9d1d9" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">客户端</text>
+      <rect x="30" y="50" width="60" height="36" rx="6" fill="rgba(88,166,255,0.10)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="60" y="72" text-anchor="middle" fill="#93c5fd" font-family="JetBrains Mono,monospace" font-size="11">📱App</text>
+      <rect x="100" y="50" width="60" height="36" rx="6" fill="rgba(88,166,255,0.10)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="130" y="72" text-anchor="middle" fill="#93c5fd" font-family="JetBrains Mono,monospace" font-size="11">🖥️Web</text>
+      <rect x="170" y="50" width="60" height="36" rx="6" fill="rgba(88,166,255,0.10)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="200" y="72" text-anchor="middle" fill="#93c5fd" font-family="JetBrains Mono,monospace" font-size="11">🔌API</text>
+
+      <!-- Gateway box -->
+      <rect x="20" y="110" width="220" height="50" rx="8" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="130" y="133" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">🚪 API 网关</text>
+      <text x="130" y="152" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">路由 · 鉴权 · 限流 · 熔断</text>
+
+      <!-- Arrow down -->
+      <path d="M 240 135 L 310 135" fill="none" stroke="#58a6ff" stroke-width="2"/>
+
+      <!-- Services -->
+      <text x="420" y="35" text-anchor="middle" fill="#c9d1d9" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">后端微服务</text>
+      <rect x="290" y="50" width="120" height="36" rx="6" fill="rgba(163,113,247,0.10)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="350" y="72" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10">👤 用户服务</text>
+      <rect x="420" y="50" width="120" height="36" rx="6" fill="rgba(248,81,73,0.10)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="480" y="72" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10">📦 订单服务</text>
+      <rect x="550" y="50" width="120" height="36" rx="6" fill="rgba(57,197,207,0.10)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="610" y="72" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10">🏷️ 商品服务</text>
+      <rect x="680" y="50" width="120" height="36" rx="6" fill="rgba(63,185,80,0.10)" stroke="#4ade80" stroke-width="1.5"/>
+      <text x="740" y="72" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="10">💰 支付服务</text>
+
+      <!-- BFF layer -->
+      <rect x="290" y="110" width="510" height="50" rx="8" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="6,2"/>
+      <text x="545" y="133" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">📱 BFF 层</text>
+      <text x="545" y="152" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">数据聚合 · 响应裁剪 · 协议适配</text>
+
+      <!-- Routes mapping -->
+      <text x="130" y="195" text-anchor="middle" fill="#d29922" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">路由规则</text>
+      <text x="50" y="218" fill="#d29922" font-family="JetBrains Mono,monospace" font-size="9"><code>/api/v1/users/*</code> → 用户服务</text>
+      <text x="50" y="236" fill="#d29922" font-family="JetBrains Mono,monospace" font-size="9"><code>/api/v1/orders/*</code> → 订单服务</text>
+      <text x="50" y="254" fill="#d29922" font-family="JetBrains Mono,monospace" font-size="9"><code>/api/v1/products/*</code> → 商品服务</text>
+      <text x="50" y="272" fill="#d29922" font-family="JetBrains Mono,monospace" font-size="9"><code>/api/v1/payments/*</code> → 支付服务</text>
+    </svg>
+    <div class="diagram-caption">API 网关统一入口：所有客户端通过网关访问后端，网关负责路由、鉴权和协议适配</div>
+  </div>
+</section>
+
+<!-- ═══════ 4. 服务通信 ═══════ -->
+<section id="communication" class="section">
+  <h2>📡 服务通信 —— 微服务之间怎么"说话"？</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📞 类比：</span>REST 像打电话——你一句我一句，双方都在线才能聊。gRPC 像对讲机——高效、二进制、连接持久。消息队列像发邮件——你说完就走了，对方有空再看。GraphQL 像自助餐厅——"我要鸡腿、不要青菜"，客户端精确选择要什么数据。</p>
+  </div>
+
+  <h3>三大通信协议对比</h3>
+  <table>
+    <tr><th>特性</th><th>REST (HTTP/JSON)</th><th>gRPC (HTTP/Protobuf)</th><th>GraphQL</th></tr>
+    <tr><td>数据格式</td><td>JSON（文本、可读性强）</td><td>Protobuf（二进制、高效）</td><td>自定义查询语言</td></tr>
+    <tr><td>性能</td><td>中等（JSON 序列化/反序列化开销）</td><td>高（二进制编码、支持流式传输）</td><td>中等（查询解析开销）</td></tr>
+    <tr><td>类型安全</td><td>弱（无内置 Schema）</td><td>强（.proto 文件定义接口）</td><td>强（Schema 优先）</td></tr>
+    <tr><td>浏览器支持</td><td>原生支持</td><td>需 gRPC-Web 转码</td><td>原生支持</td></tr>
+    <tr><td>流式传输</td><td>不支持</td><td>支持（单向/双向流）</td><td>支持（Subscription）</td></tr>
+    <tr><td>适合场景</td><td>对外公开 API、快速原型</td><td>内部服务间高速通信、流式数据</td><td>数据聚合层、前端灵活查询</td></tr>
+  </table>
+
+  <h3>同步 vs 异步通信</h3>
+  <div class="compare">
+    <div>
+      <h4>🔄 同步（REST / gRPC）</h4>
+      <p>调用方等待响应。简单直观，但会导致调用链长时间阻塞。适合查询场景。</p>
+      <p><span class="badge badge-red">风险</span>：级联故障——服务 A 调用 B，B 调用 C，C 挂了 → A 也挂。</p>
+    </div>
+    <div>
+      <h4>📨 异步（消息队列）</h4>
+      <p>发送方不等待，消息写入队列后立即返回。适合写场景和流程解耦。</p>
+      <p><span class="badge badge-green">优势</span>：削峰填谷、故障隔离——消费者挂了消息不会丢。</p>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 340" style="max-width:820px;width:100%">
+      <!-- Title -->
+      <text x="410" y="30" text-anchor="middle" fill="#c9d1d9" font-family="JetBrains Mono,monospace" font-size="14" font-weight="700">微服务通信模式对比</text>
+
+      <!-- REST -->
+      <rect x="20" y="50" width="250" height="130" rx="10" fill="rgba(248,81,73,0.05)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="145" y="76" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">REST</text>
+      <rect x="35" y="90" width="100" height="30" rx="5" fill="rgba(248,81,73,0.08)"/>
+      <text x="85" y="109" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="9">Service A</text>
+      <path d="M 135 105 L 155 105" fill="none" stroke="#f87171" stroke-width="2" marker-end="url(#msArr)"/>
+      <text x="145" y="98" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="8">HTTP</text>
+      <rect x="170" y="90" width="85" height="30" rx="5" fill="rgba(248,81,73,0.08)"/>
+      <text x="212" y="109" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="9">Service B</text>
+      <text x="145" y="160" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">JSON · 无状态 · 缓存友好</text>
+
+      <!-- gRPC -->
+      <rect x="285" y="50" width="250" height="130" rx="10" fill="rgba(57,197,207,0.05)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="410" y="76" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">gRPC</text>
+      <rect x="300" y="90" width="100" height="30" rx="5" fill="rgba(57,197,207,0.08)"/>
+      <text x="350" y="109" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">Client</text>
+      <path d="M 400 105 L 420 105" fill="none" stroke="#22d3ee" stroke-width="2"/>
+      <text x="410" y="98" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="8">Protobuf</text>
+      <rect x="435" y="90" width="85" height="30" rx="5" fill="rgba(57,197,207,0.08)"/>
+      <text x="477" y="109" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">Server</text>
+      <text x="410" y="160" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">二进制 · 流式 · 强类型 · HTTP/2</text>
+
+      <!-- GraphQL -->
+      <rect x="550" y="50" width="250" height="130" rx="10" fill="rgba(163,113,247,0.05)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="675" y="76" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">GraphQL</text>
+      <rect x="565" y="90" width="100" height="30" rx="5" fill="rgba(163,113,247,0.08)"/>
+      <text x="615" y="109" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9">Client</text>
+      <path d="M 665 105 L 685 105" fill="none" stroke="#a78bfa" stroke-width="2"/>
+      <text x="675" y="98" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="8">Query</text>
+      <rect x="700" y="90" width="85" height="30" rx="5" fill="rgba(163,113,247,0.08)"/>
+      <text x="742" y="109" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9">Gateway</text>
+      <text x="675" y="160" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">查多合一 · 按需取字段 · Schema</text>
+
+      <!-- Async MQ -->
+      <rect x="20" y="200" width="365" height="130" rx="10" fill="rgba(63,185,80,0.05)" stroke="#4ade80" stroke-width="1.5"/>
+      <text x="202" y="226" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">📨 异步通信（消息队列）</text>
+      <rect x="35" y="245" width="100" height="30" rx="5" fill="rgba(63,185,80,0.08)"/>
+      <text x="85" y="264" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="9">订单服务</text>
+      <path d="M 135 260 L 185 260" fill="none" stroke="#4ade80" stroke-width="2"/>
+      <rect x="190" y="245" width="90" height="30" rx="14" fill="rgba(251,191,36,0.10)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="235" y="264" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="9">📬 消息队列</text>
+      <path d="M 280 260 L 320 260" fill="none" stroke="#4ade80" stroke-width="2"/>
+      <text x="300" y="253" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">消费</text>
+      <rect x="325" y="245" width="45" height="30" rx="5" fill="rgba(63,185,80,0.08)"/>
+      <text x="347" y="258" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="8">物流</text>
+      <text x="202" y="308" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">削峰填谷 · 解耦 · 最终一致性 · 至少一次</text>
+
+      <!-- Event / Outbox -->
+      <rect x="400" y="200" width="400" height="130" rx="10" fill="rgba(210,153,34,0.05)" stroke="#d29922" stroke-width="1.5"/>
+      <text x="600" y="226" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">🔁 事件驱动 + Outbox 模式</text>
+      <rect x="415" y="245" width="100" height="30" rx="5" fill="rgba(210,153,34,0.08)"/>
+      <text x="465" y="264" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="9">订单服务</text>
+      <rect x="415" y="280" width="140" height="22" rx="4" fill="rgba(210,153,34,0.06)" stroke="#d29922" stroke-width="0.5"/>
+      <text x="485" y="295" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">📄 outbox 表</text>
+      <path d="M 515 260 L 545 260" fill="none" stroke="#d29922" stroke-width="1.5"/>
+      <text x="530" y="253" text-anchor="middle" fill="#d29922" font-family="JetBrains Mono,monospace" font-size="8">CDC 推送</text>
+      <rect x="560" y="240" width="100" height="40" rx="14" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="610" y="258" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="8">📬 Event Bus</text>
+      <text x="610" y="274" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">Kafka/RocketMQ</text>
+      <path d="M 660 260 L 700 247" fill="none" stroke="#a78bfa" stroke-width="1.5"/>
+      <path d="M 660 260 L 700 273" fill="none" stroke="#a78bfa" stroke-width="1.5"/>
+      <rect x="705" y="235" width="80" height="26" rx="5" fill="rgba(63,185,80,0.08)"/>
+      <text x="745" y="253" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="8">物流</text>
+      <rect x="705" y="265" width="80" height="26" rx="5" fill="rgba(57,197,207,0.08)"/>
+      <text x="745" y="283" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="8">通知</text>
+      <text x="600" y="316" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">业务无需 2PC · 保证最终一致</text>
+    </svg>
+    <div class="diagram-caption">四种通信模式对比：REST, gRPC, GraphQL, 消息队列 + Outbox 模式</div>
+  </div>
+
+  <h3>gRPC 示例：一个 .proto 文件</h3>
+  <pre><code><span class="cm">// order_service.proto</span>
+syntax = <span style="color:#a5d6ff">"proto3"</span>;
+
+service OrderService {
+  rpc CreateOrder (CreateOrderRequest) returns (OrderResponse);
+  rpc GetOrder (GetOrderRequest) returns (OrderResponse);
+  rpc ListOrders (ListOrdersRequest) returns (stream OrderResponse);
+}
+
+message CreateOrderRequest {
+  string user_id = 1;
+  repeated OrderItem items = 2;
+  string coupon_id = 3;
+}
+
+message OrderResponse {
+  string order_id = 1;
+  string status = 2;
+  double total_amount = 3;
+  int64 created_at = 4;
+}</code></pre>
+  <p style="font-size:12px;color:var(--muted)">定义一次 .proto，自动生成客户端和服务端代码。比手写 REST 的 JSON 解析快 5-10 倍。</p>
+
+  <div class="info-card">
+    <h4>💡 推荐实践</h4>
+    <p><strong>内部服务间：</strong>gRPC + Protobuf（高性能、强类型）</p>
+    <p><strong>对外 API：</strong>REST/GraphQL（浏览器友好、易调试）</p>
+    <p><strong>事件驱动：</strong>Kafka / RocketMQ（解耦、削峰填谷）</p>
+    <p><strong>配置：</strong>gRPC 的客户端负载均衡 + 健康检查 + 重试策略</p>
+  </div>
+</section>
+
+<!-- ═══════ 5. 服务发现与配置中心 ═══════ -->
+<section id="discovery" class="section">
+  <h2>🔍 服务发现与配置中心 —— 微服务的"通讯录"</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📞 类比：</span>服务发现就像电话簿——你要找"外卖店"（服务名），电话簿告诉你它的电话号码和地址（IP:Port）。配置中心就像一个<strong>实时播报的广播站</strong>——"所有人注意：数据库密码改成 XXXX！"所有服务立刻响应，不用逐个通知。</p>
+  </div>
+
+  <h3>服务注册与发现流程</h3>
+  <ol>
+    <li><strong>注册：</strong>服务启动时把自己的 IP:Port 注册到注册中心（Nacos / Eureka / Consul）。</li>
+    <li><strong>心跳：</strong>服务定期发送心跳保活——30s 内没心跳，注册中心标记为"不健康"。</li>
+    <li><strong>发现：</strong>服务 A 调用服务 B 时，通过注册中心找到 B 的所有可用实例。</li>
+    <li><strong>负载均衡：</strong>客户端选择一个实例发起调用——轮询、加权、最少连接。</li>
+    <li><strong>摘除：</strong>实例挂掉后注册中心自动摘除，不影响其他调用。</li>
+  </ol>
+
+  <h3>主流注册中心对比</h3>
+  <table>
+    <tr><th>组件</th><th>语言</th><th>CP/AP</th><th>健康检查</th><th>配置管理</th><th>特点</th></tr>
+    <tr><td><strong>Nacos</strong></td><td>Java</td><td>CP+AP 切换</td><td>心跳 + HTTP</td><td>✅ 内置</td><td>功能全面，阿里生态</td></tr>
+    <tr><td><strong>Eureka</strong></td><td>Java</td><td>AP</td><td>心跳</td><td>❌ 无</td><td>Spring Cloud 原生，已维护模式</td></tr>
+    <tr><td><strong>Consul</strong></td><td>Go</td><td>CP</td><td>多维度检查</td><td>✅ KV 存储</td><td>健康检查最丰富</td></tr>
+    <tr><td><strong>ZooKeeper</strong></td><td>Java</td><td>CP</td><td>Session 保活</td><td>❌ 无</td><td>适合强一致性场景</td></tr>
+  </table>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" style="max-width:820px;width:100%">
+      <!-- Title -->
+      <text x="410" y="30" text-anchor="middle" fill="#c9d1d9" font-family="JetBrains Mono,monospace" font-size="14" font-weight="700">服务注册与发现流程</text>
+
+      <!-- Registry Center -->
+      <rect x="280" y="50" width="200" height="60" rx="10" fill="rgba(163,113,247,0.10)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="380" y="76" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">📋 注册中心</text>
+      <text x="380" y="96" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">Nacos / Eureka / Consul</text>
+
+      <!-- Step 1: Register -->
+      <rect x="50" y="150" width="130" height="40" rx="6" fill="rgba(57,197,207,0.10)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="115" y="175" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">订单服务</text>
+      <path d="M 180 170 L 265 100" fill="none" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#msArr)"/>
+      <text x="210" y="120" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="9">① 注册</text>
+      <text x="210" y="138" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">IP:Port</text>
+
+      <!-- Step 2: Heartbeat -->
+      <path d="M 265 110 L 180 180" fill="none" stroke="#22d3ee" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="215" y="165" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">② 心跳 30s</text>
+
+      <!-- Step 3: Discover -->
+      <rect x="520" y="150" width="130" height="40" rx="6" fill="rgba(63,185,80,0.10)" stroke="#4ade80" stroke-width="1.5"/>
+      <text x="585" y="175" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">用户服务</text>
+      <path d="M 480 170 L 495 110" fill="none" stroke="#4ade80" stroke-width="1.5" marker-end="url(#msArr)"/>
+      <text x="480" y="120" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">③ 发现</text>
+      <text x="480" y="138" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">订单服务列表</text>
+
+      <!-- Step 4: Invoke -->
+      <path d="M 520 170 L 190 180" fill="none" stroke="#f87171" stroke-width="2" marker-end="url(#msArr)"/>
+      <text x="350" y="230" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">④ 直接调用 → 订单服务 A 或 B</text>
+      <text x="350" y="250" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">客户端负载均衡：轮询/加权/最少连接</text>
+
+      <!-- Config Center -->
+      <rect x="280" y="270" width="200" height="50" rx="10" fill="rgba(210,153,34,0.08)" stroke="#d29922" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="380" y="292" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">⚙️ 配置中心</text>
+      <text x="380" y="310" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">统一配置 + 动态刷新</text>
+
+      <!-- Reminder boxes -->
+      <rect x="30" y="55" width="210" height="75" rx="8" fill="rgba(248,81,73,0.04)" stroke="#f85149" stroke-width="1"/>
+      <text x="135" y="78" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">⚠️ 注意</text>
+      <text x="135" y="98" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">服务实例上下线时，注册中心</text>
+      <text x="135" y="112" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">需要保证最终一致</text>
+
+      <rect x="580" y="55" width="210" height="75" rx="8" fill="rgba(63,185,80,0.04)" stroke="#3fb950" stroke-width="1"/>
+      <text x="685" y="78" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">✅ 最佳实践</text>
+      <text x="685" y="98" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">Nacos + Spring Cloud / Dubbo</text>
+      <text x="685" y="112" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">国内最流行的组合</text>
+    </svg>
+    <div class="diagram-caption">服务注册与发现四步流程 + 配置中心：注册→心跳→发现→调用</div>
+  </div>
+</section>
+
+<!-- ═══════ 6. Istio ═══════ -->
+<section id="istio" class="section">
+  <h2>🌐 Istio 服务网格 —— 微服务的"交通警察"</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🚦 类比：</span>以前每个服务自己管流量控制（熔断、重试、负载均衡）——就像每个司机自己决定怎么开车。Istio 的服务网格就像在路口装了<strong>红绿灯和交通监控</strong>——流量规则集中管控，服务本身只负责"开车"（业务逻辑），不关心交通规则（流量管理）。</p>
+  </div>
+
+  <h3>什么是 Sidecar 模式？</h3>
+  <p>在 Istio 中，每个服务 Pod 旁边自动注入一个 <strong>Envoy 代理（Sidecar）</strong>。所有进出流量都经过这个代理，<strong>服务本身不需要感知网络层</strong>。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 360" style="max-width:820px;width:100%">
+      <!-- Title -->
+      <text x="410" y="30" text-anchor="middle" fill="#c9d1d9" font-family="JetBrains Mono,monospace" font-size="14" font-weight="700">Istio 架构：数据平面 + 控制平面</text>
+
+      <!-- Without Istio -->
+      <rect x="20" y="55" width="370" height="130" rx="10" fill="rgba(248,81,73,0.04)" stroke="#f85149" stroke-width="1.5"/>
+      <text x="205" y="80" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">❌ 无 Istio</text>
+      <rect x="35" y="95" width="150" height="36" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1"/>
+      <text x="110" y="111" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="9">订单服务 Pod</text>
+      <text x="110" y="126" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">业务逻辑 + 网络逻辑</text>
+      <text x="205" y="118" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="18">→</text>
+      <rect x="225" y="95" width="150" height="36" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1"/>
+      <text x="300" y="111" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="9">商品服务 Pod</text>
+      <text x="300" y="126" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">业务逻辑 + 网络逻辑</text>
+      <text x="205" y="165" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">每个服务自行实现熔断、重试、负载均衡和指标采集</text>
+
+      <!-- With Istio -->
+      <rect x="20" y="200" width="370" height="150" rx="10" fill="rgba(57,197,207,0.04)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="205" y="225" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">✅ Istio 服务网格</text>
+
+      <!-- Order Pod -->
+      <rect x="35" y="240" width="150" height="55" rx="6" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="110" y="258" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9" font-weight="600">订单服务 Pod</text>
+      <rect x="40" y="264" width="68" height="18" rx="3" fill="rgba(88,166,255,0.08)" stroke="#58a6ff" stroke-width="0.5"/>
+      <text x="74" y="278" text-anchor="middle" fill="#93c5fd" font-family="JetBrains Mono,monospace" font-size="7">📦 业务逻辑</text>
+      <rect x="112" y="264" width="68" height="18" rx="3" fill="rgba(57,197,207,0.10)" stroke="#22d3ee" stroke-width="0.5"/>
+      <text x="146" y="278" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="7">🚦 Envoy</text>
+
+      <text x="205" y="268" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="18">↔</text>
+
+      <!-- Product Pod -->
+      <rect x="225" y="240" width="150" height="55" rx="6" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="300" y="258" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9" font-weight="600">商品服务 Pod</text>
+      <rect x="230" y="264" width="68" height="18" rx="3" fill="rgba(57,197,207,0.10)" stroke="#22d3ee" stroke-width="0.5"/>
+      <text x="264" y="278" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="7">🚦 Envoy</text>
+      <rect x="302" y="264" width="68" height="18" rx="3" fill="rgba(88,166,255,0.08)" stroke="#58a6ff" stroke-width="0.5"/>
+      <text x="336" y="278" text-anchor="middle" fill="#93c5fd" font-family="JetBrains Mono,monospace" font-size="7">📦 业务逻辑</text>
+
+      <text x="205" y="328" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">所有流量都经过 Envoy 代理 → 网络逻辑从业务代码中"剥离"</text>
+
+      <!-- Control Plane -->
+      <rect x="420" y="55" width="380" height="295" rx="12" fill="rgba(57,197,207,0.04)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="610" y="80" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">🧠 控制平面（Control Plane）</text>
+
+      <!-- Pilot -->
+      <rect x="440" y="100" width="170" height="55" rx="8" fill="rgba(88,166,255,0.06)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="525" y="120" text-anchor="middle" fill="#93c5fd" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">✈️ Pilot</text>
+      <text x="525" y="138" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">服务发现 + 流量规则下发</text>
+      <text x="525" y="152" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">给 Envoy 下发路由规则 · 可灰度发布</text>
+
+      <!-- Citadel -->
+      <rect x="630" y="100" width="160" height="55" rx="8" fill="rgba(63,185,80,0.06)" stroke="#4ade80" stroke-width="1.5"/>
+      <text x="710" y="120" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">🏰 Citadel</text>
+      <text x="710" y="138" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">身份 + 证书管理</text>
+      <text x="710" y="152" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">mTLS 加密 · 服务间认证</text>
+
+      <!-- Galley -->
+      <rect x="440" y="175" width="170" height="55" rx="8" fill="rgba(210,153,34,0.06)" stroke="#d29922" stroke-width="1.5"/>
+      <text x="525" y="195" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">📰 Galley</text>
+      <text x="525" y="213" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">配置验证 + 分发中控</text>
+      <text x="525" y="227" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">校验 Istio 配置语法</text>
+
+      <!-- Mixer (deprecated but conceptually important) -->
+      <rect x="630" y="175" width="160" height="55" rx="8" fill="rgba(248,81,73,0.06)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="710" y="195" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">📊 遥测</text>
+      <text x="710" y="213" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">流量日志 + 监控</text>
+      <text x="710" y="227" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">Prometheus + Grafana</text>
+
+      <!-- Capabilities list -->
+      <text x="610" y="265" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">服务网格带来的能力</text>
+      <text x="440" y="287" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">✅ 灰度发布/蓝绿部署/金丝雀</text>
+      <text x="440" y="303" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">✅ 熔断 · 限流 · 重试 — 集中配置</text>
+      <text x="440" y="319" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">✅ 全链路 mTLS 加密</text>
+      <text x="440" y="335" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">✅ 详细流量拓扑和调用链追踪</text>
+    </svg>
+    <div class="diagram-caption">Istio 架构：Sidecar 代理(Envoy) + 控制平面(Pilot/Citadel/Galley)</div>
+  </div>
+
+  <h3>Istio 的三大核心能力</h3>
+  <div class="compare">
+    <div>
+      <h4>🚦 流量管理</h4>
+      <p>按权重路由、灰度发布、超时重试策略。通过 <code>VirtualService</code> 和 <code>DestinationRule</code> 声明式配置。</p>
+      <pre><code style="font-size:11px">apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: order-svc
+spec:
+  hosts: [order-svc]
+  http:
+  - match:
+    - headers:
+        version: v2
+    route:
+    - destination:
+        host: order-svc
+        subset: v2
+  - route:
+    - destination:
+        host: order-svc
+        subset: v1
+        weight: 90
+    - destination:
+        host: order-svc
+        subset: v2
+        weight: 10</code></pre>
+    </div>
+    <div>
+      <h4>🔐 安全</h4>
+      <p>服务间通信自动开启 mTLS 加密。通过 <code>PeerAuthentication</code> 策略配置。<br>服务 A → 服务 B 的每个请求都经过加密、身份验证。</p>
+      <pre><code style="font-size:11px">apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-system
+spec:
+  mtls:
+    mode: STRICT  # 严格 mTLS</code></pre>
+    </div>
+    <div>
+      <h4>📊 可观测性</h4>
+      <p>自动采集三大信号：<br>
+      <span class="badge badge-cyan">日志</span> 请求日志（来源、目标、延迟）<br>
+      <span class="badge badge-purple">指标</span> 请求量、成功率、P99 延迟<br>
+      <span class="badge badge-orange">链路</span> 完整的调用链追踪</p>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>⚠️ Istio 的代价</h4>
+    <p><strong>性能：</strong>每个请求多一层 Envoy 代理，增加 ~2-5ms 延迟。</p>
+    <p><strong>复杂度：</strong>需要维护 Istio 控制平面（2-4 个 Pod），以及 Sidecar 注入的配置。</p>
+    <p><strong>运维：</strong>需要 K8s 环境、熟悉 CRD 和 Istio 的 YAML 配置体系。</p>
+    <p><strong>建议：</strong>中小团队可以用 Spring Cloud / Dubbo 自带的负载均衡和熔断能力，不需要 Istio。</p>
+  </div>
+</section>
+
+<!-- ═══════ 7. 微服务痛点与对策 ═══════ -->
+<section id="pitfalls" class="section">
+  <h2>⚠️ 微服务痛点与对策 —— 分布式没有银弹</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏋️ 类比：</span>微服务像健身房里的"分化训练"——每块肌肉独立练，效果确实好，但你需要<strong>更多装备、更专业的计划</strong>。单体就像"俯卧撑"——简单，但练不到深层肌肉。分布式系统的问题都不是新问题，只是<strong>复杂度从代码层转移到了网络层</strong>。</p>
+  </div>
+
+  <h3>八大痛点和对应策略</h3>
+  <table>
+    <tr><th>#</th><th>痛点</th><th>危害</th><th>对策</th></tr>
+    <tr>
+      <td style="color:var(--red)">1</td>
+      <td><strong>分布式事务</strong></td>
+      <td>跨服务操作没有 ACID——扣钱成功但加积分失败</td>
+      <td>Saga 模式 + Outbox 表 + 补偿机制（TCC）</td>
+    </tr>
+    <tr>
+      <td style="color:var(--orange)">2</td>
+      <td><strong>数据一致性</strong></td>
+      <td>服务 A 改了数据，服务 B 看到的还是旧的</td>
+      <td>事件驱动 + CDC（Debezium） + 最终一致性</td>
+    </tr>
+    <tr>
+      <td style="color:var(--red)">3</td>
+      <td><strong>级联故障</strong></td>
+      <td>服务 A 调用 B→C→D，D 挂了 → 整条链路阻塞</td>
+      <td>熔断（Circuit Breaker）+ 限流 + 舱壁隔离</td>
+    </tr>
+    <tr>
+      <td style="color:var(--purple)">4</td>
+      <td><strong>链路追踪困难</strong></td>
+      <td>一个请求经过 5 个服务，定位慢请求像大海捞针</td>
+      <td>统一 Trace ID + Jaeger/Zipkin + 分布式日志</td>
+    </tr>
+    <tr>
+      <td style="color:var(--orange)">5</td>
+      <td><strong>配置管理混乱</strong></td>
+      <td>每个服务有不同配置格式，改配置要逐个部署</td>
+      <td>统一配置中心（Nacos/Spring Cloud Config）</td>
+    </tr>
+    <tr>
+      <td style="color:var(--red)">6</td>
+      <td><strong>测试复杂度</strong></td>
+      <td>本地启动所有依赖服务太慢，Mock 又可能失真</td>
+      <td>契约测试（Pact）+ 集成测试 Docker Compose 环境</td>
+    </tr>
+    <tr>
+      <td style="color:var(--green)">7</td>
+      <td><strong>部署和运维</strong></td>
+      <td>几十个服务的管理、编排、版本控制</td>
+      <td>K8s + Helm chart + CI/CD 流水线 · GitOps</td>
+    </tr>
+    <tr>
+      <td style="color:var(--cyan)">8</td>
+      <td><strong>团队沟通成本</strong></td>
+      <td>多个团队独立开发，接口变更频繁不通知</td>
+      <td>API 版本管理 · 共享 API 规范 · 领域事件契约</td>
+    </tr>
+  </table>
+
+  <h3>Saga 模式详解</h3>
+  <p>分布式事务的经典方案——把一个跨服务的大事务拆成多个本地小事务，每个小事务有对应的<strong>补偿操作</strong>。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 250" style="max-width:820px;width:100%">
+      <!-- Title -->
+      <text x="410" y="30" text-anchor="middle" fill="#c9d1d9" font-family="JetBrains Mono,monospace" font-size="14" font-weight="700">Saga 模式：创建订单的分布式事务流</text>
+
+      <!-- Step 1 -->
+      <rect x="30" y="55" width="110" height="42" rx="6" fill="rgba(57,197,207,0.10)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="85" y="73" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9" font-weight="600">① 创建订单</text>
+      <text x="85" y="90" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">订单服务</text>
+
+      <path d="M 140 76 L 165 76" fill="none" stroke="#22d3ee" stroke-width="2" marker-end="url(#msArr)"/>
+
+      <!-- Step 2 -->
+      <rect x="175" y="55" width="110" height="42" rx="6" fill="rgba(210,153,34,0.10)" stroke="#d29922" stroke-width="1.5"/>
+      <text x="230" y="73" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="9" font-weight="600">② 扣减库存</text>
+      <text x="230" y="90" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">库存服务</text>
+
+      <path d="M 285 76 L 310 76" fill="none" stroke="#d29922" stroke-width="2" marker-end="url(#msArr)"/>
+
+      <!-- Step 3 -->
+      <rect x="320" y="55" width="110" height="42" rx="6" fill="rgba(163,113,247,0.10)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="375" y="73" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9" font-weight="600">③ 处理支付</text>
+      <text x="375" y="90" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">支付服务</text>
+
+      <path d="M 430 76 L 455 76" fill="none" stroke="#a78bfa" stroke-width="2" marker-end="url(#msArr)"/>
+
+      <!-- Step 4 -->
+      <rect x="465" y="55" width="110" height="42" rx="6" fill="rgba(63,185,80,0.10)" stroke="#4ade80" stroke-width="1.5"/>
+      <text x="520" y="73" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="9" font-weight="600">④ 发送通知</text>
+      <text x="520" y="90" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">通知服务</text>
+
+      <!-- Compensating transactions -->
+      <rect x="30" y="130" width="545" height="42" rx="8" fill="rgba(248,81,73,0.06)" stroke="#f85149" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="302" y="148" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">⚠️ 如果步骤③支付失败 → 执行补偿</text>
+      <text x="302" y="165" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="9">③' 取消订单 · ②' 恢复库存 · ①' 标记失败</text>
+
+      <!-- Orchestrator -->
+      <rect x="30" y="195" width="545" height="42" rx="8" fill="rgba(88,166,255,0.06)" stroke="#58a6ff" stroke-width="1"/>
+      <text x="302" y="213" text-anchor="middle" fill="#93c5fd" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">🎼 协调型 Saga（Choreography vs Orchestration）</text>
+      <text x="302" y="230" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">编排式：Saga 协调器控制流程 · 编舞式：每个服务监听事件自主行动</text>
+    </svg>
+    <div class="diagram-caption">Saga 模式处理分布式事务：每个步骤有补偿操作，任一失败触发回滚</div>
+  </div>
+
+  <div class="info-card">
+    <h4>📝 熔断器三种状态</h4>
+    <p><span class="badge badge-green">关闭</span> 正常调用 → 失败率达到阈值 → <span class="badge badge-red">开启</span> 快速失败 → 超时时间到 → <span class="badge badge-orange">半开</span> 试探放行少量请求 → 成功回到<span class="badge badge-green">关闭</span>，失败回到<span class="badge badge-red">开启</span></p>
+  </div>
+</section>
+
+<!-- ═══════ 8. Q&A ═══════ -->
+<section id="qa" class="section">
+  <h2>❓ 实战问答 —— 6 道经典题</h2>
+  <p style="color:var(--muted);font-size:13px">读者最爱问的微服务问题，附精讲答案。</p>
+
+  <div class="qa"><div class="q">Q1: 微服务和 SOA（面向服务架构）有什么区别？</div><div class="a">
+    <strong>SOA</strong> 是 2000 年代的"老大哥"——强调企业级服务总线（ESB），服务间通过 SOAP/XML 通信，重量级、中心化。<br>
+    <strong>微服务</strong> 是 2010 年代的"新锐"——去中心化、轻量级通信（REST/gRPC）、每个服务独立部署和 DB、DevOps 文化。<br>
+    <strong>关键差异：</strong>SOA 偏重<strong>集成</strong>（把现有系统连起来），微服务偏重<strong>拆分</strong>（把大系统切小）。微服务可以看作是 SOA 在轻量化、去 ESB 方向的进化版。
+  </div></div>
+
+  <div class="qa"><div class="q">Q2: 服务拆分到什么粒度合适？太细了怎么办？</div><div class="a">
+    <strong>没有绝对标准，但有判断方法：</strong><br>
+    • <strong>团队自治</strong>——一个服务能否由 6-8 人独立维护？<br>
+    • <strong>业务边界</strong>——这个服务的改动是否经常波及另一个？<br>
+    • <strong>数据边界</strong>——这个服务的数据能否独立于其他服务？<br>
+    • <strong>部署频率</strong>——两个服务是否可以独立部署而不出问题？<br>
+    <strong>太细（纳米服务）的症状：</strong>一次业务操作调用 8+ 个服务、部署多个服务才能完成一个功能、大量跨服务 join 数据。<br>
+    <strong>对策：</strong>合并功能强关联的服务，用模块化单体替代过度拆分。
+  </div></div>
+
+  <div class="qa"><div class="q">Q3: 微服务之间怎么保证数据最终一致性？</div><div class="a">
+    常用三种方案：<br>
+    ① <strong>Outbox 模式：</strong>业务操作 + 事件写入同一个本地事务的 outbox 表。CDC（如 Debezium）监听到 outbox 变更后推送到消息队列。<br>
+    ② <strong>Saga 模式：</strong>每个步骤有本地事务 + 补偿操作。编排式 Saga 用协调器编排流程，编舞式 Saga 靠事件驱动。<br>
+    ③ <strong>事件溯源（Event Sourcing）：</strong>不存当前状态，只存事件流。所有状态变更通过重放事件计算。<br>
+    <strong>核心原则：</strong>接受"最终一致性"，放弃强事务（2PC）。保证"至少一次送达（at-least-once delivery）+ 幂等消费"。
+  </div></div>
+
+  <div class="qa"><div class="q">Q4: 你们怎么服务发现的？为什么不用 K8s 的 Service 做服务发现？</div><div class="a">
+    <strong>两种思路：</strong><br>
+    • <strong>客户端发现：</strong>服务从注册中心（Nacos/Eureka）拉取实例列表，客户端做负载均衡。优势：简单、低延迟。劣势：每个语言都需要实现客户端。<br>
+    • <strong>服务端发现：</strong>K8s Service + Kube-proxy + DNS（CoreDNS）。优势：语言无关、K8s 原生。劣势：功能有限、缺少细粒度流量管理。<br>
+    <strong>为什么还要用注册中心？</strong>K8s Service 只解决了"基础发现和负载均衡"，没有以下能力：蓝绿发布灰度流量、更丰富的健康检查、带权重的路由策略、按标签划分多个服务版本。一般方案：K8s Service 做基础发现 + Istio/Nacos 做高级流量管理。
+  </div></div>
+
+  <div class="qa"><div class="q">Q5: 你会怎么设计一个秒杀系统的微服务架构？</div><div class="a">
+    秒杀核心挑战：高并发 + 库存扣减精确。<br>
+    <strong>架构设计：</strong><br>
+    ① <strong>Nginx + API 网关</strong>——前置限流（限流阈值 QPS=W 倍峰值），静态资源 CDN 缓存。<br>
+    ② <strong>活动服务</strong>——秒杀资格发放、校验 Token。Redis 预扣库存 + Lua 脚本保证原子操作。<br>
+    ③ <strong>订单服务</strong>——接收已被 Redis 扣减的请求，通过 MQ 异步落库。<br>
+    ④ <strong>库存服务</strong>——RabbitMQ 削峰 + DB 最终扣减。超时未支付的库存回滚到 Redis。<br>
+    <strong>关键点：</strong>Redis 前置防超卖、异步削峰防击穿、限流隔离保护其他服务、预加载热点数据。
+  </div></div>
+
+  <div class="qa"><div class="q">Q6: Istio 对比 Spring Cloud / Dubbo，选哪个？</div><div class="a">
+    <strong>Spring Cloud / Dubbo（SDK 方案）：</strong><br>
+    • 优点：生态成熟、上手快、不用额外基础设施。<br>
+    • 缺点：侵入式——每个服务的代码都要引入 SDK、升级 SDK 要改代码重新部署、只支持 Java。<br>
+    <strong>Istio（服务网格方案）：</strong><br>
+    • 优点：非侵入——业务代码零感知、语言无关、统一流量管理。<br>
+    • 缺点：部署和运维 Istio 本身有学习成本、增加 ~5ms 额外延迟、需要 K8s 环境。<br>
+    <strong>选择建议：</strong>Java 技术栈优先 Spring Cloud / Dubbo（成熟稳定）。多语言/希望解耦网络逻辑 → Istio。很多公司 Spring Cloud + Istio 混用——服务内用 SDK 做基础能力，Istio 做全局限流和可观测性。
+  </div></div>
+
+  <div class="qa"><div class="q">Q7: 什么是分布式链路追踪？Trace ID 怎么传递？</div><div class="a">
+    链路追踪在一个请求穿越多个微服务时记录<strong>完整调用拓扑</strong>和时间开销。<br>
+    <strong>关键概念：</strong><br>
+    • <strong>Trace：</strong>一个请求的完整调用链 = 树状结构的 Span 集合。<br>
+    • <strong>Span：</strong>每个服务的处理单元（如"订单服务处理"），包含开始时间、结束时间、状态。<br>
+    • <strong>Trace ID：</strong>全局唯一的请求标识，在整个调用链中保持不变。<br>
+    <strong>Trace ID 传递方式：</strong><br>
+    • <strong>HTTP：</strong>通过 Header <code>X-Request-Id</code> / <code>X-B3-TraceId</code> 透传。<br>
+    • <strong>gRPC：</strong>通过 Context 的 metadata 透传。<br>
+    • <strong>消息队列：</strong>在消息 Header 中嵌入 Trace ID。<br>
+    <strong>参考工具：</strong>Jaeger（常见）、Zipkin、SkyWalking。
+  </div></div>
+
+  <div class="qa"><div class="q">Q8: 说说你对"分布式事务"的理解——2PC 为什么不适合微服务？</div><div class="a">
+    <strong>2PC（两阶段提交）：</strong>协调器先问所有参与者"准备好了吗？"（Prepare），都回复 Yes 后才提交（Commit）。<br>
+    <strong>为什么不适合微服务：</strong><br>
+    • <strong>阻塞：</strong>Prepare 阶段持有锁，直到 Coordinator 发 Commit/Rollback——如果有参与者挂了，锁长时间不释放。<br>
+    • <strong>单点：</strong>Coordinator 挂了整个事务状态丢失。<br>
+    • <strong>网络分区：</strong>部分参与者收到 Commit，部分没收到——数据不一致。<br>
+    • <strong>不满足 CAP：</strong>2PC 追求 CA（一致 + 可用），但分布式系统本质是 P（分区容忍），只能 AP 或 CP。<br>
+    <strong>微服务推荐：</strong>Saga（最终一致性）+ Outbox 表（保证消息不丢）+ 幂等（保证消息不重复处理）。接受"最终一致性"，放弃"强一致性"。
+  </div></div>
+</section>
+
+<!-- ═══════ 口播总结 ═══════ -->
+<section class="section">
+  <div class="voice-summary">
+    <p><strong>朋友，今天带你完整过了一遍微服务架构的核心知识点。</strong></p>
+    <p>第一，<strong>为什么微服务？</strong>从单体到微服务就像从大超市到美食城——每个摊位独立运营，一个摊位的装修（部署）不影响其他摊位。微服务的本质是"按业务能力拆分"，不是"越细越好"。</p>
+    <p>第二，<strong>服务拆分</strong>要找业务领域的"自然缝隙"——DDD 的限界上下文是最好的切分依据。六个原则：独立数据库、小团队维护、标准化通信、最终一致性、先单体后拆分、粒度适当。</p>
+    <p>第三，<strong>API 网关</strong>是微服务的统一大门——路由、鉴权、限流、熔断一站式解决。BFF 模式为不同端裁剪数据，KONG 等企业级网关提供丰富插件。</p>
+    <p>第四，<strong>服务通信</strong>——内部用 gRPC（高效、强类型），外部用 REST/GraphQL，异步用消息队列削峰解耦。Outbox 模式保证事件不丢，Saga 模式处理分布式事务。</p>
+    <p>第五，<strong>服务发现</strong>需要注册中心（Nacos/Eureka）——服务启动时注册、心跳保活、客户端负载均衡。配置中心统一管理配置、动态刷新、版本化管理。</p>
+    <p>第六，<strong>Istio 服务网格</strong>——Sidecar 代理让网络逻辑从业务代码中剥离。流量管理、安全通信、可观测性三大核心能力。但引入 ~5ms 额外延迟，不是小团队的必需品。</p>
+    <p>第七，<strong>微服务的痛点</strong>——分布式事务、级联故障、链路追踪、测试复杂等八大问题，每个都有对应策略。千万不要被"微服务=牛逼"忽悠——团队小、业务简单时，模块化单体是更好的选择。</p>
+    <p><strong>最后记住一句话：</strong>微服务不是目标，解决业务问题才是。合适的架构才是好架构。🎯</p>
+  </div>
+</section>
+
+<!-- ═══════ 参考文献 ═══════ -->
+<div class="feynman" style="margin-top:40px;background:linear-gradient(135deg,rgba(163,113,247,0.06),rgba(76,29,149,0.04));border-color:rgba(163,113,247,0.3)">
+  <p style="font-size:11px;color:#c4b5fd;margin-bottom:8px;font-weight:700">📖 本文思想来源</p>
+  <p style="font-size:12px;line-height:1.9">
+    <strong>《微服务架构设计模式》</strong> —— Chris Richardson<br>
+    • <span style="color:#a78bfa">第 1 章「逃离单体地狱」</span>：拆分的驱动力和原则<br>
+    • <span style="color:#a78bfa">第 4 章「Saga 模式」</span>：分布式事务的权威方案<br>
+    <strong>《Building Microservices》</strong> —— Sam Newman<br>
+    • <span style="color:#a78bfa">第 2 章「服务建模」</span>：限界上下文和拆分策略<br>
+    <strong>Istio 官方文档</strong> — istio.io<br>
+    • <span style="color:#94a3b8">另见：</span>Martin Fowler 微服务文章、Nacos 官方手册、Google SRE 系列
+  </p>
+</div>
+
+<p style="text-align:center;color:var(--muted);margin-top:60px;padding-bottom:40px;font-size:12px">
+  🏗️ 微服务架构复习完成 · 服务拆分 + API网关 + gRPC + Istio 三大件<br>
+  <a href="/" style="color:var(--accent)">← 返回首页</a>
+</p>
+
+</main>
+
+</div><!-- .app -->
+
+<script src="/mobile.js"></script>
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'microservice';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+<script>
+(function(){
+  var key = 'sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  try { window.toggleSidebar = function() {
+    var current = sidebar.classList.contains('collapsed') ? 'expanded' : 'collapsed';
+    apply(current);
+    try { localStorage.setItem(key, current); } catch(e) {}
+  }; } catch(e) {}
+
+  // Restore state
+  try {
+    var saved = localStorage.getItem(key);
+    if (saved === 'collapsed') apply('collapsed');
+  } catch(e) {}
+})();
+</script>
+
+</body>
+</html>

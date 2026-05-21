@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>软件开发中的权衡与取舍 · 费曼学习法</title>
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  .app { display: flex; min-height: 100vh; }
+  aside.sidebar { width: 220px; flex-shrink: 0; border-right: 1px solid var(--border); padding: 24px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .sidebar-logo { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 24px; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-item { display: block; padding: 7px 12px; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 14px; transition: all 0.15s; margin-bottom: 2px; }
+  .nav-item:hover { background: var(--card); color: var(--text); }
+  .nav-item.active { background: rgba(88,166,255,0.12); color: var(--accent); }
+  .nav-section { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 16px 12px 6px; }
+  main.main { flex: 1; max-width: 860px; padding: 40px 48px; }
+  h2 { font-size: 22px; color: #fff; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h2:first-of-type { margin-top: 0; }
+  h3 { font-size: 17px; color: #e6edf3; margin: 24px 0 12px; }
+  h4 { font-size: 15px; color: #e6edf3; margin: 18px 0 8px; }
+  p { margin: 10px 0; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.04)); border: 1px solid rgba(88,166,255,0.15); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .feynman .analogy { color: var(--orange); font-weight: 600; }
+  .feynman p { margin: 6px 0; }
+  .diagram { margin: 24px 0; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .diagram svg { width: 100%; height: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th { background: rgba(88,166,255,0.1); color: #e6edf3; padding: 10px 14px; text-align: left; border: 1px solid var(--border); font-weight: 600; }
+  td { padding: 10px 14px; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  code { background: rgba(255,255,255,0.07); padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'JetBrains Mono', 'Cascadia Code', monospace; color: #e6edf3; }
+  pre { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 16px 0; overflow-x: auto; font-size: 13px; font-family: 'JetBrains Mono', 'Cascadia Code', monospace; line-height: 1.6; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 20px 0; }
+  .info-card h4 { margin-top: 0; color: var(--accent); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; margin-right: 4px; }
+  .badge-red { background: rgba(248,81,73,0.12); color: #f87173; }
+  .badge-green { background: rgba(63,185,80,0.12); color: #3fb950; }
+  .badge-purple { background: rgba(163,113,247,0.12); color: #a371f7; }
+  .badge-orange { background: rgba(210,153,34,0.12); color: #d29922; }
+  .qa { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 16px 0; overflow: hidden; }
+  .q { padding: 12px 18px; background: rgba(88,166,255,0.06); color: var(--accent); font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--border); }
+  .a { padding: 14px 18px; font-size: 14px; }
+  .a p { margin: 6px 0; }
+  .conclusion { background: linear-gradient(135deg, rgba(210,153,34,0.08), rgba(248,81,73,0.05)); border: 1px solid rgba(210,153,34,0.2); border-radius: 12px; padding: 24px; margin: 32px 0 16px; }
+  .back-link { display: inline-block; margin-top: 48px; padding: 10px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; color: var(--accent); text-decoration: none; font-size: 14px; transition: all 0.2s; }
+  .back-link:hover { border-color: var(--accent); }
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { padding: 20px 16px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <a class="nav-item" href="#thinking">🧠 权衡思维</a>
+  <a class="nav-item" href="#cap">🏛️ CAP 定理</a>
+  <a class="nav-item" href="#perf">⚡ 一致性与性能</a>
+  <a class="nav-item" href="#latency">⏱️ 延迟与吞吐</a>
+  <a class="nav-item" href="#mono">🏗️ 单体与微服务</a>
+  <a class="nav-item" href="#simple">♻️ 简单与灵活</a>
+  <a class="nav-item" href="#premature">⚠️ 过早优化</a>
+  <a class="nav-item" href="#qa">🎯 真题</a>
+  <a class="nav-item" href="#tts">🎙️ 口播总结</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>🔵 软件开发中的权衡与取舍</h2>
+  <div class="feynman">
+    <p><span class="analogy">🍳 类比：</span>软件开发不是解数学题——没有唯一正确答案。每个设计决策都是权衡：牺牲A换来B，理解"放弃了什么"比理解"得到了什么"更重要。就像买房：价格、地段、学区三者不可兼得，你必须取舍。</p>
+    <p><strong>技术现实：</strong>计算机科学里最著名的理论——CAP 定理、Paxos 的确定性证明、ACID 的隔离级别——全都描述的是"你不可能同时拥有所有好东西"这一基本事实。高级工程师的标志，不是知道所有答案，而是能在具体约束下做出最优取舍。</p>
+  </div>
+
+  <table>
+    <tr><th>权衡维度</th><th>放弃什么</th><th>换来什么</th><th>典型场景</th></tr>
+    <tr><td><strong>CAP：C vs A</strong></td><td>一致性</td><td>可用性</td><td>分布式数据库选型</td></tr>
+    <tr><td><strong>延迟 vs 吞吐</strong></td><td>单次响应速度</td><td>单位时间处理量</td><td>IO 密集型服务</td></tr>
+    <tr><td><strong>单体 vs 微服务</strong></td><td>独立部署/扩展</td><td>开发和部署简单</td><td>初创公司/业务早期</td></tr>
+    <tr><td><strong>缓存 vs 一致性</strong></td><td>强一致读</td><td>读性能提升</td><td>读多写少业务</td></tr>
+    <tr><td><strong>SQL vs NoSQL</strong></td><td>事务/Join</td><td>水平扩展能力</td><td>海量非结构化数据</td></tr>
+    <tr><td><strong>同步 vs 异步</strong></td><td>实时性</td><td>解耦和弹性</td><td>跨服务通信</td></tr>
+  </table>
+</section>
+
+<section id="thinking" class="section">
+  <h2>🧠 权衡思维：工程师的核心元技能</h2>
+  <div class="feynman">
+    <p><span class="analogy">⚖️ 类比：</span>权衡思维就像驾驶手动挡的车——你永远在踩油门和刹车之间找平衡。踩太猛会熄火，太轻又上不了坡。好的司机会根据坡度、载重、路况持续调整档位，而不是死守一个"正确"踏板力度。</p>
+    <p><strong>工程现实：</strong>"没有免费的午餐"（No Free Lunch）是计算机科学最重要的定理之一——任何优化都有代价，关键在于这个代价在当前场景下是否可接受。实战中考权衡，本质是考你能不能说清楚"在这个具体场景下，我选A而不是B的理由"。</p>
+  </div>
+
+  <h3>权衡三步法</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="tA1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#f87173"/>
+        </marker>
+        <marker id="tA2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#34d399"/>
+        </marker>
+        <marker id="tA3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#fbbf24"/>
+        </marker>
+      </defs>
+      <!-- Step 1 -->
+      <rect x="40" y="60" width="200" height="90" rx="10" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="140" y="95" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="700" font-family="JetBrains Mono,monospace">① 识别真正约束</text>
+      <text x="140" y="118" text-anchor="middle" fill="#c9d1d9" font-size="12" font-family="JetBrains Mono,monospace">是延迟？一致性？成本？</text>
+      <text x="140" y="136" text-anchor="middle" fill="#8b949e" font-size="11" font-family="JetBrains Mono,monospace">业务优先级决定权重</text>
+      <!-- Arrow 1→2 -->
+      <line x1="240" y1="105" x2="300" y2="105" stroke="#8b949e" stroke-width="1.5" marker-end="url(#tA1)"/>
+      <!-- Step 2 -->
+      <rect x="300" y="60" width="200" height="90" rx="10" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="400" y="95" text-anchor="middle" fill="#34d399" font-size="14" font-weight="700" font-family="JetBrains Mono,monospace">② 量化放弃的成本</text>
+      <text x="400" y="118" text-anchor="middle" fill="#c9d1d9" font-size="12" font-family="JetBrains Mono,monospace">数据 > 直觉</text>
+      <text x="400" y="136" text-anchor="middle" fill="#8b949e" font-size="11" font-family="JetBrains Mono,monospace">profiling / A/B / 成本模型</text>
+      <!-- Arrow 2→3 -->
+      <line x1="500" y1="105" x2="560" y2="105" stroke="#8b949e" stroke-width="1.5" marker-end="url(#tA2)"/>
+      <!-- Step 3 -->
+      <rect x="560" y="60" width="200" height="90" rx="10" fill="rgba(120,53,15,0.4)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="660" y="95" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="700" font-family="JetBrains Mono,monospace">③ 接受不完美</text>
+      <text x="660" y="118" text-anchor="middle" fill="#c9d1d9" font-size="12" font-family="JetBrains Mono,monospace">完美 = 永远做不出来</text>
+      <text x="660" y="136" text-anchor="middle" fill="#8b949e" font-size="11" font-family="JetBrains Mono,monospace">足够好的决策 > 等待完美</text>
+    </svg>
+    <div class="diagram-caption">权衡三步法：从识别约束到接受不完美，每一步都用数据和业务目标说话</div>
+  </div>
+
+  <h4>好权衡 vs 坏权衡</h4>
+  <div class="compare">
+    <div>
+      <h4>✅ 好权衡</h4>
+      <ul style="margin:8px 0 8px 18px;font-size:13px">
+        <li>约束来自真实业务数据（"P99延迟>500ms用户流失+15%"）</li>
+        <li>明确放弃了什么、得到了什么</li>
+        <li>随业务变化可重新评估</li>
+        <li>团队有能力实施和维护</li>
+      </ul>
+    </div>
+    <div>
+      <h4>❌ 坏权衡</h4>
+      <ul style="margin:8px 0 8px 18px;font-size:13px">
+        <li>基于"大厂这么做"或技术时尚</li>
+        <li>只看到收益，看不到隐性成本</li>
+        <li>"将来再优化"——技术债累积</li>
+        <li>引入了团队无法驾驭的复杂度</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="cap" class="section">
+  <h2>🏛️ CAP 定理：分布式系统的铁律</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏪 类比：</span>想象一家银行——网络分区时（断网/机房故障），你只能二选一：要么拒绝服务让大家取不了钱（高可用），要么让交易暂停等你恢复网络（强一致）。不可能既实时又正确还永不宕机。</p>
+    <p><strong>形式化：</strong>分布式系统不可能同时满足一致性（Consistency）、可用性（Availability）和分区容错（Partition Tolerance）——你必须在C和A之间选择。分区必然发生，所以真实系统要么是 CP（牺牲可用性），要么是 AP（牺牲一致性）。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="capA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#f87173"/></marker>
+        <marker id="capB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#34d399"/></marker>
+        <marker id="capC" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#fbbf24"/></marker>
+      </defs>
+      <!-- Center triangle -->
+      <polygon points="410,30 180,260 640,260" fill="none" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <!-- C -->
+      <text x="410" y="20" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="700" font-family="JetBrains Mono,monospace">C · Consistency</text>
+      <text x="410" y="36" text-anchor="middle" fill="#8b949e" font-size="10" font-family="JetBrains Mono,monospace">每次读是最新的写入</text>
+      <!-- A -->
+      <text x="148" y="255" text-anchor="middle" fill="#f87173" font-size="13" font-weight="700" font-family="JetBrains Mono,monospace">A · Availability</text>
+      <text x="148" y="271" text-anchor="middle" fill="#8b949e" font-size="10" font-family="JetBrains Mono,monospace">每个请求都有响应</text>
+      <!-- P -->
+      <text x="672" y="255" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="700" font-family="JetBrains Mono,monospace">P · Partition Tolerance</text>
+      <text x="672" y="271" text-anchor="middle" fill="#8b949e" font-size="10" font-family="JetBrains Mono,monospace">网络分区时继续运行</text>
+      <!-- CP side -->
+      <line x1="410" y1="30" x2="640" y2="260" stroke="#f87173" stroke-width="2" marker-end="url(#capA)"/>
+      <text x="545" y="130" text-anchor="middle" fill="#f87173" font-size="11" font-family="JetBrains Mono,monospace">放弃</text>
+      <!-- CA side -->
+      <line x1="410" y1="30" x2="180" y2="260" stroke="#fbbf24" stroke-width="2" marker-end="url(#capC)"/>
+      <text x="275" y="130" text-anchor="middle" fill="#fbbf24" font-size="11" font-family="JetBrains Mono,monospace">放弃</text>
+      <!-- CP node -->
+      <rect x="620" y="168" width="100" height="50" rx="8" fill="rgba(248,113,73,0.15)" stroke="#f87173" stroke-width="1.5"/>
+      <text x="670" y="188" text-anchor="middle" fill="#f87173" font-size="11" font-weight="700" font-family="JetBrains Mono,monospace">CP 系统</text>
+      <text x="670" y="204" text-anchor="middle" fill="#c9d1d9" font-size="10" font-family="JetBrains Mono,monospace">ZooKeeper / etcd</text>
+      <!-- AP node -->
+      <rect x="100" y="168" width="100" height="50" rx="8" fill="rgba(251,146,60,0.15)" stroke="#fb923c" stroke-width="1.5"/>
+      <text x="150" y="188" text-anchor="middle" fill="#fb923c" font-size="11" font-weight="700" font-family="JetBrains Mono,monospace">AP 系统</text>
+      <text x="150" y="204" text-anchor="middle" fill="#c9d1d9" font-size="10" font-family="JetBrains Mono,monospace">Cassandra / DynamoDB</text>
+    </svg>
+    <div class="diagram-caption">CAP 三元悖论：分区必然发生时，只能在 C（强一致）和 A（高可用）之间二选一</div>
+  </div>
+
+  <h3>经典系统的 CAP 取舍</h3>
+  <table>
+    <tr><th>系统</th><th>类型</th><th>一致性模型</th><th>取舍说明</th></tr>
+    <tr><td><strong>ZooKeeper</strong></td><td><span class="badge badge-red">CP</span></td><td>线性一致</td><td>Leader 节点故障时选举期间不可用，直到新 Leader 选出</td></tr>
+    <tr><td><strong>etcd</strong></td><td><span class="badge badge-red">CP</span></td><td>线性一致</td><td>Raft 共识保证强一致，少数节点故障时集群不可写</td></tr>
+    <tr><td><strong> Cassandra</strong></td><td><span class="badge badge-green">AP</span></td><td>最终一致</td><td>写成功即返回，读可能 stale；可通过配置调整一致性级别</td></tr>
+    <tr><td><strong>DynamoDB</strong></td><td><span class="badge badge-green">AP</span></td><td>会话一致 + 最终一致</td><td>多 AZ 复制，写可用性优先；读可以牺牲延迟换取一致性</td></tr>
+    <tr><td><strong>MySQL 主从</strong></td><td><span class="badge badge-green">AP</span></td><td>异步复制，读可能 stale</td><td>主库挂了从库顶上，但可能丢数据；业务可接受最终一致</td></tr>
+    <tr><td><strong>Redis 集群</strong></td><td><span class="badge badge-green">AP</span></td><td>最终一致（ASK/ MOVED）</td><td>哈希槽迁移期间部分 key 不可用；Cluster 模式下优先可用</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>💡 "可用性" 的真正含义</h4>
+    <p>CAP 中的"可用性"不是指服务不宕机，而是指<strong>每次请求都有明确响应</strong>——即使返回的是错误数据也算"可用"。真正的可用性 SLA 需要定义"正确响应"的边界。实践中，很多 AP 系统通过降级策略来同时保证"基本可用+最终正确"。</p>
+  </div>
+</section>
+
+<section id="perf" class="section">
+  <h2>⚡ 一致性与性能：缓存是最典型的权衡</h2>
+  <div class="feynman">
+    <p><span class="analogy">🗄️ 类比：</span>缓存就像餐厅的"快速通道"——你提前把招牌菜备好，客人点单直接上。但如果有客人临时改了菜单（数据更新），快速通道里的菜就"过期"了。你得在"上菜速度"和"菜是否新鲜"之间二选一。</p>
+    <p><strong>工程现实：</strong>所有缓存策略本质上都是"我愿意接受多旧的数据"。Cache-Aside、Read-Through、Write-Through、Write-Behind——这些模式没有绝对好坏，只看你对"陈旧数据容忍度"和"数据库负载"之间的取舍。</p>
+  </div>
+
+  <h3>四种缓存模式对比</h3>
+  <table>
+    <tr><th>模式</th><th>读流程</th><th>写流程</th><th>一致性</th><th>适用场景</th></tr>
+    <tr><td><strong>Cache-Aside</strong></td><td>查缓存，未命中→查DB→写入缓存</td><td>更新DB，删除缓存（下一次读取再填充）</td><td>最终一致（短暂窗口）</td><td>读多写少（Facebook/MySQL）</td></tr>
+    <tr><td><strong>Read-Through</strong></td><td>查缓存，未命中→缓存层自动查DB并填充</td><td>同 Cache-Aside</td><td>最终一致</td><td>读多，缓存层实现简单</td></tr>
+    <tr><td><strong>Write-Through</strong></td><td>同 Cache-Aside</td><td>同时写缓存和DB，缓存写入后再返回</td><td>强一致</td><td>写少，不能容忍任何不一致</td></tr>
+    <tr><td><strong>Write-Behind</strong></td><td>同 Cache-Aside</td><td>写缓存立即返回，异步批量写DB</td><td>最终一致（窗口内可能丢更新）</td><td>写密集，牺牲一致性换性能</td></tr>
+  </table>
+
+  <h3>缓存三罪：穿透 / 击穿 / 雪崩</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 220" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="cA1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#f87173"/></marker>
+        <marker id="cA2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#fbbf24"/></marker>
+        <marker id="cA3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#a78bfa"/></marker>
+      </defs>
+      <!-- Client -->
+      <rect x="30" y="80" width="90" height="50" rx="8" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="75" y="110" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700" font-family="JetBrains Mono,monospace">客户端</text>
+      <!-- Cache -->
+      <rect x="300" y="80" width="90" height="50" rx="8" fill="rgba(251,146,60,0.15)" stroke="#fb923c" stroke-width="1.5"/>
+      <text x="345" y="110" text-anchor="middle" fill="#fb923c" font-size="12" font-weight="700" font-family="JetBrains Mono,monospace">Cache</text>
+      <!-- DB -->
+      <rect x="560" y="80" width="90" height="50" rx="8" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="605" y="110" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700" font-family="JetBrains Mono,monospace">Database</text>
+      <!-- 穿透 -->
+      <line x1="120" y1="95" x2="295" y2="95" stroke="#f87173" stroke-width="1.5" marker-end="url(#cA1)"/>
+      <line x1="390" y1="95" x2="555" y2="95" stroke="#f87173" stroke-width="1.5" marker-end="url(#cA1)" stroke-dasharray="4,3"/>
+      <text x="210" y="88" text-anchor="middle" fill="#f87173" font-size="11" font-family="JetBrains Mono,monospace">① 穿透：查不到</text>
+      <!-- 击穿 -->
+      <line x1="345" y1="130" x2="605" y2="130" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#cA2)"/>
+      <text x="475" y="124" text-anchor="middle" fill="#fbbf24" font-size="11" font-family="JetBrains Mono,monospace">② 击穿：热点 key 失效 → 大量并发打爆 DB</text>
+      <!-- 雪崩 -->
+      <line x1="345" y1="165" x2="605" y2="165" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#cA3)"/>
+      <text x="475" y="159" text-anchor="middle" fill="#a78bfa" font-size="11" font-family="JetBrains Mono,monospace">③ 雪崩：大量 key 同时过期 → DB 压力骤增</text>
+      <!-- Solutions -->
+      <text x="75" y="195" text-anchor="middle" fill="#f87173" font-size="10" font-family="JetBrains Mono,monospace">布隆过滤器</text>
+      <text x="75" y="208" text-anchor="middle" fill="#fbbf24" font-size="10" font-family="JetBrains Mono,monospace">互斥锁 / 永不过期</text>
+      <text x="75" y="221" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="JetBrains Mono,monospace">随机 TTL / 限流</text>
+    </svg>
+    <div class="diagram-caption">缓存三罪：穿透（恶意/无效查询）、击穿（热点 key 失效）、雪崩（批量过期）——每一种都有对应解法</div>
+  </div>
+
+  <div class="info-card">
+    <h4>💡 一致性级别：你愿意接受多旧的数据？</h4>
+    <p>从强到弱：<strong>线性一致</strong>（所有节点同时看到同一版本）→ <strong>顺序一致</strong>（各节点按同一顺序看到更新）→ <strong>因果一致</strong>（有因果关系的操作有序）→ <strong>最终一致</strong>（停止写入后最终收敛）。越强的一致性 = 越低的性能 = 越贵的实现成本。DynamoDB 可以让你按需选择每张表的一致性级别——这是把权衡权交给业务的优秀设计。</p>
+  </div>
+</section>
+
+<section id="latency" class="section">
+  <h2>⏱️ 延迟与吞吐：并发与批处理的权衡</h2>
+  <div class="feynman">
+    <p><span class="analogy">🚗 类比：</span>餐厅出菜——单锅炒一个菜快（低延迟），但一锅只能出一份，单位时间出菜少（低吞吐）。用大锅一次炒十份，单位时间出菜多（高吞吐），但每份等待时间变长（高延迟）。快餐店选大锅，正餐选小锅——取决于你的业务模式。</p>
+    <p><strong>技术现实：</strong>延迟（Latency）是"完成一次操作的时间"，吞吐（Throughput）是"单位时间内完成的操作数"。追求低延迟通常意味着并发度低、资源独占；追求高吞吐通常意味着排队、批处理、共享资源——两者方向相反，需要具体场景具体分析。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 240" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ltA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#22d3ee"/></marker>
+      </defs>
+      <!-- Low latency, low throughput: sequential -->
+      <text x="100" y="30" text-anchor="middle" fill="#f87173" font-size="12" font-weight="700" font-family="JetBrains Mono,monospace">低延迟 · 低吞吐（串行）</text>
+      <rect x="20" y="45" width="60" height="28" rx="4" fill="rgba(248,113,73,0.15)" stroke="#f87173" stroke-width="1.5"/>
+      <text x="50" y="64" text-anchor="middle" fill="#f87173" font-size="10" font-family="JetBrains Mono,monospace">Req1</text>
+      <line x1="50" y1="73" x2="50" y2="88" stroke="#f87173" stroke-width="1.5"/>
+      <rect x="20" y="88" width="60" height="28" rx="4" fill="rgba(248,113,73,0.15)" stroke="#f87173" stroke-width="1.5"/>
+      <text x="50" y="107" text-anchor="middle" fill="#f87173" font-size="10" font-family="JetBrains Mono,monospace">Req2</text>
+      <line x1="50" y1="116" x2="50" y2="131" stroke="#f87173" stroke-width="1.5"/>
+      <rect x="20" y="131" width="60" height="28" rx="4" fill="rgba(248,113,73,0.15)" stroke="#f87173" stroke-width="1.5"/>
+      <text x="50" y="150" text-anchor="middle" fill="#f87173" font-size="10" font-family="JetBrains Mono,monospace">Req3</text>
+      <text x="50" y="180" text-anchor="middle" fill="#8b949e" font-size="10" font-family="JetBrains Mono,monospace">每请求 10ms</text>
+      <text x="50" y="193" text-anchor="middle" fill="#8b949e" font-size="10" font-family="JetBrains Mono,monospace">100 req/s</text>
+
+      <!-- Arrow -->
+      <line x1="120" y1="105" x2="150" y2="105" stroke="#8b949e" stroke-width="1.5" marker-end="url(#ltA)"/>
+
+      <!-- High throughput, higher latency: batch -->
+      <text x="310" y="30" text-anchor="middle" fill="#34d399" font-size="12" font-weight="700" font-family="JetBrains Mono,monospace">高吞吐 · 较高延迟（并发/批处理）</text>
+      <rect x="230" y="45" width="160" height="114" rx="8" fill="rgba(6,78,59,0.15)" stroke="#34d399" stroke-width="1.5"/>
+      <rect x="240" y="55" width="50" height="24" rx="4" fill="rgba(6,78,59,0.3)" stroke="#34d399" stroke-width="1"/>
+      <text x="265" y="71" text-anchor="middle" fill="#34d399" font-size="9" font-family="JetBrains Mono,monospace">Req1</text>
+      <rect x="300" y="55" width="50" height="24" rx="4" fill="rgba(6,78,59,0.3)" stroke="#34d399" stroke-width="1"/>
+      <text x="325" y="71" text-anchor="middle" fill="#34d399" font-size="9" font-family="JetBrains Mono,monospace">Req2</text>
+      <rect x="240" y="88" width="50" height="24" rx="4" fill="rgba(6,78,59,0.3)" stroke="#34d399" stroke-width="1"/>
+      <text x="265" y="104" text-anchor="middle" fill="#34d399" font-size="9" font-family="JetBrains Mono,monospace">Req3</text>
+      <rect x="300" y="88" width="50" height="24" rx="4" fill="rgba(6,78,59,0.3)" stroke="#34d399" stroke-width="1"/>
+      <text x="325" y="104" text-anchor="middle" fill="#34d399" font-size="9" font-family="JetBrains Mono,monospace">Req4</text>
+      <rect x="240" y="121" width="110" height="24" rx="4" fill="rgba(6,78,59,0.3)" stroke="#34d399" stroke-width="1"/>
+      <text x="295" y="137" text-anchor="middle" fill="#34d399" font-size="9" font-family="JetBrains Mono,monospace">... 批量执行</text>
+      <text x="310" y="180" text-anchor="middle" fill="#8b949e" font-size="10" font-family="JetBrains Mono,monospace">P99 延迟 40ms</text>
+      <text x="310" y="193" text-anchor="middle" fill="#8b949e" font-size="10" font-family="JetBrains Mono,monospace">1000 req/s</text>
+
+      <!-- Key insight -->
+      <rect x="510" y="55" width="280" height="100" rx="10" fill="rgba(88,166,255,0.06)" stroke="rgba(88,166,255,0.2)" stroke-width="1.5"/>
+      <text x="650" y="80" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700" font-family="JetBrains Mono,monospace">关键洞察</text>
+      <text x="530" y="102" fill="#c9d1d9" font-size="11" font-family="JetBrains Mono,monospace">• 用户面向接口：P99 延迟决定体验</text>
+      <text x="530" y="120" fill="#c9d1d9" font-size="11" font-family="JetBrains Mono,monospace">• 系统面向容量：吞吐决定成本效率</text>
+      <text x="530" y="138" fill="#c9d1d9" font-size="11" font-family="JetBrains Mono,monospace">• 读写特性不同：读用缓存优化吞吐</text>
+      <text x="530" y="156" fill="#c9d1d9" font-size="11" font-family="JetBrains Mono,monospace">  写用批处理降低数据库压力</text>
+    </svg>
+    <div class="diagram-caption">延迟与吞吐的物理本质：并行增加吞吐但通常增加 P99 延迟；两者优化方向不同，需要分别对待</div>
+  </div>
+
+  <h4>Little 定律：系统稳定的核心约束</h4>
+  <pre><code><span class="cm">// Little 定律：L = λ · W</span>
+<span class="cm">// L = 系统中平均请求数（队列长度）</span>
+<span class="cm">// λ = 到达率（每秒请求数 / 吞吐）</span>
+<span class="cm">// W = 平均处理时间（延迟）</span>
+
+<span class="cm">// 场景：P99 延迟 100ms，期望吞吐 1000 req/s</span>
+<span class="cm">// 系统中的平均请求数 L = 1000 × 0.1 = 100 个</span>
+<span class="cm">// 这 100 个请求在排队，队列长度决定内存/延迟</span>
+
+<span class="cm">// 如果想把 L 降到 50？</span>
+<span class="cm">// 方案A：降低延迟 W → 需要优化处理速度</span>
+<span class="cm">// 方案B：降低吞吐 λ → 拒绝部分请求（降级）</span></code></pre>
+</section>
+
+<section id="mono" class="section">
+  <h2>🏗️ 单体与微服务：组织结构决定架构</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏠 类比：</span>单体就像一套大开间，装修简单、改动方便，但一家人共享厨房和厕所——一个室友熬夜影响到所有人。微服务就像独栋别墅，每户独立水电，但每家都要自己维护院子、供暖、宽带。团队小、预算少，开间更实际；团队大、业务复杂，别墅效率更高。</p>
+    <p><strong>Conway 定律：</strong>系统架构会复制组织的沟通结构。如果两个团队经常需要一起改同一个代码模块，他们就会趋向于把系统拆成对应两个服务——哪怕一开始不是这样设计的。微服务的"正确"拆分方式，本质上是由业务边界（而不是技术边界）决定的。</p>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4>🏠 单体优先的场景</h4>
+      <ul style="margin:8px 0 8px 18px;font-size:13px">
+        <li>团队 &lt; 10 人，业务仍在探索期</li>
+        <li>快速迭代优先于长期可扩展性</li>
+        <li>没有明显的独立扩展需求</li>
+        <li>缺乏 SRE/DevOps 成熟度</li>
+        <li>创业公司 MVP 阶段</li>
+      </ul>
+      <p style="margin-top:12px;font-size:13px;color:var(--green)">✅ 简单 = 快速 = 低成本 = 低风险</p>
+    </div>
+    <div>
+      <h4>🏢 微服务优先的场景</h4>
+      <ul style="margin:8px 0 8px 18px;font-size:13px">
+        <li>团队 &gt; 50 人，有明确子业务域</li>
+        <li>不同模块有截然不同的扩展需求</li>
+        <li>需要独立部署、独立技术栈</li>
+        <li>故障隔离是核心需求</li>
+        <li>已验证的产品，有稳定 SLA</li>
+      </ul>
+      <p style="margin-top:12px;font-size:13px;color:var(--orange)">⚠️ 服务间通信 + 分布式事务 + 运维复杂度</p>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>💡 务实的演进路径</h4>
+    <p>Reddit、Stripe、Basecamp 这些成熟公司在早期都是单体，在业务规模和团队扩张后才逐步拆出独立服务。<strong>不要从一开始就设计微服务</strong>——模块化的单体（Modular Monolith）才是大多数公司的正确答案：保持部署简单的同时，强制模块边界和数据可见性，等真正出现独立扩展需求时再拆。</p>
+  </div>
+</section>
+
+<section id="simple" class="section">
+  <h2>♻️ 简单与灵活：KISS 和 YAGNI</h2>
+  <div class="feynman">
+    <p><span class="analogy">🎒 类比：</span>KISS（保持简单）就像打包旅行行李——每加一件"可能用得上"的东西，你就要多背一份重量。YAGNI（不要预先实现你不需要的功能）就像在还没确定目的地之前不买登山装备——有可能用不上，也有可能完全买错。</p>
+    <p><strong>技术现实：</strong>软件的复杂度增长速度往往超过预期。预先设计过度（Over-engineering）引入的复杂性，在需求变化后往往成为最大的技术债。好的设计是"恰好够用"——当前需求满足 + 合理的扩展点，而不是"将来可能需要的所有功能"。</p>
+  </div>
+
+  <h3>复杂度来源与应对</h3>
+  <table>
+    <tr><th>复杂度类型</th><th>典型表现</th><th>应对策略</th></tr>
+    <tr><td><strong>意外复杂度</strong></td><td>过度设计、滥用设计模式、无用抽象层</td><td>YAGNI：只实现当前需要的</td></tr>
+    <tr><td><strong>本质复杂度</strong></td><td>业务本身逻辑复杂，没有银弹</td><td>接受它，用清晰的模型表达</td></tr>
+    <tr><td><strong>增长复杂度</strong></td><td>技术债累积、遗留代码无人敢动</td><td>持续重构 + 自动化测试保护</td></tr>
+    <tr><td><strong>分布式复杂度</strong></td><td>微服务化带来的网络不确定性</td><td>先用单体 + 模块化，再考虑拆分</td></tr>
+  </table>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 180" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="sA1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#f87173"/></marker>
+        <marker id="sA2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#3fb950"/></marker>
+      </defs>
+      <!-- Y axis -->
+      <line x1="60" y1="30" x2="60" y2="150" stroke="#8b949e" stroke-width="1"/>
+      <text x="30" y="90" text-anchor="middle" fill="#8b949e" font-size="11" transform="rotate(-90 30 90)" font-family="JetBrains Mono,monospace">复杂度</text>
+      <!-- X axis -->
+      <line x1="60" y1="150" x2="760" y2="150" stroke="#8b949e" stroke-width="1"/>
+      <text x="410" y="175" text-anchor="middle" fill="#8b949e" font-size="11" font-family="JetBrains Mono,monospace">时间</text>
+      <!-- Over-engineering curve (bad) -->
+      <path d="M 80 140 Q 250 20 700 15" fill="none" stroke="#f87173" stroke-width="2" stroke-dasharray="6,4"/>
+      <text x="580" y="25" text-anchor="middle" fill="#f87173" font-size="11" font-family="JetBrains Mono,monospace">Over-engineering（死得太早）</text>
+      <!-- Just-right curve -->
+      <path d="M 80 140 Q 200 100 400 95 Q 600 92 760 88" fill="none" stroke="#34d399" stroke-width="2.5"/>
+      <text x="480" y="78" text-anchor="middle" fill="#34d399" font-size="11" font-family="JetBrains Mono,monospace">YAGNI + 持续重构（活得久）</text>
+      <!-- Need line -->
+      <path d="M 80 140 Q 400 130 760 50" fill="none" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <text x="720" y="55" text-anchor="middle" fill="#58a6ff" font-size="11" font-family="JetBrains Mono,monospace">业务需求</text>
+      <!-- Annotations -->
+      <text x="120" y="130" text-anchor="middle" fill="#f87173" font-size="10" font-family="JetBrains Mono,monospace">"将来可能"</text>
+      <text x="120" y="142" text-anchor="middle" fill="#f87173" font-size="10" font-family="JetBrains Mono,monospace">复杂度</text>
+      <!-- Danger zone -->
+      <rect x="560" y="10" width="140" height="35" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f87173" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="630" y="32" text-anchor="middle" fill="#f87173" font-size="10" font-family="JetBrains Mono,monospace">需求变化时</text>
+      <text x="630" y="44" text-anchor="middle" fill="#f87173" font-size="10" font-family="JetBrains Mono,monospace">过度设计 = 负债</text>
+    </svg>
+    <div class="diagram-caption">YAGNI 的时间曲线：过度设计在需求变化时成为最大负债；持续小幅重构跟上业务需求，才能保持健康</div>
+  </div>
+</section>
+
+<section id="premature" class="section">
+  <h2>⚠️ 过早优化：最昂贵的错误</h2>
+  <div class="feynman">
+    <p><span class="analogy">🛠️ 类比：</span>Donald Knuth 说"过早优化是万恶之源"——就像为了可能有客人来访，提前把整栋楼的供暖系统换成地暖，结果客人没来，装修队走的时候还把墙砸了个洞。优化应该在有数据支撑时进行，而不是凭想象。</p>
+    <p><strong>正确的顺序：</strong>先让代码工作 → 再分析性能瓶颈（profiling） → 最后优化瓶颈点。优化一个非瓶颈点是零收益——你牺牲了代码可读性和开发时间，却什么都没换来。</p>
+  </div>
+
+  <h3>优化优先级决策树</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 280" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="opA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#22d3ee"/></marker>
+      </defs>
+      <!-- Root -->
+      <rect x="330" y="10" width="160" height="36" rx="8" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="410" y="33" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700" font-family="JetBrains Mono,monospace">发现性能问题</text>
+      <!-- Branch 1: Is it real? -->
+      <line x1="410" y1="46" x2="180" y2="80" stroke="#8b949e" stroke-width="1.5" marker-end="url(#opA)"/>
+      <rect x="100" y="80" width="160" height="32" rx="6" fill="rgba(139,148,158,0.1)" stroke="#8b949e" stroke-width="1.5"/>
+      <text x="180" y="101" text-anchor="middle" fill="#c9d1d9" font-size="11" font-family="JetBrains Mono,monospace">① profiling 确认是真实瓶颈？</text>
+      <!-- No → don't optimize -->
+      <line x1="100" y1="112" x2="100" y2="150" stroke="#f87173" stroke-width="1.5" marker-end="url(#opA)"/>
+      <rect x="40" y="150" width="120" height="28" rx="6" fill="rgba(248,81,73,0.1)" stroke="#f87173" stroke-width="1"/>
+      <text x="100" y="168" text-anchor="middle" fill="#f87173" font-size="11" font-family="JetBrains Mono,monospace">❌ 不优化</text>
+      <!-- Yes → is it hot path? -->
+      <line x1="180" y1="112" x2="620" y2="80" stroke="#8b949e" stroke-width="1.5" marker-end="url(#opA)"/>
+      <rect x="540" y="80" width="160" height="32" rx="6" fill="rgba(139,148,158,0.1)" stroke="#8b949e" stroke-width="1.5"/>
+      <text x="620" y="101" text-anchor="middle" fill="#c9d1d9" font-size="11" font-family="JetBrains Mono,monospace">② 在业务关键路径上？</text>
+      <!-- No → measure, consider -->
+      <line x1="620" y1="112" x2="700" y2="150" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#opA)"/>
+      <rect x="640" y="150" width="120" height="28" rx="6" fill="rgba(210,153,34,0.1)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="700" y="168" text-anchor="middle" fill="#fbbf24" font-size="11" font-family="JetBrains Mono,monospace">⚠ 评估后再决定</text>
+      <!-- Yes → measure overhead -->
+      <line x1="620" y1="112" x2="180" y2="150" stroke="#8b949e" stroke-width="1.5" marker-end="url(#opA)"/>
+      <rect x="100" y="150" width="160" height="32" rx="6" fill="rgba(139,148,158,0.1)" stroke="#8b949e" stroke-width="1.5"/>
+      <text x="180" y="171" text-anchor="middle" fill="#c9d1d9" font-size="11" font-family="JetBrains Mono,monospace">③ 优化引入多少复杂度？</text>
+      <!-- Low complexity -->
+      <line x1="100" y1="182" x2="100" y2="220" stroke="#3fb950" stroke-width="1.5" marker-end="url(#opA)"/>
+      <rect x="30" y="220" width="140" height="28" rx="6" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="1"/>
+      <text x="100" y="238" text-anchor="middle" fill="#3fb950" font-size="11" font-family="JetBrains Mono,monospace">✅ 优化（低风险高收益）</text>
+      <!-- High complexity -->
+      <line x1="180" y1="182" x2="260" y2="220" stroke="#f87173" stroke-width="1.5" marker-end="url(#opA)"/>
+      <rect x="180" y="220" width="160" height="28" rx="6" fill="rgba(248,81,73,0.1)" stroke="#f87173" stroke-width="1"/>
+      <text x="260" y="238" text-anchor="middle" fill="#f87173" font-size="11" font-family="JetBrains Mono,monospace">❌ 推迟 + 记录原因</text>
+    </svg>
+    <div class="diagram-caption">优化决策树：只有经过 profiling 确认、在关键路径上、且引入复杂度可控的优化才值得做</div>
+  </div>
+
+  <div class="info-card">
+    <h4>💡 三个实用的"先别优化"原则</h4>
+    <ol style="margin:8px 0 8px 20px;font-size:13px">
+      <li><strong>没有数据不优化：</strong>凭直觉的性能判断，80% 是错的。先跑 benchmark/profiling。</li>
+      <li><strong>瓶颈之外不优化：</strong>优化一个非瓶颈点，收益是零。把精力集中在 Amdahl 定律指出的串行部分。</li>
+      <li><strong>不可逆决策慎重优化：</strong>引入复杂优化（手动内存管理、汇编、无锁数据结构）之后再想回到简单方案，成本极高。</li>
+    </ol>
+  </div>
+</section>
+
+<section id="qa" class="section">
+  <h2>🎯 实战核心题</h2>
+
+  <div class="qa">
+    <div class="q">Q：系统设计时，如何判断应该优先选择 CP 还是 AP？</div>
+    <div class="a">
+      <p>看<strong>业务对不一致的容忍度</strong>：</p>
+      <p>• 金融交易、库存扣减 —— 选 CP，一致性不可妥协，宁可拒绝服务也不能给用户错误数据</p>
+      <p>• 社交 Feed、评论系统、配置下发 —— 选 AP，用户宁可看到稍旧的数据也不可接受"服务不可用"</p>
+      <p>• 更精细的做法：DynamoDB 模式——<strong>同一套系统支持可配的一致性级别</strong>，读用 AP、写用 CP，按需切换</p>
+      <p class="badge badge-red">重点</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Q：什么时候应该放弃 SQL 用 NoSQL？</div>
+    <div class="a">
+      <p>放弃 SQL 的<strong>核心信号</strong>：你的数据量和访问模式超出了关系模型能经济高效处理的范围。</p>
+      <p>• 单表数据量 &gt; 5000 万行，且没有复杂 Join 需求</p>
+      <p>• 写入 QPS &gt; 10k，需要水平扩展（MySQL 单机写入上限约 5k/s）</p>
+      <p>• 数据结构不固定或频繁变化（文档数据库）</p>
+      <p>• 需要 T级别的数据存储，SSD 成本不可接受，需要冷热分离</p>
+      <p class="badge badge-orange">高频</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Q："不要过早优化"和"性能意识"之间如何平衡？</div>
+    <div class="a">
+      <p>关键区分：<strong>优化代码结构 vs 优化性能热点</strong>。</p>
+      <p>• <em>永远要避免</em>的是"猜测热点，预先优化"——在错误的地方花大精力</p>
+      <p>• <em>永远要坚持</em>的是"代码结构要有意识地为扩展留有余地"——不乱过度设计，但也不故意写死</p>
+      <p>• 好的实践：写代码时保持"可读性第一、性能第二"，上线后用 profiling 数据说话，找准热点再做精准优化</p>
+      <p class="badge badge-purple">加分</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Q：单体和微服务之间，什么时候该拆？</div>
+    <div class="a">
+      <p>出现以下<strong>真实信号</strong>再拆，而不是一开始就拆：</p>
+      <p>① 不同模块的资源需求差异显著（如机器学习模块需要 GPU，其他模块不需要）</p>
+      <p>② 不同模块的发布频率差异大（一个模块一天发10次，另一个模块半年发一次，耦合导致互相阻塞）</p>
+      <p>③ 团队规模 &gt; 15 人，单个代码库导致 merge conflict 频发</p>
+      <p>④ 故障传播问题：一个模块的 OOM 拖垮了整个服务</p>
+      <p class="badge badge-red">重点</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Q：如何向非技术人员解释 CAP 定理？</div>
+    <div class="a">
+      <p>"想象你和朋友视频通话，突然网络断了（分区）。你有两个选择：</p>
+      <p>① 等待网络恢复再通话（一致性优先，保证你们看到同一个画面）</p>
+      <p>② 用手机流量继续通话，但画面可能卡住或稍有延迟（可用性优先，接受短暂不一致）</p>
+      <p>你不可能同时做到'永远不断'和'永远看到正确的对方画面'——这就是 CAP 定理在日常中的体现。"</p>
+      <p class="badge badge-green">推荐</p>
+    </div>
+  </div>
+</section>
+
+<section id="tts" class="section">
+  <h2>🎙️ 口播总结</h2>
+  <div class="conclusion">
+    <p>这篇文章帮你理解软件开发最核心的元技能——权衡思维。</p>
+    <p>我们从 CAP 定理出发，理解了分布式系统里"一致性"和"可用性"不可兼得的基本事实——这不是技术限制，是数学定理。CP 系统（ZooKeeper、etcd）保证每次读都是最新数据，但分区时拒绝服务；AP 系统（Cassandra、DynamoDB）永远可写，但接受短暂的数据不一致。选哪个，由你的业务说了算。</p>
+    <p>然后我们讨论了一致性和性能的权衡——缓存的三种罪（穿透、击穿、雪崩）每一种都有成熟的解法，但你得先清楚自己愿意接受多"旧"的数据。延迟和吞吐的物理本质由 Little 定律约束：L = λ × W，系统中的请求数等于吞吐乘以延迟。你没法同时把两者都做到极致，只能根据用户面向的是 P99 延迟体验还是系统容量需求来取舍。</p>
+    <p>最后，单体 vs 微服务、简单 vs 灵活、过早优化——这三条全都指向同一个原则：<strong>不要从复杂性出发做设计，要从业务约束出发</strong>。技术选型是对业务的回答，而不是对"哪个更先进"这个问题的回答。</p>
+    <p style="color:var(--orange);margin-top:16px">如果只能记住一个原则，那就是：<strong>说清楚你放弃了什么，比说清楚你得到了什么更重要</strong>。</p>
+  </div>
+</section>
+
+<a href="/" class="back-link">← 返回首页</a>
+
+</main>
+</div>
+<script src="/mobile.js"></script>
+<script src="/ebbinghaus.js"></script>
+
+<script src="/tts.js"></script>
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

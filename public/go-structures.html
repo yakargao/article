@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go 数据结构深度剖析 · Slice/Map/Chan · 费曼学习法</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">数据结构</div>
+  <a class="nav-item" href="#slice">🍕 Slice 切片</a>
+  <a class="nav-item" href="#map">🗺️ Map 哈希表</a>
+  <a class="nav-item" href="#chan">📡 Channel 通道</a>
+  <a class="nav-item" href="#iface">🎭 Interface 接口</a>
+  <a class="nav-item" href="#string">📝 String 字符串</a>
+  <a class="nav-item" href="#defer">⏸️ Defer 延迟调用</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>🔵 Go 数据结构</h2>
+  <div class="feynman">
+    <p><strong>一句话定位：</strong>Go 的核心数据结构（Slice、Map、Channel、Interface、String、Defer）体现了 Go 设计哲学——<strong>简单的外表下是精心权衡的底层细节</strong>。理解它们的内存布局和实现原理，是写出高性能 Go 代码的基石。</p>
+  </div>
+  <table>
+    <tr><th>结构</th><th>运行时大小</th><th>核心机制</th><th>Go 独特之处</th></tr>
+    <tr><td><strong>Slice</strong></td><td>24B (ptr+len+cap)</td><td>动态数组视图</td><td>不是指针，是值类型 header</td></tr>
+    <tr><td><strong>Map</strong></td><td>8B (指针)</td><td>拉链法 + 渐进扩容</td><td>每次操作顺带迁移 bucket</td></tr>
+    <tr><td><strong>Channel</strong></td><td>~96B</td><td>环形 buf + 等待队列</td><td>CSP 原生支持，select 多路复用</td></tr>
+    <tr><td><strong>Interface</strong></td><td>16B (tab+data)</td><td>类型+方法表</td><td>iface vs eface 双设计</td></tr>
+    <tr><td><strong>String</strong></td><td>16B (ptr+len)</td><td>不可变字节序列</td><td>len 是字节数，不是字符数</td></tr>
+    <tr><td><strong>Defer</strong></td><td>~40B→0B</td><td>栈分配（1.13+）</td><td>从链表演进到开放编码</td></tr>
+  </table>
+</section>
+
+<section id="slice" class="section">
+  <h2>🍕 Slice：24 字节的动态视图</h2>
+  <div class="feynman">
+    <p><span class="analogy">📏 类比：</span>Slice 是一把"可伸缩的尺子"——它不拥有数据，只标记从哪开始量、量到哪了、最多能量多远。传给函数等于复印了尺子刻度，但尺子量的是同一块布。</p>
+  </div>
+
+  <h3>Slice Header 结构</h3>
+  <pre><code><span class="kw">type</span> slice <span class="kw">struct</span> {
+    array unsafe.Pointer  <span class="cm">// 指向底层数组 (8B)</span>
+    len   <span class="kw">int</span>             <span class="cm">// 当前元素个数 (8B)</span>
+    cap   <span class="kw">int</span>             <span class="cm">// 最大容量 (8B)</span>
+}
+<span class="cm">// nil slice: array=nil, len=0, cap=0</span>
+<span class="cm">// 空 slice: array 指向一个全局空数组地址, len=0, cap=0</span></code></pre>
+
+  <h3>🌍 跨语言对比：动态数组的五种设计</h3>
+  <table>
+    <tr><th>语言</th><th>类型</th><th>内存模型</th><th>传参语义</th><th>扩容策略</th></tr>
+    <tr><td><strong>Go</strong></td><td><code>[]T</code></td><td>24B header（值）</td><td>header 拷贝，底层共享</td><td>&lt;256→2x，≥256→~1.25x</td></tr>
+    <tr><td><strong>Java</strong></td><td><code>ArrayList&lt;T&gt;</code></td><td>对象（堆）</td><td>引用传递</td><td>1.5x</td></tr>
+    <tr><td><strong>C++</strong></td><td><code>std::vector&lt;T&gt;</code></td><td>三指针（栈）</td><td>值/引用/移动可选</td><td>1.5x (GCC) / 2x (MSVC)</td></tr>
+    <tr><td><strong>Rust</strong></td><td><code>Vec&lt;T&gt;</code> / <code>&amp;[T]</code></td><td>Vec 三字段 / Slice 胖指针</td><td>所有权转移 / 借用</td><td>2x</td></tr>
+    <tr><td><strong>Python</strong></td><td><code>list</code></td><td>PyObject* 数组</td><td>引用传递</td><td>~1.125x</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>💡 Go Slice 和 Rust Slice 的渊源</h4>
+    <p>Go 的 <code>[]T</code>（header struct）和 Rust 的 <code>&amp;[T]</code>（胖指针：ptr+len）本质相同。区别在于 Rust 通过所有权保证底层数组不会被意外释放，Go 依赖 GC。</p>
+  </div>
+
+  <h3>扩容算法详解</h3>
+  <pre><code><span class="cm">// Go 1.18+ 扩容策略</span>
+newcap := old.cap
+doublecap := newcap + newcap
+<span class="kw">if</span> wantCap > doublecap {
+    newcap = wantCap                     <span class="cm">// 需求太大 → 直接满足</span>
+} <span class="kw">else</span> <span class="kw">if</span> old.cap < 256 {
+    newcap = doublecap                   <span class="cm">// 小 slice → 翻倍</span>
+} <span class="kw">else</span> {
+    <span class="kw">for</span> newcap < wantCap {
+        newcap += (newcap + 3*256) / 4   <span class="cm">// 大 slice → 平滑增长</span>
+    }
+}
+<span class="cm">// 最后根据元素大小做内存对齐微调</span></code></pre>
+
+  <div class="diagram">
+    <svg viewBox="0 0 780 180" style="max-width:780px;width:100%">
+      <defs><marker id="asl" markerWidth="6" markerHeight="4" refX="6" refY="2"><path d="M0,0 L6,2 L0,4 Z" fill="#22d3ee"/></marker></defs>
+      <rect x="10" y="8" width="200" height="60" rx="8" fill="rgba(34,211,238,0.1)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="110" y="32" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="700">Slice Header (24B)</text>
+      <text x="110" y="52" text-anchor="middle" fill="#67e8f9" font-size="9">ptr(8B) | len=3(8B) | cap=5(8B)</text>
+      <line x1="170" y1="52" x2="230" y2="85" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#asl)"/>
+      <rect x="20" y="78" width="220" height="85" rx="6" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1.5"/>
+      <rect x="26" y="84" width="50" height="28" rx="4" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1"/><text x="51" y="103" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="700">A</text>
+      <rect x="81" y="84" width="50" height="28" rx="4" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1"/><text x="106" y="103" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="700">B</text>
+      <rect x="136" y="84" width="50" height="28" rx="4" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1"/><text x="161" y="103" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="700">C</text>
+      <rect x="26" y="118" width="50" height="28" rx="4" fill="rgba(139,148,158,0.08)" stroke="#475569" stroke-width="1" stroke-dasharray="4,2"/><text x="51" y="137" text-anchor="middle" fill="#64748b" font-size="10">D</text>
+      <rect x="81" y="118" width="50" height="28" rx="4" fill="rgba(139,148,158,0.08)" stroke="#475569" stroke-width="1" stroke-dasharray="4,2"/><text x="106" y="137" text-anchor="middle" fill="#64748b" font-size="10">E</text>
+      <text x="130" y="172" text-anchor="middle" fill="#64748b" font-size="9">底层数组 [A,B,C,D,E] · len=3 cap=5</text>
+      <rect x="340" y="30" width="420" height="120" rx="8" fill="rgba(248,81,73,0.04)" stroke="#f87171" stroke-width="1"/>
+      <text x="550" y="55" text-anchor="middle" fill="#fca5a5" font-size="12" font-weight="700">⚠️ 常见陷阱</text>
+      <text x="550" y="80" text-anchor="middle" fill="#94a3b8" font-size="10">func f(s []int) → 传 header 拷贝</text>
+      <text x="550" y="100" text-anchor="middle" fill="#94a3b8" font-size="10">s[0]=99 → 影响调用者（ptr 指向同一底层数组）</text>
+      <text x="550" y="120" text-anchor="middle" fill="#94a3b8" font-size="10">s=append(s,x)→不影响调用者（len/cap 是本地的）</text>
+      <text x="550" y="140" text-anchor="middle" fill="#64748b" font-size="9">除非返回新 slice 并赋值回去</text>
+    </svg>
+    <div class="diagram-caption">Slice Header(ptr+len+cap) → 底层数组：ptr 共享，len/cap 独立</div>
+  </div>
+</section>
+
+<section id="map" class="section">
+  <h2>🗺️ Map：渐进式扩容的哈希表</h2>
+  <div class="feynman">
+    <p><span class="analogy">📬 类比：</span>Map 是一排信箱（buckets），每个放 8 封信。信太多→开新一排大信箱，旧信不是一次性搬完，而是<strong>每次有人来取/寄信时顺手搬 1-2 个旧信箱</strong>。这就是渐进式扩容。</p>
+  </div>
+
+  <h3>hmap + bmap 结构</h3>
+  <pre><code><span class="kw">type</span> hmap <span class="kw">struct</span> {
+    count      <span class="kw">int</span>        <span class="cm">// 元素个数</span>
+    B          <span class="kw">uint8</span>      <span class="cm">// 2^B = bucket 数</span>
+    hash0      <span class="kw">uint32</span>    <span class="cm">// 随机哈希种子（防 Hash DoS 攻击）</span>
+    buckets    unsafe.Pointer   <span class="cm">// bucket 数组</span>
+    oldbuckets unsafe.Pointer   <span class="cm">// 扩容时的旧桶（非 nil = 正在扩容）</span>
+    nevacuate  <span class="kw">uintptr</span>   <span class="cm">// 已迁移进度</span>
+}
+
+<span class="kw">type</span> bmap <span class="kw">struct</span> {  <span class="cm">// bucket：每个放 8 对 KV</span>
+    tophash [8]<span class="kw">uint8</span>    <span class="cm">// key hash 高 8 位（快速过滤）</span>
+    <span class="cm">// 之后是 [8]K, [8]V, *bmap(overflow)</span>
+}</code></pre>
+
+  <div class="diagram">
+    <svg viewBox="0 0 780 220" style="max-width:780px;width:100%">
+      <rect x="15" y="10" width="180" height="50" rx="8" fill="rgba(34,211,238,0.1)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="105" y="35" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700">hmap</text>
+      <text x="105" y="52" text-anchor="middle" fill="#67e8f9" font-size="8">B=2, hash0=rand</text>
+      <line x1="195" y1="30" x2="230" y2="18" stroke="#22d3ee" stroke-width="1"/><line x1="195" y1="35" x2="230" y2="42" stroke="#22d3ee" stroke-width="1"/>
+      <line x1="195" y1="40" x2="230" y2="66" stroke="#22d3ee" stroke-width="1"/><line x1="195" y1="45" x2="230" y2="90" stroke="#22d3ee" stroke-width="1"/>
+      <rect x="235" y="6" width="160" height="25" rx="5" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/><text x="315" y="23" text-anchor="middle" fill="#3fb950" font-size="10">bucket[0] (8 slots)</text>
+      <rect x="235" y="35" width="160" height="25" rx="5" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/><text x="315" y="52" text-anchor="middle" fill="#3fb950" font-size="10">bucket[1]</text>
+      <rect x="235" y="64" width="160" height="25" rx="5" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/><text x="315" y="81" text-anchor="middle" fill="#3fb950" font-size="10">bucket[2]</text>
+      <rect x="235" y="93" width="160" height="25" rx="5" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/><text x="315" y="110" text-anchor="middle" fill="#3fb950" font-size="10">bucket[3]</text>
+      <rect x="440" y="6" width="320" height="55" rx="8" fill="rgba(248,81,73,0.04)" stroke="#f87171" stroke-width="1"/>
+      <text x="600" y="28" text-anchor="middle" fill="#fca5a5" font-size="11" font-weight="600">查找：hash(key) → 低 B 位定位 bucket</text>
+      <text x="600" y="48" text-anchor="middle" fill="#94a3b8" font-size="9">→ 高 8 位和 tophash[i] 比较 → 比较完整 key</text>
+      <rect x="440" y="70" width="320" height="55" rx="8" fill="rgba(251,191,36,0.06)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="600" y="92" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="600">渐进式扩容：oldbuckets≠nil → 每次操作迁移 1-2 桶</text>
+      <text x="600" y="112" text-anchor="middle" fill="#64748b" font-size="9">触发条件：负载因子>6.5 或溢出桶过多</text>
+      <rect x="15" y="145" width="750" height="65" rx="6" fill="rgba(63,185,80,0.03)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="390" y="168" text-anchor="middle" fill="#4ade80" font-size="10">Go 的随机种子 hash0 → 每个进程 map 迭代顺序不同 → 防 Hash DoS（对比 Java 用红黑树防碰撞）</text>
+      <text x="390" y="188" text-anchor="middle" fill="#64748b" font-size="9">Key 必须可比较 · 不能取地址(扩容地址变) · 并发读写会 panic</text>
+      <text x="390" y="204" text-anchor="middle" fill="#64748b" font-size="9">Go vs Java HashMap(链表→树) vs Python dict(开放寻址) vs Redis(渐进式) vs Rust hashbrown(SIMD)</text>
+    </svg>
+    <div class="diagram-caption">Go Map：hash0随机种子 + hmap→buckets[2^B]→每个 bucket 8 对 KV + overflow 链</div>
+  </div>
+
+  <h3>🌍 跨语言对比</h3>
+  <table>
+    <tr><th>语言</th><th>实现</th><th>冲突解决</th><th>扩容</th><th>特点</th></tr>
+    <tr><td><strong>Go</strong></td><td>hmap+bmap</td><td>拉链(overflow bucket)</td><td>渐进式2x</td><td>随机种子防DoS</td></tr>
+    <tr><td><strong>Java</strong></td><td>HashMap</td><td>链表→红黑树(>8)</td><td>一次性2x</td><td>树化防退化</td></tr>
+    <tr><td><strong>C++</strong></td><td>unordered_map</td><td>拉链(分离链表)</td><td>rehash质数</td><td>iterator稳定</td></tr>
+    <tr><td><strong>Python</strong></td><td>dict</td><td>开放寻址</td><td>紧凑dict(3.6+)</td><td>key-sharing优化</td></tr>
+    <tr><td><strong>Rust</strong></td><td>HashMap(hashbrown)</td><td>瑞士表(SIMD)</td><td>自动</td><td>SIMD批量查找最快</td></tr>
+    <tr><td><strong>Redis</strong></td><td>dict</td><td>拉链</td><td>渐进式</td><td>和Go最像!</td></tr>
+  </table>
+</section>
+
+<section id="chan" class="section">
+  <h2>📡 Channel：Go 并发的"高速公路"</h2>
+  <div class="feynman">
+    <p><span class="analogy">🚉 类比：</span>Channel 是"带候车室的车站"。buf(环形列车)、sendq(等上车的旅客)、recvq(等接人的旅客)、lock(车站门禁，一次一人)。车满→等上车，车空→等接人。</p>
+  </div>
+
+  <h3>hchan 结构</h3>
+  <pre><code><span class="kw">type</span> hchan <span class="kw">struct</span> {
+    qcount   <span class="kw">uint</span>           <span class="cm">// 缓冲区当前元素数</span>
+    dataqsiz <span class="kw">uint</span>           <span class="cm">// 缓冲区总容量</span>
+    buf      unsafe.Pointer   <span class="cm">// 环形缓冲区</span>
+    sendx    <span class="kw">uint</span>           <span class="cm">// 下次发送位置</span>
+    recvx    <span class="kw">uint</span>           <span class="cm">// 下次接收位置</span>
+    recvq    waitq           <span class="cm">// 等待接收的 G 链表</span>
+    sendq    waitq           <span class="cm">// 等待发送的 G 链表</span>
+    lock     mutex           <span class="cm">// 保护整结构</span>
+    closed   <span class="kw">uint32</span>
+}</code></pre>
+
+  <div class="diagram">
+    <svg viewBox="0 0 780 180" style="max-width:780px;width:100%">
+      <rect x="15" y="20" width="260" height="65" rx="8" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="145" y="45" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700">📦 buf: 环形缓冲区 (cap=4)</text>
+      <rect x="30" y="53" width="50" height="24" rx="4" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1"/><text x="55" y="70" text-anchor="middle" fill="#3fb950" font-size="9">A</text>
+      <rect x="84" y="53" width="50" height="24" rx="4" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1"/><text x="109" y="70" text-anchor="middle" fill="#3fb950" font-size="9">B</text>
+      <rect x="138" y="53" width="50" height="24" rx="4" fill="rgba(139,148,158,0.1)" stroke="#475569" stroke-width="1"/><text x="163" y="70" text-anchor="middle" fill="#64748b" font-size="9">-</text>
+      <rect x="192" y="53" width="50" height="24" rx="4" fill="rgba(139,148,158,0.1)" stroke="#475569" stroke-width="1"/><text x="217" y="70" text-anchor="middle" fill="#64748b" font-size="9">-</text>
+      <rect x="310" y="20" width="200" height="60" rx="8" fill="rgba(248,81,73,0.05)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="410" y="42" text-anchor="middle" fill="#f87171" font-size="11" font-weight="600">📤 sendq 等待队列</text>
+      <text x="410" y="62" text-anchor="middle" fill="#fca5a5" font-size="9">buf满→G在此休眠</text>
+      <rect x="310" y="95" width="200" height="60" rx="8" fill="rgba(63,185,80,0.05)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="410" y="117" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">📥 recvq 等待队列</text>
+      <text x="410" y="137" text-anchor="middle" fill="#4ade80" font-size="9">buf空→G在此休眠</text>
+      <rect x="560" y="35" width="190" height="90" rx="8" fill="rgba(251,191,36,0.05)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="655" y="58" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="600">🔒 lock (mutex)</text>
+      <text x="655" y="80" text-anchor="middle" fill="#64748b" font-size="9">send/recv/close</text>
+      <text x="655" y="98" text-anchor="middle" fill="#64748b" font-size="9">都需lock(&c.lock)</text>
+      <text x="655" y="116" text-anchor="middle" fill="#64748b" font-size="9">线程安全保证</text>
+      <text x="390" y="175" text-anchor="middle" fill="#64748b" font-size="9">closed=1→recv返回零值,send会panic | select多路复用 | 对比Java BlockingQueue/Rust mpsc/Erlang Actor</text>
+    </svg>
+    <div class="diagram-caption">hchan：buf环形队列 + sendq/recvq等待链表 + lock互斥锁 = CSP原生实现</div>
+  </div>
+
+  <h3>🌍 并发通信的四种范式对比</h3>
+  <table>
+    <tr><th>范式</th><th>代表</th><th>机制</th><th>典型场景</th></tr>
+    <tr><td><strong>CSP</strong></td><td>Go channel</td><td>channel 传消息</td><td>goroutine 通信</td></tr>
+    <tr><td><strong>Actor</strong></td><td>Erlang/Akka</td><td>mailbox + send</td><td>分布式容错系统</td></tr>
+    <tr><td><strong>BlockingQueue</strong></td><td>Java/Rust mpsc</td><td>有界/无界队列</td><td>生产者-消费者</td></tr>
+    <tr><td><strong>async/await</strong></td><td>Rust tokio/JS/Python</td><td>Future 链</td><td>I/O密集单线程</td></tr>
+  </table>
+</section>
+
+<section id="iface" class="section">
+  <h2>🎭 Interface：两个指针的运行时多态</h2>
+  <div class="feynman">
+    <p><span class="analogy">🪪 类比：</span>Interface = 身份证(tab: 类型+方法表) + 技能卡(data: 实际数据)。Rust 的 dyn Trait 也是这样！Go 的隐式实现 vs C++ 的显式继承 vs Java 的 implements 声明。</p>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4>eface（空接口 interface{}）</h4>
+      <pre><code><span class="kw">type</span> eface <span class="kw">struct</span> {
+    _type *_type
+    data  unsafe.Pointer
+}
+<span class="cm">// var x interface{} = 42</span></code></pre>
+    </div>
+    <div>
+      <h4>iface（非空接口）</h4>
+      <pre><code><span class="kw">type</span> iface <span class="kw">struct</span> {
+    tab  *itab
+    data unsafe.Pointer
+}
+<span class="kw">type</span> itab <span class="kw">struct</span> {
+    inter *interfacetype
+    _type *_type
+    fun   [1]<span class="kw">uintptr</span>
+}</code></pre>
+    </div>
+  </div>
+
+  <h3>🌍 运行时多态对比</h3>
+  <table>
+    <tr><th>语言</th><th>机制</th><th>内存</th><th>调用开销</th></tr>
+    <tr><td><strong>Go</strong></td><td>iface: itab+data (2 ptr)</td><td>16B</td><td>间接跳转</td></tr>
+    <tr><td><strong>Rust</strong></td><td>dyn Trait: vtable+data</td><td>16B</td><td>和Go完全一样!</td></tr>
+    <tr><td><strong>C++</strong></td><td>vtable ptr 在对象头</td><td>8B(1 ptr)</td><td>vtable[idx]</td></tr>
+    <tr><td><strong>Java</strong></td><td>Class+vtable</td><td>对象头12-16B</td><td>JIT可去虚化</td></tr>
+    <tr><td><strong>Python</strong></td><td>duck typing + __dict__</td><td>per-obj __dict__</td><td>MRO查找</td></tr>
+  </table>
+
+  <h4>⚠️ Nil Interface Trap</h4>
+  <pre><code><span class="kw">func</span> returnsError() error {
+    <span class="kw">var</span> p *MyError = <span class="kw">nil</span>    <span class="cm">// 具体指针 nil</span>
+    <span class="kw">return</span> p                <span class="cm">// 返回 error 接口：tab!=nil, data==nil</span>
+}
+<span class="cm">// err != nil 为 TRUE！因为 tab 不为 nil</span>
+<span class="cm">// 接口 nil = tab==nil && data==nil 同时满足</span></code></pre>
+</section>
+
+<section id="string" class="section">
+  <h2>📝 String：不可变的字节序列</h2>
+  <div class="feynman">
+    <p><span class="analogy">🪨 类比：</span>Go string 是刻字的石碑——不可修改。和 Java String 一样（不可变+常量池），C char* 相反（可变+null终止），Rust 最精细：&str 借用视图 / String 拥有所有权。</p>
+  </div>
+
+  <pre><code><span class="kw">type</span> stringStruct <span class="kw">struct</span> {
+    str unsafe.Pointer  <span class="cm">// 底层字节数组</span>
+    len <span class="kw">int</span>              <span class="cm">// 字节数（不是字符数！）</span>
+}
+<span class="cm">// len("你好") = 6 (每个中文 UTF-8 3字节)</span></code></pre>
+
+  <h3>🌍 跨语言字符串对比</h3>
+  <table>
+    <tr><th>语言</th><th>可变性</th><th>编码</th><th>内存</th></tr>
+    <tr><td><strong>Go</strong></td><td>不可变</td><td>UTF-8</td><td>ptr+len(16B)</td></tr>
+    <tr><td><strong>Java</strong></td><td>不可变</td><td>UTF-16</td><td>对象头+char[]+hash缓存</td></tr>
+    <tr><td><strong>Rust</strong></td><td>&str不可变,String可变</td><td>UTF-8</td><td>&str:ptr+len / String:ptr+len+cap</td></tr>
+    <tr><td><strong>C</strong></td><td>可变</td><td>字节数组</td><td>char*(8B)+\\0终止</td></tr>
+    <tr><td><strong>Python</strong></td><td>不可变</td><td>灵活(Py_UCS1/2/4)</td><td>PyObject+hash+state</td></tr>
+  </table>
+
+  <h4>不可变的设计原因</h4>
+  <ol>
+    <li><strong>并发安全：</strong>天然线程安全，无需加锁</li>
+    <li><strong>Map Key 稳定：</strong>hash 计算后不变</li>
+    <li><strong>子串 O(1)：</strong>s[2:5] 共享底层数据</li>
+    <li><strong>字面量共享：</strong>编译期相同字符串指向同一只读内存</li>
+  </ol>
+  <p><strong>String ↔ []byte 互转必定拷贝</strong>（因为 string 不可变，[]byte 可变 → 必须隔离），编译器仅在极少数场景能优化掉（如临时 map key）。</p>
+</section>
+
+<section id="defer" class="section">
+  <h2>⏸️ Defer：从堆分配到零开销的进化</h2>
+  <div class="feynman">
+    <p><span class="analogy">📋 类比：</span>Defer 是"临终遗言清单"——函数不管怎么退出，清单上的事按 FILO 顺序做完。Java 的 try-finally、C++ 的 RAII 析构、Python 的 with、Rust 的 Drop trait 都是为了同一目的：安全释放资源。</p>
+  </div>
+
+  <h3>进化史</h3>
+  <table>
+    <tr><th>版本</th><th>实现</th><th>分配</th><th>性能</th></tr>
+    <tr><td><strong>Go ≤1.12</strong></td><td>_defer 链表(堆)</td><td>~40B/次</td><td>~35ns</td></tr>
+    <tr><td><strong>Go 1.13</strong></td><td>栈上 _defer</td><td>零分配</td><td>~6ns (6x↑)</td></tr>
+    <tr><td><strong>Go 1.14+</strong></td><td>开放编码(内联)</td><td>零分配</td><td>≈直接调用(30x↑)</td></tr>
+  </table>
+
+  <h4>参数快照 vs 闭包引用</h4>
+  <pre><code>x := 1
+<span class="kw">defer</span> fmt.Println(x)    <span class="cm">// 参数在 defer 注册时求值 → 打印 1</span>
+x = 2
+
+y := 1
+<span class="kw">defer</span> <span class="kw">func</span>() { fmt.Println(y) }()  <span class="cm">// 闭包捕获引用 → 打印 2</span>
+y = 2</code></pre>
+
+  <h3>🌍 资源清理对比</h3>
+  <table>
+    <tr><th>语言</th><th>机制</th><th>触发</th><th>确定性</th></tr>
+    <tr><td><strong>Go</strong></td><td>defer</td><td>函数返回(FILO)</td><td>确定</td></tr>
+    <tr><td><strong>Java</strong></td><td>try-finally/try-with-resources</td><td>try块结束</td><td>确定</td></tr>
+    <tr><td><strong>C++</strong></td><td>RAII 析构函数</td><td>离开作用域</td><td>确定(编译期)</td></tr>
+    <tr><td><strong>Python</strong></td><td>with/__exit__</td><td>with块结束</td><td>确定</td></tr>
+    <tr><td><strong>Rust</strong></td><td>Drop trait</td><td>离开作用域</td><td>确定(编译期)</td></tr>
+  </table>
+</section>
+
+</main>
+</div>
+<script src="/mobile.js"></script>
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

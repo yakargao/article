@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⛓️ 链表 · LeetCode 解法模式 · 费曼学习法</title>
+<style>  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 40px 20px 80px; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .back { color: var(--muted); font-size: 13px; text-decoration: none; display: inline-block; margin-bottom: 24px; }
+  .back:hover { color: var(--accent); }
+  h1 { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 32px; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; overflow-x: auto; margin: 10px 0; font-size: 12px; line-height: 1.5; }
+  pre code { background: none; color: var(--text); padding: 0; }
+
+  .desc-box { background: linear-gradient(135deg,rgba(88,166,255,0.06),rgba(163,113,247,0.04)); border:1px solid rgba(88,166,255,0.2); border-radius:12px; padding:20px 24px; margin-bottom:32px; position:relative; }
+  .desc-box::before { content:'💡 核心思想'; position:absolute; top:-11px; left:20px; background:var(--bg); padding:2px 12px; border-radius:10px; font-size:12px; font-weight:600; color:var(--accent); }
+  .desc-box .tip { color:var(--green); font-size:13px; margin-top:8px; }
+
+  .diagram { background:#0a0c13; border:1px solid var(--border); border-radius:12px; padding:12px; margin:24px 0; text-align:center; overflow-x:auto; }
+  .diagram-caption { font-size:12px; color:var(--muted); margin-top:8px; }
+
+  .prob-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; margin-top:24px; }
+  .prob-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 18px; cursor:pointer; transition:all .15s; position:relative; }
+  .prob-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .prob-id { font-size:11px; color:var(--muted); font-weight:600; }
+  .prob-title { font-size:15px; font-weight:600; color:#fff; margin:4px 0 8px; }
+  .prob-idea { font-size:12px; color:var(--muted); line-height:1.6; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .prob-meta { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .prob-diff { font-size:10px; padding:2px 8px; border-radius:8px; font-weight:600; }
+  .diff-Easy { background:rgba(63,185,80,0.12); color:var(--green); }
+  .diff-Medium { background:rgba(210,153,34,0.12); color:var(--orange); }
+  .diff-Hard { background:rgba(248,81,73,0.12); color:var(--red); }
+  .card-tag { font-size:10px; padding:2px 7px; border-radius:8px; font-weight:600; background:rgba(163,113,247,0.10); color:var(--purple); }
+
+  /* Modal */
+  .modal { display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.7); align-items:center; justify-content:center; }
+  .modal.active { display:flex; }
+  .modal-content { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:28px 32px; max-width:700px; width:92%; max-height:85vh; overflow-y:auto; }
+  .modal-close { float:right; background:none; border:none; color:var(--muted); font-size:22px; cursor:pointer; }
+  .modal h3 { font-size:20px; color:#fff; margin-bottom:12px; }
+  .modal h4 { font-size:14px; color:var(--accent); margin:16px 0 8px; }
+  .idea-box { background:rgba(88,166,255,0.06); border-left:3px solid var(--accent); padding:10px 14px; border-radius:0 8px 8px 0; margin:10px 0; font-size:13px; }
+  .key { color:var(--green); font-weight:600; }
+  .code-toggle { background:var(--card); border:1px solid var(--border); color:var(--accent); padding:6px 14px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; margin:8px 0; }
+  .code-block { display:none; }
+  .code-block.show { display:block; }
+  @media (max-width:768px) { body{padding:20px 12px 80px;} .prob-grid{grid-template-columns:1fr;} .modal-content{padding:18px;} }</style>
+</head>
+<body>
+<div class="container">
+<a href="/leetcode-patterns.html" class="back">← 所有模式</a>
+<h1>⛓️ 链表</h1>
+<p class="subtitle">11 道题 · LeetCode Top 100 解法模式</p>
+<div class="desc-box">
+<p>反转、合并、找环、删倒数第 N 个——链表的考点集中在指针操作。核心技巧：Dummy 节点、快慢指针、递归反转。</p>
+<p class="tip">💡 核心技巧：Dummy 节点避免处理头节点的特殊情况</p>
+</div>
+<div class="diagram">
+<svg viewBox="0 0 700 150" style="max-width:700px;width:100%"><rect x="10" y="50" width="80" height="40" rx="8" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="1.5"/><text x="50" y="75" text-anchor="middle" fill="#22d3ee" font-size="10" font-weight="600">Node 1</text><line x1="90" y1="70" x2="140" y2="70" stroke="#475569" stroke-width="1.5" marker-end="url(#al)"/><rect x="145" y="50" width="80" height="40" rx="8" fill="rgba(163,113,247,0.12)" stroke="#a78bfa" stroke-width="1.5"/><text x="185" y="75" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="600">Node 2</text><line x1="225" y1="70" x2="275" y2="70" stroke="#475569" stroke-width="1.5" marker-end="url(#al)"/><rect x="280" y="50" width="80" height="40" rx="8" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.5"/><text x="320" y="75" text-anchor="middle" fill="#3fb950" font-size="10" font-weight="600">Node 3</text><line x1="360" y1="70" x2="410" y2="70" stroke="#475569" stroke-width="1.5" marker-end="url(#al)"/><text x="435" y="75" fill="#64748b" font-size="12">→ null</text><defs><marker id="al" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4 Z" fill="#475569"/></marker></defs><rect x="480" y="30" width="200" height="110" rx="8" fill="rgba(248,81,73,0.04)" stroke="#f87171" stroke-width="1" stroke-dasharray="4,2"/><text x="580" y="55" text-anchor="middle" fill="#fca5a5" font-size="11" font-weight="600">⚠️ 关键技巧</text><text x="580" y="80" text-anchor="middle" fill="#94a3b8" font-size="9">Dummy 节点避免头节点特殊情况</text><text x="580" y="100" text-anchor="middle" fill="#94a3b8" font-size="9">快慢指针找中点 / 环入口</text><text x="580" y="120" text-anchor="middle" fill="#94a3b8" font-size="9">递归反转很优雅</text></svg>
+<div class="diagram-caption">链表 模式图解</div>
+</div>
+<h3 style="margin-top:32px">📝 题目列表（11 题）</h3>
+<div class="prob-grid">
+<div class="prob-card" onclick="showProblem(21)">
+<div class="prob-id">#21 <span class="prob-diff diff-Easy">Easy</span></div>
+<div class="prob-title">Merge Two Sorted Lists</div>
+<div class="prob-idea">双指针+dummy节点。谁小接谁。</div>
+<div class="prob-meta"><span class="card-tag">链表</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(141)">
+<div class="prob-id">#141 <span class="prob-diff diff-Easy">Easy</span></div>
+<div class="prob-title">Linked List Cycle</div>
+<div class="prob-idea">快慢指针。slow走1步fast走2步。有环必相遇。</div>
+<div class="prob-meta"><span class="card-tag">链表</span><span class="card-tag">双指针</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(160)">
+<div class="prob-id">#160 <span class="prob-diff diff-Easy">Easy</span></div>
+<div class="prob-title">Intersection of Two Linked Lists</div>
+<div class="prob-idea">双指针浪漫相遇。pA走A→B，pB走B→A，走过相同总长度后必在交点相遇。</div>
+<div class="prob-meta"><span class="card-tag">链表</span><span class="card-tag">双指针</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(206)">
+<div class="prob-id">#206 <span class="prob-diff diff-Easy">Easy</span></div>
+<div class="prob-title">Reverse Linked List</div>
+<div class="prob-idea">pre=null,cur=head。每次nxt=cur.next;cur.next=pre。</div>
+<div class="prob-meta"><span class="card-tag">链表</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(234)">
+<div class="prob-id">#234 <span class="prob-diff diff-Easy">Easy</span></div>
+<div class="prob-title">Palindrome Linked List</div>
+<div class="prob-idea">快慢找中点→反转后半段→双指针比较。</div>
+<div class="prob-meta"><span class="card-tag">链表</span><span class="card-tag">双指针</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(2)">
+<div class="prob-id">#2 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Add Two Numbers</div>
+<div class="prob-idea">逐位相加+进位carry。只要有一条没走完或carry>0就继续。</div>
+<div class="prob-meta"><span class="card-tag">链表</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(19)">
+<div class="prob-id">#19 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Remove Nth Node From End</div>
+<div class="prob-idea">快指针先走n步，然后快慢一起走。</div>
+<div class="prob-meta"><span class="card-tag">链表</span><span class="card-tag">双指针</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(142)">
+<div class="prob-id">#142 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Linked List Cycle II</div>
+<div class="prob-idea">相遇后slow回head，同步走直到再相遇=环入口。</div>
+<div class="prob-meta"><span class="card-tag">链表</span><span class="card-tag">双指针</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(146)">
+<div class="prob-id">#146 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">LRU Cache</div>
+<div class="prob-idea">HashMap+双向链表。访问/插入移到头；超容量删尾。</div>
+<div class="prob-meta"><span class="card-tag">哈希表</span><span class="card-tag">链表</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(148)">
+<div class="prob-id">#148 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Sort List</div>
+<div class="prob-idea">归并排序。快慢找中点→分两半递归→合并。</div>
+<div class="prob-meta"><span class="card-tag">链表</span><span class="card-tag">排序</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(23)">
+<div class="prob-id">#23 <span class="prob-diff diff-Hard">Hard</span></div>
+<div class="prob-title">Merge K Sorted Lists</div>
+<div class="prob-idea">小顶堆。所有链表头入堆，每次弹出最小值接上。</div>
+<div class="prob-meta"><span class="card-tag">堆</span><span class="card-tag">链表</span></div>
+</div>
+</div>
+</div>
+
+<div class="modal" id="modal"><div class="modal-content"><button class="modal-close" onclick="closeModal()">✕</button><div id="modalBody"></div></div></div>
+
+<script src="/leetcode-data.js"></script>
+<script>
+let currentId=null;
+function showProblem(id){currentId=id;const p=PROBLEMS[id];if(!p)return;
+let h='<h3>#'+p.id+' '+p.title+' <span class="prob-diff diff-'+p.diff+'" style="display:inline-block;vertical-align:middle">'+p.diff+'</span></h3>';
+h+='<p style="color:var(--text);line-height:1.9">'+p.desc+'</p>';
+h+='<h4>输入</h4><pre><code>'+p.inp+'</code></pre><h4>输出</h4><pre><code>'+p.out+'</code></pre>';
+h+='<div class="idea-box"><span class="key">💡 解题思路：</span>'+p.idea+'</div>';
+if(p.code){h+='<button class="code-toggle" onclick="this.nextElementSibling.classList.toggle('show')">查看代码</button>';
+h+='<div class="code-block"><pre><code>'+p.code.replace(/</g,'&lt;')+'</code></pre></div>';}
+if(p.tags){h+='<div class="modal-tags" style="margin-top:12px">';p.tags.forEach(t=>{h+='<span class="card-tag">'+t+'</span>';});h+='</div>';}
+document.getElementById('modalBody').innerHTML=h;document.getElementById('modal').classList.add('active');document.body.style.overflow='hidden';}
+function closeModal(){document.getElementById('modal').classList.remove('active');document.body.style.overflow='';currentId=null;}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&currentId)closeModal();});
+</script>
+</body>
+</html>

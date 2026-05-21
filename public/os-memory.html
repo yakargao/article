@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>操作系统·内存管理 · 虚拟内存/分页/页面置换 · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .verbal-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .verbal-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection — prevent overlap on narrow screens */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 480px; }
+  }
+  @media (max-width: 480px) {
+    .section h2 { font-size: 18px; }
+    body { font-size: 14px; }
+    pre { font-size: 11px; padding: 10px 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">第一层 · 直觉</div>
+  <a class="nav-item" href="#intuition">💡 为什么需要内存管理</a>
+  <div class="nav-section">第二层 · 虚拟内存</div>
+  <a class="nav-item" href="#virtual-memory">🧠 虚拟内存 · 每个程序都是唯一用户</a>
+  <div class="nav-section">第三层 · 分页</div>
+  <a class="nav-item" href="#paging">📄 分页机制 · 切成小格子</a>
+  <div class="nav-section">第四层 · 页面置换</div>
+  <a class="nav-item" href="#page-replacement">🔄 页面置换算法</a>
+  <div class="nav-section">第五层 · 分配器</div>
+  <a class="nav-item" href="#allocator">🗂️ malloc 底层秘密 & Go 分配器</a>
+  <div class="nav-section">实战进阶</div>
+  <a class="nav-item" href="#qa">❓ 高频实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ================================================================== -->
+<!-- 总览 -->
+<!-- ================================================================== -->
+<section id="overview" class="section">
+  <h2>🧠 操作系统·内存管理</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>内存管理是操作系统最核心的模块——它让每个程序员写 <code>int *p = malloc(100)</code> 时，<strong>不用管物理内存在哪、够不够大、有没有碎片</strong>。它通过 <span class="handwritten">虚拟内存</span> 做隔离和扩容，通过 <span class="handwritten">分页</span> 做细粒度管理，通过 <span class="handwritten">页面置换</span> 在内存不足时做最优决策。本文从直觉出发，逐层深入。</p>
+  </div>
+  <table>
+    <tr><th>层次</th><th>核心问题</th><th>一句话解答</th></tr>
+    <tr><td><span class="badge badge-green">① 直觉</span></td><td>为什么需要内存管理？</td><td>没有它，程序 A 能读写程序 B 的数据，大程序装不进内存</td></tr>
+    <tr><td><span class="badge badge-orange">② 虚拟内存</span></td><td>怎么让每个程序独享地址空间？</td><td>MMU + 页表做地址翻译，进程以为自己独占 4GB</td></tr>
+    <tr><td><span class="badge badge-purple">③ 分页</span></td><td>怎么切分内存才不会浪费？</td><td>固定 4KB 一页，多级页表按需分配，TLB 加速翻译</td></tr>
+    <tr><td><span class="badge badge-red">④ 置换算法</span></td><td>内存满了该踢谁出去？</td><td>LRU / Clock 近似最优，淘汰以后最不常用的页</td></tr>
+    <tr><td><span class="badge badge-cyan">⑤ 分配器</span></td><td>malloc/new 底层怎么工作？</td><td>brk 管小块、mmap 管大块、Go 三级缓存无锁分配</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================== -->
+<!-- 第一层：直觉篇 -->
+<!-- ================================================================== -->
+<section id="intuition" class="section">
+  <h2>💡 第一层直觉：为什么需要内存管理？</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🪑 类比：共享办公室桌面</span></p>
+    <p>想象你和同事共享一张大办公桌。没有内存管理就像——<strong>没有桌位划分、没有工位号、谁的东西放哪全凭自觉</strong>。后果很可怕：</p>
+    <ul>
+      <li>你写了一半的报告，被同事的咖啡杯压住了（<strong>地址冲突</strong>）</li>
+      <li>同事拿走你的便签纸以为是公用的（<strong>数据泄露</strong>）</li>
+      <li>桌上有大片空地方但东一块西一块，你想放一张 A3 图纸却放不下（<strong>外部碎片</strong>）</li>
+    </ul>
+    <p>操作系统内存管理就是给每个进程划分<strong>工位</strong>（虚拟地址空间），用<strong>工位号</strong>（虚拟地址）代替实际物理位置。每个进程安心在自己的工位工作，互相不干扰。</p>
+  </div>
+
+  <h3>没有虚拟内存会怎样？—— 一个思想实验</h3>
+  <p>假设你在 32 位 x86 裸机上写程序，没有 MMU 没有虚拟内存：</p>
+  <pre><code><span class="cm">// ❌ 没有内存管理——所有程序直接读写物理地址</span>
+<span class="cm">// 程序 A 在地址 0x1000 存了用户密码</span>
+<span class="cm">// 程序 B 不小心也把数据写到 0x1000...</span>
+mov [0x1000], eax   <span class="cm">// 程序 A</span>
+mov ecx, [0x1000]   <span class="cm">// 程序 B —— 直接读取了程序 A 的数据！</span>
+
+<span class="cm">// 更严重：程序 A 包含了完整的地址映射</span>
+<span class="cm">// 链接器必须在编译时就确定每个变量在物理内存中的位置</span>
+<span class="cm">// 换个程序就崩，换个硬件也崩</span></code></pre>
+
+  <div class="info-card">
+    <h4>🔬 用 Go 看看内存长什么样</h4>
+    <p>写一个 Go 程序，直观感受变量地址、指针和内存分配：</p>
+    <pre><code><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    "fmt"
+    "unsafe"
+)
+
+<span class="cm">// Stack 局部变量</span>
+func stackDemo() {
+    a := 42                <span class="cm">// 栈上分配</span>
+    fmt.Printf("栈变量 a = %d, 地址 = %p\n", a, &amp;a)
+}
+
+<span class="cm">// Heap 上的内存</span>
+func heapDemo() {
+    p := new(int)          <span class="cm">// new 返回指针 → 堆上分配</span>
+    *p = 100
+    fmt.Printf("堆变量 *p = %d, 地址 = %p\n", *p, p)
+
+    slice := make([]byte, 1024*1024)  <span class="cm">// 1MB → 堆分配</span>
+    fmt.Printf("大对象地址 = %p, 长度 = %d\n", slice, len(slice))
+}
+
+func main() {
+    <span class="cm">// 观察地址空间布局</span>
+    stackDemo()
+    heapDemo()
+
+    <span class="cm">// 打印指针大小——64位系统=8字节</span>
+    var ptr *int
+    fmt.Printf("指针自身大小 = %d 字节\n", unsafe.Sizeof(ptr))
+}</code></pre>
+    <p><strong>输出示例：</strong></p>
+    <pre><code>栈变量 a = 42, 地址 = 0xc000046728
+堆变量 *p = 100, 地址 = 0xc00001a098
+大对象地址 = 0xc000100000, 长度 = 1048576
+指针自身大小 = 8 字节</code></pre>
+    <p>注意看：栈地址和堆地址离得很远——这就是虚拟地址空间的布局。Go 帮你管理了这一切，你只管用 <code>new</code> 和 <code>make</code>。</p>
+  </div>
+
+  <h3>为什么不能直接操作物理内存？</h3>
+  <table>
+    <tr><th>问题</th><th>无虚拟内存</th><th>有虚拟内存</th></tr>
+    <tr><td><strong>地址空间隔离</strong></td><td>进程 A 可读写进程 B 的内存</td><td>每个进程独立页表，互不可见</td></tr>
+    <tr><td><strong>外部碎片</strong></td><td>加载/卸载后产生大量空洞</td><td>分页消除外部碎片</td></tr>
+    <tr><td><strong>程序容量</strong></td><td>程序必须 ≤ 物理内存</td><td>程序可比物理内存大（swap 交换）</td></tr>
+    <tr><td><strong>共享内存</strong></td><td>困难，地址冲突风险</td><td>不同虚拟页映射到同一物理页即可</td></tr>
+    <tr><td><strong>链接/加载</strong></td><td>编译时必须固定物理地址</td><td>地址无关（PIE），动态链接轻松</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================== -->
+<!-- 第二层：虚拟内存 -->
+<!-- ================================================================== -->
+<section id="virtual-memory" class="section">
+  <h2>🧠 第二层：虚拟内存——每个程序都以为自己是唯一用户</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏨 类比：酒店房间的房卡系统</span></p>
+    <p>物理内存是酒店的房间（物理帧），虚拟内存是房卡。每个住客（进程）拿到一张房卡，卡上写着自己的"房间号"（虚拟地址），从 101 到 999 连续排列。但实际上：</p>
+    <ul>
+      <li>你的 201 号房间可能实际上是 301 房（<strong>地址翻译</strong>）</li>
+      <li>别人的卡刷不开你的门（<strong>隔离</strong>）</li>
+      <li>你可以订一个比酒店实际房间还大的套间——因为酒店可以把不用的家具存到仓库（<strong>磁盘 swap</strong>）</li>
+    </ul>
+    <p>前台服务员 <strong>MMU（Memory Management Unit）</strong> 负责把你的房卡号翻译成真正的房间号。</p>
+  </div>
+
+  <h3>进程的虚拟地址空间布局</h3>
+  <p>每个进程看到的地址空间长这样（以 x86-64 Linux 为例）：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 420" style="max-width:820px;width:100%">
+      <defs>
+        <linearGradient id="bg-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+        <marker id="arr-va" markerWidth="7" markerHeight="5" refX="7" refY="2.5">
+          <path d="M0,0 L7,2.5 L0,5 Z" fill="#c9d1d9"/>
+        </marker>
+      </defs>
+      <rect x="10" y="5" width="800" height="410" rx="10" fill="url(#bg-grad)" stroke="#334155" stroke-width="1"/>
+
+      <!-- Title -->
+      <text x="410" y="28" text-anchor="middle" fill="#c9d1d9" font-size="15" font-weight="700">x86-64 Linux 进程虚拟地址空间 (48-bit)</text>
+
+      <!-- Kernel Space -->
+      <rect x="50" y="50" width="700" height="30" rx="6" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="400" y="70" text-anchor="middle" fill="#f87171" font-size="13" font-weight="700">内核空间 (Kernel Space) · 0xFFFF800000000000 ~ 0xFFFFFFFFFFFFFFF</text>
+      <text x="400" y="85" text-anchor="middle" fill="#64748b" font-size="9">用户态不可访问 · 系统调用入口 · 内核代码/数据</text>
+
+      <!-- Arrow pointing down -->
+      <line x1="400" y1="88" x2="400" y2="108" stroke="#64748b" stroke-width="1" marker-end="url(#arr-va)"/>
+
+      <!-- Stack -->
+      <rect x="50" y="110" width="700" height="45" rx="6" fill="rgba(57,197,207,0.1)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="400" y="130" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="700">栈 (Stack) · 向下增长</text>
+      <text x="400" y="148" text-anchor="middle" fill="#94a3b8" font-size="9">局部变量 · 函数调用帧 · 返回地址 · 自动管理 · 约 8MB</text>
+      <text x="55" y="130" fill="#64748b" font-size="9">高地址</text>
+      <line x1="400" y1="155" x2="400" y2="165" stroke="#64748b" stroke-width="0.8"/>
+      <!-- Stack example boxes -->
+      <rect x="120" y="163" width="70" height="20" rx="3" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="0.6"/>
+      <text x="155" y="177" text-anchor="middle" fill="#67e8f9" font-size="7">main 帧</text>
+      <rect x="210" y="163" width="70" height="20" rx="3" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="0.6"/>
+      <text x="245" y="177" text-anchor="middle" fill="#67e8f9" font-size="7">foo 帧</text>
+      <rect x="300" y="163" width="70" height="20" rx="3" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="0.6"/>
+      <text x="335" y="177" text-anchor="middle" fill="#67e8f9" font-size="7">bar 帧</text>
+      <text x="430" y="177" fill="#64748b" font-size="8">RSP 指向栈顶</text>
+
+      <!-- Arrow -->
+      <line x1="400" y1="188" x2="400" y2="205" stroke="#64748b" stroke-width="1" marker-end="url(#arr-va)"/>
+      <text x="440" y="198" fill="#64748b" font-size="8">↓ 向下增长</text>
+
+      <!-- Memory Mapping Segment -->
+      <rect x="50" y="210" width="700" height="35" rx="6" fill="rgba(163,113,247,0.1)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="400" y="230" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="700">内存映射段 (mmap)</text>
+      <text x="400" y="242" text-anchor="middle" fill="#94a3b8" font-size="9">动态库 (.so) · 大块 malloc (≥128KB) · 共享内存</text>
+
+      <!-- Arrow -->
+      <line x1="400" y1="248" x2="400" y2="265" stroke="#64748b" stroke-width="1" marker-end="url(#arr-va)"/>
+
+      <!-- Heap -->
+      <rect x="50" y="270" width="700" height="45" rx="6" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="400" y="290" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">堆 (Heap) · 向上增长</text>
+      <text x="400" y="308" text-anchor="middle" fill="#94a3b8" font-size="9">malloc/new 分配 · brk/sbrk 管理 · 手动/GC 释放</text>
+      <rect x="80" y="318" width="55" height="18" rx="3" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="0.6"/>
+      <text x="107" y="331" text-anchor="middle" fill="#86efac" font-size="7">已分配</text>
+      <rect x="145" y="318" width="45" height="18" rx="3" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="0.6"/>
+      <text x="167" y="331" text-anchor="middle" fill="#fca5a5" font-size="7">空闲</text>
+      <rect x="200" y="318" width="60" height="18" rx="3" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="0.6"/>
+      <text x="230" y="331" text-anchor="middle" fill="#86efac" font-size="7">已分配</text>
+      <text x="400" y="331" fill="#64748b" font-size="8">brk 指针 → 堆顶</text>
+
+      <!-- Arrow -->
+      <line x1="400" y1="340" x2="400" y2="355" stroke="#64748b" stroke-width="1" marker-end="url(#arr-va)"/>
+      <text x="440" y="350" fill="#64748b" font-size="8">↓ 向上增长</text>
+
+      <!-- Data / BSS -->
+      <rect x="50" y="360" width="340" height="28" rx="6" fill="rgba(210,153,34,0.1)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="220" y="378" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="700">数据段 (.data · .bss)</text>
+
+      <rect x="410" y="360" width="340" height="28" rx="6" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="580" y="378" text-anchor="middle" fill="#f87171" font-size="12" font-weight="700">代码段 (.text)</text>
+
+      <text x="400" y="408" text-anchor="middle" fill="#64748b" font-size="9">低地址 → 0x400000 (ELF 默认基址)</text>
+    </svg>
+    <div class="diagram-caption">图1：进程虚拟地址空间布局 — 从低地址到高地址依次为：代码段 → 数据段 → 堆(向上增长) → mmap区 → 栈(向下增长) → 内核空间</div>
+  </div>
+
+  <h3>虚拟地址 → 物理地址：MMU 的翻译过程</h3>
+  <p>当 CPU 执行 <code>mov eax, [0x401000]</code>，这条指令里的地址是<strong>虚拟地址</strong>。MMU 负责把它翻译成真正的<strong>物理地址</strong>才能去内存取数据。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 340" style="max-width:820px;width:100%;display:block">
+      <defs>
+        <marker id="m2a" markerWidth="8" markerHeight="6" refX="8" refY="3"><path d="M0,0 L8,3 L0,6Z" fill="#22d3ee"/></marker>
+        <marker id="m2b" markerWidth="8" markerHeight="6" refX="8" refY="3"><path d="M0,0 L8,3 L0,6Z" fill="#fbbf24"/></marker>
+        <marker id="m2c" markerWidth="8" markerHeight="6" refX="8" refY="3"><path d="M0,0 L8,3 L0,6Z" fill="#f87171"/></marker>
+        <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M30 0L0 0 0 30" fill="none" stroke="#1e293b" stroke-width="0.5"/></pattern>
+      </defs>
+      <rect width="820" height="340" fill="#0f172a" rx="8"/>
+      <rect width="820" height="340" fill="url(#grid)" opacity="0.3"/>
+
+      <!-- Title -->
+      <text x="410" y="30" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="bold" font-family="sans-serif">虚拟地址(VA) → 物理地址(PA) 翻译流程</text>
+
+      <!-- CPU Box -->
+      <rect x="25" y="80" width="100" height="70" rx="8" fill="rgba(8,51,68,0.5)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="75" y="105" text-anchor="middle" fill="#22d3ee" font-size="16" font-weight="bold" font-family="sans-serif">CPU</text>
+      <text x="75" y="125" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">执行指令</text>
+      <text x="75" y="140" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="'Ma Shan Zheng',cursive">mov eax,[VA]</text>
+
+      <!-- Arrow CPU→MMU -->
+      <line x1="125" y1="115" x2="175" y2="115" stroke="#22d3ee" stroke-width="2" marker-end="url(#m2a)"/>
+      <text x="150" y="105" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="'Ma Shan Zheng',cursive">VA</text>
+
+      <!-- MMU Box -->
+      <rect x="180" y="60" width="130" height="110" rx="8" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="245" y="85" text-anchor="middle" fill="#fbbf24" font-size="16" font-weight="bold" font-family="sans-serif">MMU</text>
+      <text x="245" y="107" text-anchor="middle" fill="#86efac" font-size="9" font-family="sans-serif">① TLB Hit → 直接拿 PFN</text>
+      <text x="245" y="125" text-anchor="middle" fill="#fde68a" font-size="9" font-family="sans-serif">② TLB Miss → 查页表</text>
+      <text x="245" y="143" text-anchor="middle" fill="#c4b5fd" font-size="9" font-family="sans-serif">③ 权限检查 → 缺页?</text>
+      <text x="245" y="161" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">④ Page Fault → 中断</text>
+
+      <!-- TLB above MMU -->
+      <rect x="200" y="12" width="90" height="38" rx="6" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="245" y="30" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold" font-family="sans-serif">TLB 快表</text>
+      <text x="245" y="44" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="sans-serif">VPN→PFN 硬件缓存</text>
+      <line x1="245" y1="50" x2="245" y2="60" stroke="#3fb950" stroke-width="1.5" marker-end="url(#m2a)"/>
+
+      <!-- Arrow MMU→PageTable -->
+      <line x1="310" y1="115" x2="365" y2="115" stroke="#fbbf24" stroke-width="2" marker-end="url(#m2b)"/>
+      <text x="338" y="105" text-anchor="middle" fill="#fbbf24" font-size="10" font-family="'Ma Shan Zheng',cursive">VPN</text>
+
+      <!-- Page Table -->
+      <rect x="370" y="55" width="180" height="120" rx="8" fill="rgba(76,29,149,0.3)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="460" y="78" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold" font-family="sans-serif">页表</text>
+      <rect x="380" y="88" width="160" height="20" rx="3" fill="rgba(76,29,149,0.2)" stroke="#a78bfa" stroke-width="0.8"/>
+      <text x="460" y="102" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">VPN 0 → PFN 0x7A ✅</text>
+      <rect x="380" y="111" width="160" height="20" rx="3" fill="rgba(76,29,149,0.2)" stroke="#a78bfa" stroke-width="0.8"/>
+      <text x="460" y="125" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">VPN 1 → PFN 0x3F ✅</text>
+      <rect x="380" y="134" width="160" height="20" rx="3" fill="rgba(229,62,62,0.15)" stroke="#f87171" stroke-width="0.8"/>
+      <text x="460" y="148" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">VPN 2 → ❌ 缺页</text>
+      <rect x="380" y="157" width="160" height="15" rx="3" fill="rgba(76,29,149,0.1)" stroke="#64748b" stroke-width="0.5"/>
+      <text x="460" y="168" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="sans-serif">...</text>
+
+      <!-- Arrow PageTable→Physical -->
+      <line x1="550" y1="115" x2="600" y2="115" stroke="#34d399" stroke-width="2" marker-end="url(#m2a)"/>
+      <text x="575" y="105" text-anchor="middle" fill="#34d399" font-size="10" font-family="'Ma Shan Zheng',cursive">PFN</text>
+
+      <!-- Physical Memory -->
+      <rect x="605" y="55" width="130" height="120" rx="8" fill="rgba(6,78,59,0.3)" stroke="#34d399" stroke-width="2"/>
+      <text x="670" y="78" text-anchor="middle" fill="#34d399" font-size="13" font-weight="bold" font-family="sans-serif">物理内存</text>
+      <text x="670" y="102" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">PFN 0x7A · 数据</text>
+      <text x="670" y="122" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">PFN 0x3F · 代码</text>
+      <text x="670" y="142" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">PFN 0x11 · 堆</text>
+      <text x="670" y="162" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">...</text>
+
+      <!-- Page Fault flow -->
+      <path d="M460,175 L460,210 L670,210 L670,175" fill="none" stroke="#f87171" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#m2c)"/>
+      <rect x="580" y="212" width="180" height="60" rx="6" fill="rgba(229,62,62,0.08)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="670" y="232" text-anchor="middle" fill="#f87171" font-size="10" font-weight="bold" font-family="sans-serif">缺页中断 #PF</text>
+      <text x="670" y="250" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">OS:分配物理页→磁盘I/O→</text>
+      <text x="670" y="265" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">更新页表→CPU重试指令</text>
+
+      <!-- Bottom formula -->
+      <rect x="25" y="280" width="770" height="45" rx="6" fill="rgba(30,41,59,0.6)" stroke="#334155" stroke-width="1"/>
+      <text x="410" y="298" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="'Ma Shan Zheng',cursive,monospace">虚拟地址 VA = VPN(虚拟页号) + offset(页内偏移)</text>
+      <text x="410" y="316" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="'Ma Shan Zheng',cursive,monospace">页表: VPN → PFN(物理帧号)  →  物理地址 PA = PFN + offset</text>
+    </svg>
+    <div class="diagram-caption">图2：虚拟地址→物理地址翻译流程 — CPU发出VA → MMU查TLB/页表 → 得到PA或触发缺页中断</div>
+  </div>
+
+  <div class="feynman">
+    <p><span class="analogy">📬 类比：翻译官的工作</span></p>
+    <p>虚拟地址就像"请找 3 号楼的 502 室"，MMU 就是翻译官，把它翻译成实际的门牌号"B 栋 12 楼 03 室"。如果这个房间根本不在楼里（缺页），翻译官就打电话给后勤（OS）从仓库（磁盘）搬家具过来，然后重新找。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 第三层：分页机制 -->
+<!-- ================================================================== -->
+<section id="paging" class="section">
+  <h2>📄 第三层：分页机制——把内存切成小格子</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🍫 类比：巧克力排的格子</span></p>
+    <p>为什么不整块分配内存？想象一个巧克力排（物理内存），你掰下一块（分配一块空间）。如果用"整块掰"，掰了几次后剩下的形状乱七八糟，可能有一大块但形状不对，放不下下一块巧克力（<strong>外部碎片</strong>）。分页就是<strong>事先把巧克力排切成统一大小的方格</strong>（4KB 一页），每次分配按格给，永远不会因为形状问题浪费空间。</p>
+    <p>代价是：如果只想吃一小口（只用了 1 字节），也得给你一整格（4KB）——这就是<strong>内部碎片</strong>。</p>
+  </div>
+
+  <h3>为什么用分页而不是整块分配？</h3>
+  <table>
+    <tr><th>分配方式</th><th>比喻</th><th>碎片问题</th><th>灵活性</th></tr>
+    <tr><td><strong>动态分区（可变长度）</strong></td><td>按需切蛋糕</td><td>外部碎片严重</td><td>一般</td></tr>
+    <tr><td><strong>分页（固定4KB）</strong></td><td>切好的巧克力格</td><td>仅内部碎片（≤4KB）</td><td>极高</td></tr>
+    <tr><td><strong>分段</strong></td><td>定制包装箱</td><td>外部碎片</td><td>低</td></tr>
+  </table>
+
+  <h3>多级页表——为什么必须分级？</h3>
+  <div class="feynman">
+    <p><span class="analogy">📂 类比：图书馆索引系统</span></p>
+    <p>单级页表就像一本书只有目录——如果书有 <strong>10 亿页</strong>（64位地址空间），光目录就要 32PB。<strong>多级页表</strong>像图书馆的索引系统：<strong>大楼 → 楼层 → 书架 → 书</strong>。你只去你需要的书架，不需要给整栋楼建索引。这就是"按需分配"的思想——64位系统用 4 级页表，只需要为实际使用的地址区间分配页表，典型进程只要几十 KB。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 320" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="arr-bl" markerWidth="7" markerHeight="5" refX="7" refY="2.5"><path d="M0,0 L7,2.5 L0,5 Z" fill="#58a6ff"/></marker>
+        <linearGradient id="bg2"><stop offset="0%" stop-color="#1e293b"/><stop offset="100%" stop-color="#0f172a"/></linearGradient>
+      </defs>
+      <rect x="10" y="5" width="800" height="310" rx="10" fill="url(#bg2)" stroke="#334155" stroke-width="1"/>
+
+      <!-- Virtual Address bits -->
+      <rect x="20" y="15" width="780" height="30" rx="6" fill="#1a1d27" stroke="#334155" stroke-width="1"/>
+      <text x="410" y="35" text-anchor="middle" fill="#94a3b8" font-size="11">63 ← 虚拟地址 (x86-64, 48-bit 有效) → 0</text>
+
+      <!-- Bit segments -->
+      <rect x="30" y="15" width="155" height="30" rx="6" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="107" y="35" text-anchor="middle" fill="#f87171" font-size="12" font-family="Ma Shan Zheng,cursive">p4 索引 (9bit)</text>
+
+      <rect x="185" y="15" width="155" height="30" rx="6" fill="rgba(210,153,34,0.12)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="262" y="35" text-anchor="middle" fill="#fbbf24" font-size="12" font-family="Ma Shan Zheng,cursive">p3 索引 (9bit)</text>
+
+      <rect x="340" y="15" width="155" height="30" rx="6" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="417" y="35" text-anchor="middle" fill="#3fb950" font-size="12" font-family="Ma Shan Zheng,cursive">p2 索引 (9bit)</text>
+
+      <rect x="495" y="15" width="155" height="30" rx="6" fill="rgba(57,197,207,0.12)" stroke="#22d3ee" stroke-width="1.2"/>
+      <text x="572" y="35" text-anchor="middle" fill="#22d3ee" font-size="12" font-family="Ma Shan Zheng,cursive">p1 索引 (9bit)</text>
+
+      <rect x="650" y="15" width="135" height="30" rx="6" fill="rgba(163,113,247,0.12)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="717" y="35" text-anchor="middle" fill="#a78bfa" font-size="12" font-family="Ma Shan Zheng,cursive">offset (12bit)</text>
+
+      <!-- CR3 -->
+      <rect x="30" y="65" width="90" height="36" rx="6" fill="#1a1d27" stroke="#f87171" stroke-width="1.5"/>
+      <text x="75" y="88" text-anchor="middle" fill="#f87171" font-size="13" font-weight="700">CR3</text>
+      <line x1="120" y1="83" x2="170" y2="83" stroke="#f87171" stroke-width="1.5" marker-end="url(#arr-bl)"/>
+
+      <!-- P4 -->
+      <rect x="175" y="65" width="130" height="50" rx="6" fill="#1a1d27" stroke="#f87171" stroke-width="1.5"/>
+      <text x="240" y="83" text-anchor="middle" fill="#f87171" font-size="13" font-weight="700">P4 (PGD)</text>
+      <text x="240" y="101" text-anchor="middle" fill="#64748b" font-size="9">p4[p4_idx] → P3 地址</text>
+      <path d="M240,115 L240,128 L310,128 L310,138" stroke="#f87171" stroke-width="1.2" fill="none" marker-end="url(#arr-bl)"/>
+
+      <!-- P3 -->
+      <rect x="315" y="130" width="130" height="50" rx="6" fill="#1a1d27" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="380" y="148" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="700">P3 (PUD)</text>
+      <text x="380" y="166" text-anchor="middle" fill="#64748b" font-size="9">p3[p3_idx] → P2 地址</text>
+      <path d="M380,180 L380,190 L450,190 L450,200" stroke="#fbbf24" stroke-width="1.2" fill="none" marker-end="url(#arr-bl)"/>
+
+      <!-- P2 -->
+      <rect x="455" y="192" width="130" height="50" rx="6" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="520" y="210" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">P2 (PMD)</text>
+      <text x="520" y="228" text-anchor="middle" fill="#64748b" font-size="9">p2[p2_idx] → P1 地址</text>
+      <path d="M520,242 L520,252 L590,252 L590,262" stroke="#3fb950" stroke-width="1.2" fill="none" marker-end="url(#arr-bl)"/>
+
+      <!-- P1 -->
+      <rect x="595" y="255" width="130" height="50" rx="6" fill="#1a1d27" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="660" y="273" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="700">P1 (PTE)</text>
+      <text x="660" y="291" text-anchor="middle" fill="#64748b" font-size="9">p1[p1_idx] → PFN</text>
+
+      <!-- Note -->
+      <rect x="30" y="250" width="130" height="55" rx="6" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="0.8"/>
+      <text x="95" y="268" text-anchor="middle" fill="#a78bfa" font-size="9">不加分号</text>
+      <text x="95" y="282" text-anchor="middle" fill="#a78bfa" font-size="8">单级页表：</text>
+      <text x="95" y="296" text-anchor="middle" fill="#f87171" font-size="8">2⁵²×8B≈32PB ❌</text>
+    </svg>
+    <div class="diagram-caption">图3：Linux 四级页表结构 — CR3→P4→P3→P2→P1→PFN，仅分配使用路径，未用页表不分配</div>
+  </div>
+
+  <div class="info-card">
+    <h4>🧮 单级 vs 多级页表计算</h4>
+    <p><span class="badge badge-red">单级页表：</span>64位地址空间，页4KB=2¹²，页表项8B → 2⁶⁴/2¹² = 2⁵² 项 × 8B = 2⁵⁵ B ≈ <strong>32 PB</strong> → ❌ 完全不可行</p>
+    <p><span class="badge badge-green">四级页表：</span>每级512项(9bit索引)，只为使用中的VA区间分配页表。典型进程只需 <strong>几十 KB</strong> 页表空间。</p>
+    <p><span class="badge badge-cyan">ARMv8-A：</span>4KB页用4级，64KB页用2级</p>
+  </div>
+
+  <h3>TLB 快表——翻译缓存</h3>
+  <p>TLB (Translation Lookaside Buffer) 是 MMU 内部的硬件缓存，缓存最近使用的 VPN→PFN 映射。没有 TLB，<strong>每次内存访问都要遍历 4 级页表（4 次内存访问）</strong>，性能直接崩盘。</p>
+  <table>
+    <tr><th>情况</th><th>过程</th><th>耗时</th><th>概率</th></tr>
+    <tr><td><span class="badge badge-green">TLB Hit</span></td><td>直接从 TLB 拿 PFN</td><td>~1 CPU cycle</td><td>99.9%</td></tr>
+    <tr><td><span class="badge badge-orange">TLB Miss (页表命中)</span></td><td>硬件遍历 4 级页表 → 更新 TLB</td><td>~几十 cycle</td><td>~0.1%</td></tr>
+    <tr><td><span class="badge badge-red">TLB Miss + 缺页</span></td><td>页表项 Present=0 → 触发 #PF 异常</td><td>~几 ms（磁盘 I/O）</td><td>极低</td></tr>
+  </table>
+
+  <h3>缺页中断（Page Fault）完整流程</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 360" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="arr-pf" markerWidth="7" markerHeight="5" refX="7" refY="2.5"><path d="M0,0 L7,2.5 L0,5 Z" fill="#c9d1d9"/></marker>
+        <linearGradient id="bg-pf"><stop offset="0%" stop-color="#0f172a"/><stop offset="100%" stop-color="#1e293b"/></linearGradient>
+      </defs>
+      <rect x="10" y="5" width="800" height="350" rx="10" fill="url(#bg-pf)" stroke="#334155" stroke-width="1"/>
+
+      <text x="410" y="28" text-anchor="middle" fill="#c9d1d9" font-size="15" font-weight="700">缺页中断处理流程 (Page Fault Handler)</text>
+
+      <!-- Step boxes -->
+      <!-- 1 -->
+      <rect x="40" y="50" width="220" height="70" rx="8" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="150" y="70" text-anchor="middle" fill="#f87171" font-size="12" font-weight="700">① CPU 访问无效地址</text>
+      <text x="150" y="88" text-anchor="middle" fill="#c9d1d9" font-size="9">mov eax, [0x401000]</text>
+      <text x="150" y="104" text-anchor="middle" fill="#64748b" font-size="8">MMU 查页表 → Present=0</text>
+      <text x="150" y="115" text-anchor="middle" fill="#fca5a5" font-size="8">❌ 该页不在物理内存中</text>
+
+      <path d="M260,85 L300,85" stroke="#f87171" stroke-width="1.5" marker-end="url(#arr-pf)"/>
+
+      <!-- 2 -->
+      <rect x="305" y="50" width="220" height="70" rx="8" fill="rgba(210,153,34,0.08)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="415" y="70" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="700">② 触发 #PF 缺页异常</text>
+      <text x="415" y="88" text-anchor="middle" fill="#c9d1d9" font-size="9">CPU 自动保存上下文</text>
+      <text x="415" y="104" text-anchor="middle" fill="#64748b" font-size="8">CR2 记录出错的 VA</text>
+      <text x="415" y="115" text-anchor="middle" fill="#fde68a" font-size="8">↪ 跳转到 do_page_fault()</text>
+
+      <path d="M525,85 L565,85" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arr-pf)"/>
+
+      <!-- 3 -->
+      <rect x="570" y="45" width="220" height="80" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="680" y="65" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700">③ 内核 do_page_fault</text>
+      <text x="680" y="83" text-anchor="middle" fill="#c9d1d9" font-size="9">检查 VMA 地址范围</text>
+      <text x="680" y="99" text-anchor="middle" fill="#64748b" font-size="8">找对应 vm_area_struct</text>
+      <text x="680" y="115" text-anchor="middle" fill="#c4b5fd" font-size="8">🔍 地址是否合法？</text>
+
+      <path d="M680,130 L680,160 L415,160 L415,170" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="5,3" fill="none" marker-end="url(#arr-pf)"/>
+
+      <!-- 4 - decision -->
+      <rect x="290" y="175" width="250" height="45" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="2"/>
+      <text x="415" y="195" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">✅ 地址合法 → 继续处理</text>
+      <text x="415" y="212" text-anchor="middle" fill="#64748b" font-size="9">在 VMA 中（匿名页/文件映射/栈自动增长）</text>
+
+      <rect x="290" y="225" width="250" height="45" rx="8" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="2"/>
+      <text x="415" y="245" text-anchor="middle" fill="#f87171" font-size="13" font-weight="700">❌ 地址非法 → SIGSEGV</text>
+      <text x="415" y="262" text-anchor="middle" fill="#64748b" font-size="9">不在任何 VMA → 段错误，进程退出</text>
+
+      <path d="M540,197 L580,197" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr-pf)"/>
+
+      <!-- 5 -->
+      <rect x="585" y="175" width="200" height="70" rx="8" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="685" y="195" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700">④ 分配物理页</text>
+      <text x="685" y="213" text-anchor="middle" fill="#c9d1d9" font-size="9">伙伴系统分一页</text>
+      <text x="685" y="231" text-anchor="middle" fill="#64748b" font-size="8">若需文件内容 → 磁盘 I/O</text>
+
+      <path d="M685,245 L685,280 L415,280 L415,290" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="5,3" fill="none" marker-end="url(#arr-pf)"/>
+
+      <!-- 6 -->
+      <rect x="305" y="290" width="220" height="55" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="415" y="310" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="700">⑤ 更新页表 + 返回用户态</text>
+      <text x="415" y="328" text-anchor="middle" fill="#c9d1d9" font-size="9">页表项 Present=1, PFN 指向新页</text>
+      <text x="415" y="342" text-anchor="middle" fill="#64748b" font-size="8">重新执行 mov eax, [0x401000] → 现在 TLB Hit ✅</text>
+    </svg>
+    <div class="diagram-caption">图4：缺页中断完整处理流程 — 从 CPU 访问无效地址 → #PF 异常 → 内核处理 → 分配页 → 返回重试</div>
+  </div>
+
+  <pre><code><span class="cm">// Linux 缺页中断处理伪代码 (fs/do_page_fault.c 简化)</span>
+void do_page_fault(struct pt_regs *regs, unsigned long error_code) {
+    unsigned long addr = read_cr2();  <span class="cm">// CR2 存了出错的虚拟地址</span>
+
+    <span class="cm">// 1. 检查地址是否在进程的 VMA（虚拟内存区域）中</span>
+    struct vm_area_struct *vma = find_vma(current->mm, addr);
+
+    <span class="kw">if</span> (!vma) {
+        <span class="cm">// 地址不在任何 VMA → 非法访问</span>
+        force_sig_fault(SIGSEGV, ...);
+        <span class="kw">return</span>;
+    }
+
+    <span class="cm">// 2. 处理各种缺页场景</span>
+    <span class="kw">if</span> (vma->vm_ops &amp;&amp; vma->vm_ops->fault) {
+        <span class="cm">// 文件映射缺页 → 从磁盘读</span>
+        vma->vm_ops->fault(vma, &amp;fault);
+    } <span class="kw">else</span> <span class="kw">if</span> (vma->vm_flags &amp; VM_GROWSDOWN) {
+        <span class="cm">// 栈自动增长</span>
+        expand_stack(vma, addr);
+    } <span class="kw">else</span> {
+        <span class="cm">// 匿名页 → 分配零页 (COW)</span>
+        do_anonymous_page(vma, addr);
+    }
+
+    <span class="cm">// 3. 更新页表，返回用户态重新执行指令</span>
+    update_page_table(addr, pfn);
+}</code></pre>
+</section>
+
+<!-- ================================================================== -->
+<!-- 第四层：页面置换算法 -->
+<!-- ================================================================== -->
+<section id="page-replacement" class="section">
+  <h2>🔄 第四层：页面置换算法——内存满了该踢谁？</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🧳 类比：整理旅行箱</span></p>
+    <p>想象你在打包旅行箱（物理内存），箱子满了，但你要装一件新东西。你必须扔掉一件——问题来了：<strong>扔掉哪件最不亏？</strong></p>
+    <ul>
+      <li><strong>FIFO：</strong>扔掉最早装进去的那件。但最早装的可能是你每天都要用的牙刷！</li>
+      <li><strong>LRU：</strong>扔掉最久没碰过的那件。比如在箱底放了一周的游泳裤——大概率这几天也不会穿。</li>
+      <li><strong>Clock：</strong>在箱子里画个表盘，指针一圈圈转。每件行李有个"最近用过"的标签：标签还在的清零继续转，标签没了的就扔出去。</li>
+    </ul>
+    <p><strong>理想情况（OPT）：</strong>你能预知未来，扔掉以后最不会用到的那件。可惜现实世界没有时光机，所以只能用各种近似策略。</p>
+  </div>
+
+  <h3>四大算法直观对比</h3>
+  <p>下面用经典访问序列 <strong>[7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2, 1, 2]</strong>（物理帧=3）演示每个算法：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 320" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="arr-r" markerWidth="7" markerHeight="5" refX="7" refY="2.5"><path d="M0,0 L7,2.5 L0,5 Z" fill="#f87171"/></marker>
+        <linearGradient id="gb3"><stop offset="0%" stop-color="#1e293b"/><stop offset="100%" stop-color="#0f172a"/></linearGradient>
+      </defs>
+      <rect x="10" y="5" width="800" height="310" rx="10" fill="url(#gb3)" stroke="#334155" stroke-width="1"/>
+
+      <text x="410" y="28" text-anchor="middle" fill="#c9d1d9" font-size="13" font-weight="700">页面置换算法对比 · 访问序列: [7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2, 1, 2] · 3 帧</text>
+
+      <!-- Page numbers label row -->
+      <text x="85" y="52" fill="#64748b" font-size="8">7</text>
+      <text x="120" y="52" fill="#64748b" font-size="8">0</text>
+      <text x="155" y="52" fill="#64748b" font-size="8">1</text>
+      <text x="190" y="52" fill="#64748b" font-size="8">2</text>
+      <text x="225" y="52" fill="#64748b" font-size="8">0</text>
+      <text x="260" y="52" fill="#64748b" font-size="8">3</text>
+      <text x="295" y="52" fill="#64748b" font-size="8">0</text>
+      <text x="330" y="52" fill="#64748b" font-size="8">4</text>
+      <text x="365" y="52" fill="#64748b" font-size="8">2</text>
+      <text x="400" y="52" fill="#64748b" font-size="8">3</text>
+      <text x="435" y="52" fill="#64748b" font-size="8">0</text>
+      <text x="470" y="52" fill="#64748b" font-size="8">3</text>
+      <text x="505" y="52" fill="#64748b" font-size="8">2</text>
+      <text x="540" y="52" fill="#64748b" font-size="8">1</text>
+      <text x="575" y="52" fill="#64748b" font-size="8">2</text>
+
+      <!-- FIFO Row -->
+      <text x="20" y="83" fill="#f87171" font-size="12" font-weight="700">FIFO</text>
+      <rect x="65" y="68" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="100" y="68" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="135" y="68" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="170" y="68" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="205" y="68" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="240" y="68" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="275" y="68" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="310" y="68" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="345" y="68" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="380" y="68" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="415" y="68" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="450" y="68" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="485" y="68" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="520" y="68" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="555" y="68" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="610" y="83" fill="#f87171" font-size="11" font-weight="700">缺页=10</text>
+      <!-- Fault markers -->
+      <text x="77" y="95" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="112" y="95" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="147" y="95" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="182" y="95" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="252" y="95" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="322" y="95" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="357" y="95" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="392" y="95" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="532" y="95" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+
+      <!-- LRU Row -->
+      <text x="20" y="128" fill="#fbbf24" font-size="12" font-weight="700">LRU</text>
+      <rect x="65" y="113" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="100" y="113" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="135" y="113" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="170" y="113" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="205" y="113" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="240" y="113" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="275" y="113" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="310" y="113" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="345" y="113" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="380" y="113" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="415" y="113" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="450" y="113" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="485" y="113" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="520" y="113" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="555" y="113" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="610" y="128" fill="#3fb950" font-size="11" font-weight="700">缺页=9</text>
+      <text x="77" y="140" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="112" y="140" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="147" y="140" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="182" y="140" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="252" y="140" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="322" y="140" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="357" y="140" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="532" y="140" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+
+      <!-- Clock Row -->
+      <text x="20" y="173" fill="#a78bfa" font-size="12" font-weight="700">Clock</text>
+      <rect x="65" y="158" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="100" y="158" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="135" y="158" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="170" y="158" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="205" y="158" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="240" y="158" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="275" y="158" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="310" y="158" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="345" y="158" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="380" y="158" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="415" y="158" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="450" y="158" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="485" y="158" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="520" y="158" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="555" y="158" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="610" y="173" fill="#3fb950" font-size="11" font-weight="700">缺页=9</text>
+      <text x="77" y="185" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="112" y="185" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="147" y="185" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="182" y="185" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="252" y="185" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="322" y="185" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="532" y="185" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+
+      <!-- OPT Row -->
+      <text x="20" y="218" fill="#22d3ee" font-size="12" font-weight="700">OPT</text>
+      <rect x="65" y="203" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="100" y="203" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="135" y="203" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="170" y="203" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="205" y="203" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="240" y="203" width="30" height="22" rx="3" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="0.8"/>
+      <rect x="275" y="203" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="310" y="203" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="345" y="203" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="380" y="203" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="415" y="203" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="450" y="203" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="485" y="203" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="520" y="203" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <rect x="555" y="203" width="30" height="22" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="610" y="218" fill="#22d3ee" font-size="11" font-weight="700">缺页=7</text>
+      <text x="77" y="230" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="112" y="230" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="147" y="230" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+      <text x="252" y="230" text-anchor="middle" fill="#fca5a5" font-size="7">❌</text>
+
+      <!-- Legend -->
+      <rect x="65" y="265" width="10" height="10" rx="2" fill="rgba(248,81,73,0.3)" stroke="#f87171" stroke-width="0.8"/>
+      <text x="80" y="274" fill="#64748b" font-size="9">Page Fault</text>
+      <rect x="180" y="265" width="10" height="10" rx="2" fill="rgba(63,185,80,0.3)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="195" y="274" fill="#64748b" font-size="9">Hit</text>
+      <text x="300" y="274" fill="#64748b" font-size="9">FIFO 缺页最多且有 Belady 异常 · LRU ≈ Clock 接近最优 · OPT 是理论天花板（不可实现）</text>
+
+      <!-- Belady note -->
+      <rect x="65" y="288" width="700" height="20" rx="4" fill="rgba(248,81,73,0.06)" stroke="#f87171" stroke-width="0.6"/>
+      <text x="415" y="302" text-anchor="middle" fill="#f87171" font-size="9">⚠️ Belady 异常：FIFO 在 4 帧时反而比 3 帧缺页更多！LRU/Clock/OPT 不存在该问题。</text>
+    </svg>
+    <div class="diagram-caption">图5：页面置换算法对比 — FIFO 缺页最多(10)，LRU 和 Clock 表现接近(9)，OPT 最优(7)</div>
+  </div>
+
+  <h3>算法对比表</h3>
+  <table>
+    <tr><th>算法</th><th>核心思路</th><th>数据结构</th><th>缺页率</th><th>实现成本</th><th>Belady 异常</th></tr>
+    <tr><td><strong>FIFO</strong></td><td>淘汰最早进入的页</td><td>队列</td><td>高</td><td>极低</td><td>⚠️ 有</td></tr>
+    <tr><td><strong>LRU</strong></td><td>淘汰最久未访问的页</td><td>双向链表 + HashMap</td><td>较低</td><td>高（每次访问更新）</td><td>✅ 无</td></tr>
+    <tr><td><strong>Clock</strong></td><td>近似 LRU：循环扫描，跳过 use bit=1 的页</td><td>环形链表 + use bit</td><td>接近 LRU</td><td>低（仅硬件置位）</td><td>✅ 无</td></tr>
+    <tr><td><strong>LFU</strong></td><td>淘汰访问频率最低的页</td><td>最小堆 / 计数器</td><td>中等（不适应突发）</td><td>高</td><td>✅ 无</td></tr>
+    <tr><td><strong>OPT</strong></td><td>淘汰未来最久才用到的页</td><td>预知未来（不可能）</td><td>最优</td><td>不可实现</td><td>✅ 无</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>⚙️ Linux 实际用的是什么？</h4>
+    <p>Linux 内核使用 <strong>双链回收策略</strong>（近似 LRU）：</p>
+    <ul>
+      <li><strong>active_list</strong> —— 活跃页链表（经常被访问）</li>
+      <li><strong>inactive_list</strong> —— 不活跃页链表</li>
+      <li>页面在 active 中时不会被回收，只有被移到 inactive 后才可能被回收</li>
+      <li>kswapd 内核线程在内存低于 watermark 时唤醒回收</li>
+    </ul>
+    <pre><code><span class="cm"># 查看当前系统的 swap 倾向性</span>
+$ cat /proc/sys/vm/swappiness
+60
+
+<span class="cm"># 值越高 (0-100) → 越倾向于 swap 匿名页而不是回收文件缓存</span>
+<span class="cm"># 服务器通常设为 10-30，桌面可设 60</span></code></pre>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 第五层：内存分配器 -->
+<!-- ================================================================== -->
+<section id="allocator" class="section">
+  <h2>🗂️ 第五层：malloc 底层秘密 & Go 内存分配器</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏗️ 类比：malloc 是包工头</span></p>
+    <p><code>malloc(32)</code> 就像包工头需要一小块木板——他去工地的<strong>仓库</strong>（堆，brk 管理）拿一块，如果仓库不够大就<strong>把墙往外推</strong>（sbrk 扩展堆）。</p>
+    <p><code>malloc(1_000_000)</code> 就像需要一整辆卡车——仓库里放不下，包工头直接给<strong>供应商打电话下单</strong>（mmap 独立映射），用完直接<strong>退货</strong>（munmap 归还 OS）。</p>
+    <p>这就是 malloc 的<strong>两条路径</strong>：小请求 → brk 管理（快，但不归还 OS），大请求 → mmap 分配（独立，free 即归还）。</p>
+  </div>
+
+  <h3>brk / sbrk vs mmap 两条路径</h3>
+  <ul>
+    <li><strong>brk(addr)</strong> — 设置堆的结束地址（program break），相当于"墙推到这儿"</li>
+    <li><strong>sbrk(incr)</strong> — 增量版 brk，返回旧 break 位置，正数扩展堆，负数收缩</li>
+    <li><strong>mmap(NULL, size, ...)</strong> — 在 mmap 区创建独立映射，对齐到页粒度，free 时 munmap 立即归还</li>
+  </ul>
+
+  <pre><code><span class="cm">// glibc malloc 的分配策略（简化）</span>
+void *malloc(size_t size) {
+    <span class="kw">if</span> (size == 0) <span class="kw">return</span> NULL;
+
+    <span class="cm">// 小对象 (&lt; 128KB) → 从堆（brk 区域）分配</span>
+    <span class="kw">if</span> (size &lt;= MMAP_THRESHOLD) {  <span class="cm">// 默认 128KB</span>
+        <span class="cm">// 从 main_arena 的空闲链表找合适 chunk</span>
+        <span class="cm">// 如果没有 → sbrk() 扩展堆</span>
+        <span class="kw">return</span> arena_alloc(size);
+    }
+
+    <span class="cm">// 大对象 (≥ 128KB) → mmap 匿名映射</span>
+    <span class="kw">return</span> mmap(NULL, size, PROT_READ|PROT_WRITE,
+                     MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+}
+
+void free(void *ptr) {
+    <span class="kw">if</span> (is_mmap(ptr)) {
+        <span class="cm">// mmap 分配的 → munmap 立即归还给 OS</span>
+        munmap(ptr, chunk_size(ptr));
+    } <span class="kw">else</span> {
+        <span class="cm">// brk 分配的 → 标记为空闲，尝试合并相邻空闲块</span>
+        <span class="cm">// 但不归还 OS（缓存复用，减少系统调用）</span>
+        mark_free(ptr);
+    }
+}</code></pre>
+
+  <h3>伙伴系统（Buddy System）—— 内核的物理页分配器</h3>
+  <p>Linux 内核用伙伴系统管理物理页，解决<strong>外部碎片</strong>：</p>
+
+  <div class="info-card">
+    <h4>🔧 伙伴系统工作流程</h4>
+    <pre><code><span class="cm">// 伙伴系统：将内存按 2^n 分块管理</span>
+<span class="cm">// free_area[0] = 1页块, free_area[1] = 2页块, ... free_area[9] = 512页块</span>
+<span class="cm">//</span>
+<span class="cm">// 分配 3 页：</span>
+<span class="cm">//   1. 需要 2²=4 页块 → 检查 free_area[2] (order=2)</span>
+<span class="cm">//   2. 如果 order2 空 → 从 order3 拿 8 页，分裂为 [A,B] 各 4 页</span>
+<span class="cm">//   3. 返回 A (4页)，B 挂在 free_area[2] 上</span>
+<span class="cm">//</span>
+<span class="cm">// 释放：检查 buddy（伙伴块）是否空闲 → 是则合并回更大块</span></code></pre>
+  </div>
+
+  <h3>Slab 分配器——解决内部碎片 + 对象缓存</h3>
+  <p>伙伴系统的粒度是"页"（4KB），但内核经常要分配很小的对象（task_struct ~2KB, inode ~500B）。如果直接用伙伴系统，每个小对象都浪费一页（<strong>内部碎片</strong>）。Slab 分配器解决了这个问题：</p>
+
+  <table>
+    <tr><th>层级</th><th>功能</th><th>类比</th></tr>
+    <tr><td><strong>kmem_cache</strong></td><td>管理特定类型对象的缓存</td><td>每种对象类型一个工厂</td></tr>
+    <tr><td><strong>slab</strong></td><td>一个或多个连续物理页，等分为对象槽</td><td>工厂中的托盘</td></tr>
+    <tr><td><strong>object</strong></td><td>单个内核对象（inode、task_struct等）</td><td>托盘上的格子</td></tr>
+  </table>
+
+  <pre><code><span class="cm">// Slab 使用示例（Linux 内核）</span>
+<span class="cm">// 为 task_struct 创建专用缓存</span>
+struct kmem_cache *task_cache = kmem_cache_create(
+    "task_struct",
+    sizeof(struct task_struct),  <span class="cm">// ~2KB</span>
+    0,                           <span class="cm">// 对齐</span>
+    SLAB_PANIC,
+    NULL
+);
+
+<span class="cm">// 分配一个 task_struct → O(1)，从空闲槽直接拿</span>
+struct task_struct *p = kmem_cache_alloc(task_cache, GFP_KERNEL);
+
+<span class="cm">// 用完归还 → O(1)，回到空闲槽，对象仍缓存</span>
+kmem_cache_free(task_cache, p);</code></pre>
+
+  <h3>🚀 Go 内存分配器——TCMalloc 风格的三级缓存</h3>
+  <div class="feynman">
+    <p><span class="analogy">🏪 类比：连锁便利店三级体系</span></p>
+    <p>Go 的分配器借鉴了 Google TCMalloc 的设计，像一家连锁便利店体系：</p>
+    <ul>
+      <li><strong>mcache</strong> = 每个门店的收银台（零排队=无锁）——每个 P（逻辑处理器）一个，直接拿货</li>
+      <li><strong>mcentral</strong> = 区域仓库——门店缺货时从仓库调货（需要锁）</li>
+      <li><strong>mheap</strong> = 总仓/物流中心——从厂家（OS）大批量进货（mmap）</li>
+    </ul>
+    <p><strong>80% 以上的分配在 mcache 完成，无需加锁！</strong>这就是 Go 频繁分配内存也很快的秘诀。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 340" style="max-width:820px;width:100%">
+      <defs>
+        <linearGradient id="gb4"><stop offset="0%" stop-color="#1e293b"/><stop offset="100%" stop-color="#0f172a"/></linearGradient>
+        <marker id="arr-w" markerWidth="7" markerHeight="5" refX="7" refY="2.5"><path d="M0,0 L7,2.5 L0,5 Z" fill="#c9d1d9"/></marker>
+      </defs>
+      <rect x="10" y="5" width="800" height="330" rx="10" fill="url(#gb4)" stroke="#334155" stroke-width="1"/>
+      <text x="410" y="28" text-anchor="middle" fill="#c9d1d9" font-size="15" font-weight="700">Go 内存分配器三级结构 (TCMalloc 风格)</text>
+
+      <!-- P0 mcache -->
+      <rect x="30" y="45" width="230" height="85" rx="8" fill="rgba(88,166,255,0.06)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="145" y="65" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">P0 · mcache 🏪</text>
+      <text x="145" y="82" text-anchor="middle" fill="#64748b" font-size="9">无锁分配（每个 P 独享）</text>
+      <rect x="40" y="95" width="46" height="24" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="63" y="111" text-anchor="middle" fill="#86efac" font-size="8">span 8B</text>
+      <rect x="92" y="95" width="46" height="24" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="115" y="111" text-anchor="middle" fill="#86efac" font-size="8">span 16B</text>
+      <rect x="144" y="95" width="46" height="24" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="167" y="111" text-anchor="middle" fill="#86efac" font-size="8">span 32B</text>
+      <rect x="196" y="95" width="46" height="24" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="219" y="111" text-anchor="middle" fill="#86efac" font-size="8">...</text>
+
+      <!-- P1 mcache -->
+      <rect x="30" y="145" width="230" height="85" rx="8" fill="rgba(88,166,255,0.06)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="145" y="165" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">P1 · mcache 🏪</text>
+      <text x="145" y="182" text-anchor="middle" fill="#64748b" font-size="9">无锁分配（每个 P 独享）</text>
+      <rect x="40" y="195" width="46" height="24" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="63" y="211" text-anchor="middle" fill="#86efac" font-size="8">span 8B</text>
+      <rect x="92" y="195" width="46" height="24" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="115" y="211" text-anchor="middle" fill="#86efac" font-size="8">span 16B</text>
+      <rect x="144" y="195" width="46" height="24" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="167" y="211" text-anchor="middle" fill="#86efac" font-size="8">span 32B</text>
+      <rect x="196" y="195" width="46" height="24" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="219" y="211" text-anchor="middle" fill="#86efac" font-size="8">...</text>
+
+      <!-- Arrows to mcentral -->
+      <line x1="260" y1="105" x2="330" y2="145" stroke="#64748b" stroke-width="1.2" stroke-dasharray="4,3"/>
+      <line x1="260" y1="190" x2="330" y2="165" stroke="#64748b" stroke-width="1.2" stroke-dasharray="4,3"/>
+      <text x="295" y="155" fill="#64748b" font-size="8">mcache 不足时从 mcentral 批量取</text>
+
+      <!-- mcentral -->
+      <rect x="340" y="105" width="210" height="170" rx="10" fill="rgba(210,153,34,0.06)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="445" y="128" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="700">mcentral 🏬</text>
+      <text x="445" y="145" text-anchor="middle" fill="#64748b" font-size="9">全局 span 缓存 · 每个 size class 一个</text>
+      <rect x="350" y="155" width="190" height="24" rx="4" fill="rgba(210,153,34,0.1)" stroke="#fbbf24" stroke-width="0.8"/>
+      <text x="445" y="171" text-anchor="middle" fill="#fde68a" font-size="9">class 1 (8B): nonempty / empty 链表</text>
+      <rect x="350" y="183" width="190" height="24" rx="4" fill="rgba(210,153,34,0.1)" stroke="#fbbf24" stroke-width="0.8"/>
+      <text x="445" y="199" text-anchor="middle" fill="#fde68a" font-size="9">class 2 (16B): nonempty / empty 链表</text>
+      <rect x="350" y="211" width="190" height="24" rx="4" fill="rgba(210,153,34,0.1)" stroke="#fbbf24" stroke-width="0.8"/>
+      <text x="445" y="227" text-anchor="middle" fill="#fde68a" font-size="9">class 3 (32B): nonempty / empty 链表</text>
+      <text x="445" y="252" text-anchor="middle" fill="#64748b" font-size="9">... 共 67 个 size class</text>
+      <text x="445" y="268" text-anchor="middle" fill="#64748b" font-size="8">需要锁（mutex）</text>
+
+      <!-- Arrow mcentral → mheap -->
+      <line x1="550" y1="190" x2="620" y2="190" stroke="#f87171" stroke-width="1.5" marker-end="url(#arr-w)"/>
+
+      <!-- mheap -->
+      <rect x="625" y="100" width="160" height="180" rx="10" fill="rgba(248,81,73,0.06)" stroke="#f87171" stroke-width="2"/>
+      <text x="705" y="125" text-anchor="middle" fill="#f87171" font-size="14" font-weight="700">mheap 🚛</text>
+      <text x="705" y="145" text-anchor="middle" fill="#64748b" font-size="9">向 OS 申请大块</text>
+      <text x="705" y="162" text-anchor="middle" fill="#64748b" font-size="9">内存 (mmap)</text>
+      <rect x="640" y="175" width="130" height="22" rx="4" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="0.8"/>
+      <text x="705" y="191" text-anchor="middle" fill="#fca5a5" font-size="8">arena 区</text>
+      <rect x="640" y="201" width="130" height="22" rx="4" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="0.8"/>
+      <text x="705" y="217" text-anchor="middle" fill="#fca5a5" font-size="8">mcentral 的</text>
+      <rect x="640" y="227" width="130" height="22" rx="4" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="0.8"/>
+      <text x="705" y="243" text-anchor="middle" fill="#fca5a5" font-size="8">span 来源</text>
+      <text x="705" y="270" text-anchor="middle" fill="#64748b" font-size="8">大锁保护</text>
+
+      <!-- Bottom note -->
+      <rect x="30" y="290" width="755" height="35" rx="6" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="0.8"/>
+      <text x="410" y="305" text-anchor="middle" fill="#a78bfa" font-size="10">分配路径: G 请求 → mcache(无锁) → mcentral(轻量锁) → mheap(大锁+mmap) · ≥80% 在 mcache 命中</text>
+      <text x="410" y="319" text-anchor="middle" fill="#64748b" font-size="9">Go 1.14+ scavenger: 后台把未使用的内存归还 OS (physical memory scavenging)</text>
+    </svg>
+    <div class="diagram-caption">图6：Go 内存分配器三级结构 — mcache(无锁) → mcentral(轻量锁) → mheap(大锁+mmap)</div>
+  </div>
+
+  <h3>Go 分配流程详解</h3>
+  <pre><code><span class="cm">// runtime.mallocgc 简化流程（Go 源码）</span>
+<span class="kw">func</span> mallocgc(size <span class="kw">uintptr</span>, typ *_type, needzero <span class="kw">bool</span>) unsafe.Pointer {
+    <span class="kw">if</span> size == 0 {
+        <span class="kw">return</span> unsafe.Pointer(&amp;zeroBase)
+    }
+
+    <span class="cm">// 1️⃣ 小对象 (≤ 32KB) → 从 mcache 分配</span>
+    <span class="kw">if</span> size &lt;= maxSmallSize {
+        c := getMCache()  <span class="cm">// 当前 P 的 mcache，无锁</span>
+
+        <span class="cm">// 微对象 (≤ 16B) → tiny allocator（合并到同一个 16B 槽）</span>
+        <span class="kw">if</span> size &lt;= maxTinySize {
+            <span class="kw">return</span> c.tinyAlloc(size)
+        }
+
+        <span class="cm">// 根据 size 计算对应的 size class</span>
+        span := c.alloc[sizeToClass(size)]
+        obj := span.nextFreeIndex()
+        <span class="kw">return</span> obj
+    }
+
+    <span class="cm">// 2️⃣ 大对象 (&gt; 32KB) → 直接从 mheap 分配</span>
+    <span class="cm">// 大对象由 GC 直接追踪，不经过 mcache/mcentral</span>
+    s := mheap_.alloc(size)
+    <span class="kw">return</span> s.base()
+}
+
+<span class="cm">// 当 mcache 的 span 满时：</span>
+<span class="cm">// 1. mcache -> mcentral.refill() → 从 nonempty 链取一个 span（加锁）</span>
+<span class="cm">// 2. mcentral 空了 → mcentral -> mheap.allocSpan()（加锁）</span>
+<span class="cm">// 3. mheap 需要新内存 → mmap() 向 OS 申请</span></code></pre>
+
+  <h3>关键概念总结</h3>
+  <table>
+    <tr><th>组件</th><th>作用</th><th>特点</th></tr>
+    <tr><td><strong>mspan</strong></td><td>管理一段连续页（通常 8KB），等分为固定大小对象槽</td><td>最小分配单位，67 种 size class</td></tr>
+    <tr><td><strong>mcache</strong></td><td>每个 P 独享的 span 缓存，每种 size class 最多 1 个 span</td><td>无锁分配（零竞争）</td></tr>
+    <tr><td><strong>mcentral</strong></td><td>全局 span 池，每种 size class 一个 mcentral</td><td>需要锁，nonempty + empty 双链表</td></tr>
+    <tr><td><strong>mheap</strong></td><td>全局堆，管理所有 arena，从 OS mmap 内存</td><td>大锁保护，负责 span 分配/释放</td></tr>
+    <tr><td><strong>size class</strong></td><td>从 8B 到 32KB 共 67 种规格（向上取整到最近 class）</td><td>减少内部碎片</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🌍 Go vs C vs Rust 内存分配对比</h4>
+    <table>
+      <tr><th>语言</th><th>底层分配器</th><th>释放方式</th><th>特点</th></tr>
+      <tr><td><strong>Go</strong></td><td>TCMalloc 风格三级缓存</td><td>GC 标记清扫</td><td>开发者懒人福音，80%+ 无锁</td></tr>
+      <tr><td><strong>C (glibc)</strong></td><td>ptmalloc (brk+mmap, bins+fastbins)</td><td>手动 free</td><td>全手动，易错但完全可控</td></tr>
+      <tr><td><strong>Rust</strong></td><td>jemalloc 或系统分配器</td><td>Drop/所有权自动释放</td><td>编译期保证，零额外开销</td></tr>
+      <tr><td><strong>C++ (TCMalloc)</strong></td><td>thread cache + central cache</td><td>RAII / 智能指针</td><td>Google 出品，Go 的前身</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 实战问答 -->
+<!-- ================================================================== -->
+<section id="qa" class="section">
+  <h2>❓ 第六层：实战进阶——高频问答</h2>
+
+  <div class="qa-box">
+    <h4>Q1: 虚拟内存解决了哪些问题？用直觉解释</h4>
+    <p><span class="q">A:</span> 相当于给每个程序一个<strong>私有的"幻觉"</strong>——虚拟内存解决四大问题：</p>
+    <ul>
+      <li><strong>隔离：</strong>程序 A 不能读程序 B 的数据（各自页表独立）</li>
+      <li><strong>扩容：</strong>程序可以比物理内存大（不用的页 swap 到磁盘）</li>
+      <li><strong>消灭外部碎片：</strong>连续虚拟页可以映射到任意物理页，物理内存里的"洞"不再影响程序</li>
+      <li><strong>共享：</strong>动态库只加载一份物理内存，多个进程的虚拟页指向同一个物理帧</li>
+    </ul>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q2: 多级页表为什么能省内存？画图解释</h4>
+    <p><span class="q">A:</span> 关键在 <strong>按需分配</strong>：</p>
+    <ul>
+      <li>64 位系统如果单级页表：2⁵² 项 × 8B ≈ <strong>32 PB</strong>，比整个物理内存还大无数倍</li>
+      <li>多级页表像<strong>图书馆索引系统</strong>：不需要给所有书建索引，只建你去的那些书架</li>
+      <li>四级页表每级 512 项（9bit 索引），未映射的页目录根本不存在</li>
+      <li>典型进程的页表只要 <strong>几十 KB</strong>——2-3 个顶层目录 + 几个二级/三级/四级页表</li>
+    </ul>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q3: TLB Miss 后完整流程是什么？</h4>
+    <p><span class="q">A:</span> TLB Miss 分两种情况：</p>
+    <ol>
+      <li><strong>TLB Miss + 页表命中：</strong>硬件（或软件）遍历 4 级页表（4 次内存访问）找到 PFN → 更新 TLB → 重新执行指令。~几十 CPU cycles。</li>
+      <li><strong>TLB Miss + 页表也 Miss（缺页）：</strong>页表项 Present=0 → 触发 <strong>#PF 缺页异常</strong> → CPU 陷入内核 → do_page_fault 处理：检查 VMA 合法性 → 分配物理页 → 磁盘 I/O 加载数据（如果需要）→ 更新页表 → 返回用户态重新执行。整个过程 ~几毫秒（磁盘瓶颈）。</li>
+    </ol>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q4: LRU 为什么难实现？Clock 怎么近似它？</h4>
+    <p><span class="q">A:</span> 严格 LRU 需要在每次内存访问时 <strong>更新链表顺序</strong>——把刚访问的页面移到链表头部。纯硬件实现成本极高（需要专用硬件追踪所有页面的访问时间），纯软件实现的话每次内存访问都要执行额外指令，性能不可接受。</p>
+    <p><strong>Clock 算法</strong>用近似替代精确：每个页维护一个 <strong>use bit</strong>（硬件自动置 1），缺页时指针循环扫描：遇到 use bit=1 的清零并继续，遇到 use bit=0 的淘汰。只需要 1 个 bit 的硬件支持，效果接近 LRU。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q5: Go 内存分配器为什么这么快？</h4>
+    <p><span class="q">A:</span> 核心原因是 <strong>三级缓存 + 无锁路径</strong>：</p>
+    <ul>
+      <li>每个 P（逻辑处理器）有独立的 <strong>mcache</strong>，G 在 P 上运行时，小对象分配直接从 mcache 拿 span——<strong>不需要任何锁</strong></li>
+      <li>只有 mcache 不够时才加锁从 <strong>mcentral</strong> 批量取一批 span</li>
+      <li>mcentral 不够再加锁从 <strong>mheap</strong> 申请</li>
+      <li>统计显示 <strong>80%+ 的分配在 mcache 命中</strong>，所以绝大多数分配完全无锁</li>
+    </ul>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q6: 什么是 Belady 异常？为什么 FIFO 有而 LRU 没有？</h4>
+    <p><span class="q">A:</span> Belady 异常指 <strong>增加物理帧数反而导致缺页率上升</strong>的反直觉现象。只有 FIFO 有该问题。</p>
+    <p>原因：FIFO 只考虑"进入时间"，不考虑"使用频率"。增加帧数后，被淘汰的页面可能正好是需要频繁使用的"老人"，而新来的页面虽然用得少，但因为是"新人"所以被留下来了。</p>
+    <p>例子：序列 [1,2,3,4,1,2,5,1,2,3,4,5]，3 帧时 FIFO 缺页 9 次，4 帧时缺页 10 次。</p>
+    <p>LRU、Clock 等<strong>基于局部性原理</strong>的算法不存在该问题。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q7: malloc(1) 实际分配了多少内存？</h4>
+    <p><span class="q">A:</span> 远比 1 字节多：</p>
+    <ul>
+      <li><strong>元数据开销：</strong>每个 chunk 需要 ~8-16 字节的 header（prev_size + size + flags）</li>
+      <li><strong>对齐要求：</strong>16 字节对齐（x86-64），所以 malloc(1) 实际分配至少 16-32 字节</li>
+      <li><strong>最小 chunk 大小：</strong>glibc 中最小 chunk 是 32 字节（32 位）或 48 字节（64 位）</li>
+      <li>所以 <code>malloc(1)</code> 实际用了 ~48 字节，<strong>浪费率 98%</strong>——这就是为什么 Go 用 size class (8B/16B/32B...) 来减少浪费</li>
+    </ul>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q8: 栈和堆最大的区别是什么？为什么栈这么快？</h4>
+    <p><span class="q">A:</span> 栈分配就是 <strong>一条指令：subq $N, %rsp</strong>（减栈顶指针），释放就是 <strong>addq $N, %rsp</strong>。没有查找、没有锁、没有碎片、LIFO 绝对顺序。堆分配需要：查空闲链表/找合适 chunk/分割/更新元数据/free 时还要合并——远比栈复杂。</p>
+    <p>栈的代价是<strong>大小有限</strong>（~8MB/线程）且<strong>生命周期严格绑定函数调用</strong>。堆灵活但慢。这就是 Go 的 <strong>逃逸分析</strong> 的动机——能放栈上的绝不放到堆。</p>
+  </div>
+
+  <div class="verbal-summary">
+    <p><strong>🎙️ 口播总结（1分钟版）：</strong></p>
+    <p>「操作系统的内存管理，我换一个视角——它本质上就是<strong>把"内存"这个底层资源抽象成程序员好用的接口</strong>。</p>
+    <p><strong>虚拟内存</strong>让每个进程以为自己在独享地址空间，<strong>MMU</strong> 通过<strong>四级页表</strong>把虚拟地址翻译到物理地址，同时按需分配页表来节省空间。缺页时 OS 从磁盘加载，透明无感。</p>
+    <p>内存不够时，<strong>页面置换算法</strong>登场——实际 OS 不用严格 LRU 因为代价太高，用 <strong>Clock</strong> 或 <strong>双链回收</strong> 来近似。</p>
+    <p>用户态 <strong>malloc</strong> 走两条路：小块走 brk 缓存复用，大块走 mmap 用完即还。内核用<strong>伙伴系统</strong>管物理页分配，用 <strong>slab</strong> 管小对象。</p>
+    <p>最后，<strong>Go 的分配器</strong>把 TCMalloc 的三级缓存（mcache→mcentral→mheap）发挥到极致——80% 以上无锁分配。这就是为什么 Go 程序即使频繁 new 对象，性能也扛得住。」</p>
+  </div>
+</section>
+
+</main>
+</div>
+
+<!-- Ebbinghaus 复习按钮 -->
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'os-memory';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '⏰ '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

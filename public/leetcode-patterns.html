@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeetCode Top 100 · 14 种解法模式</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.7; padding:40px 20px 80px; }
+  .container { max-width:960px; margin:0 auto; }
+  .back { color:var(--muted); font-size:13px; text-decoration:none; margin-bottom:24px; display:inline-block; }
+  .back:hover { color:var(--accent); }
+  h1 { font-size:28px; font-weight:700; color:#fff; margin-bottom:6px; }
+  .subtitle { font-size:13px; color:var(--muted); margin-bottom:32px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:22px 24px; text-decoration:none; color:var(--text); transition:all .15s; }
+  .card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .card-icon { font-size:28px; margin-bottom:8px; }
+  .card-title { font-size:16px; font-weight:700; color:#fff; }
+  .card-desc { font-size:12px; color:var(--muted); margin:8px 0; line-height:1.6; }
+  .card-count { font-size:12px; color:var(--accent); font-weight:600; }
+  @media (max-width:768px) { body{padding:20px 12px 80px;} .grid{grid-template-columns:repeat(2,1fr);gap:10px;} .card{padding:14px;} .card-title{font-size:14px;} .card-desc{font-size:11px;} }
+</style>
+</head>
+<body>
+<div class="container">
+<a href="/" class="back">← 返回首页</a>
+<h1>🏆 LeetCode Top 100</h1>
+<p class="subtitle">110 道高频题 · 按 14 种解法模式归类 · 每题带思路 + 代码</p>
+
+<div class="grid">
+  <a href="/lc-hash.html" class="card">
+    <div class="card-icon">📇</div><div class="card-title">哈希表</div>
+    <div class="card-desc">HashMap 把查找降到 O(1)。两数之和、字母异位词分组——凡是"快速查找"就用哈希。</div>
+    <div class="card-count">8 题</div>
+  </a>
+  <a href="/lc-twopointer.html" class="card">
+    <div class="card-icon">👈👉</div><div class="card-title">双指针</div>
+    <div class="card-desc">对撞、快慢、分离指针。盛水容器、三数之和、接雨水——双指针是 O(N²)→O(N) 的法宝。</div>
+    <div class="card-count">14 题</div>
+  </a>
+  <a href="/lc-sliding.html" class="card">
+    <div class="card-icon">🪟</div><div class="card-title">滑动窗口</div>
+    <div class="card-desc">伸缩窗口处理子串问题。无重复最长子串、最小覆盖子串——窗口用 HashMap 记录内容。</div>
+    <div class="card-count">3 题</div>
+  </a>
+  <a href="/lc-binary.html" class="card">
+    <div class="card-icon">🔍</div><div class="card-title">二分查找</div>
+    <div class="card-desc">每次砍半 O(log N)。旋转数组搜索、找边界、二维矩阵——本质都是缩减搜索区间。</div>
+    <div class="card-count">8 题</div>
+  </a>
+  <a href="/lc-stack.html" class="card">
+    <div class="card-icon">📚</div><div class="card-title">栈 & 单调栈</div>
+    <div class="card-desc">LIFO + 维护单调性。括号匹配、每日温度、最大矩形——单调栈找"下一个更大元素"。</div>
+    <div class="card-count">9 题</div>
+  </a>
+  <a href="/lc-linkedlist.html" class="card">
+    <div class="card-icon">⛓️</div><div class="card-title">链表</div>
+    <div class="card-desc">反转、合并、找环、删倒数。Dummy节点+快慢指针——链表两大法宝。</div>
+    <div class="card-count">11 题</div>
+  </a>
+  <a href="/lc-tree.html" class="card">
+    <div class="card-icon">🌳</div><div class="card-title">树 & 二叉树</div>
+    <div class="card-desc">遍历、LCA、最大路径和。递归分治：左子树搞定+右子树搞定+合并。</div>
+    <div class="card-count">16 题</div>
+  </a>
+  <a href="/lc-backtrack.html" class="card">
+    <div class="card-icon">↩️</div><div class="card-title">回溯</div>
+    <div class="card-desc">全排列、组合、子集、N皇后。模板：push → dfs → pop。关键是剪枝。</div>
+    <div class="card-count">8 题</div>
+  </a>
+  <a href="/lc-dp.html" class="card">
+    <div class="card-icon">🧩</div><div class="card-title">动态规划</div>
+    <div class="card-desc">LeetCode之王（21题）。定义dp[i]→转移方程→base case→填表。爬楼梯到编辑距离。</div>
+    <div class="card-count">21 题</div>
+  </a>
+  <a href="/lc-greedy.html" class="card">
+    <div class="card-icon">🏃</div><div class="card-title">贪心</div>
+    <div class="card-desc">每步选最优。跳跃游戏、买股票、任务调度——关键要证明局部最优=全局最优。</div>
+    <div class="card-count">8 题</div>
+  </a>
+  <a href="/lc-heap.html" class="card">
+    <div class="card-icon">⛰️</div><div class="card-title">堆 & 优先队列</div>
+    <div class="card-desc">Top K、合并K链表、中位数。大小为K的小顶堆，堆顶就是第K大。</div>
+    <div class="card-count">8 题</div>
+  </a>
+  <a href="/lc-bfs.html" class="card">
+    <div class="card-icon">🌊</div><div class="card-title">BFS & 图</div>
+    <div class="card-desc">BFS求最短路径、层序遍历、扩散。模板：队列+visited集合+逐层处理。</div>
+    <div class="card-count">7 题</div>
+  </a>
+  <a href="/lc-bit.html" class="card">
+    <div class="card-icon">🔢</div><div class="card-title">位运算 & 数学</div>
+    <div class="card-desc">异或找唯一、n&(n-1)消1、快速幂。O(1)空间的常客。</div>
+    <div class="card-count">6 题</div>
+  </a>
+  <a href="/lc-design.html" class="card">
+    <div class="card-icon">🏗️</div><div class="card-title">设计 & 综合</div>
+    <div class="card-desc">LRU Cache、Trie、并查集、矩阵螺旋。数据结构综合运用能力。</div>
+    <div class="card-count">13 题</div>
+  </a>
+</div>
+</div>
+</body>
+</html>

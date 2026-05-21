@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MySQL 知识库 · 费曼学习法</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf; --pink: #db61a2;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  a { color: var(--accent); text-decoration: none; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Layout */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 260px; background: var(--card); border-right: 1px solid var(--border);
+    position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0;
+  }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+
+  /* Section */
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+
+  /* Feynman Card */
+  .feynman {
+    background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06));
+    border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px;
+    margin: 20px 0; position: relative;
+  }
+  .feynman::before {
+    content: '💡 简单理解'; position: absolute; top: -11px; left: 20px;
+    background: var(--card); padding: 2px 12px; border-radius: 10px;
+    font-size: 12px; font-weight: 600; color: var(--accent);
+  }
+  .feynman p { margin: 6px 0; }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+
+  /* Diagram wrapper */
+  .diagram {
+    background: #0a0c13; border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto;
+  }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+
+  /* 苏格拉底提问 */
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<aside class="sidebar">
+  <a href="/" class="sidebar-logo-link"><div class="sidebar-logo">📘 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">MySQL · 费曼学习法</div>
+  <a class="nav-item" href="#mysql-arch">🏗️ 架构：餐厅后厨</a>
+  <a class="nav-item" href="#mysql-index">📌 索引：B+Tree + 高度计算</a>
+  <a class="nav-item" href="#mysql-btree-split">✂️ B+Tree 节点分裂全过程</a>
+  <a class="nav-item" href="#mysql-sql">📝 SQL优化：快递分拣</a>
+  <a class="nav-item" href="#mysql-tx">🔒 事务与 InnoDB 锁</a>
+  <a class="nav-item" href="#mysql-mvcc">🔄 MVCC：谷歌文档</a>
+  <a class="nav-item" href="#mysql-log">📜 日志：redo/undo/binlog/relay</a>
+  <a class="nav-item" href="#mysql-ha">⚡ 高可用 & 分库分表</a>
+  <a class="nav-item" href="#mysql-qa">❓ 高频考题</a>
+  <a class="nav-item" href="#mysql-summary">🎙️ 口播总结</a>
+</aside>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>📋 MySQL 知识库</h2>
+  <div class="feynman">
+    <p><strong>费曼学习法：</strong>如果你不能简单地解释它，说明你还没真正理解它。以下每个知识点，我们都用<strong>生活类比</strong>先建立直觉，再用技术语言深入。</p>
+    <p>目标：高级软件开发工程师。MySQL 核心考察 → <span class="badge badge-red">索引原理</span> <span class="badge badge-purple">事务 MVCC</span> <span class="badge badge-orange">SQL 优化</span> <span class="badge badge-green">高可用设计</span></p>
+  </div>
+</section>
+
+<!-- ═══════════ 1. 架构 ═══════════ -->
+<section id="mysql-arch" class="section">
+  <h2>🏗️ MySQL 架构：一个餐厅后厨</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🍽️ 类比：</span>你走进一家高级餐厅点菜——</p>
+    <p>① <strong>迎宾员（连接器）</strong>接待你，确认你有预订（权限验证），带你入座。</p>
+    <p>② <strong>服务员（解析器）</strong>记下你的需求："一份七分熟牛排，不要洋葱"（SQL解析 → 语法树）。</p>
+    <p>③ <strong>厨师长（优化器）</strong>决定怎么做最高效："牛排先煎后烤，同时准备配菜"（选择索引、JOIN顺序）。</p>
+    <p>④ <strong>厨师（执行器）</strong>动手做，去冰箱拿牛排、开火、装盘（调用存储引擎接口）。</p>
+    <p>⑤ <strong>厨房设备（存储引擎）</strong>冰箱/烤箱/灶台，不同设备不同特点（InnoDB/MyISAM）。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 310" style="max-width:820px; width:100%">
+      <defs>
+        <marker id="arrowDown" markerWidth="8" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#58a6ff"/></marker>
+      </defs>
+      <!-- Layer boxes -->
+      <rect x="20" y="10" width="200" height="48" rx="8" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="120" y="31" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">客户端</text>
+      <text x="120" y="47" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">mysql CLI / JDBC</text>
+
+      <rect x="20" y="80" width="200" height="48" rx="8" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="120" y="101" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">连接器</text>
+      <text x="120" y="117" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">认证 · 线程管理</text>
+
+      <rect x="250" y="80" width="260" height="48" rx="8" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="380" y="101" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">服务层 (Server)</text>
+      <text x="380" y="117" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">解析器 → 优化器 → 执行器</text>
+
+      <rect x="540" y="80" width="260" height="48" rx="8" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="670" y="101" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">引擎层 (Pluggable)</text>
+      <text x="670" y="117" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">InnoDB · MyISAM · Memory</text>
+
+      <!-- Arrows between layers -->
+      <line x1="120" y1="58" x2="120" y2="78" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowDown)"/>
+      <line x1="220" y1="104" x2="248" y2="104" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="510" y1="104" x2="538" y2="104" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+
+      <!-- Storage engines below -->
+      <rect x="540" y="155" width="120" height="42" rx="6" fill="rgba(76,29,149,0.5)" stroke="#c4b5fd" stroke-width="1.5"/>
+      <text x="600" y="173" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">InnoDB</text>
+      <text x="600" y="187" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="8">事务 · 行锁 · MVCC</text>
+
+      <rect x="680" y="155" width="120" height="42" rx="6" fill="rgba(30,41,59,0.5)" stroke="#64748b" stroke-width="1"/>
+      <text x="740" y="173" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="11">MyISAM</text>
+      <text x="740" y="187" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">无事务 · 表锁</text>
+
+      <line x1="600" y1="128" x2="600" y2="153" stroke="#a78bfa" stroke-width="1" marker-end="url(#arrowDown)"/>
+      <line x1="740" y1="128" x2="740" y2="153" stroke="#64748b" stroke-width="1" marker-end="url(#arrowDown)"/>
+
+      <!-- Storage layer -->
+      <rect x="540" y="220" width="260" height="36" rx="6" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="670" y="243" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="10">磁盘文件 (.ibd / .frm / binlog)</text>
+
+      <line x1="600" y1="197" x2="600" y2="218" stroke="#475569" stroke-width="1"/>
+      <line x1="740" y1="197" x2="740" y2="218" stroke="#475569" stroke-width="1"/>
+    </svg>
+    <div class="diagram-caption">MySQL 分层架构：连接 → 服务 → 引擎 → 存储</div>
+  </div>
+
+  <h3>一条 SELECT 的执行路径</h3>
+  <pre><code>客户端连接 → 连接器（权限验证）→ 解析器（词法+语法→AST）
+→ 优化器（选索引、定JOIN顺序）→ 执行器（调用引擎接口）
+→ InnoDB（Buffer Pool 查内存/读磁盘）→ 返回结果</code></pre>
+
+  <h3>InnoDB vs MyISAM 一句话</h3>
+  <div class="compare">
+    <div><h4>✅ InnoDB</h4><p>有事务（ACID）、行级锁、崩溃能恢复。日常开发 99% 用它。</p></div>
+    <div><h4>⚠️ MyISAM</h4><p>没事务、表级锁、崩了数据可能丢。只能读多写少的场景。</p></div>
+  </div>
+
+
+  <h3>📄 InnoDB 页结构：16KB 的精密布局</h3>
+  <div class="feynman">
+    <p><span class="analogy">📦 类比：</span>InnoDB 的 16KB 页就像一个标准快递箱——箱子本身有标签（页头）、装箱单（目录）、货物（行数据）、封条（页尾）。每次 IO 的最小单位就是这个"箱子"。理解页结构，你才真正理解"为什么一行数据不能超过 ~8KB"、"为什么目录槽能二分查找"。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 420" style="max-width:820px; width:100%">
+      <!-- Full page outline -->
+      <rect x="60" y="10" width="660" height="400" rx="8" fill="rgba(15,17,23,0.8)" stroke="#475569" stroke-width="2"/>
+      <text x="390" y="5" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">16KB InnoDB Page</text>
+
+      <!-- 1. File Header (38B) -->
+      <rect x="70" y="20" width="640" height="55" rx="6" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="90" y="40" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">📋 File Header (38 字节)</text>
+      <text x="90" y="58" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">FIL_PAGE_SPACE (4B) 表空间ID | FIL_PAGE_OFFSET (4B) 页号 | FIL_PAGE_PREV (4B) 上一页</text>
+      <text x="90" y="70" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">FIL_PAGE_NEXT (4B) 下一页（叶子节点双向链表！） | FIL_PAGE_LSN (8B) | FIL_PAGE_TYPE (2B)</text>
+
+      <!-- 2. Page Header (56B) -->
+      <rect x="70" y="78" width="640" height="55" rx="6" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="90" y="98" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">📊 Page Header (56 字节)</text>
+      <text x="90" y="116" fill="#ddd6fe" font-family="JetBrains Mono,monospace" font-size="9">PAGE_N_DIR_SLOTS (2B) 槽数 | PAGE_HEAP_TOP (2B) 空闲空间起始 | PAGE_N_HEAP (2B) 记录数</text>
+      <text x="90" y="128" fill="#ddd6fe" font-family="JetBrains Mono,monospace" font-size="9">PAGE_FREE (2B) 可重用空间链表头 | PAGE_GARBAGE (2B) 已删除字节数 | PAGE_LAST_INSERT (2B)</text>
+
+      <!-- 3. Infimum + Supremum -->
+      <rect x="70" y="136" width="640" height="30" rx="6" fill="rgba(248,113,113,0.06)" stroke="#f87171" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="390" y="156" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10">📌 Infimum Record (虚拟最小行) · Supremum Record (虚拟最大行) —— B+Tree 的哨兵边界</text>
+
+      <!-- 4. User Records -->
+      <rect x="70" y="170" width="640" height="100" rx="6" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="90" y="190" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">📝 User Records (用户数据行) —— 从页顶向下增长</text>
+      <!-- Row examples -->
+      <rect x="90" y="200" width="600" height="20" rx="3" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="0.5"/>
+      <text x="390" y="214" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="8">Row 1: 变长字段长度列表 | NULL标记位图 | 记录头(5B:下一条记录偏移+记录类型+删除标记) | RowID+TrxID+RollPtr | 列1 | 列2 | ...</text>
+      <rect x="90" y="223" width="600" height="20" rx="3" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="0.5"/>
+      <text x="390" y="237" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="8">Row 2: [同上结构] 每行通过记录头中的 next_record 偏移量连成单向链表 → 页内遍历</text>
+      <rect x="90" y="246" width="600" height="18" rx="3" fill="rgba(63,185,80,0.04)" stroke="#3fb950" stroke-width="0.5"/>
+      <text x="390" y="259" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">⚠️ 行格式决定物理布局：COMPACT / DYNAMIC / REDUNDANT / COMPRESSED。默认 DYNAMIC 对大字段只存 20B 指针（溢出页）。</text>
+
+      <!-- 5. Free Space -->
+      <rect x="70" y="275" width="640" height="30" rx="6" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="390" y="294" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="10">⬜ Free Space —— 用户记录向下增长 ↑ 和 目录槽向上增长 ↓ 之间的未用空间</text>
+
+      <!-- 6. Page Directory (Slots) -->
+      <rect x="70" y="310" width="640" height="65" rx="6" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="90" y="328" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">🗂️ Page Directory (目录槽) —— 从页底向上增长</text>
+      <text x="90" y="346" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="9">每个槽占 2 字节（页内偏移量），指向一组记录（4~8 条）中"最大的那条"（Infimum 除外）</text>
+      <text x="90" y="362" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="9">槽的作用：<tspan fill="#fff" font-weight="600">二分查找</tspan> → 通过槽快速定位到记录组 → 组内顺序遍历（最多 8 次）→ 找到目标行</text>
+      <text x="90" y="374" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">这就是为什么 B+Tree 页内查找也是 O(log₂N)：目录槽 = 页内的稀疏索引。</text>
+
+      <!-- 7. File Trailer -->
+      <rect x="70" y="380" width="640" height="24" rx="6" fill="rgba(248,113,73,0.08)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="90" y="396" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">🔒 File Trailer (8 字节) —— FIL_PAGE_END_LSN (前4B) + Checksum (后4B)</text>
+    </svg>
+    <div class="diagram-caption">InnoDB 16KB 页的完整解剖：7 个部分的精密配合</div>
+  </div>
+
+  <h4>页头和页尾的关键字段</h4>
+  <div class="info-card">
+    <table>
+      <tr><th>位置</th><th>关键字段</th><th>字节</th><th>干什么的</th><th>考察什么</th></tr>
+      <tr><td rowspan="3" style="vertical-align:top"><strong>File Header</strong></td>
+        <td>FIL_PAGE_PREV / NEXT</td><td>4+4</td><td>双向链表连接同级页面</td><td>"B+Tree 叶子节点怎么连？" → 这俩字段</td></tr>
+      <tr><td>FIL_PAGE_LSN</td><td>8</td><td>页最后一次修改的 LSN 号</td><td>"崩溃恢复怎么知道页新旧？" → 对比 LSN</td></tr>
+      <tr><td>FIL_PAGE_TYPE</td><td>2</td><td>页类型（数据页/Undo页/索引页…）</td><td>"怎么区分一个页是什么页？"</td></tr>
+      <tr><td rowspan="2" style="vertical-align:top"><strong>Page Header</strong></td>
+        <td>PAGE_N_DIR_SLOTS</td><td>2</td><td>目录槽的数量</td><td rowspan="2">"页内二分查找怎么实现？"</td></tr>
+      <tr><td>PAGE_GARBAGE</td><td>2</td><td>已删除但未回收的空间</td></tr>
+      <tr><td rowspan="2" style="vertical-align:top"><strong>File Trailer</strong></td>
+        <td>Checksum</td><td>4</td><td>页完整性校验</td><td>"页损坏怎么发现？" → 写时算校验和，读时比</td></tr>
+      <tr><td>FIL_PAGE_END_LSN</td><td>4</td><td>与 File Header 中的 LSN 对照</td><td>"防止只写了半页" → 头尾 LSN 不一致 = 半页写</td></tr>
+    </table>
+  </div>
+
+  <h4>目录槽（Page Directory）的二分查找流程</h4>
+  <div class="feynman">
+    <p><span class="analogy">🔍 类比：</span>一本 400 页的书，你要找"锁"这个关键词。不用一页页翻——目录告诉你"锁"在第 300-308 页（槽），你翻到 300 页，在 8 页内找到。目录槽就是这个"书的目录"。</p>
+    <p><strong>流程：</strong>① 二分查找目录槽数组 → 定位到目标槽（最多 2B/槽 × 几百槽）→ ② 槽指向一组记录的"最大那条" → ③ 在组内顺序遍历（最多 4~8 条）→ ④ 找到目标行。</p>
+    <p style="color:#fbbf24;font-size:12px">💡 页内二分查找 + 组内顺序扫描 = InnoDB 的精妙平衡。槽太少 → 组太大 → 顺序扫描慢。槽太多 → 槽数组占用空间。MySQL 自动维护这个平衡。</p>
+  </div>
+
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 360" style="max-width:820px; width:100%">
+      <defs>
+        <marker id="pdArr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#58a6ff"/></marker>
+        <marker id="pdArrG" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#3fb950"/></marker>
+      </defs>
+      <!-- Title -->
+      <text x="410" y="22" text-anchor="middle" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">🗂️ Page Directory 二分查找 · 全流程演示</text>
+
+      <!-- ═══ Step 1: Slot Array ═══ -->
+      <rect x="15" y="38" width="790" height="32" rx="6" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1"/>
+      <text x="30" y="55" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">📌 槽数组</text>
+      <text x="100" y="55" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">每槽=2字节（页内偏移量），槽按记录主键<span style="color:#fbbf24">升序排列</span>，槽数=PAGE_N_DIR_SLOTS</text>
+
+      <!-- Slot boxes row -->
+      <rect x="15" y="78" width="62" height="38" rx="4" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1"/>
+      <text x="46" y="94" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">Slot 0</text>
+      <text x="46" y="108" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">→ Infimum</text>
+
+      <rect x="85" y="78" width="62" height="38" rx="4" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1"/>
+      <text x="116" y="94" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">Slot 1</text>
+      <text x="116" y="108" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">→ Row 4</text>
+
+      <rect x="155" y="78" width="62" height="38" rx="4" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1"/>
+      <text x="186" y="94" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">Slot 2</text>
+      <text x="186" y="108" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">→ Row 8</text>
+
+      <rect x="225" y="78" width="72" height="38" rx="5" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="261" y="94" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="8" font-weight="700">Slot 3</text>
+      <text x="261" y="108" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="7">→ Row 12 ★</text>
+
+      <rect x="305" y="78" width="62" height="38" rx="4" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1"/>
+      <text x="336" y="94" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">Slot 4</text>
+      <text x="336" y="108" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">→ Row 16</text>
+
+      <rect x="375" y="78" width="62" height="38" rx="4" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1"/>
+      <text x="406" y="94" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">Slot 5</text>
+      <text x="406" y="108" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">→ Row 20</text>
+
+      <rect x="445" y="78" width="80" height="38" rx="4" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1"/>
+      <text x="485" y="94" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">Slot 6</text>
+      <text x="485" y="108" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">→ Supremum</text>
+
+      <!-- Binary search pointers -->
+      <text x="46" y="125" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="7">low=0</text>
+      <text x="485" y="125" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="7">high=6</text>
+
+      <!-- ═══ Step 2: mid = (0+6)/2 = 3 ═══ -->
+      <line x1="261" y1="116" x2="261" y2="138" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <rect x="530" y="78" width="280" height="38" rx="6" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="670" y="94" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="9">mid = (0+6)/2 = <tspan font-weight="700">3</tspan> → Slot 3 → Row 12</text>
+      <text x="670" y="108" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="8">Row 12 的 key > 目标 key → high = mid = 3</text>
+
+      <!-- ═══ Step 3: Narrowed ═══ -->
+      <rect x="15" y="152" width="280" height="45" rx="8" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="30" y="170" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">② 区间缩小：low=0, high=3</text>
+      <text x="30" y="188" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="8">mid = (0+3)/2 = 1 → Slot 1 → 指向 Row 4 组</text>
+
+      <line x1="295" y1="174" x2="330" y2="174" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#pdArr)"/>
+
+      <rect x="335" y="152" width="250" height="45" rx="8" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1"/>
+      <text x="350" y="170" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">③ 再次缩小：low=0, high=1</text>
+      <text x="350" y="188" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="8">mid=0 → Slot 0 → Infimum → low=1</text>
+
+      <line x1="585" y1="174" x2="620" y2="174" stroke="#3fb950" stroke-width="1.5" marker-end="url(#pdArrG)"/>
+
+      <rect x="625" y="152" width="175" height="45" rx="8" fill="rgba(163,113,247,0.10)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="712" y="170" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">④ low=high=1 定位!</text>
+      <text x="712" y="188" text-anchor="middle" fill="#ddd6fe" font-family="JetBrains Mono,monospace" font-size="8">目标在 Slot 1 的组内</text>
+
+      <!-- ═══ Step 4: Sequential scan within group ═══ -->
+      <rect x="15" y="212" width="790" height="55" rx="8" fill="rgba(63,185,80,0.04)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="30" y="233" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">⑤ 组内顺序扫描（最多 4~8 条记录）→ 找到目标行 ✅</text>
+
+      <!-- Row boxes in group -->
+      <rect x="30" y="243" width="75" height="16" rx="3" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="0.5"/>
+      <text x="67" y="255" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="7">Row 1</text>
+      <line x1="105" y1="251" x2="125" y2="251" stroke="#3fb950" stroke-width="1"/>
+
+      <rect x="130" y="243" width="75" height="16" rx="3" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="0.5"/>
+      <text x="167" y="255" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="7">Row 2</text>
+      <line x1="205" y1="251" x2="225" y2="251" stroke="#3fb950" stroke-width="1"/>
+
+      <rect x="230" y="243" width="75" height="16" rx="3" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="0.5"/>
+      <text x="267" y="255" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="7">Row 3</text>
+      <line x1="305" y1="251" x2="325" y2="251" stroke="#22d3ee" stroke-width="1.5"/>
+
+      <rect x="330" y="240" width="85" height="22" rx="4" fill="rgba(251,191,36,0.15)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="372" y="255" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="8" font-weight="700">★ Target!</text>
+
+      <text x="550" y="258" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">每组 4~8 条 → 顺序遍历 → 找到目标。</text>
+
+      <!-- ═══ Bottom: Complexity ═══ -->
+      <rect x="15" y="280" width="790" height="72" rx="10" fill="rgba(15,17,23,0.6)" stroke="#475569" stroke-width="1"/>
+      <text x="30" y="302" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">⏱️ 时间复杂度分析</text>
+      <text x="30" y="322" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">• 槽数组二分查找：<tspan fill="#fbbf24">O(log₂ N_slots)</tspan> — 假设一页 200 槽 → log₂(200) ≈ <tspan fill="#fbbf24">8 次比较</tspan></text>
+      <text x="30" y="338" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">• 组内顺序扫描：<tspan fill="#fbbf24">O(8)</tspan> — 组大小 4~8 条，最多扫描 8 次</text>
+      <text x="30" y="352" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">• 总开销 ≈ 8 + 8 = 16 次内存比较 —— 远小于全页扫描的几百次。这就是"目录槽 = 页内稀疏索引"的威力。</text>
+    </svg>
+    <div class="diagram-caption">Page Directory 二分查找：槽数组 O(logN) + 组内 O(8) = 页内极速定位</div>
+  </div>
+</section>
+
+<!-- ═══════════ 2. 索引 ═══════════ -->
+<section id="mysql-index" class="section">
+  <h2>📌 索引：图书馆怎么快速找到一本书？</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📚 类比：</span>你去图书馆找《三体》。没有索引 → 你从第一排书架一本一本翻，翻到天黑。有索引 → 电脑告诉你"科幻区 → 刘慈欣 → 第三排第四本"，30秒搞定。</p>
+    <p><strong>数据库索引就是这个"图书馆检索系统"。</strong>它不存书的内容，只存"书名→书架位置"的映射，让你不用扫描全库。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" style="max-width:820px; width:100%">
+      <defs><marker id="arrowR" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#34d399"/></marker></defs>
+      <!-- Root node -->
+      <rect x="330" y="10" width="160" height="50" rx="6" fill="rgba(6,78,59,0.25)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="410" y="32" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">根节点 (Root)</text>
+      <text x="410" y="48" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">key: [1..500]</text>
+
+      <!-- Level 2 -->
+      <rect x="100" y="90" width="160" height="46" rx="6" fill="rgba(6,78,59,0.2)" stroke="#34d399" stroke-width="1"/>
+      <text x="180" y="110" text-anchor="middle" fill="#6ee7b7" font-family="JetBrains Mono,monospace" font-size="10">分支节点</text>
+      <text x="180" y="126" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">[1..250]</text>
+
+      <rect x="330" y="90" width="160" height="46" rx="6" fill="rgba(6,78,59,0.2)" stroke="#34d399" stroke-width="1"/>
+      <text x="410" y="110" text-anchor="middle" fill="#6ee7b7" font-family="JetBrains Mono,monospace" font-size="10">分支节点</text>
+      <text x="410" y="126" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">[251..500]</text>
+
+      <rect x="560" y="90" width="160" height="46" rx="6" fill="rgba(6,78,59,0.2)" stroke="#34d399" stroke-width="1"/>
+      <text x="640" y="110" text-anchor="middle" fill="#6ee7b7" font-family="JetBrains Mono,monospace" font-size="10">分支节点</text>
+      <text x="640" y="126" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">[501..750]</text>
+
+      <!-- Arrows root → branches -->
+      <line x1="380" y1="60" x2="180" y2="88" stroke="#34d399" stroke-width="1" marker-end="url(#arrowR)"/>
+      <line x1="410" y1="60" x2="410" y2="88" stroke="#34d399" stroke-width="1" marker-end="url(#arrowR)"/>
+      <line x1="440" y1="60" x2="640" y2="88" stroke="#34d399" stroke-width="1" marker-end="url(#arrowR)"/>
+
+      <!-- Leaf nodes -->
+      <rect x="20" y="170" width="700" height="46" rx="6" fill="rgba(76,29,149,0.15)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="6,2"/>
+      <text x="370" y="192" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">叶子节点层（双向链表串联）→ 存完整数据（聚簇索引）或主键值（二级索引）</text>
+
+      <line x1="180" y1="136" x2="180" y2="168" stroke="#34d399" stroke-width="1"/>
+      <line x1="410" y1="136" x2="410" y2="168" stroke="#34d399" stroke-width="1"/>
+      <line x1="640" y1="136" x2="640" y2="168" stroke="#34d399" stroke-width="1"/>
+
+      <!-- 3-level label -->
+      <text x="810" y="45" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">3层 ≈ 千万数据</text>
+      <text x="810" y="115" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">扇出 ≈ 1200/节点</text>
+      <text x="810" y="195" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">16KB/页</text>
+    </svg>
+    <div class="diagram-caption">B+Tree 结构：非叶子节点只存 key，叶子节点存数据 + 双向链表</div>
+  </div>
+
+  <h4>为什么是 B+Tree 而不是二叉树？</h4>
+  <p>二叉树 1000 万数据 = 深度约 24 层 = <strong>24 次磁盘 IO</strong>。B+Tree 每个节点存 1200+ 个 key = 深度 3 层 = <strong>3 次磁盘 IO</strong>。差 8 倍！</p>
+
+
+  <h3>📐 B+Tree 高度计算：3 层为什么能存千万数据？</h3>
+  <div class="feynman">
+    <p><span class="analogy">🔢 类比：</span>B+Tree 像一个公司架构——CEO（根节点）管几个 VP（分支节点），每个 VP 管几个经理（叶子节点），每个经理带几百个员工（数据行）。层数越少，CEO 找人越快。</p>
+    <p><strong>核心公式：</strong>总行数 = 叶子节点数 × 每页能存的行数，叶子节点数 = 扇出<sup>高度-1</sup>。</p>
+  </div>
+
+  <h4>一步步算：假设 InnoDB 默认 16KB 页，BIGINT 主键（8字节）</h4>
+
+  <div class="info-card">
+    <h4>Step 1：算非叶子节点扇出（每个节点能存多少子节点指针）</h4>
+    <p>非叶子节点存的是 <strong>key + 子节点指针</strong>，不存数据。</p>
+    <p style="font-family:JetBrains Mono,monospace;color:#fbbf24">• 主键 key = 8 字节（BIGINT）</p>
+    <p style="font-family:JetBrains Mono,monospace;color:#fbbf24">• 子节点页号指针 = 6 字节（InnoDB 默认）</p>
+    <p style="font-family:JetBrains Mono,monospace;color:#fbbf24">• 每对 (key + pointer) = 14 字节</p>
+    <p style="font-family:JetBrains Mono,monospace;color:#fbbf24">• 页内可用空间 ≈ 16KB × 85% ≈ 13,600 字节（扣掉页头、页尾、目录槽）</p>
+    <p style="font-family:JetBrains Mono,monospace;color:#4ade80;font-size:16px;font-weight:700">扇出 ≈ 13,600 / 14 ≈ <strong>971</strong>（每层分叉数）</p>
+  </div>
+
+  <div class="info-card">
+    <h4>Step 2：算叶子节点每页能存多少行</h4>
+    <p>叶子节点存 <strong>完整行数据</strong>。假设一行 1KB（含所有列 + 行头 + 事务ID + 回滚指针）：</p>
+    <p style="font-family:JetBrains Mono,monospace;color:#fbbf24">• 每行 = 1024 字节</p>
+    <p style="font-family:JetBrains Mono,monospace;color:#fbbf24">• 页内可用空间 ≈ 13,600 字节</p>
+    <p style="font-family:JetBrains Mono,monospace;color:#4ade80;font-size:16px;font-weight:700">每页行数 ≈ 13,600 / 1024 ≈ <strong>13 行</strong></p>
+  </div>
+
+  <div class="info-card">
+    <h4>Step 3：代入公式，算不同高度的容量</h4>
+    <table>
+      <tr><th>树高</th><th>叶子节点数</th><th>计算公式</th><th>≈ 能存多少行</th><th>磁盘 IO</th></tr>
+      <tr><td><strong>1 层</strong></td><td>1</td><td>1 × 13</td><td><strong>13 行</strong></td><td>1 次</td></tr>
+      <tr><td><strong>2 层</strong></td><td>971</td><td>971 × 13</td><td><strong>~1.2 万行</strong></td><td>2 次</td></tr>
+      <tr style="background:rgba(63,185,80,0.06)"><td><strong>3 层</strong></td><td>971² = 942,841</td><td>942,841 × 13</td><td><strong>~1,200 万行</strong></td><td>3 次</td></tr>
+      <tr><td><strong>4 层</strong></td><td>971³ ≈ 9.15 亿</td><td>9.15亿 × 13</td><td><strong>~119 亿行</strong></td><td>4 次</td></tr>
+    </table>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 200" style="max-width:820px; width:100%">
+      <defs>
+        <linearGradient id="gradH" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3fb950" stop-opacity="0.3"/><stop offset="100%" stop-color="#3fb950" stop-opacity="0"/></linearGradient>
+      </defs>
+      <!-- Height 1 -->
+      <rect x="15" y="15" width="180" height="50" rx="8" fill="rgba(248,113,113,0.10)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="105" y="38" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">1 层：~13 行</text>
+      <text x="105" y="55" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="9">单页，无索引结构</text>
+
+      <!-- Height 2 -->
+      <rect x="220" y="15" width="180" height="50" rx="8" fill="rgba(251,191,36,0.10)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="310" y="38" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">2 层：~1.2 万行</text>
+      <text x="310" y="55" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="9">根 + 971 叶子页</text>
+
+      <!-- Height 3 (Highlighted) -->
+      <rect x="425" y="5" width="190" height="70" rx="10" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="3"/>
+      <text x="520" y="30" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">⭐ 3 层：~1200 万行</text>
+      <text x="520" y="50" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="10">根 + 971 分支 + 94万 叶子</text>
+      <text x="520" y="66" text-anchor="middle" fill="#bbf7d0" font-family="JetBrains Mono,monospace" font-size="9">仅 <tspan fill="#fff" font-weight="700">3 次磁盘 IO</tspan> 即可定位任意行</text>
+
+      <!-- Height 4 -->
+      <rect x="640" y="15" width="170" height="50" rx="8" fill="rgba(163,113,247,0.10)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="725" y="38" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">4 层：~119 亿行</text>
+      <text x="725" y="55" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="9">MySQL 单表上限</text>
+
+      <!-- Key takeaways -->
+      <rect x="15" y="105" width="790" height="85" rx="10" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="30" y="128" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">🎯 关键结论</text>
+      <text x="30" y="150" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">① 扇出越大 → 树越矮 → IO 越少。BIGINT 主键扇出 ~970，UUID 主键（16字节）扇出 ~600 → 树更高 → 更慢。</text>
+      <text x="30" y="168" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">② 行越小 → 每页行数越多 → 同样层数存更多数据。所以大字段（TEXT/BLOB）建议拆表或存外部。</text>
+      <text x="30" y="183" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="9">③ 考察方式：给你页大小、行大小、key 大小，反算树高。记住公式：每页行数×扇出^(高度-1) = 总行数。</text>
+    </svg>
+    <div class="diagram-caption">B+Tree 高度与容量：3 层足以覆盖绝大多数业务场景</div>
+  </div>
+
+
+  <h3 id="mysql-btree-split">✂️ B+Tree 节点分裂全过程：从空树到三层大树</h3>
+  <div class="feynman">
+    <p><span class="analogy">🌱 类比：</span>B+Tree 的成长就像公司扩张——一开始几个人挤一间办公室（单页），人多了分部门（分裂），部门多了设管理层（内部节点），管理层太多再设总监（根分裂，树长高）。自增主键 = 新人永远安排在最后一排，不折腾。UUID = 新人随机插入各部门，天天搬工位。</p>
+  </div>
+
+  <h4>Step 1：从空表开始，顺序插入</h4>
+  <p>设每页最多 4 条记录（实际 ~1100 条），简化演示：</p>
+
+  <pre class="sql-block"><code>INSERT 1 → [1]                          ← 一个叶子页
+INSERT 3 → [1|3]                        ← 追加
+INSERT 5 → [1|3|5]                      ← 再追加
+INSERT 7 → [1|3|5|7]                    ← 满！
+INSERT 9 → 触发分裂 ↓</code></pre>
+
+  <h4>Step 2：叶子节点分裂 —— 砍半，中间值上提</h4>
+  <div class="diagram">
+    <svg viewBox="0 0 820 340" style="max-width:820px; width:100%">
+      <defs>
+        <marker id="arrDown1" markerWidth="8" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#fbbf24"/></marker>
+        <marker id="arrDown2" markerWidth="8" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#4ade80"/></marker>
+      </defs>
+
+      <!-- Before -->
+      <text x="15" y="22" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">分裂前：</text>
+      <rect x="15" y="32" width="380" height="36" rx="6" fill="rgba(248,113,113,0.12)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="30" y="55" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="11">[ 1 | 3 | 5 | 7 ] ← 插入 9：页满！触发分裂</text>
+
+      <!-- Arrow -->
+      <text x="395" y="80" fill="#fbbf24" font-size="18">↓</text>
+
+      <!-- After split -->
+      <text x="15" y="105" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">分裂后：</text>
+      <rect x="15" y="115" width="180" height="36" rx="6" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="105" y="138" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="11">[ 1 | 3 ]</text>
+      <rect x="215" y="115" width="180" height="36" rx="6" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="305" y="138" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="11">[ 5 | 7 | 9 ]</text>
+
+      <!-- New root -->
+      <line x1="105" y1="185" x2="105" y2="215" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrDown1)"/>
+      <line x1="305" y1="185" x2="305" y2="215" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrDown1)"/>
+      <text x="395" y="198" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="10">← 新页最小键(5)提升到父节点</text>
+
+      <rect x="105" y="218" width="200" height="36" rx="8" fill="rgba(251,191,36,0.15)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="205" y="241" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">根节点：[ 5 ]</text>
+
+      <line x1="110" y1="254" x2="110" y2="282" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrDown1)"/>
+      <line x1="300" y1="254" x2="300" y2="282" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrDown1)"/>
+
+      <!-- Key insight -->
+      <rect x="450" y="115" width="355" height="170" rx="8" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1"/>
+      <text x="465" y="138" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">🔑 叶子分裂规则</text>
+      <text x="465" y="158" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">• 分裂点 = 中间位置 ceil(N/2)</text>
+      <text x="465" y="176" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">• 左半保留在旧页，右半移到新页</text>
+      <text x="465" y="194" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">• 新页 <tspan fill="#fbbf24">最小键</tspan> 提升到父节点</text>
+      <text x="465" y="212" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">• 旧页 → 新页 → 链表重新串联</text>
+      <text x="465" y="238" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">• InnoDB 不做完美 50/50 切分</text>
+      <text x="465" y="256" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">  只保证分裂后两边都能再装数据</text>
+      <text x="465" y="274" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">• 分裂在内存完成，脏页异步刷盘</text>
+    </svg>
+    <div class="diagram-caption">叶子节点分裂：满页一劈为二，中间键爬上父节点</div>
+  </div>
+
+  <h4>Step 3：内部节点分裂 —— 中间键"飞升"</h4>
+  <p>当大量插入导致内部节点（分支节点）也满时，分裂递归向上：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 380" style="max-width:820px; width:100%">
+      <defs>
+        <marker id="arrDown3" markerWidth="8" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#a78bfa"/></marker>
+      </defs>
+
+      <!-- Before -->
+      <text x="15" y="22" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">分裂前（内部节点满）：</text>
+      <rect x="15" y="32" width="600" height="40" rx="8" fill="rgba(248,113,113,0.10)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="30" y="57" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="11">内部节点：[ 5 | 20 | 35 | 50 ] ← 满！再插入要提升 42</text>
+
+      <!-- Arrow -->
+      <text x="620" y="88" fill="#a78bfa" font-size="18">↓</text>
+
+      <!-- After -->
+      <text x="15" y="115" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">分裂后：</text>
+
+      <rect x="15" y="125" width="280" height="36" rx="6" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="155" y="148" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="11">[ 5 | 20 ]</text>
+
+      <rect x="315" y="125" width="280" height="36" rx="6" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="455" y="148" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="11">[ 42 | 50 ]</text>
+
+      <text x="620" y="142" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10">← 中间键 35</text>
+      <text x="620" y="156" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10">提升到上层！</text>
+
+      <!-- Parent node -->
+      <line x1="155" y1="195" x2="155" y2="225" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrDown3)"/>
+      <line x1="455" y1="195" x2="455" y2="225" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrDown3)"/>
+
+      <rect x="205" y="228" width="200" height="36" rx="8" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="305" y="251" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">上层节点：[ 35 ]</text>
+
+      <line x1="160" y1="264" x2="160" y2="292" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrDown3)"/>
+      <line x1="450" y1="264" x2="450" y2="292" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrDown3)"/>
+
+      <!-- Key insight -->
+      <rect x="15" y="310" width="790" height="60" rx="8" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1"/>
+      <text x="30" y="333" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">⚠️ 内部节点分裂 vs 叶子节点分裂的区别</text>
+      <text x="30" y="354" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">内部节点：中间键 <tspan fill="#c4b5fd">只提升</tspan> 到父节点，不留在左右子节点中（原子节点里存的是 key + 子节点指针，不是数据）。叶子节点：新页的最小键提升到父节点，数据 <tspan fill="#4ade80">保留</tspan> 在叶子中。</text>
+    </svg>
+    <div class="diagram-caption">内部节点分裂：中间键提升到父节点。与叶子分裂不同——中间键不会留在子节点中</div>
+  </div>
+
+  <h4>完整动画：从小树到三层大树</h4>
+  <div class="diagram">
+    <svg viewBox="0 0 820 440" style="max-width:820px; width:100%">
+      <defs>
+        <marker id="arrAni" markerWidth="6" markerHeight="5" refX="3" refY="2.5" orient="auto"><path d="M0,0 L6,2.5 L0,5 Z" fill="#64748b"/></marker>
+      </defs>
+
+      <!-- Stage 1 -->
+      <rect x="5" y="5" width="262" height="130" rx="8" fill="rgba(59,130,246,0.06)" stroke="#3b82f6" stroke-width="1"/>
+      <text x="15" y="25" fill="#60a5fa" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">Stage 1：单页阶段</text>
+      <rect x="15" y="35" width="242" height="30" rx="5" fill="rgba(59,130,246,0.10)"/>
+      <text x="136" y="55" text-anchor="middle" fill="#93c5fd" font-family="JetBrains Mono,monospace" font-size="9">[1|3|5|7] · 根即叶子</text>
+      <text x="15" y="95" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">记录 ≤ 1页 · 无索引结构</text>
+      <text x="15" y="115" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">IO：1 次就能定位任意行</text>
+
+      <!-- Arrow 1->2 -->
+      <text x="275" y="70" fill="#64748b" font-size="14">→</text>
+
+      <!-- Stage 2 -->
+      <rect x="290" y="5" width="262" height="130" rx="8" fill="rgba(245,158,11,0.06)" stroke="#f59e0b" stroke-width="1"/>
+      <text x="300" y="25" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">Stage 2：根分裂</text>
+      <rect x="300" y="35" width="242" height="24" rx="5" fill="rgba(245,158,11,0.12)"/>
+      <text x="421" y="52" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="9">根：[5]</text>
+      <line x1="370" y1="59" x2="370" y2="68" stroke="#64748b" stroke-width="0.8" marker-end="url(#arrAni)"/>
+      <line x1="470" y1="59" x2="470" y2="68" stroke="#64748b" stroke-width="0.8" marker-end="url(#arrAni)"/>
+      <rect x="300" y="68" width="115" height="24" rx="4" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="357" y="85" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">叶子：[1|3]</text>
+      <rect x="427" y="68" width="115" height="24" rx="4" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="484" y="85" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">叶子：[5|7|9]</text>
+      <text x="300" y="115" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">IO：2 次（根→叶子）</text>
+
+      <!-- Arrow 2->3 -->
+      <text x="560" y="70" fill="#64748b" font-size="14">→</text>
+
+      <!-- Stage 3 -->
+      <rect x="575" y="5" width="240" height="130" rx="8" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1"/>
+      <text x="585" y="25" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">Stage 3：内部分裂</text>
+      <rect x="585" y="35" width="220" height="22" rx="5" fill="rgba(63,185,80,0.10)"/>
+      <text x="695" y="51" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="8">根：[15]</text>
+      <line x1="640" y1="57" x2="640" y2="64" stroke="#64748b" stroke-width="0.8" marker-end="url(#arrAni)"/>
+      <line x1="750" y1="57" x2="750" y2="64" stroke="#64748b" stroke-width="0.8" marker-end="url(#arrAni)"/>
+      <rect x="585" y="64" width="105" height="20" rx="3" fill="rgba(139,92,246,0.08)" stroke="#8b5cf6" stroke-width="0.6"/>
+      <text x="637" y="78" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="7">分支：[5|10]</text>
+      <rect x="700" y="64" width="105" height="20" rx="3" fill="rgba(139,92,246,0.08)" stroke="#8b5cf6" stroke-width="0.6"/>
+      <text x="752" y="78" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="7">分支：[20|25]</text>
+      <text x="585" y="100" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">4个叶子页（省略）</text>
+      <text x="585" y="115" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">IO：3 次 · 树高 +1！</text>
+
+      <!-- Bottom: Full 3-level tree -->
+      <line x1="15" y1="150" x2="805" y2="150" stroke="#334155" stroke-width="0.5"/>
+
+      <text x="15" y="175" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">最终形态：3 层 B+Tree</text>
+
+      <!-- Root -->
+      <rect x="310" y="190" width="200" height="30" rx="8" fill="rgba(251,191,36,0.15)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="410" y="210" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">根节点（1 页）</text>
+
+      <!-- Branch -->
+      <line x1="340" y1="220" x2="160" y2="255" stroke="#a78bfa" stroke-width="1" marker-end="url(#arrAni)"/>
+      <line x1="480" y1="220" x2="660" y2="255" stroke="#a78bfa" stroke-width="1" marker-end="url(#arrAni)"/>
+
+      <rect x="60" y="258" width="200" height="30" rx="6" fill="rgba(163,113,247,0.10)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="160" y="278" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9">内部节点（~970 页）</text>
+      <rect x="560" y="258" width="200" height="30" rx="6" fill="rgba(163,113,247,0.10)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="660" y="278" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9">内部节点（~970 页）</text>
+
+      <!-- Leaves -->
+      <line x1="160" y1="288" x2="160" y2="320" stroke="#3fb950" stroke-width="1" marker-end="url(#arrAni)"/>
+      <line x1="660" y1="288" x2="660" y2="320" stroke="#3fb950" stroke-width="1" marker-end="url(#arrAni)"/>
+
+      <rect x="20" y="323" width="280" height="30" rx="6" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1"/>
+      <text x="160" y="343" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">叶子页 ×~94万（双向链表串联）</text>
+
+      <rect x="520" y="323" width="280" height="30" rx="6" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1"/>
+      <text x="660" y="343" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">叶子页 ×~94万（双向链表串联）</text>
+
+      <!-- Stats bar -->
+      <rect x="15" y="375" width="790" height="55" rx="8" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1"/>
+      <text x="30" y="398" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">🌳 总结：从空树到 1200 万行，只需要 3 次根分裂</text>
+      <text x="30" y="418" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">根分裂是最贵的操作（树高 +1），但只发生在容量跃升时（13→1.2万→1200万→119亿）。生产环境中极少见到 4 层 B+Tree。</text>
+    </svg>
+    <div class="diagram-caption">B+Tree 成长全景：从单页到三层大树，根分裂只触发 3 次</div>
+  </div>
+
+  <h4>插入顺序的巨大影响：自增 vs UUID</h4>
+  <div class="diagram">
+    <svg viewBox="0 0 820 320" style="max-width:820px; width:100%">
+      <!-- Sequential -->
+      <rect x="10" y="10" width="395" height="145" rx="8" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1"/>
+      <text x="25" y="35" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">✅ 自增主键（顺序插入）</text>
+      <rect x="25" y="50" width="110" height="30" rx="5" fill="rgba(63,185,80,0.15)" stroke="#3fb950"/>
+      <text x="80" y="70" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">[1→2→3→4]</text>
+      <text x="148" y="70" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">← 追加到最后</text>
+      <rect x="25" y="85" width="110" height="30" rx="5" fill="rgba(63,185,80,0.15)" stroke="#3fb950"/>
+      <text x="80" y="105" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">[5→6→7→8]</text>
+      <text x="148" y="105" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">← 新数据填满新页</text>
+      <rect x="25" y="120" width="110" height="30" rx="5" fill="rgba(63,185,80,0.15)" stroke="#3fb950"/>
+      <text x="80" y="140" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">[9→10→ ··· ]</text>
+      <text x="148" y="140" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">← 只在最右侧分裂</text>
+
+      <text x="25" y="175" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">页利用率 ~95%</text>
+      <text x="25" y="192" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">Buffer Pool 命中率极高</text>
+      <text x="25" y="208" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">插入性能：稳定且可预测</text>
+
+      <!-- Random -->
+      <rect x="415" y="10" width="395" height="145" rx="8" fill="rgba(248,113,113,0.06)" stroke="#f87171" stroke-width="1"/>
+      <text x="430" y="35" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">❌ UUID 主键（随机插入）</text>
+
+      <rect x="430" y="50" width="110" height="30" rx="5" fill="rgba(248,113,113,0.12)" stroke="#f87171"/>
+      <text x="485" y="70" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="8">[d5a | 9a1 | _ ]</text>
+      <text x="553" y="70" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">← 插中间，页一半空</text>
+
+      <rect x="430" y="85" width="110" height="30" rx="5" fill="rgba(248,113,113,0.12)" stroke="#f87171"/>
+      <text x="485" y="105" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="8">[2c8 | 7b4 | _ ]</text>
+      <text x="553" y="105" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">← 到处插入，到处分裂</text>
+
+      <rect x="430" y="120" width="110" height="30" rx="5" fill="rgba(248,113,113,0.12)" stroke="#f87171"/>
+      <text x="485" y="140" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="8">[3f2 | ___ | ___ ]</text>
+      <text x="553" y="140" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">← 大量空洞</text>
+
+      <text x="430" y="175" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">页利用率 ~50-70%</text>
+      <text x="430" y="192" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">Buffer Pool 浪费严重</text>
+      <text x="430" y="208" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">插入性能：抖动，不可预测</text>
+
+      <!-- Comparison bar -->
+      <rect x="10" y="240" width="800" height="70" rx="8" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1"/>
+      <text x="25" y="265" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">💡 这就是为什么：</text>
+      <text x="25" y="285" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">① 自增主键 → 追加模式 → 不产生页内碎片 → Buffer Pool 高效 → 推荐</text>
+      <text x="25" y="300" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">② UUID 主键 → 随机插入 → 频繁分裂 + 50% 页碎片 → 树更胖更矮但更浪费 → 不推荐（除非分布式需要）</text>
+    </svg>
+    <div class="diagram-caption">自增 vs UUID：插入顺序决定了整棵树的健康程度</div>
+  </div>
+
+  <h4>InnoDB 特有的分裂优化</h4>
+  <table>
+    <tr><th style="width:25%">优化机制</th><th>原理</th><th>效果</th></tr>
+    <tr>
+      <td><strong>Page Directory</strong><br><span style="font-size:11px;color:#64748b">页内槽 + 二分查找</span></td>
+      <td>页内记录按主键排序，槽（Slot）是稀疏索引，每 4-8 条记录一个槽指针。页内查找时：二分定位到槽 → 顺序扫描槽内记录。</td>
+      <td>页内查找 O(log₂N)，而不是 O(N) 扫描</td>
+    </tr>
+    <tr>
+      <td><strong>顺序插入优化</strong><br><span style="font-size:11px;color:#64748b">最右叶子延迟分裂</span></td>
+      <td>自增主键插入时，数据永远追加到最右侧叶子页。InnoDB 检测到这一模式后，不做严格 50/50 切分，而是等页真正满到阈值（默认 93.75%）才分裂。</td>
+      <td>页利用率达 ~95%，减少不必要分裂</td>
+    </tr>
+    <tr>
+      <td><strong>自适应哈希索引</strong><br><span style="font-size:11px;color:#64748b">Adaptive Hash Index</span></td>
+      <td>热点数据页被频繁等值查询时，InnoDB 自动为该页构建哈希索引。后续查询直接 O(1) 定位，完全绕过 B+Tree 查找。</td>
+      <td>热点查询性能提升 5-10 倍</td>
+    </tr>
+    <tr>
+      <td><strong>Change Buffer</strong><br><span style="font-size:11px;color:#64748b">写缓冲</span></td>
+      <td>当要更新的二级索引页不在 Buffer Pool 中时，不立即读盘，而是把修改记录到 Change Buffer。等下次该页被读入时再合并。</td>
+      <td>减少随机读 IO，写操作延迟大幅降低</td>
+    </tr>
+    <tr>
+      <td><strong>碎片整理</strong><br><span style="font-size:11px;color:#64748b">OPTIMIZE TABLE</span></td>
+      <td><code>OPTIMIZE TABLE</code> 重建表（ALTER TABLE ... ENGINE=InnoDB），重新组织页，消除分裂产生的碎片空洞。</td>
+      <td>回收空间，提升扫描性能</td>
+    </tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🎯 一句话总结</h4>
+    <p>B+Tree 节点分裂 = <strong>满了就砍半，中间键往上提，自下而上递归，直到根节点分裂（树高 +1）</strong>。自增主键能避免随机分裂，是 InnoDB 性能优化的第一课。</p>
+  </div>
+
+
+  <h3>聚簇索引 vs 二级索引：教科书 vs 书后索引</h3>
+  <div class="feynman">
+    <p><span class="analogy">📖 类比：</span><strong>聚簇索引</strong> = 字典正文，单词按字母排好，释义就在同一页。<strong>二级索引</strong> = 书后面的关键词索引，告诉你"见第 42 页"，你得翻过去才看到内容。</p>
+    <p>这个"翻过去"的动作，就是数据库里的<strong>回表</strong>——多一次磁盘 IO。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 260" style="max-width:820px; width:100%">
+      <!-- Clustered -->
+      <rect x="10" y="10" width="380" height="240" rx="10" fill="rgba(76,29,149,0.08)" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="6,3"/>
+      <text x="200" y="35" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">聚簇索引 (主键索引)</text>
+      <text x="200" y="50" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">叶子节点存完整行数据</text>
+
+      <rect x="40" y="65" width="320" height="55" rx="6" fill="rgba(76,29,149,0.2)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="90" y="87" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10">PK=100</text>
+      <text x="90" y="102" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="9">name, age, email...</text>
+      <line x1="150" y1="70" x2="150" y2="115" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="200" y="87" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10">PK=101</text>
+      <text x="200" y="102" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="9">name, age, email...</text>
+      <line x1="260" y1="70" x2="260" y2="115" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="310" y="87" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10">PK=102</text>
+      <text x="310" y="102" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="9">name, age, email...</text>
+
+      <rect x="40" y="140" width="320" height="28" rx="4" fill="rgba(63,185,80,0.12)" stroke="none"/>
+      <text x="200" y="159" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="10">主键查询 → 直接拿到整行数据 ✅</text>
+
+      <!-- Secondary -->
+      <rect x="430" y="10" width="380" height="240" rx="10" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="6,3"/>
+      <text x="620" y="35" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">二级索引 (name 索引)</text>
+      <text x="620" y="50" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">叶子节点只存主键值</text>
+
+      <rect x="460" y="65" width="320" height="55" rx="6" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="510" y="87" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="10">name='张三'</text>
+      <text x="510" y="102" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">→ PK=100</text>
+      <line x1="570" y1="70" x2="570" y2="115" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="620" y="87" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="10">name='李四'</text>
+      <text x="620" y="102" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">→ PK=101</text>
+      <line x1="680" y1="70" x2="680" y2="115" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="730" y="87" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="10">name='王五'</text>
+      <text x="730" y="102" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">→ PK=102</text>
+
+      <rect x="460" y="140" width="320" height="28" rx="4" fill="rgba(248,81,73,0.10)" stroke="none"/>
+      <text x="620" y="159" text-anchor="middle" fill="#f85149" font-family="JetBrains Mono,monospace" font-size="10">拿到 PK → 再查聚簇索引 → 回表！⚠️</text>
+
+      <!-- Arrow from secondary to clustered -->
+      <line x1="430" y1="95" x2="400" y2="95" stroke="#f87171" stroke-width="1.5" marker-end="url(#arrowR)" stroke-dasharray="4,2"/>
+    </svg>
+    <div class="diagram-caption">聚簇索引直接拿数据 · 二级索引需"回表"再查一次</div>
+  </div>
+
+  <h4>覆盖索引——书后索引直接给了答案</h4>
+  <p>如果查询的列全在二级索引里 → 不用回表。EXPLAIN 里看到 <code>Using index</code> 就是它。</p>
+
+  <h3>最左前缀原则——地址怎么写才寄得到</h3>
+  <div class="feynman">
+    <p><span class="analogy">📮 类比：</span>快递地址：中国→广东省→深圳市→南山区。索引 (a,b,c) 就像省-市-区。你跳过"省"直接写"深圳市"？邮局没法处理。但写了省和市跳过区？可以，能匹配到市级。</p>
+  </div>
+  <pre><code><span class="cm">-- 索引 idx(a, b, c)</span>
+WHERE a=1                 <span class="cm">-- ✅ 省</span>
+WHERE a=1 AND b=2         <span class="cm">-- ✅ 省+市</span>
+WHERE a=1 AND c=3         <span class="cm">-- ✅ 省能用，区跳过（a 走索引，c 不走）</span>
+WHERE b=2                 <span class="cm">-- ❌ 跳过省，完全不走索引</span>
+WHERE a=1 AND b>2 AND c=3 <span class="cm">-- ✅ a+b 走索引，范围查询后的 c 不走</span></code></pre>
+
+  <h3>索引失效——为什么索引加了还是慢？</h3>
+  <table>
+    <tr><th>场景</th><th>例子</th><th>原因</th></tr>
+    <tr><td>对列做运算</td><td><code>WHERE YEAR(date)=2024</code></td><td>索引存的是原始值，不是年份</td></tr>
+    <tr><td>隐式类型转换</td><td><code>WHERE phone=138</code>（phone 是 VARCHAR）</td><td>MySQL 把字符串全转成数字 → 对列做了函数操作</td></tr>
+    <tr><td>LIKE 前面带 %</td><td><code>WHERE name LIKE '%三'</code></td><td>B+Tree 只能前缀匹配，不知道"三"开头的在哪</td></tr>
+    <tr><td>负向查询</td><td><code>WHERE status != 1</code></td><td>不等于 → 索引中哪都有 → 不如全表扫</td></tr>
+  </table>
+
+
+  <h3>🔽 索引下推（ICP）：把过滤推到引擎层，少回表</h3>
+  <div class="feynman">
+    <p><span class="analogy">🏭 类比：</span>工厂质检——传统做法是做完产品送到质检部检查（回表到 Server 层过滤）。ICP = 在流水线上就直接把不合格的扔掉，根本不用送到质检部。省了来回搬运的成本。</p>
+    <p><strong>索引下推 Index Condition Pushdown</strong>：MySQL 5.6+ 特性。把 WHERE 条件中 <strong>索引列能用但以前只能在 Server 层判断的部分</strong>，下推到引擎层在扫描索引时就过滤掉，减少回表次数。</p>
+  </div>
+
+  <h4>没有 ICP vs 有 ICP：差了多少次回表？</h4>
+  <div class="diagram">
+    <svg viewBox="0 0 820 320" style="max-width:820px; width:100%">
+      <defs><marker id="icpArr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#f87171"/></marker><marker id="icpArrG" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#3fb950"/></marker></defs>
+      <!-- WITHOUT ICP (top) -->
+      <rect x="15" y="15" width="385" height="140" rx="10" fill="rgba(248,113,113,0.04)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="207" y="38" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">❌ 没有 ICP（MySQL &lt; 5.6）</text>
+      <text x="30" y="58" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">SQL: SELECT * FROM t WHERE name LIKE '张%' AND age=20</text>
+      <text x="30" y="74" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">索引: idx(name, age)</text>
+
+      <rect x="30" y="84" width="160" height="22" rx="4" fill="rgba(34,211,238,0.10)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="110" y="99" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="8">引擎层: name LIKE '张%'</text>
+      <line x1="190" y1="95" x2="225" y2="95" stroke="#f87171" stroke-width="1.5" marker-end="url(#icpArr)"/>
+      <rect x="230" y="84" width="150" height="22" rx="4" fill="rgba(248,113,73,0.10)" stroke="#f87171" stroke-width="1"/>
+      <text x="305" y="99" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="8">Server: 回表取整行 → 过滤 age</text>
+
+      <text x="30" y="128" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="9">假设 1000 行张姓 → <tspan font-weight="700">1000 次回表</tspan> → Server 过滤后剩 10 行 → 白白回了 990 次</text>
+
+      <!-- WITH ICP (bottom) -->
+      <rect x="420" y="15" width="385" height="140" rx="10" fill="rgba(63,185,80,0.04)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="612" y="38" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">✅ 有 ICP（MySQL 5.6+）</text>
+      <text x="435" y="58" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">SQL: SELECT * FROM t WHERE name LIKE '张%' AND age=20</text>
+      <text x="435" y="74" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">索引: idx(name, age)</text>
+
+      <rect x="435" y="84" width="160" height="22" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="2"/>
+      <text x="515" y="99" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">引擎层: name+age 一起过滤</text>
+      <line x1="595" y1="95" x2="630" y2="95" stroke="#3fb950" stroke-width="1.5" marker-end="url(#icpArrG)"/>
+      <rect x="635" y="84" width="150" height="22" rx="4" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1"/>
+      <text x="710" y="99" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="8">Server: 直接拿结果</text>
+
+      <text x="435" y="128" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="9">引擎层直接把 age≠20 的扔掉 → <tspan font-weight="700">只回表 10 次</tspan> → 990 次回表被省掉了</text>
+
+      <!-- Bottom: detail breakdown -->
+      <rect x="15" y="170" width="790" height="140" rx="10" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="30" y="195" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">🔬 ICP 的精确边界：什么条件下推，什么不能推</text>
+      <table style="margin:10px 20px;font-size:11px">
+        <tr><th style="padding:4px 10px;font-size:10px">条件类型</th><th style="padding:4px 10px;font-size:10px">能下推？</th><th style="padding:4px 10px;font-size:10px">原因</th></tr>
+        <tr><td style="padding:3px 10px">索引列上的等值/范围条件</td><td style="padding:3px 10px;color:#3fb950">✅ 能</td><td style="padding:3px 10px;font-size:10px;color:#94a3b8">索引中存了这些列的值，引擎可以自己判断</td></tr>
+        <tr><td style="padding:3px 10px">非索引列的过滤条件</td><td style="padding:3px 10px;color:#f87171">❌ 不能</td><td style="padding:3px 10px;font-size:10px;color:#94a3b8">索引里没有这个列的值，必须回表读到整行才知道</td></tr>
+        <tr><td style="padding:3px 10px">覆盖索引下的条件</td><td style="padding:3px 10px;color:#94a3b8">不需要推</td><td style="padding:3px 10px;font-size:10px;color:#94a3b8">覆盖索引本来就不回表，ICP 无意义</td></tr>
+        <tr><td style="padding:3px 10px">子查询 / 函数 / 表达式</td><td style="padding:3px 10px;color:#f87171">❌ 不能</td><td style="padding:3px 10px;font-size:10px;color:#94a3b8">引擎层只能做简单的值比较</td></tr>
+        <tr><td style="padding:3px 10px">LIKE '张%' 后的 age=20</td><td style="padding:3px 10px;color:#3fb950">✅ 这是 ICP 的经典场景</td><td style="padding:3px 10px;font-size:10px;color:#94a3b8">name 走索引定位，age 在索引里有 → 引擎层直接过滤</td></tr>
+      </table>
+    </svg>
+    <div class="diagram-caption">ICP 的核心价值：把 Server 层的过滤前移到引擎层——减少 90% 以上的回表</div>
+  </div>
+
+  <h4>EXPLAIN 怎么看 ICP？</h4>
+  <pre><code>EXPLAIN SELECT * FROM users WHERE name LIKE '张%' AND age = 20;
+<span class="cm">-- Extra: Using index condition  ← 这就是 ICP 生效了</span>
+<span class="cm">-- 对比：Using index（覆盖索引，不需要 ICP） / Using where（Server 过滤，ICP 未生效）</span></code></pre>
+
+  <h4>ICP 不生效的典型场景</h4>
+  <div class="info-card">
+    <ol style="font-size:13px">
+      <li><strong>覆盖索引：</strong>查询的列全在索引里 → 本来就不回表 → ICP 无意义，Extra 显示 <code>Using index</code> 而非 <code>Using index condition</code>。</li>
+      <li><strong>type=ALL（全表扫描）：</strong>没用上索引 → 引擎层没有索引可下推 → ICP 不会触发。</li>
+      <li><strong>分区表：</strong>对分区表的 ICP 支持有限，某些场景会退化。</li>
+      <li><strong>条件引用其他表：</strong><code>WHERE a.col = b.col</code> 这种跨表引用无法下推。</li>
+    </ol>
+  </div>
+
+  <h4>ICP 和 MRR、BKA 的关系——索引优化的三兄弟</h4>
+  <div class="feynman">
+    <p><span class="analogy">🚚 类比：</span>ICP = 发货前就把次品挑出来；MRR（Multi-Range Read）= 把要发的货按地址排好再装车，少跑冤枉路；BKA（Batched Key Access）= 攒一批订单一起去仓库取，而不是一件一件跑。三个一起开，查询性能最大化。</p>
+  </div>
+
+</section>
+
+<!-- ═══════════ 3. SQL 优化 ═══════════ -->
+<section id="mysql-sql" class="section">
+  <h2>📝 SQL 优化：快递分拣中心</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📦 类比：</span>快递分拣中心每天处理百万包裹。优化 = ① 别拿整箱翻找一个包裹（SELECT *）；② 包裹上有编码，直接扫（走索引）；③ 先分小件再分大件（小表驱动大表）；④ 高峰期多开几条流水线（并行处理）。</p>
+  </div>
+
+  <h3>EXPLAIN —— SQL 的 X 光片</h3>
+  <table>
+    <tr><th>字段</th><th>看什么</th><th>好 → 坏</th></tr>
+    <tr><td><code>type</code></td><td>访问方式</td><td>const → eq_ref → ref → range → index → ALL</td></tr>
+    <tr><td><code>key</code></td><td>实际用的索引</td><td>命中预期索引 ✅</td></tr>
+    <tr><td><code>rows</code></td><td>扫描行数</td><td>越小越好</td></tr>
+    <tr><td><code>Extra</code></td><td>额外操作</td><td>Using index ✅ / Using filesort ⚠️ / Using temporary ❌</td></tr>
+  </table>
+
+  <h3>深分页——翻到第 100 万页为什么慢？</h3>
+  <p>OFFSET 1000000 → MySQL 得把前 100 万行全扫一遍再扔掉。解决方案：<strong>游标分页</strong>记住上一页最后一条的 ID。</p>
+  <pre><code><span class="cm">-- ❌ 越往后越慢</span>
+SELECT * FROM orders ORDER BY id LIMIT 1000000, 20;
+<span class="cm">-- ✅ 游标分页：上次最大 id = 1000000</span>
+SELECT * FROM orders WHERE id > 1000000 ORDER BY id LIMIT 20;</code></pre>
+
+  <h3>JOIN 算法</h3>
+  <div class="info-card">
+    <p><strong>Index Nested-Loop Join</strong>：驱动表每行 → 通过被驱动表索引查找（被驱动表 JOIN 列必须有索引）</p>
+    <p><strong>Hash Join</strong>（8.0.18+）：驱动表建 Hash 表 → 被驱动表探测（无索引时自动使用，替代旧的 BNLJ）</p>
+  </div>
+
+
+  <h3>🔧 索引优化实战案例——从烂 SQL 到飞起</h3>
+
+  <h4>案例 1：模糊查询——LIKE '%keyword%' 怎么破？</h4>
+  <pre><code><span class="cm">-- ❌ 产品经理要搜索"商品名包含'手机'":</span>
+SELECT * FROM products WHERE name LIKE '%手机%';  <span class="cm">-- type=ALL，20万行全表扫，3.2s</span>
+
+<span class="cm">-- ✅ 方案 1：前缀索引（如果业务允许只搜开头）</span>
+ALTER TABLE products ADD INDEX idx_name(name);
+SELECT * FROM products WHERE name LIKE '手机%';  <span class="cm">-- type=range，300行，0.01s</span>
+
+<span class="cm">-- ✅ 方案 2：全文索引（必须支持任意位置匹配）</span>
+ALTER TABLE products ADD FULLTEXT INDEX ft_name(name);
+SELECT * FROM products WHERE MATCH(name) AGAINST('手机' IN BOOLEAN MODE);  <span class="cm">-- 0.05s</span>
+
+<span class="cm">-- ✅ 方案 3：ES / Meilisearch（海量数据 + 复杂搜索）</span>
+<span class="cm">-- 别在 MySQL 里做搜索引擎的事——该上专用搜索就上</span></code></pre>
+
+  <h4>案例 2：多列排序——ORDER BY a,b 为什么 filesort？</h4>
+  <pre><code><span class="cm">-- 表：orders(user_id, status, amount, created_at)</span>
+<span class="cm">-- ❌ 索引 (status, created_at)</span>
+EXPLAIN SELECT * FROM orders WHERE status='paid' ORDER BY created_at DESC LIMIT 20;
+<span class="cm">-- Extra: Using filesort  原因：status 是等值，但 created_at 在索引里排序不对</span>
+
+<span class="cm">-- ✅ 索引调整为 (status, created_at DESC) → 完美命中</span>
+ALTER TABLE orders ADD INDEX idx_status_time(status, created_at DESC);
+<span class="cm">-- Extra: Using index condition   rows: 20   time: 0.003s</span>
+
+<span class="cm">-- 规则：WHERE 用等值的列在前，ORDER BY 的列在后，方向匹配</span></code></pre>
+
+  <h4>案例 3：JOIN 优化——小表驱动大表 + 被驱动表必须有索引</h4>
+  <pre><code><span class="cm">-- 场景：查所有"已支付"订单的用户信息</span>
+<span class="cm">-- orders 100万行，users 10万行</span>
+
+<span class="cm">-- ❌ 大表驱动小表 + 被驱动表没索引</span>
+EXPLAIN SELECT u.* FROM orders o JOIN users u ON o.user_id = u.id WHERE o.status='paid';
+<span class="cm">-- orders 全表扫 → 每行去 users 全表扫 → 100万×10万  惨不忍睹</span>
+
+<span class="cm">-- ✅ 先给被驱动表 user_id 加索引，让优化器自动选小表驱动</span>
+ALTER TABLE orders ADD INDEX idx_user_status(user_id, status);
+<span class="cm">-- type: ref   rows: 8万  用上索引 → 0.2s</span>
+
+<span class="cm">-- ✅✅ 更进一步：先过滤 orders 再 JOIN（子查询物化）</span>
+SELECT u.* FROM users u JOIN (
+  SELECT DISTINCT user_id FROM orders WHERE status='paid'
+) o ON u.id = o.user_id;
+<span class="cm">-- 子查询只扫描 8万行（有索引），然后 JOIN users → 0.05s</span></code></pre>
+
+  <h4>案例 4：深分页的终极方案——记住上次位置</h4>
+  <pre><code><span class="cm">-- 场景：App 的 feed 流，用户不断下滑加载更多</span>
+<span class="cm">-- orders 表 500 万行，用户翻到第 10 万页</span>
+
+<span class="cm">-- ❌ OFFSET 方案：越翻越慢</span>
+SELECT * FROM orders ORDER BY id LIMIT 2000000, 20;  <span class="cm">-- 扫 200 万行 → 2.3s</span>
+
+<span class="cm">-- ✅ 游标分页（记住上次的 id）</span>
+SELECT * FROM orders WHERE id > 1999999 ORDER BY id LIMIT 20;  <span class="cm">-- 直接定位 → 0.002s</span>
+<span class="cm">-- 代价：不能跳页，只能上一页/下一页</span>
+
+<span class="cm">-- ✅✅ 必须跳页时：子查询定位 + 主查询取数据</span>
+SELECT * FROM orders WHERE id >= (
+  SELECT id FROM orders ORDER BY id LIMIT 2000000, 1
+) ORDER BY id LIMIT 20;  <span class="cm">-- 子查询走覆盖索引 → 0.05s</span></code></pre>
+
+  <h4>案例 5：函数套在列上——索引直接报废</h4>
+  <pre><code><span class="cm">-- ❌ 索引 date_idx(created_at) 完全没用</span>
+SELECT * FROM orders WHERE DATE(created_at) = '2026-01-15';
+<span class="cm">-- 等价于：WHERE DATE(created_at) = '2026-01-15' → 对每一行算 DATE() → 全表扫</span>
+
+<span class="cm">-- ✅ 把函数移到等号右边，让索引干它的活</span>
+SELECT * FROM orders WHERE created_at >= '2026-01-15' AND created_at < '2026-01-16';
+<span class="cm">-- type=range → 走索引 → 0.01s</span>
+
+<span class="cm">-- 同理：WHERE YEAR(created_at)=2026 ❌  →  WHERE created_at BETWEEN '2026-01-01' AND '2026-12-31' ✅</span>
+<span class="cm">--       WHERE price*0.9 > 100 ❌  →  WHERE price > 111.11 ✅</span></code></pre>
+
+  <h4>案例 6：OR 条件——UNION 往往比 OR 快</h4>
+  <pre><code><span class="cm">-- ❌ OR 连接不同列 → MySQL 可能放弃索引</span>
+SELECT * FROM orders WHERE user_id = 100 OR status = 'paid';
+<span class="cm">-- type=index_merge（运气好）/ ALL（运气差）</span>
+
+<span class="cm">-- ✅ 拆成 UNION → 每条独立走自己的索引</span>
+SELECT * FROM orders WHERE user_id = 100
+UNION
+SELECT * FROM orders WHERE status = 'paid' AND user_id != 100;
+<span class="cm">-- 两条子查询各自走 user_id 索引 和 status 索引 → 各 0.01s</span>
+
+<span class="cm">-- ⚠️ UNION 会去重（Hash 操作），如果不需要去重用 UNION ALL</span></code></pre>
+
+  <h4>案例 7：隐式类型转换——最隐蔽的索引杀手</h4>
+  <pre><code><span class="cm">-- 表：phone VARCHAR(20)，有索引 idx_phone(phone)</span>
+
+<span class="cm">-- ❌ 传了数字 → MySQL 把 phone 列转成数字 → 索引报废！</span>
+SELECT * FROM users WHERE phone = 13800138000;
+<span class="cm">-- type=ALL   rows=全部   原因：CAST(phone AS SIGNED) → 对列做了函数</span>
+
+<span class="cm">-- ✅ 传字符串 → 索引正常工作</span>
+SELECT * FROM users WHERE phone = '13800138000';
+<span class="cm">-- type=ref   rows=1   0.001s</span>
+
+<span class="cm">-- 🔑 规则：MySQL 优先把字符串转数字，而不是反过来。所以 VARCHAR 列传数字=自杀</span></code></pre>
+
+</section>
+
+<!-- ═══════════ 4. 事务与锁 ═══════════ -->
+<section id="mysql-tx" class="section">
+  <h2>🔒 事务与锁：银行转账不能转一半</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏦 类比：</span>你从 A 账户转 100 元到 B 账户：① A 扣 100 ② B 加 100。如果 ① 成功了但 ② 失败了？钱消失了。事务保证：要么两步都成功，要么都不发生。</p>
+  </div>
+
+  <h3>ACID——四个字母，四种保证</h3>
+  <table>
+    <tr><th>字母</th><th>意思</th><th>一句话</th><th>MySQL 靠什么</th></tr>
+    <tr><td><strong>A</strong></td><td>原子性</td><td>全做或全不做</td><td>undo log（回滚）</td></tr>
+    <tr><td><strong>C</strong></td><td>一致性</td><td>钱不会凭空消失</td><td>A+I+D 共同保证</td></tr>
+    <tr><td><strong>I</strong></td><td>隔离性</td><td>多人同时操作互不干扰</td><td>MVCC + 锁</td></tr>
+    <tr><td><strong>D</strong></td><td>持久性</td><td>提交了就丢不了</td><td>redo log（重做）</td></tr>
+  </table>
+
+  <h3>四种隔离级别——从能忍到不能忍</h3>
+  <div class="feynman">
+    <p><span class="analogy">👀 类比：</span>你在写日记——</p>
+    <p><strong>READ UNCOMMITTED：</strong>别人站你背后直接看你写，你写一半的草稿他都看到了 = <span class="badge badge-red">脏读</span></p>
+    <p><strong>READ COMMITTED：</strong>只看你写完合上本子的内容。但你中间改了一页，他下次翻到又不一样了 = <span class="badge badge-orange">不可重复读</span></p>
+    <p><strong>REPEATABLE READ（默认）：</strong>他进来时拍了张照，不管你怎么改，他看到的永远是那张照片。但你又偷偷加了一页 → 他第2次翻发现多了一页 = <span class="badge badge-orange">幻读</span>（MVCC 基本解决）</p>
+    <p><strong>SERIALIZABLE：</strong>你在写日记时门锁了，别人进不来。最安全也最慢。</p>
+  </div>
+
+  <table>
+    <tr><th>级别</th><th>脏读</th><th>不可重复读</th><th>幻读</th></tr>
+    <tr><td>READ UNCOMMITTED</td><td>✅</td><td>✅</td><td>✅</td></tr>
+    <tr><td>READ COMMITTED</td><td>❌</td><td>✅</td><td>✅</td></tr>
+    <tr><td><strong>REPEATABLE READ（默认）</strong></td><td>❌</td><td>❌</td><td>基本 ❌</td></tr>
+    <tr><td>SERIALIZABLE</td><td>❌</td><td>❌</td><td>❌</td></tr>
+  </table>
+
+  <h3>四种隔离级别的实际使用场景</h3>
+  <p>不能只背"RC 解决了脏读、RR 解决了不可重复读"——考官真正想听的是<strong>你为什么要选这个级别</strong>。</p>
+
+  <div class="compare">
+    <div>
+      <h4><span class="badge-red">READ UNCOMMITTED</span></h4>
+      <p style="color:var(--muted);font-size:12px">脏读 ✅ · 不可重复读 ✅ · 幻读 ✅</p>
+      <p><strong>几乎没人用。</strong>但它的存在不是没有道理：</p>
+      <ul style="font-size:13px">
+        <li>📊 <strong>只读报表/数据分析：</strong>跑一份"大概"的报表，脏读带来的微小误差可接受，但省去了加锁开销。如每日大盘概览、非关键趋势统计。</li>
+        <li>🔍 <strong>调试/监控：</strong>DBA 排查问题时临时 <code>SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED</code>，看当前正在修改但未提交的数据——"到底谁在写这行？"</li>
+        <li>⚠️ <strong>绝对不要用在：</strong>任何涉及金额、库存、状态的业务。看到未提交的余额 = 灾难。</li>
+      </ul>
+      <p style="font-size:12px;color:var(--muted)">一句话：<strong>能接受"看走眼"的场景才用。</strong></p>
+    </div>
+    <div>
+      <h4><span class="badge-orange">READ COMMITTED</span></h4>
+      <p style="color:var(--muted);font-size:12px">脏读 ❌ · 不可重复读 ✅ · 幻读 ✅</p>
+      <p><strong>PostgreSQL 和 Oracle 的默认级别。</strong>为什么 MySQL 不用但 PG 用？</p>
+      <ul style="font-size:13px">
+        <li>🔗 <strong>高并发 OLTP：</strong>RC 没有 Gap Lock → 锁范围小 → <strong>死锁概率远低于 RR</strong>。电商下单、社交 Feed、IM 消息这类高并发写入场景，RC 比 RR 吞吐更高。</li>
+        <li>📰 <strong>不需要"事务内一致性快照"的场景：</strong>如新闻列表翻页——第 1 页和第 2 页之间有人发了新文章？完全可以接受。</li>
+        <li>🚀 <strong>配合 Statement Binlog 时不能用 RC：</strong>RC 下 binlog 的 STATEMENT 格式会导致主从数据不一致！所以 MySQL 默认 RR。但如果 binlog 用 ROW 格式（现代标配），RC 完全安全。</li>
+        <li>⚠️ <strong>不能用 RC 的场景：</strong>需要在一个事务里多次读取同一行并保证不变——如"先查余额→扣款→再查余额确认"。</li>
+      </ul>
+      <p style="font-size:12px;color:var(--muted)">一句话：<strong>追求并发性能，能接受"两次读到不同值"就用 RC。</strong></p>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4><span class="badge-green">REPEATABLE READ（MySQL 默认）</span></h4>
+      <p style="color:var(--muted);font-size:12px">脏读 ❌ · 不可重复读 ❌ · 幻读 基本 ❌</p>
+      <p><strong>MySQL 的默认级别，也是最"中庸"的选择：</strong></p>
+      <ul style="font-size:13px">
+        <li>💰 <strong>金融/交易/对账：</strong>"事务内看到的数据必须一致"——转账时检查余额、扣款、生成流水必须在同一个快照下完成。任何涉及资金流动的系统，RR 是底线。</li>
+        <li>📋 <strong>报表/对账/批量任务：</strong>一个事务里需要 JOIN 多张表、多条件筛选，如果用 RC，每条 SELECT 可能看到不同时间点的数据——结果可能"对不上"。RR 的快照读保证一致性。</li>
+        <li>🏦 <strong>库存扣减：</strong>"查库存→判断够不够→减库存"——如果查库存是快照读但减库存是当前读，中间被插了一行（幻读）就超卖了。RR 的 Next-Key Lock 在你做当前读时自动锁住间隙。</li>
+        <li>⚠️ <strong>RR 的代价：</strong>① Gap Lock 导致死锁概率上升（两个事务的间隙重叠→互相等）；② undo log 膨胀（长事务持有旧版本，导致 purge 线程无法清理）。</li>
+      </ul>
+      <p style="font-size:12px;color:var(--muted)">一句话：<strong>需要事务内数据一致性、能接受一定死锁风险就用 RR。</strong></p>
+    </div>
+    <div>
+      <h4><span class="badge-purple">SERIALIZABLE</span></h4>
+      <p style="color:var(--muted);font-size:12px">脏读 ❌ · 不可重复读 ❌ · 幻读 ❌</p>
+      <p><strong>最安全也最慢。MySQL 中 SERIALIZABLE = 所有 SELECT 自动变 SELECT FOR SHARE。</strong></p>
+      <ul style="font-size:13px">
+        <li>🏥 <strong>医疗/处方/强监管：</strong>挂号→开药→扣库存的整个过程不能有任何并发干扰。两个医生不能同时给同一病人开冲突的药。</li>
+        <li>🎫 <strong>抢票/秒杀的核心扣减：</strong>不是整个系统用 SERIALIZABLE——只是抢票那一刻的<strong>库存扣减</strong>操作。其他浏览、查票用 RR/RC。</li>
+        <li>📜 <strong>需要"完全可串行化"的合规场景：</strong>如财务审计、政府系统的数据处理——需要数学上证明"并发执行结果等价于串行执行"。</li>
+        <li>⚠️ <strong>绝对不要全局使用：</strong>整个系统用 SERIALIZABLE = 自杀。锁等待 → 超时 → 事务回滚 → 重试 → 雪崩。只在<strong>关键事务</strong>上显式 <code>SET TRANSACTION ISOLATION LEVEL SERIALIZABLE</code>。</li>
+      </ul>
+      <p style="font-size:12px;color:var(--muted)">一句话：<strong>正确性是第一位、性能无所谓的时候才用。</strong></p>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>🎯 选级速查：你遇到的是什么场景？</h4>
+    <table>
+      <tr><th style="width:30%">场景</th><th>推荐级别</th><th>理由</th></tr>
+      <tr><td>高并发写入（电商下单、IM）</td><td><span class="badge-orange">READ COMMITTED</span></td><td>无 Gap Lock，死锁率低，吞吐高</td></tr>
+      <tr><td>金融/交易/资金</td><td><span class="badge-green">REPEATABLE READ</span></td><td>事务内数据一致性是硬需求</td></tr>
+      <tr><td>报表/数据分析（非实时）</td><td><span class="badge-red">READ UNCOMMITTED</span></td><td>允许微小误差，不需要加锁</td></tr>
+      <tr><td>库存/秒杀关键扣减</td><td><span class="badge-purple">SERIALIZABLE</span>（仅扣减事务）</td><td>用强隔离保护核心，不要全局使用</td></tr>
+      <tr><td>浏览/搜索/Feed 流</td><td><span class="badge-orange">READ COMMITTED</span></td><td>出现或不出现几条数据无所谓</td></tr>
+      <tr><td>批量对账/ETL</td><td><span class="badge-green">REPEATABLE READ</span></td><td>需要整个事务看到统一快照</td></tr>
+    </table>
+  </div>
+
+  <h3>InnoDB 的锁——从表锁到间隙锁</h3>
+  <div class="info-card">
+    <table>
+      <tr><th>锁类型</th><th>锁什么</th><th>一句话</th></tr>
+      <tr><td>共享锁 (S)</td><td>某行</td><td>大家一起读，不让改</td></tr>
+      <tr><td>排他锁 (X)</td><td>某行</td><td>我改的时候谁也别碰</td></tr>
+      <tr><td>Record Lock</td><td>一条索引记录</td><td>锁住这一行</td></tr>
+      <tr><td>Gap Lock</td><td>索引记录之间的间隙</td><td>不准往这个缝隙里 INSERT</td></tr>
+      <tr><td><strong>Next-Key Lock</strong></td><td>记录 + 前面的间隙</td><td>RR 级别默认，防幻读的主力</td></tr>
+    </table>
+  </div>
+
+
+  <h3>🔐 锁的粒度——大锁省心小锁快</h3>
+  <div class="feynman">
+    <p><span class="analogy">🚪 类比：</span>表锁 = 整个办公室上锁，你进去翻一个文件，全办公室等你出来。行锁 = 只锁你的抽屉，其他人照常工作。页锁 = 锁一排抽屉（B+Tree 的一个节点）。</p>
+  </div>
+  <table>
+    <tr><th>锁粒度</th><th>锁什么</th><th>并发度</th><th>开销</th><th>InnoDB 中的位置</th></tr>
+    <tr><td><strong>表锁</strong></td><td>整张表</td><td>❌ 最低</td><td>✅ 最小</td><td><code>LOCK TABLES</code>、DDL 操作（MDL）</td></tr>
+    <tr><td><strong>页锁</strong></td><td>一个数据页 (16KB)</td><td>中等</td><td>中等</td><td>BDB 引擎使用，<strong>InnoDB 不用</strong></td></tr>
+    <tr><td><strong>行锁</strong></td><td>一行记录</td><td>✅ 最高</td><td>⚠️ 较大</td><td>InnoDB 默认，锁加在索引上</td></tr>
+  </table>
+
+  <h3>🎯 意向锁——"表里有行锁吗？" 不用一行行查</h3>
+  <div class="feynman">
+    <p><span class="analogy">🏨 类比：</span>你想在整层楼加个大锁，但不知道哪些房间已经锁了。意向锁 = 每个房间门口挂个牌子——"本房间有人（IS）"或"本房间有人且不让进（IX）"。你扫一眼牌子就知道整层能不能锁，不用一间间敲门。</p>
+  </div>
+  <table>
+    <tr><th>类型</th><th>含义</th><th>什么时候加</th></tr>
+    <tr><td><strong>IS（意向共享锁）</strong></td><td>"表里某些行有 S 锁"</td><td>事务要对某行加 S 锁时，先在表上加 IS</td></tr>
+    <tr><td><strong>IX（意向排他锁）</strong></td><td>"表里某些行有 X 锁"</td><td>事务要对某行加 X 锁时，先在表上加 IX</td></tr>
+  </table>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 220" style="max-width:820px; width:100%">
+      <defs><marker id="aLck" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
+      <!-- Table level -->
+      <rect x="15" y="15" width="120" height="180" rx="8" fill="rgba(34,211,238,0.04)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="75" y="42" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">表级</text>
+      <rect x="25" y="55" width="100" height="28" rx="5" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="75" y="74" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">IS 锁</text>
+      <rect x="25" y="90" width="100" height="28" rx="5" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="75" y="109" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">IX 锁</text>
+      <text x="75" y="155" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">意向锁之间不冲突</text>
+      <text x="75" y="170" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">IS+IX 可共存</text>
+
+      <!-- Table → Rows arrow -->
+      <line x1="135" y1="75" x2="175" y2="75" stroke="#22d3ee" stroke-width="1" marker-end="url(#aLck)"/>
+
+      <!-- Row level -->
+      <rect x="180" y="15" width="180" height="180" rx="8" fill="rgba(63,185,80,0.04)" stroke="#3fb950" stroke-width="2"/>
+      <text x="270" y="42" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">行级（索引记录）</text>
+      <rect x="195" y="55" width="150" height="22" rx="4" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1"/>
+      <text x="270" y="71" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">S 锁（共享 / 读锁）</text>
+      <rect x="195" y="82" width="150" height="22" rx="4" fill="rgba(248,81,73,0.10)" stroke="#f87171" stroke-width="1"/>
+      <text x="270" y="98" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="9">X 锁（排他 / 写锁）</text>
+      <rect x="195" y="109" width="150" height="22" rx="4" fill="rgba(251,191,36,0.10)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="270" y="125" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="9">Record Lock（记录锁）</text>
+      <rect x="195" y="136" width="150" height="22" rx="4" fill="rgba(251,191,36,0.10)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="270" y="152" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="9">Gap Lock（间隙锁）</text>
+      <rect x="195" y="163" width="150" height="22" rx="4" fill="rgba(163,113,247,0.12)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="270" y="179" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9">Next-Key Lock ★ 主力</text>
+
+      <!-- Lock compat matrix -->
+      <rect x="390" y="15" width="420" height="180" rx="10" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="600" y="38" text-anchor="middle" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">锁兼容矩阵（行级）</text>
+      <text x="460" y="60" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">已有的锁 ↓  /  请求的锁 →</text>
+      <!-- Headers -->
+      <rect x="410" y="70" width="60" height="22" rx="3" fill="rgba(30,41,59,0.6)"/>
+      <text x="440" y="85" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">S</text>
+      <rect x="475" y="70" width="60" height="22" rx="3" fill="rgba(30,41,59,0.6)"/>
+      <text x="505" y="85" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">X</text>
+      <rect x="540" y="70" width="60" height="22" rx="3" fill="rgba(30,41,59,0.6)"/>
+      <text x="570" y="85" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">IS</text>
+      <rect x="605" y="70" width="60" height="22" rx="3" fill="rgba(30,41,59,0.6)"/>
+      <text x="635" y="85" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">IX</text>
+      <!-- Row: S -->
+      <rect x="410" y="97" width="60" height="22" rx="3" fill="rgba(63,185,80,0.10)"/>
+      <text x="440" y="112" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">✅</text>
+      <rect x="475" y="97" width="60" height="22" rx="3" fill="rgba(248,81,73,0.10)"/>
+      <text x="505" y="112" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="8">❌</text>
+      <rect x="540" y="97" width="60" height="22" rx="3" fill="rgba(63,185,80,0.10)"/>
+      <text x="570" y="112" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">✅</text>
+      <rect x="605" y="97" width="60" height="22" rx="3" fill="rgba(248,81,73,0.10)"/>
+      <text x="635" y="112" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="8">❌</text>
+      <!-- Row: X -->
+      <rect x="410" y="124" width="60" height="22" rx="3" fill="rgba(248,81,73,0.10)"/>
+      <text x="440" y="139" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="8">❌</text>
+      <rect x="475" y="124" width="60" height="22" rx="3" fill="rgba(248,81,73,0.10)"/>
+      <text x="505" y="139" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="8">❌</text>
+      <rect x="540" y="124" width="60" height="22" rx="3" fill="rgba(248,81,73,0.10)"/>
+      <text x="570" y="139" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="8">❌</text>
+      <rect x="605" y="124" width="60" height="22" rx="3" fill="rgba(248,81,73,0.10)"/>
+      <text x="635" y="139" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="8">❌</text>
+      <!-- Row: IS -->
+      <rect x="410" y="151" width="60" height="22" rx="3" fill="rgba(63,185,80,0.10)"/>
+      <text x="440" y="166" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">✅</text>
+      <rect x="475" y="151" width="60" height="22" rx="3" fill="rgba(248,81,73,0.10)"/>
+      <text x="505" y="166" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="8">❌</text>
+      <rect x="540" y="151" width="60" height="22" rx="3" fill="rgba(63,185,80,0.10)"/>
+      <text x="570" y="166" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">✅</text>
+      <rect x="605" y="151" width="60" height="22" rx="3" fill="rgba(63,185,80,0.10)"/>
+      <text x="635" y="166" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">✅</text>
+      <!-- Row labels -->
+      <text x="400" y="112" text-anchor="end" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">S</text>
+      <text x="400" y="139" text-anchor="end" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="8">X</text>
+      <text x="400" y="166" text-anchor="end" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="8">IS</text>
+    </svg>
+    <div class="diagram-caption">锁兼容矩阵：行级 S/X + 表级 IS/IX 的互斥关系一览</div>
+  </div>
+
+  <h3>🔬 Record / Gap / Next-Key / Insert Intention —— 四种行锁的精确边界</h3>
+  <div class="feynman">
+    <p><span class="analogy">📏 类比：</span>图书馆书架上的书按编号排列（1, 5, 10, 15）。<br>
+    • <strong>Record Lock：</strong>锁一本书（如 #5），别人不能碰这本书。<br>
+    • <strong>Gap Lock：</strong>锁两本书之间的空隙（如 5-10 之间），不准往缝里塞新书。<br>
+    • <strong>Next-Key Lock：</strong>锁一本书 + 它左边的缝（如锁 #5 且锁 1-5 的缝）。主力锁。<br>
+    • <strong>Insert Intention Lock：</strong>"我想往 5-10 的缝里塞一本书"。它不和 Gap Lock 兼容——有 Gap Lock 在，你就不能插。但多个插入意向锁之间不互斥。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 180" style="max-width:820px; width:100%">
+      <!-- Data points -->
+      <rect x="30" y="30" width="55" height="30" rx="5" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="57" y="50" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">id=1</text>
+
+      <rect x="160" y="30" width="55" height="30" rx="5" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="187" y="50" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">id=5</text>
+
+      <rect x="290" y="30" width="60" height="30" rx="5" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="320" y="50" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">id=10</text>
+
+      <rect x="425" y="30" width="60" height="30" rx="5" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="455" y="50" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">id=15</text>
+
+      <!-- Record Lock -->
+      <rect x="155" y="75" width="65" height="22" rx="4" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1"/>
+      <text x="187" y="90" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">Record</text>
+      <line x1="187" y1="60" x2="187" y2="73" stroke="#3fb950" stroke-width="1"/>
+
+      <!-- Gap Lock -->
+      <rect x="90" y="105" width="65" height="22" rx="4" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="122" y="120" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="9">Gap (1,5)</text>
+      <line x1="115" y1="45" x2="115" y2="103" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2"/>
+
+      <rect x="220" y="105" width="70" height="22" rx="4" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="255" y="120" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="9">Gap (5,10)</text>
+      <line x1="245" y1="45" x2="245" y2="103" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2"/>
+
+      <!-- Next-Key Lock (highlighted) -->
+      <rect x="145" y="140" width="100" height="26" rx="6" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="195" y="157" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">Next-Key: (1,5]</text>
+      <text x="195" y="145" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="7">Record#5 + Gap(1,5)</text>
+
+      <!-- Insert Intention -->
+      <rect x="360" y="105" width="100" height="22" rx="4" fill="rgba(248,113,73,0.10)" stroke="#f87171" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="410" y="120" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="9">Insert Intention</text>
+      <line x1="350" y1="45" x2="350" y2="103" stroke="#f87171" stroke-width="1" stroke-dasharray="2,3"/>
+
+      <!-- Key -->
+      <rect x="510" y="30" width="295" height="136" rx="10" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="657" y="52" text-anchor="middle" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">各锁互斥关系</text>
+      <text x="525" y="72" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">• Record Lock 之间：同记录 X 互斥，S 兼容</text>
+      <text x="525" y="90" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">• Gap Lock 之间：<tspan fill="#4ade80">不互斥</tspan>！(只是防止插入)</text>
+      <text x="525" y="108" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">• Next-Key = Record + Gap 的组合拳</text>
+      <text x="525" y="126" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">• Insert Intention <tspan fill="#f87171">≠ Gap Lock</tspan>：插入意向等间隙锁释放</text>
+      <text x="525" y="144" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">• 多个 Insert Intention <tspan fill="#4ade80">不互斥</tspan>：并发插入不同行</text>
+      <text x="525" y="160" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">⚠️ RR 级别下：等值查询命中记录 → Next-Key 退化为 Record Lock</text>
+    </svg>
+    <div class="diagram-caption">Gap/Next-Key Lock 的精确边界——这是 RR 级别防幻读的核心</div>
+  </div>
+
+  <h3>🔢 自增锁（AUTO-INC Lock）——自增 ID 为什么不会冲突？</h3>
+  <div class="feynman">
+    <p><span class="analogy">🎫 类比：</span>银行取号机——你取号时机器加锁，给你一个号，解锁。下一个人再取。自增锁就是这张表的"取号机"，保证并发 INSERT 时每个事务拿到唯一的自增 ID。</p>
+    <p><strong>innodb_autoinc_lock_mode</strong> 控制行为：<code>0</code> = 传统（表级锁，INSERT 期间持有）→ 最安全最慢；<code>1</code> = 轻量锁（只锁分配瞬间）→ 默认；<code>2</code> = 无锁（互斥量）→ 最快，但 binlog 格式必须是 ROW。</p>
+  </div>
+
+  <h3>⚔️ 不同 SQL 的加锁规则</h3>
+  <table>
+    <tr><th>SQL</th><th>RC 级别加什么锁</th><th>RR 级别加什么锁</th></tr>
+    <tr><td><code>SELECT</code>（普通查询）</td><td>不加锁（快照读）</td><td>不加锁（快照读）</td></tr>
+    <tr><td><code>SELECT ... FOR UPDATE</code></td><td>对所有扫描行加 X 锁</td><td>对所有扫描行加 Next-Key Lock</td></tr>
+    <tr><td><code>SELECT ... LOCK IN SHARE MODE</code></td><td>对所有扫描行加 S 锁</td><td>对所有扫描行加 Next-Key Lock (S)</td></tr>
+    <tr><td><code>UPDATE</code></td><td>对所有扫描行加 X 锁</td><td>对所有扫描行加 Next-Key Lock</td></tr>
+    <tr><td><code>DELETE</code></td><td>对所有扫描行加 X 锁</td><td>对所有扫描行加 Next-Key Lock</td></tr>
+    <tr><td><code>INSERT</code></td><td>插入行加 X 锁 + Insert Intention Lock</td><td>插入行加 X 锁 + Insert Intention Lock（检查 Gap Lock 冲突）</td></tr>
+    <tr><td><code>INSERT ... ON DUPLICATE KEY</code></td><td>同 INSERT + 冲突时对已有行加 X</td><td>同 INSERT + Next-Key Lock 检查</td></tr>
+  </table>
+
+  <h3>💀 死锁——两个事务互相等对方的锁</h3>
+  <div class="feynman">
+    <p><span class="analogy">🚗 类比：</span>两辆车在窄巷相遇——A 说"你先退"，B 说"你先退"，都等着对方先动。这就是死锁：<strong>T1 持有 A 等 B，T2 持有 B 等 A。</strong></p>
+  </div>
+
+  <h4>典型死锁案例</h4>
+  <pre><code><span class="cm">-- 表: accounts(id PK, balance)</span>
+<span class="cm">-- T1:</span> <span class="kw">BEGIN</span>;
+<span class="kw">UPDATE</span> accounts <span class="kw">SET</span> balance = balance - 100 <span class="kw">WHERE</span> id = 1;  <span class="cm">-- 持有 id=1 的 X 锁</span>
+<span class="cm">-- T2:</span> <span class="kw">BEGIN</span>;
+<span class="kw">UPDATE</span> accounts <span class="kw">SET</span> balance = balance - 50  <span class="kw">WHERE</span> id = 2;  <span class="cm">-- 持有 id=2 的 X 锁</span>
+<span class="cm">-- T1:</span> <span class="kw">UPDATE</span> accounts <span class="kw">SET</span> balance = balance + 100 <span class="kw">WHERE</span> id = 2;  <span class="cm">-- 等 T2 释放 id=2 → 阻塞</span>
+<span class="cm">-- T2:</span> <span class="kw">UPDATE</span> accounts <span class="kw">SET</span> balance = balance + 50  <span class="kw">WHERE</span> id = 1;  <span class="cm">-- 等 T1 释放 id=1 → 死锁！</span></code></pre>
+
+  <h4>死锁检测 & 处理</h4>
+  <div class="info-card">
+    <p><strong>innodb_deadlock_detect = ON（默认）</strong>：InnoDB 维护一个等待图（Wait-for Graph），检测到环 → 选代价最小的事务回滚（<code>ER_LOCK_DEADLOCK</code>）并释放其锁。</p>
+    <p><strong>查看最近一次死锁：</strong><code>SHOW ENGINE INNODB STATUS</code> → 找到 <code>LATEST DETECTED DEADLOCK</code> 段落，包含事务 SQL、持有的锁、等待的锁。</p>
+    <p><strong>预防死锁的黄金法则：</strong></p>
+    <ol style="font-size:13px">
+      <li><strong>访问顺序一致：</strong>所有事务按相同顺序访问资源（如始终先操作 id=1 再 id=2）</li>
+      <li><strong>缩短事务：</strong>事务越小，持锁时间越短，死锁概率越低</li>
+      <li><strong>合理加索引：</strong>无索引会导致全表扫描 → 锁住所有行 → 死锁概率飙升</li>
+      <li><strong>用 READ COMMITTED：</strong>RC 没有 Gap Lock → 锁范围更小 → 死锁概率更低（代价是可能出现幻读）</li>
+    </ol>
+  </div>
+
+  <h3>🔍 锁监控——怎么看到底谁锁了谁</h3>
+  <table>
+    <tr><th>命令</th><th>看什么</th></tr>
+    <tr><td><code>SHOW ENGINE INNODB STATUS\G</code></td><td>最近一次死锁详情 + 锁等待列表 + 事务列表</td></tr>
+    <tr><td><code>SELECT * FROM information_schema.INNODB_TRX</code></td><td>当前运行的所有事务及其状态</td></tr>
+    <tr><td><code>SELECT * FROM information_schema.INNODB_LOCKS</code></td><td>（8.0 前）当前持有的锁</td></tr>
+    <tr><td><code>SELECT * FROM performance_schema.data_locks</code></td><td>（8.0+ 推荐）当前所有锁的精确视图——谁持有、锁类型、锁在哪</td></tr>
+    <tr><td><code>SELECT * FROM performance_schema.data_lock_waits</code></td><td>（8.0+）当前正在等待锁的事务 → 死锁排查利器</td></tr>
+    <tr><td><code>SET GLOBAL innodb_status_output_locks=ON</code></td><td>让 SHOW ENGINE INNODB STATUS 显示锁详情</td></tr>
+  </table>
+
+</section>
+
+<!-- ═══════════ 5. MVCC ═══════════ -->
+<section id="mysql-mvcc" class="section">
+  <h2>🔄 MVCC：谷歌文档的多人协作</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📝 类比：</span>你和同事同时编辑一个 Google Doc。你打开文档时看到的是一个<strong>快照</strong>（版本A）。同事在改，但你看不到他的修改，直到你刷新（提交新事务）。同事的修改产生了<strong>版本B</strong>，但你的快照始终显示版本A。</p>
+    <p>MVCC 就是这个机制：<strong>每个事务看到的是数据库在某个时间点的快照</strong>，别人在改不影响你。这避免了"读要等写、写要等读"的锁竞争。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 280" style="max-width:820px; width:100%">
+      <defs>
+        <marker id="arrowRV" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#a78bfa"/></marker>
+      </defs>
+      <!-- Current row -->
+      <rect x="30" y="20" width="760" height="65" rx="8" fill="rgba(6,78,59,0.15)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="60" y="42" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">当前行数据</text>
+      <text x="60" y="60" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">id=1 | name='张三' | DB_TRX_ID=300 | DB_ROLL_PTR →</text>
+      <text x="60" y="75" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">创建/修改此版本的事务ID | 指向上一个版本的指针</text>
+
+      <!-- Arrow -->
+      <line x1="750" y1="52" x2="780" y2="52" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="5,3"/>
+
+      <!-- undo log v1 -->
+      <rect x="30" y="110" width="760" height="50" rx="8" fill="rgba(76,29,149,0.1)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="60" y="132" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="11">undo log 版本1：name='李四' | DB_TRX_ID=200 | DB_ROLL_PTR →</text>
+      <text x="60" y="150" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">事务 200 修改前：叫"李四"</text>
+
+      <!-- Arrow to v2 -->
+      <line x1="750" y1="135" x2="780" y2="135" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="5,3"/>
+
+      <!-- undo log v2 -->
+      <rect x="30" y="185" width="760" height="50" rx="8" fill="rgba(76,29,149,0.06)" stroke="#7c3aed" stroke-width="1"/>
+      <text x="60" y="207" fill="#8b5cf6" font-family="JetBrains Mono,monospace" font-size="11">undo log 版本2：name='王五' | DB_TRX_ID=100 | DB_ROLL_PTR=NULL</text>
+      <text x="60" y="225" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">事务 100 修改前：叫"王五"（最早版本）</text>
+
+      <!-- ReadView annotation -->
+      <rect x="30" y="250" width="150" height="22" rx="4" fill="rgba(88,166,255,0.12)"/>
+      <text x="105" y="265" text-anchor="middle" fill="#58a6ff" font-family="JetBrains Mono,monospace" font-size="10">ReadView 快照</text>
+      <text x="200" y="265" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">→ 事务开始时"拍照"，沿链找<strong>当前事务可见</strong>的版本</text>
+    </svg>
+    <div class="diagram-caption">MVCC 版本链：每行数据通过 DB_ROLL_PTR 串联历史版本，ReadView 决定读哪个版本</div>
+  </div>
+
+  <h3>ReadView 可见性判断——你能看到哪个版本？</h3>
+  <div class="info-card">
+    <ol>
+      <li><strong>自己改的</strong> → 永远可见 ✅</li>
+      <li><strong>比最老的活跃事务还老</strong> → 肯定提交了 → 可见 ✅</li>
+      <li><strong>比最新的还新</strong> → 还没出生 → 不可见 ❌</li>
+      <li><strong>在中间</strong> → 看是否在活跃事务列表中 → 在则不可见，不在则可见</li>
+    </ol>
+  </div>
+
+  <h4>RC vs RR 的核心区别</h4>
+  <p><strong>READ COMMITTED：</strong>每次 SELECT 生成新 ReadView → 每次能看到最新的已提交数据 → <span class="badge badge-orange">不可重复读</span></p>
+  <p><strong>REPEATABLE READ：</strong>事务中第一次 SELECT 生成 ReadView，后面复用 → 始终看到同一快照 → <span class="badge badge-green">可重复读</span></p>
+
+  <div class="info-card" style="border-color:rgba(163,113,247,0.4);background:linear-gradient(135deg,rgba(163,113,247,0.06),rgba(88,166,255,0.03))">
+    <h4>🔗 从原理到实现</h4>
+    <p>MySQL 的 MVCC 和事务隔离是 <strong>DDIA 理论</strong> 的工业级落地。本篇文章讲<strong>"怎么做"</strong>（InnoDB 的具体实现），<a href="/ddia.html" style="color:var(--accent)">📖 DDIA · 数据密集型应用</a> 讲<strong>"为什么这样设计"</strong>。强烈建议对照阅读 Ch7 事务章节——DDIA 解释了 MVCC 为什么需要 trx_id 和 roll_pointer，MySQL 告诉你 InnoDB 怎么把它们藏在每行数据后面。</p>
+  </div>
+</section>
+
+<!-- ═══════════ 6. 日志系统 ═══════════ -->
+<section id="mysql-log" class="section">
+  <h2>📜 日志系统：厨房工单 vs 营业账簿</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🍳 类比：</span>餐厅厨房有两个记录——</p>
+    <p>① <strong>工单（redo log）</strong>：厨师接到订单先写在工单上再动手做。停电了？看工单就知道哪些菜做到一半，来电继续。</p>
+    <p>② <strong>营业账簿（binlog）</strong>：每道菜上桌后记录在账簿上，永久保存，用于月底对账（主从复制/数据恢复）。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 250" style="max-width:820px; width:100%">
+      <defs>
+        <marker id="arrowD" markerWidth="8" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#fbbf24"/></marker>
+      </defs>
+      <!-- Step 1 -->
+      <rect x="20" y="15" width="170" height="55" rx="8" fill="rgba(251,191,36,0.10)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="105" y="38" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">① Prepare</text>
+      <text x="105" y="55" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="10">写 redo log (PREPARE)</text>
+
+      <line x1="190" y1="42" x2="240" y2="42" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowD)"/>
+
+      <!-- Step 2 -->
+      <rect x="245" y="15" width="170" height="55" rx="8" fill="rgba(34,211,238,0.10)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="330" y="38" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">② Write binlog</text>
+      <text x="330" y="55" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10">写 binlog</text>
+
+      <line x1="415" y1="42" x2="465" y2="42" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowD)"/>
+
+      <!-- Step 3 -->
+      <rect x="470" y="15" width="170" height="55" rx="8" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="555" y="38" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">③ Commit</text>
+      <text x="555" y="55" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10">写 redo log (COMMIT)</text>
+
+      <line x1="640" y1="42" x2="700" y2="42" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arrowD)"/>
+
+      <rect x="705" y="15" width="100" height="55" rx="8" fill="rgba(63,185,80,0.15)" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="755" y="42" text-anchor="middle" fill="#22c55e" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">✅ Done</text>
+
+      <!-- Bottom description -->
+      <rect x="20" y="100" width="780" height="125" rx="10" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="40" y="125" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">💡 为什么两步走（两阶段提交）？</text>
+      <text x="40" y="148" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">如果先写 binlog 再写 redo log → binlog 写完了但 redo log 没写 → 崩溃恢复时 redo log 里没有 → 主库数据丢失</text>
+      <text x="40" y="168" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">如果先写 redo log 再写 binlog → redo log 写完了但 binlog 没写 → 崩溃恢复时 binlog 里没有 → 从库丢数据</text>
+      <text x="40" y="195" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">两阶段提交：redo PREPARE → binlog → redo COMMIT。崩溃时检查 binlog 完整性，决定提交还是回滚。</text>
+    </svg>
+    <div class="diagram-caption">两阶段提交：保证 redo log 和 binlog 的一致性</div>
+  </div>
+
+
+  <h3>🔙 undo log：后悔药——回滚和 MVCC 的基石</h3>
+  <div class="feynman">
+    <p><span class="analogy">⏪ 类比：</span>你在 Word 里写文档，每次修改前 Word 会自动保存"修改前的版本"。点了撤销 → Word 用保存的旧版本恢复。undo log 就是这个"自动保存的旧版本"。</p>
+    <p><strong>undo log 记录的是"修改前的数据"</strong>——把数据改回去用的。两个核心用途：① <strong>事务回滚</strong>：ROLLBACK 时把数据恢复成修改前的样子；② <strong>MVCC</strong>：快照读通过 undo log 构建历史版本。</p>
+  </div>
+
+  <h4>undo log 和 redo log 怎么配合？</h4>
+  <table>
+    <tr><th>维度</th><th>undo log</th><th>redo log</th></tr>
+    <tr><td>记录什么</td><td><strong>修改前的值</strong>（逻辑日志）</td><td><strong>修改后的值</strong>（物理日志——页的改动）</td></tr>
+    <tr><td>作用</td><td>回滚 + MVCC 读历史版本</td><td>崩溃恢复——重放已提交的事务</td></tr>
+    <tr><td>存在哪</td><td>undo 表空间（也是 InnoDB 数据页）</td><td>redo log file（ib_logfile0/1）</td></tr>
+    <tr><td>存储方式</td><td>undo log 的修改也会产生 redo log（保护 undo）</td><td>循环写，固定大小</td></tr>
+    <tr><td>崩溃后</td><td>用 redo log 恢复 undo → 用 undo 回滚未提交事务</td><td>确保已提交的事务不丢失</td></tr>
+  </table>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 200" style="max-width:820px; width:100%">
+      <defs><marker id="aLog" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
+      <!-- UPDATE flow -->
+      <rect x="15" y="15" width="130" height="40" rx="6" fill="rgba(34,211,238,0.10)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="80" y="40" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">UPDATE age=30</text>
+      <line x1="145" y1="35" x2="185" y2="35" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aLog)"/>
+
+      <!-- Step 1: undo -->
+      <rect x="190" y="15" width="150" height="40" rx="6" fill="rgba(248,113,113,0.12)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="265" y="32" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">① 写 undo log</text>
+      <text x="265" y="48" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="8">age=25 (原来的值)</text>
+      <line x1="340" y1="35" x2="380" y2="35" stroke="#f87171" stroke-width="1.5" marker-end="url(#aLog)"/>
+
+      <!-- Step 2: redo -->
+      <rect x="385" y="15" width="150" height="40" rx="6" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="460" y="32" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">② 写 redo log</text>
+      <text x="460" y="48" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="8">页 X 偏移 Y 改为 age=30</text>
+      <line x1="535" y1="35" x2="575" y2="35" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#aLog)"/>
+
+      <!-- Step 3: update -->
+      <rect x="580" y="15" width="140" height="40" rx="6" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="650" y="32" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">③ 修改内存页</text>
+      <text x="650" y="48" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="8">Buffer Pool 更新</text>
+
+      <!-- Bottom flow -->
+      <rect x="15" y="80" width="790" height="105" rx="10" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="30" y="102" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">🔄 崩溃恢复流程（三件套协作）</text>
+      <text x="30" y="125" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">Step 1: 用 <tspan fill="#fcd34d">redo log</tspan> 重放所有已提交事务 → 把数据页恢复到崩溃前状态</text>
+      <text x="30" y="145" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">Step 2: 用 <tspan fill="#fca5a5">undo log</tspan> 回滚所有未提交事务 → 把未提交的修改全部撤销</text>
+      <text x="30" y="165" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">Step 3: 检查 <tspan fill="#22d3ee">binlog</tspan> 完整性 → 如果 redo 是 PREPARE 状态且 binlog 不完整 → 回滚</text>
+      <text x="30" y="180" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">关键：undo log 的修改本身也受 redo log 保护 → 崩溃后可以恢复 undo → 再用 undo 回滚未提交事务</text>
+    </svg>
+    <div class="diagram-caption">undo/redo/binlog 三件套协作：UPDATE 的完整生命周期</div>
+  </div>
+
+  <h3>📡 relay log：主从复制的"传声筒"</h3>
+  <div class="feynman">
+    <p><span class="analogy">📞 类比：</span>binlog 是主库的"广播稿"，relay log 是从库的"速记本"。从库的 IO 线程把主库的 binlog 抄写到 relay log，SQL 线程再读 relay log 执行——中间隔了一层 relay log，这样 SQL 线程慢不会拖慢 IO 线程。</p>
+  </div>
+
+  <h4>主从复制的完整链路</h4>
+  <div class="diagram">
+    <svg viewBox="0 0 820 160" style="max-width:820px; width:100%">
+      <defs><marker id="aRl" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs></defs>
+      <!-- Master -->
+      <rect x="15" y="20" width="200" height="95" rx="10" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="115" y="48" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">🖥️ 主库 (Master)</text>
+      <rect x="30" y="60" width="170" height="20" rx="4" fill="rgba(34,211,238,0.12)"/>
+      <text x="115" y="75" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">binlog → dump thread 推送</text>
+      <rect x="30" y="85" width="170" height="20" rx="4" fill="rgba(34,211,238,0.12)"/>
+      <text x="115" y="100" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">Dump Thread → 从库</text>
+
+      <!-- Arrow -->
+      <line x1="215" y1="67" x2="275" y2="67" stroke="#22d3ee" stroke-width="2" marker-end="url(#aRl)"/>
+      <text x="245" y="60" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="7">IO线程拉取</text>
+
+      <!-- Slave -->
+      <rect x="280" y="20" width="200" height="95" rx="10" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="380" y="48" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">📡 从库 (Slave)</text>
+      <rect x="295" y="60" width="170" height="20" rx="4" fill="rgba(163,113,247,0.12)"/>
+      <text x="380" y="75" text-anchor="middle" fill="#ddd6fe" font-family="JetBrains Mono,monospace" font-size="9">📥 IO Thread → relay log</text>
+      <rect x="295" y="85" width="170" height="20" rx="4" fill="rgba(163,113,247,0.12)"/>
+      <text x="380" y="100" text-anchor="middle" fill="#ddd6fe" font-family="JetBrains Mono,monospace" font-size="9">▶️ SQL Thread → 执行 relay log</text>
+
+      <!-- relay log highlight -->
+      <rect x="510" y="50" width="180" height="55" rx="8" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="2" stroke-dasharray="5,3"/>
+      <text x="600" y="73" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">📋 relay log</text>
+      <text x="600" y="92" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="8">IO 线程写入</text>
+      <text x="600" y="102" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="7">SQL 线程读取执行</text>
+
+      <!-- Key fact box -->
+      <rect x="15" y="130" width="790" height="22" rx="6" fill="rgba(30,41,59,0.3)"/>
+      <text x="30" y="145" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">💡 relay log 的核心价值：解耦 IO 和 SQL 线程。IO 线程只管"抄"，SQL 线程只管"执行"。SQL 线程慢不会阻塞 IO 线程拉取新 binlog。</text>
+    </svg>
+    <div class="diagram-caption">主从复制全链路：binlog → IO线程 → relay log → SQL线程</div>
+  </div>
+
+  <h4>其他日志一览</h4>
+  <table>
+    <tr><th>日志</th><th>作用</th><th>查什么</th><th>开启方式</th></tr>
+    <tr><td><strong>Error Log</strong></td><td>启动/运行/关闭错误</td><td><code>SHOW VARIABLES LIKE 'log_error'</code></td><td>默认开启</td></tr>
+    <tr><td><strong>Slow Query Log</strong></td><td>记录超过 long_query_time 的 SQL</td><td><code>mysqldumpslow</code> 分析</td><td><code>SET GLOBAL slow_query_log=ON</code></td></tr>
+    <tr><td><strong>General Log</strong></td><td>记录所有客户端连接和 SQL</td><td>排查"谁在连我"</td><td>生产环境<strong>不建议开</strong>——IO 开销巨大</td></tr>
+    <tr><td><strong>Binary Log</strong></td><td>所有修改数据的 SQL</td><td><code>mysqlbinlog</code> 解析</td><td><code>log_bin=ON</code></td></tr>
+    <tr><td><strong>Relay Log</strong></td><td>从库复制的 binlog 本地副本</td><td><code>SHOW SLAVE STATUS</code></td><td>从库自动产生</td></tr>
+  </table>
+
+
+  <h3>redo log vs binlog</h3>
+  <table>
+    <tr><th>特性</th><th>redo log</th><th>binlog</th></tr>
+    <tr><td>谁产生的</td><td>InnoDB 引擎</td><td>MySQL Server 层</td></tr>
+    <tr><td>写什么</td><td>物理日志（页修改）</td><td>逻辑日志（SQL/行）</td></tr>
+    <tr><td>写的方式</td><td>循环写（固定大小）</td><td>追加写（无限增长）</td></tr>
+    <tr><td>拿来干嘛</td><td>崩溃恢复（crash-safe）</td><td>主从复制、数据恢复</td></tr>
+  </table>
+</section>
+
+<!-- ═══════════ 7. 高可用 ═══════════ -->
+<section id="mysql-ha" class="section">
+  <h2>⚡ 高可用 & 分库分表：一个仓库不够用怎么办</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏭 类比：</span>你的仓库（数据库）日订单从 100 涨到 100 万——</p>
+    <p><strong>主从复制：</strong>建一个备用仓库，主仓出货同时抄一份给备用仓。主仓坏了，备用仓顶上。平时读操作可以走备用仓分担压力。</p>
+    <p><strong>分库分表：</strong>东西太多放不下了！按品类分仓（垂直拆分：家电仓/服装仓），或者按地区分仓（水平拆分：华南仓/华北仓）。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 230" style="max-width:820px; width:100%">
+      <defs>
+        <marker id="arrowRep" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#fbbf24"/></marker>
+      </defs>
+      <!-- Master -->
+      <rect x="40" y="20" width="150" height="80" rx="8" fill="rgba(6,78,59,0.2)" stroke="#34d399" stroke-width="2"/>
+      <text x="115" y="50" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">Master</text>
+      <text x="115" y="68" text-anchor="middle" fill="#6ee7b7" font-family="JetBrains Mono,monospace" font-size="10">主库（读写）</text>
+      <text x="115" y="84" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">写 binlog</text>
+
+      <!-- Dump Thread -->
+      <text x="220" y="48" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="9">Dump Thread</text>
+      <line x1="190" y1="55" x2="290" y2="55" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowRep)"/>
+
+      <!-- Slave 1 -->
+      <rect x="300" y="20" width="150" height="80" rx="8" fill="rgba(34,211,238,0.10)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="375" y="50" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">Slave 1</text>
+      <text x="375" y="68" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10">从库（只读）</text>
+
+      <text x="220" y="95" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="9">Dump Thread</text>
+      <line x1="190" y1="102" x2="290" y2="102" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowRep)"/>
+
+      <!-- Slave 2 -->
+      <rect x="300" y="80" width="150" height="60" rx="8" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="375" y="105" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">Slave 2</text>
+      <text x="375" y="123" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10">从库（只读）</text>
+
+      <!-- I/O Thread + SQL Thread -->
+      <text x="470" y="50" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">I/O Thread</text>
+      <text x="470" y="65" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">   ↓</text>
+      <text x="470" y="80" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">SQL Thread</text>
+
+      <!-- relay log -->
+      <rect x="530" y="25" width="130" height="35" rx="5" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="595" y="47" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="10">relay log</text>
+
+      <text x="470" y="110" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">I/O + SQL</text>
+      <rect x="530" y="85" width="130" height="35" rx="5" fill="rgba(251,191,36,0.06)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="595" y="107" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="10">relay log</text>
+
+      <!-- Right side: sharding -->
+      <rect x="30" y="140" width="780" height="80" rx="10" fill="rgba(163,113,247,0.06)" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="50" y="165" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">分库分表策略</text>
+      <text x="50" y="185" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">垂直拆分：用户库 | 订单库 | 商品库（按业务）</text>
+      <text x="50" y="203" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">水平拆分：user_id % 4 → 4个库（按数据）。范围：1-1000万 | 1000-2000万（按范围）</text>
+    </svg>
+    <div class="diagram-caption">主从复制架构 + 分库分表策略</div>
+  </div>
+
+  <h4>分库分表带来的难题</h4>
+  <table>
+    <tr><th>问题</th><th>怎么解决</th></tr>
+    <tr><td>跨库 JOIN</td><td>应用层组装、冗余字段、全局广播表</td></tr>
+    <tr><td>全局唯一 ID</td><td>雪花算法（Snowflake）、号段模式</td></tr>
+    <tr><td>分布式事务</td><td>XA 两阶段、TCC、最终一致性</td></tr>
+    <tr><td>跨片排序/分页</td><td>各片查 TOP N → 内存合并排序</td></tr>
+  </table>
+</section>
+
+<!-- ═══════════ 8. 核心题 ═══════════ -->
+<section id="mysql-qa" class="section">
+  <h2>❓ 高频考题（费曼版）</h2>
+
+  <div class="qa"><div class="q">Q1: 为什么用 B+Tree 而不是 Hash？</div><div class="a">Hash 只能精确匹配，不能范围查（WHERE id > 100）。B+Tree 叶子节点有链表，范围查询一路扫过去就行。</div></div>
+  <div class="qa"><div class="q">Q2: 自增主键 vs UUID？</div><div class="a">自增 = 新数据永远追加在最后，不会页分裂。UUID 随机插入 → 页分裂频繁 → 性能下降 + 空间碎片。另外自增主键 8 字节，UUID 字符串 36 字节，二级索引叶子节点存主键，越小越好。</div></div>
+  <div class="qa"><div class="q">Q3: 联合索引 (a,b,c)，WHERE b=2 AND c=3 AND a=1 走索引吗？</div><div class="a"><strong>走。</strong>优化器会自动把条件顺序调整成 a=1 AND b=2 AND c=3。关键是 a 在不在条件里，书写顺序无所谓。</div></div>
+  <div class="qa"><div class="q">Q4: VARCHAR 字段上的索引为什么可能失效？</div><div class="a">隐式类型转换。WHERE phone=138（phone 是 VARCHAR）→ MySQL 把 phone 列转成数字来比 → 对列做函数 → 索引失效。写成 WHERE phone='138' 就没事。</div></div>
+  <div class="qa"><div class="q">Q5: RR 级别幻读彻底解决了吗？</div><div class="a"><strong>快照读解决了，快照+当前读混用仍有。</strong>事务 A 先 SELECT（快照读）→ B INSERT 提交 → A 再 SELECT FOR UPDATE（当前读）→ 会看到 B 插入的行。纯快照读不会幻读。</div></div>
+  <div class="qa"><div class="q">Q6: COUNT(*) 和 COUNT(1) 有区别吗？</div><div class="a">没有。InnoDB 会选最小的索引来扫。COUNT(col) 不同——只统计 col 不为 NULL 的行。</div></div>
+  <div class="qa"><div class="q">Q7: 什么是索引下推（ICP）？</div><div class="a">把 WHERE 条件中能用索引的部分，在引擎层就过滤掉，减少回表次数。比如索引 (name,age)，WHERE name LIKE '张%' AND age=20 → 引擎层直接过滤 age=20，不用每条都回表。</div></div>
+  <div class="qa"><div class="q">Q8: 秒杀系统怎么防超卖？</div><div class="a"><code>UPDATE ... SET stock=stock-1 WHERE id=? AND stock>0</code>。行锁 + 条件更新，库存扣到 0 就自动不扣了。高并发再上 Redis 预扣库存 + 库存分片。</div></div>
+</section>
+
+<p style="text-align:center;color:var(--muted);margin-top:60px;padding-bottom:40px;font-size:12px">
+  📘 MySQL 复习完成 · 费曼说：能简单讲清楚才是真理解<br>
+  更多模块：<a href="/langgraph.html" style="color:var(--accent)">🦜 LangChain + LangGraph 复习</a> · <a href="#mysql-socratic" style="color:var(--accent)">💬 苏格拉底提问</a> · <a href="/" style="color:var(--accent)">← 返回首页</a>
+</p>
+
+
+<!-- ═══════ 苏格拉底式提问 ═══════ -->
+<section id="mysql-socratic" class="section">
+  <h2>💬 苏格拉底式提问 —— 检验真理解</h2>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:20px">以下问题用来逼你追问本质。先自己想 30 秒，再点开验证。</p>
+
+  <details class="socratic">
+    <summary>索引为什么用 B+Tree 而不是 Hash 或 B-Tree？<span class="socratic-num">Q1</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">Hash 的问题：</span>只支持等值查询，不支持范围查询（WHERE id > 100）、排序（ORDER BY）、前缀匹配（LIKE 'abc%'）。<br>
+      <span class="highlight">B-Tree 的问题：</span>非叶子节点也存数据，导致每个节点能存的键更少，树更高，IO 次数更多。而且 B-Tree 的叶子节点没有链表连接，范围查询需要中序遍历，效率差。<br>
+      <span class="highlight">B+Tree 的优势：</span>① 数据只存叶子节点 → 非叶子节点能存更多键 → 树更矮 → IO 更少；② 叶子节点用双向链表连接 → 范围查询直接遍历链表，O(log N + K)；③ 所有查询最终落到叶子层，查询时间稳定。
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>MVCC 真的能"完全避免锁"吗？<span class="socratic-num">Q2</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">不能。</span>MVCC 通过 undo log 和 ReadView 实现快照读不加锁，但 <span class="highlight">写操作仍然需要锁</span>。<br>
+      • <strong>SELECT (快照读)：</strong>不加锁，通过 ReadView 看到一致性快照。<br>
+      • <strong>SELECT ... FOR UPDATE (当前读)：</strong>加行锁，读最新已提交数据。<br>
+      • <strong>UPDATE/DELETE：</strong>始终是当前读，需要加锁。<br>
+      <span class="highlight">本质：</span>MVCC 用"多版本"替代了"读锁"，但写-写冲突仍需锁解决。这就是为什么 RR 级别下仍然会出现死锁。
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>分库分表后，跨库 JOIN 怎么解决？每种方案有什么代价？<span class="socratic-num">Q3</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">四种方案，各有代价：</span><br>
+      ① <strong>应用层聚合：</strong>分别查两个库，在代码里 JOIN。代价 = 网络开销 + 应用复杂度。<br>
+      ② <strong>冗余字段：</strong>把要 JOIN 的字段冗余到一张表。代价 = 数据不一致风险 + 更新双写。<br>
+      ③ <strong>全局表：</strong>小表每个库都存一份。代价 = 更新需要广播到所有库。<br>
+      ④ <strong>异构索引（ES/Hive）：</strong>把数据同步到搜索引擎或数仓做 JOIN。代价 = 数据延迟 + 维护两套系统。<br>
+      <span class="highlight">核心思想：</span>分库分表本质是用"应用复杂度"换"数据库可扩展性"。没有银弹，选代价最小的。
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>为什么说"索引不是越多越好"？多建一个索引的真实代价是什么？<span class="socratic-num">Q4</span></summary>
+    <div class="socratic-a">
+      一个索引的代价包含三部分：<br>
+      <span class="highlight">① 写入代价：</span>每次 INSERT/UPDATE/DELETE 都需要维护所有索引的 B+Tree。索引越多，写越慢。<br>
+      <span class="highlight">② 空间代价：</span>每个索引都是一棵完整的 B+Tree，索引字段会被复制一份。大量索引可能比数据本身还大。<br>
+      <span class="highlight">③ 优化器代价：</span>索引太多，优化器选择索引的时间变长，甚至可能选错索引（因为采样偏差）。<br>
+      <span class="highlight">原则：</span>只为高频查询建索引，用慢查询日志和 EXPLAIN 验证索引是否被使用。未被使用的索引是纯负担。
+    </div>
+  </details>
+</section>
+
+
+<!-- ═══════ 口播 ═══════ -->
+<div class="feynman" style="margin-top:40px;background:linear-gradient(135deg,rgba(251,191,36,0.06),rgba(107,70,17,0.04));border-color:rgba(251,191,36,0.3)">
+  <p style="font-size:11px;color:#fbbf24;margin-bottom:8px;font-weight:700">📖 本文思想来源</p>
+  <p style="font-size:12px;line-height:1.9">
+    <strong>《设计数据密集型应用》DDIA</strong> —— Martin Kleppmann<br>
+    • <span style="color:#fcd34d">第 3 章「存储与检索」</span>：B-Tree vs LSM-Tree 的 IO 模型分析<br>
+    • <span style="color:#fcd34d">第 7 章「事务」</span>：MVCC 与快照隔离的权威解释，第 2 节对"读已提交 vs 可重复读 vs 可串行化"的图解是必背<br>
+    • <span style="color:#94a3b8">另见：</span>MySQL 官方文档 InnoDB 章节、Jeremy Cole 的 InnoDB 系列博客
+  </p>
+</div>
+
+<section id="mysql-summary" class="section" style="margin-top:40px">
+  <h2>🎙️ 口播总结</h2>
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(248,81,73,0.04));border-color:rgba(251,191,36,0.3)">
+    <p style="font-size:15px;line-height:2"><strong>这篇文章帮你搞定 MySQL。</strong></p>
+    <p>MySQL 就像一个餐厅后厨——连接器是迎宾员，解析器是服务员记菜单，优化器是厨师长决定怎么做最快，执行器动手做，InnoDB 是厨房设备。</p>
+    <p>索引是最核心的考点。B+Tree 为什么快？三层就能存千万数据，叶子节点有双向链表支持范围查询。聚簇索引叶子存完整数据，二级索引只存主键值，多一次回表操作。最左前缀原则就像快递地址——跳过省直接写市，邮局没法处理。索引失效最常见就四种：对列做函数、隐式类型转换、LIKE 前置百分号、负向查询。</p>
+    <p>事务和 MVCC 是第二个重点。ACID 靠 undo log 回滚、redo log 重做、MVCC 做隔离。四种隔离级别中，RR 是默认级别，通过 ReadView 快照实现可重复读。一条 SQL 在 RR 下看到的永远是事务开始时的快照。</p>
+    <p>日志系统记住两个核心：redo log 是引擎层的崩溃恢复日志，循环写；binlog 是 Server 层的主从复制日志，追加写。两阶段提交保证两者一致。</p>
+    <p><strong>如果只能记住一个词，那就是"B+Tree"。</strong>把 B+Tree 的结构、为什么选它、聚簇索引和二级索引的回表过程讲清楚，MySQL 这关就过了大半。</p>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script src="/mobile.js"></script>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

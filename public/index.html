@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>软件开发成神之路</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf; --pink: #db61a2;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.7;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 60px 20px;
+  }
+  h1 { font-size: 32px; font-weight: 700; color: #fff; margin-bottom: 8px; text-align: center; }
+  .subtitle { font-size: 14px; color: var(--muted); text-align: center; margin-bottom: 48px; }
+
+  .grid { display: flex; flex-direction: column; gap: 4px; max-width: 720px; width: 100%; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 18px; transition: all 0.15s; text-decoration: none; color: var(--text);
+    display: flex; align-items: center; gap: 12px; position: relative;
+  }
+  .card:hover { border-color: var(--accent); background: rgba(88,166,255,0.03); }
+  .card-icon { font-size: 20px; line-height: 1; flex-shrink: 0; width: 28px; text-align: center; }
+  .card-body { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
+  .card-title { font-size: 14px; font-weight: 600; color: #e6edf3; white-space: nowrap; flex-shrink: 0; }
+  .card-desc { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .card-meta { display: flex; gap: 6px; flex-wrap: nowrap; flex-shrink: 0; }
+  .card-tag { font-size: 10px; padding: 2px 8px; border-radius: 8px; font-weight: 600; }
+  .tag-done { background: rgba(63,185,80,0.12); color: var(--green); }
+  .tag-soon { background: rgba(210,153,34,0.12); color: var(--orange); }
+  .tag-plan { background: rgba(139,148,158,0.10); color: var(--muted); }
+  .card::after { display: none; }
+
+  /* ── Ebbinghaus review status ── */
+  .card-review-bar { height: 4px; background: #1e222a; border-radius: 2px; margin-top: 4px; overflow: hidden; }
+  .card-review-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+  .card-review-fill.done { background: #3fb950; }
+  .card-review-fill.due { background: #f87173; }
+  .card-review-fill.progress { background: #58a6ff; }
+  .card-review-tag { font-size: 10px; padding: 2px 8px; border-radius: 8px; font-weight: 600; display: inline-block; }
+  .rtag-due { background: rgba(248,113,73,0.15); color: #f87173; }
+  .rtag-done { background: rgba(63,185,80,0.15); color: #3fb950; }
+  .rtag-progress { background: rgba(88,166,255,0.15); color: #58a6ff; }
+  .rtag-new { background: rgba(139,148,158,0.10); color: #8b949e; }
+
+  /* ── Review dashboard ── */
+  .review-dashboard {
+    max-width: 800px; width: 100%; margin: 0 auto 32px;
+    background: linear-gradient(135deg, rgba(88,166,255,0.04), rgba(163,113,247,0.04));
+    border: 1px solid rgba(88,166,255,0.15); border-radius: 14px; padding: 24px 28px;
+    display: none;
+  }
+  .review-dashboard.visible { display: block; }
+  .review-dashboard h3 { font-size: 16px; color: #e6edf3; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .review-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .review-stat { text-align: center; padding: 12px; background: rgba(30,41,59,0.4); border-radius: 10px; }
+  .btn-reset { padding: 7px 16px; border-radius: 8px; border: 1px solid rgba(248,81,73,0.3); background: transparent; color: #f87173; font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .btn-reset:hover { background: rgba(248,81,73,0.1); }
+  .btn-notify { padding: 7px 16px; border-radius: 8px; border: 1px solid rgba(88,166,255,0.3); background: transparent; color: #58a6ff; font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .btn-notify:hover { background: rgba(88,166,255,0.1); }
+  .btn-notify.active { background: rgba(88,166,255,0.15); border-color: rgba(88,166,255,0.5); }
+
+  /* review sections */
+  .review-section { margin-bottom: 14px; }
+  .review-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 8px; }
+  .review-due-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0; }
+  .review-due-item {
+    padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    text-decoration: none; transition: all 0.15s;
+  }
+  .review-due-item.urgent { background: rgba(248,113,73,0.12); color: #fca5a5; border: 1px solid rgba(248,113,73,0.25); }
+  .review-due-item.urgent:hover { background: rgba(248,113,73,0.2); }
+  .review-due-item.soon { background: rgba(210,153,34,0.10); color: #fcd34d; border: 1px solid rgba(210,153,34,0.2); }
+  .review-due-item.soon:hover { background: rgba(210,153,34,0.18); }
+  .review-due-item.done { background: rgba(63,185,80,0.10); color: #86efac; border: 1px solid rgba(63,185,80,0.2); }
+  .review-due-item.done:hover { background: rgba(63,185,80,0.18); }
+  .review-due-item.new { background: rgba(139,148,158,0.08); color: var(--muted); border: 1px solid rgba(139,148,158,0.15); }
+  .review-due-item.new:hover { background: rgba(139,148,158,0.14); }
+  .review-empty { color: var(--muted); font-size: 13px; padding: 12px 0; }
+  .review-actions { margin-top: 14px; display: flex; gap: 10px; }
+  .btn-reset { padding: 7px 16px; border-radius: 8px; border: 1px solid rgba(248,81,73,0.3); background: transparent; color: #f87173; font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .btn-reset:hover { background: rgba(248,81,73,0.1); }
+  .review-empty { color: var(--muted); font-size: 13px; padding: 12px 0; }
+
+  @media (max-width: 768px) {
+    .review-stats { grid-template-columns: repeat(2, 1fr); }
+    .review-dashboard { padding: 16px; }
+  }
+
+  .footer { margin-top: 60px; font-size: 12px; color: var(--muted); text-align: center; }
+
+
+
+  /* ── Search + Category bar ── */
+  .search-row { display: flex; gap: 12px; max-width: 560px; width: 100%; margin-bottom: 24px; align-items: center; }
+  .search-row input {
+    flex: 1; padding: 10px 16px; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    font-size: 14px; outline: none; transition: border-color 0.2s;
+  }
+  .search-row input:focus { border-color: var(--accent); }
+  .search-row input::placeholder { color: var(--muted); }
+  .search-row select {
+    padding: 10px 14px; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    font-size: 13px; outline: none; cursor: pointer; width: 200px; flex-shrink: 0;
+    transition: border-color 0.2s;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b949e' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+  }
+  .search-row select:focus { border-color: var(--accent); }
+  .search-row select option { background: var(--card); color: var(--text); }
+
+  /* ── Mobile: compact list ── */
+  @media (max-width: 768px) {
+    body { padding: 32px 12px 80px; }
+    h1 { font-size: 22px; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; margin-bottom: 24px; }
+
+    .grid { gap: 3px; }
+    .card { padding: 8px 12px !important; gap: 8px !important; border-radius: 8px !important; flex-wrap: wrap; }
+    .card-icon { font-size: 16px !important; width: 20px !important; }
+    .card-title { font-size: 13px !important; }
+    .card-desc { display: none; }
+    .card-meta { gap: 4px !important; flex-wrap: wrap !important; }
+    .card-tag { font-size: 9px !important; padding: 1px 6px !important; border-radius: 6px !important; }
+
+    .footer { margin-top: 32px; font-size: 11px; }
+
+    .search-row input { font-size: 12px; padding: 8px 12px; }
+    .search-row select { font-size: 11px; padding: 8px 10px; width: 130px; padding-right: 26px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>📘 软件开发成神之路</h1>
+<p class="subtitle">费曼学习法 · 从入门到精通 · 艾宾浩斯循环复习</p>
+
+<div class="review-dashboard visible" id="reviewDashboard">
+  <h3>🧠 艾宾浩斯复习看板 <span style="font-size:12px;color:var(--muted);font-weight:400">· 遗忘临界点提醒</span></h3>
+  <div class="review-actions">
+    <button class="btn-reset" onclick="if(confirm('确定重置全部复习进度？')){Ebbinghaus.resetAll();location.reload()}">🔄 重置</button>
+    <button class="btn-notify" id="btn-notify" onclick="requestNotify()">🔔 开启提醒</button>
+  </div>
+</div>
+
+<div class="search-row">
+  <input type="text" id="search" placeholder="🔍 搜索模块...（如 MySQL / Paxos / Agent）" autocomplete="off">
+  <select id="cat-select">
+    <option value="all">📂 全部 (45)</option>
+    <option value="sys-design">🏛️ 系统设计 (12)</option>
+    <option value="middleware">🔧 中间件 (3)</option>
+    <option value="algo">🧮 算法 (1)</option>
+    <option value="ai">🤖 AI (1)</option>
+    <option value="lang-cs">💻 语言与计算机基础 (8)</option>
+    <option value="computer-arch">🏗️ 计算机组成原理 (7)</option>
+    <option value="senior">⚡ 高级开发实战 (13)</option>
+  </select>
+</div>
+
+<div class="grid" id="card-grid">
+  <!-- Go 数据结构 -->
+  <a href="/go-structures.html" class="card" data-category="lang-cs">
+  <div class="card-body">
+    <div class="card-icon">🍕</div>
+    <div class="card-title">Go 数据结构</div>
+    <div class="card-desc">Slice/Map/Chan 内存布局 · Interface 双指针 · String 不可变 · Defer 进化史 · 对比 Java/C++/Rust/Python</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">3 张配图</span>
+    </div>
+  </div>
+</a>
+
+  <!-- 计算机网络 -->
+  <a href="/networking.html" class="card" data-category="lang-cs">
+  <div class="card-body">
+    <div class="card-icon">🌐</div>
+    <div class="card-title">计算机网络</div>
+    <div class="card-desc">OSI/TCP-IP 协议栈 · TCP 握手挥手 · 拥塞控制 · HTTP 1→2→3 · TLS 1.3 · DNS · IP 路由</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">7 张配图</span>
+      <span class="card-tag tag-done">6 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- HTTP -->
+  <a href="/http.html" class="card" data-category="lang-cs">
+  <div class="card-body">
+    <div class="card-icon">📡</div>
+    <div class="card-title">HTTP 协议</div>
+    <div class="card-desc">请求/响应解剖 · 方法幂等性 · 状态码 · Cookie/Token · CORS · 缓存体系 · HTTP 1→2→3 进化 · RESTful</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">4 张配图</span>
+      <span class="card-tag tag-done">5 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- Go 并发 -->
+  <a href="/go-concurrency.html" class="card" data-category="lang-cs">
+  <div class="card-body">
+    <div class="card-icon">⚡</div>
+    <div class="card-title">Go 并发的艺术</div>
+    <div class="card-desc">Goroutine vs Thread · GMP 调度 · 工作窃取 · Channel 模式 · Sync 原语 · 内存模型 · CSP vs Actor vs async</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">1 张配图</span>
+    </div>
+  </div>
+</a>
+
+  <!-- Go 内存 -->
+  <a href="/go-memory.html" class="card" data-category="lang-cs">
+  <div class="card-body">
+    <div class="card-icon">🧠</div>
+    <div class="card-title">Go 内存与 GC</div>
+    <div class="card-desc">TCMalloc 分配器 · 逃逸分析 · 栈管理 · GC 演进史 · 三色标记 · 混合写屏障 · GOGC 调优</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">3 张配图</span>
+    </div>
+  </div>
+</a>
+
+  <!-- MySQL -->
+  <a href="/mysql.html" class="card" data-category="middleware">
+  <div class="card-body">
+    <div class="card-icon">📘</div>
+    <div class="card-title">MySQL</div>
+    <div class="card-desc">架构原理 · B+Tree 索引 · MVCC 事务 · 日志系统 · 主从复制 · 分库分表</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">6 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">10 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- LangChain + LangGraph -->
+  <a href="/langgraph.html" class="card" data-category="ai">
+  <div class="card-body">
+    <div class="card-icon">🦜</div>
+    <div class="card-title">LangChain + LangGraph</div>
+    <div class="card-desc">LLM 应用 · Chain 流水线 · Tool Calling · StateGraph · Agent 实战 · Deep Agents · Human-in-Loop</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">3 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">7 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- 高可用 -->
+  <a href="/ha.html" class="card" data-category="sys-design">
+  <div class="card-body">
+    <div class="card-icon">⚡</div>
+    <div class="card-title">高可用服务设计</div>
+    <div class="card-desc">冗余架构 · 负载均衡 · 熔断限流 · CAP 定理 · 多活 · 可观测性 · Go 实战</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">4 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">6 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- 高性能 -->
+  <a href="/performance.html" class="card" data-category="sys-design">
+  <div class="card-body">
+    <div class="card-icon">🚀</div>
+    <div class="card-title">高性能系统设计</div>
+    <div class="card-desc">多级缓存 · 消息队列 · 连接池 · 零拷贝 · 批处理 · pprof 剖析 · Go 并发模型</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">3 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">6 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- 可扩展性 -->
+  <a href="/scalability.html" class="card" data-category="sys-design">
+  <div class="card-body">
+    <div class="card-icon">📐</div>
+    <div class="card-title">高可扩展性系统设计</div>
+    <div class="card-desc">水平扩展 · 无状态 · 分片策略 · 一致性哈希 · CQRS · 事件溯源 · 单元化</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">3 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">6 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- Amdahl -->
+  <a href="/amdahl.html" class="card" data-category="sys-design">
+  <div class="card-body">
+    <div class="card-icon">⚡</div>
+    <div class="card-title">阿姆达尔定律</div>
+    <div class="card-desc">并行加速上限 · 古斯塔夫森定律 · 通用可扩展性定律 USL · 串行瓶颈诊断 · 实战案例分析</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">2 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">3 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- DDD -->
+  <a href="/ddd.html" class="card" data-category="sys-design">
+  <div class="card-body">
+    <div class="card-icon">🧭</div>
+    <div class="card-title">领域驱动设计 DDD</div>
+    <div class="card-desc">限界上下文 · 聚合 · 实体与值对象 · 领域事件 · 防腐层 · Go 四层架构</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">3 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">6 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- 分布式锁 -->
+  <a href="/distributed-lock.html" class="card" data-category="sys-design">
+  <div class="card-body">
+    <div class="card-icon">🔐</div>
+    <div class="card-title">分布式锁</div>
+    <div class="card-desc">Redis SETNX · Redlock · ZooKeeper · etcd · Fencing Token · Watch Dog · Go 实现</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">3 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">5 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- 分布式一致性 -->
+  <a href="/distributed-consistency.html" class="card" data-category="sys-design">
+  <div class="card-body">
+    <div class="card-icon">🔗</div>
+    <div class="card-title">分布式数据一致性</div>
+    <div class="card-desc">CAP 定理 · 一致性谱系 · 2PC/XA · Saga · TCC · Outbox+CDC · 幂等设计 · 方案选型决策树</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">4 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">4 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- Redis -->
+  <a href="/redis.html" class="card" data-category="middleware">
+  <div class="card-body">
+    <div class="card-icon">🔴</div>
+    <div class="card-title">Redis</div>
+    <div class="card-desc">九大数据结构 · RDB/AOF · Sentinel · Cluster · 缓存穿透/击穿/雪崩 · Pipeline/Lua</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">3 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">6 道真题</span>
+    </div>
+  </div>
+</a>
+
+
+  <!-- LeetCode -->
+  <a href="/leetcode-patterns.html" class="card" data-category="algo">
+  <div class="card-body">
+    <div class="card-icon">🏆</div>
+    <div class="card-title">LeetCode Top 100</div>
+    <div class="card-desc">14 种解法模式 · 110 道高频题 · 哈希 / 双指针 / 滑动窗口 / 二分 / 栈 / 树 / 回溯 / DP / 贪心 / 堆 / BFS</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 110 题</span>
+      <span class="card-tag tag-done">14 种模式</span>
+      <span class="card-tag tag-done">14 张配图</span>
+    </div>
+  </div>
+</a>
+
+  <!-- Kafka -->
+
+  <a href="/kafka.html" class="card" data-category="middleware">
+  <div class="card-body">
+    <div class="card-icon">📨</div>
+    <div class="card-title">Kafka</div>
+    <div class="card-desc">分布式日志 · Partition · ISR · 零拷贝 · Exactly-Once · Consumer Group · Rebalance</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">4 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">6 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- Go 并发 -->
+  <a href="/concurrency.html" class="card" data-category="sys-design">
+  <div class="card-body">
+    <div class="card-icon">🔄</div>
+    <div class="card-title">高并发系统设计</div>
+    <div class="card-desc">GMP 调度 · goroutine · channel · Mutex · atomic · Worker Pool · 分布式锁 · Go 并发</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">3 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">6 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- 一致性协议 -->
+  <a href="/consensus.html" class="card" data-category="sys-design">
+  <div class="card-body">
+    <div class="card-icon">🗳️</div>
+    <div class="card-title">分布式一致性协议</div>
+    <div class="card-desc">Paxos · Raft · ZAB · Gossip · CRDT · FLP 定理 · etcd/TiKV 实战</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">3 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">6 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- DDIA -->
+  <a href="/ddia.html" class="card" data-category="sys-design">
+  <div class="card-body">
+    <div class="card-icon">📖</div>
+    <div class="card-title">DDIA · 数据密集型应用</div>
+    <div class="card-desc">全书三部分 · 存储引擎 · 复制分区 · 事务隔离 · 共识 · 批流处理 · 12 章全覆盖</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">4 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">7 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- 系统设计 -->
+  <a href="/system-design.html" class="card" data-category="sys-design">
+  <div class="card-body">
+    <div class="card-icon">🏛️</div>
+    <div class="card-title">系统设计方法论</div>
+    <div class="card-desc">四步框架 · 短链接 · 限流器 · 聊天系统 · 信息流 · 分布式 KV · 推拉结合</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">2 张配图</span>
+      <span class="card-tag tag-done">💬 苏格拉底提问</span>
+      <span class="card-tag tag-done">5 大案例</span>
+    </div>
+  </div>
+</a>
+
+  <!-- 权衡与取舍 -->
+  <a href="/tradeoffs.html" class="card" data-category="sys-design">
+  <div class="card-body">
+    <div class="card-icon">⚖️</div>
+    <div class="card-title">软件开发中的权衡与取舍</div>
+    <div class="card-desc">CAP 定理 · 一致性与性能 · 延迟与吞吐 · 单体与微服务 · YAGNI · 过早优化</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">5 张配图</span>
+      <span class="card-tag tag-done">🎯 5 道真题</span>
+    </div>
+  </div>
+</a>
+
+  <!-- 操作系统：内存管理 -->
+  <a href="/os-memory.html" class="card" data-category="lang-cs">
+  <div class="card-body">
+    <div class="card-icon">🧠</div>
+    <div class="card-title">操作系统 · 内存管理</div>
+    <div class="card-desc">虚拟内存 · 分页/分段 · MMU+TLB · 多级页表 · 页面置换(LRU/FIFO/Clock) · malloc · 伙伴系统 · slab · Go TCMalloc</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">5 张配图</span>
+    </div>
+  </div>
+</a>
+
+  <!-- 操作系统：IO模型与文件系统 -->
+  <a href="/os-io-filesystem.html" class="card" data-category="lang-cs">
+  <div class="card-body">
+    <div class="card-icon">💾</div>
+    <div class="card-title">操作系统 · IO模型与文件系统</div>
+    <div class="card-desc">5 种 IO 模型 · select/poll/epoll · LT/ET · 零拷贝 · VFS 架构 · inode · ext4 · IO 调度 · RAID</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">5 张配图</span>
+    </div>
+  </div>
+</a>
+
+<!-- 计算机系统概述 -->
+<a href="/computer-arch-overview.html" class="card" data-category="computer-arch">
+  <div class="card-body">
+    <div class="card-icon">🏛️</div>
+    <div class="card-title">计算机系统概述</div>
+    <div class="card-desc">冯·诺依曼结构 · 计算机层次 · CPI/MIPS/FLOPS · Amdahl定律 · 多核/NUMA</div>
+    <div class="card-meta">
+    <span class="card-tag tag-done">✅ 已完成</span>
+    <span class="card-tag tag-done">4 张配图</span>
+  </div>
+  </div>
+</a>
+
+<!-- 操作系统：进程线程协程 -->
+<a href="/os-process-thread.html" class="card" data-category="lang-cs">
+  <div class="card-body">
+    <div class="card-icon">⚙️</div>
+    <div class="card-title">操作系统 · 进程/线程/协程</div>
+    <div class="card-desc">PCB 结构 · 五状态模型 · 上下文切换 · 用户态/内核态 · 线程模型(1:1/N:1/M:N) · CFS 调度 · Goroutine vs Thread</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">6 张配图</span>
+    </div>
+  </div>
+</a>
+
+<!-- 数据的表示与运算 -->
+<a href="/computer-arch-data.html" class="card" data-category="computer-arch">
+  <div class="card-body">
+    <div class="card-icon">🔢</div>
+    <div class="card-title">数据的表示与运算</div>
+    <div class="card-desc">进制转换 · 原码反码补码 · IEEE 754浮点 · 定点运算 · ALU结构</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">5 张配图</span>
+    </div>
+  </div>
+</a>
+
+<!-- 存储系统 · Cache -->
+<a href="/computer-arch-cache.html" class="card" data-category="computer-arch">
+  <div class="card-body">
+    <div class="card-icon">🗼</div>
+    <div class="card-title">存储系统 · Cache</div>
+    <div class="card-desc">存储器层次 · 局部性原理 · 映射方式 · 替换算法 · 写策略 · MESI一致性</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">6 张配图</span>
+    </div>
+  </div>
+</a>
+
+<!-- 指令系统 -->
+<a href="/computer-arch-instruction.html" class="card" data-category="computer-arch">
+  <div class="card-body">
+    <div class="card-icon">📝</div>
+    <div class="card-title">指令系统</div>
+    <div class="card-desc">指令格式 · 寻址方式 · CISC vs RISC · 指令流水线 · x86/ARM/RISC-V</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">5 张配图</span>
+    </div>
+  </div>
+</a>
+
+<!-- CPU数据通路与流水线 -->
+<a href="/computer-arch-cpu.html" class="card" data-category="computer-arch">
+  <div class="card-body">
+    <div class="card-icon">⚡</div>
+    <div class="card-title">CPU · 数据通路与流水线</div>
+    <div class="card-desc">五阶段数据通路 · 单周期vs多周期 · 流水线冒险 · 转发 · 分支预测 · 乱序执行</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">7 张配图</span>
+    </div>
+  </div>
+</a>
+
+<!-- 总线与I/O系统 -->
+<a href="/computer-arch-bus-io.html" class="card" data-category="computer-arch">
+  <div class="card-body">
+    <div class="card-icon">🔌</div>
+    <div class="card-title">总线与I/O系统</div>
+    <div class="card-desc">总线结构 · 总线仲裁 · 中断系统 · DMA · I/O接口与编址</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">5 张配图</span>
+    </div>
+  </div>
+</a>
+
+<!-- 核心追问题 -->
+<a href="/computer-arch-qa.html" class="card" data-category="computer-arch">
+  <div class="card-body">
+    <div class="card-icon">🎯</div>
+    <div class="card-title">计算机组成 · 高频真题</div>
+    <div class="card-desc">8道综合真题 · 计算题 · 速查表 · 7大知识点对比（Cache/流水线/寻址/DMA…）</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+    </div>
+  </div>
+</a>
+
+  <!-- Kubernetes -->
+  <a href="/k8s.html" class="card" data-category="senior">
+    <div class="card-body">
+    <div class="card-icon">☸️</div>
+    <div class="card-title">Kubernetes 实战</div>
+    <div class="card-desc">Pod/Deploy/Service · 调度策略 · 存储PV/PVC · ConfigMap/Secret · Helm · 从零到一</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">7 张配图</span>
+    </div>
+    </div>
+  </a>
+
+  <!-- 微服务架构 -->
+  <a href="/microservice.html" class="card" data-category="senior">
+    <div class="card-body">
+    <div class="card-icon">🧩</div>
+    <div class="card-title">微服务架构实战</div>
+    <div class="card-desc">服务拆分 · API网关 · gRPC · 服务发现 · Istio · 分布式事务Saga · 痛点与对策</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">7 张配图</span>
+    </div>
+    </div>
+  </a>
+
+  <!-- 可观测性 -->
+  <a href="/observability.html" class="card" data-category="senior">
+    <div class="card-body">
+    <div class="card-icon">📊</div>
+    <div class="card-title">可观测性实战</div>
+    <div class="card-desc">Metrics/Logging/Tracing · Prometheus+Grafana · ELK/Loki · Jaeger · OpenTelemetry · SLO/SLI</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+    </div>
+    </div>
+  </a>
+
+  <!-- CI/CD -->
+  <a href="/cicd.html" class="card" data-category="senior">
+    <div class="card-body">
+    <div class="card-icon">🏭</div>
+    <div class="card-title">CI/CD 与 GitOps</div>
+    <div class="card-desc">CI管道 · 蓝绿/金丝雀部署 · GitHub Actions · Jenkins Pipeline · ArgoCD · 发布策略对比</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">6 张配图</span>
+    </div>
+    </div>
+  </a>
+
+  <!-- 分布式事务 -->
+  <a href="/distributed-tx.html" class="card" data-category="senior">
+    <div class="card-body">
+    <div class="card-icon">🔗</div>
+    <div class="card-title">分布式事务实战</div>
+    <div class="card-desc">2PC/XA · TCC · Saga · 事务消息 · Seata · CAP与柔性事务 · 跨行转账场景</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">7 张配图</span>
+    </div>
+    </div>
+  </a>
+
+  <!-- 数据库分片 -->
+  <a href="/db-sharding.html" class="card" data-category="senior">
+    <div class="card-body">
+    <div class="card-icon">📚</div>
+    <div class="card-title">数据库分片实战</div>
+    <div class="card-desc">垂直/水平拆分 · Range/Hash/一致性Hash · ShardingSphere · TiDB · 全局ID(Snowflake/Leaf)</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">7 张配图</span>
+    </div>
+    </div>
+  </a>
+
+  <!-- Kafka进阶 -->
+  <a href="/kafka-deep.html" class="card" data-category="senior">
+    <div class="card-body">
+    <div class="card-icon">📨</div>
+    <div class="card-title">Kafka 进阶实战</div>
+    <div class="card-desc">幂等/事务 · 重平衡 · Kafka Streams · KRaft · 分区策略 · 高水位 · 压测调优</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">8 张配图</span>
+    </div>
+    </div>
+  </a>
+
+  <!-- 缓存架构 -->
+  <a href="/cache-arch.html" class="card" data-category="senior">
+    <div class="card-body">
+    <div class="card-icon">🗼</div>
+    <div class="card-title">缓存架构设计</div>
+    <div class="card-desc">多级缓存 · Cache-Aside/Read-Through · 缓存一致性 · 穿透/击穿/雪崩 · 最佳实践</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">7 张配图</span>
+    </div>
+    </div>
+  </a>
+
+  <!-- NoSQL -->
+  <a href="/nosql.html" class="card" data-category="senior">
+    <div class="card-body">
+    <div class="card-icon">🗄️</div>
+    <div class="card-title">NoSQL 数据库实战</div>
+    <div class="card-desc">MongoDB · ElasticSearch · ClickHouse · 倒排索引 · 列式存储 · 选型对比决策</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">7 张配图</span>
+    </div>
+    </div>
+  </a>
+  <!-- 安全攻防 -->
+  <a href="/security.html" class="card" data-category="senior">
+    <div class="card-body">
+    <div class="card-icon">🔐</div>
+    <div class="card-title">安全攻防实战</div>
+    <div class="card-desc">OAuth2/OIDC · JWT · TLS 1.3 · CSRF/XSS/SQL注入 · 认证授权 · 最佳实践</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">6 张配图</span>
+    </div>
+    </div>
+  </a>
+
+  <!-- 性能调优 -->
+  <a href="/performance-tuning.html" class="card" data-category="senior">
+    <div class="card-body">
+    <div class="card-icon">🔥</div>
+    <div class="card-title">性能调优实战</div>
+    <div class="card-desc">pprof火焰图 · CPU/内存/IO调优 · 逃逸分析 · Go GC调优 · goroutine泄漏排查</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">7 张配图</span>
+    </div>
+    </div>
+  </a>
+
+  <!-- 系统设计案例 -->
+  <a href="/system-design-cases.html" class="card" data-category="senior">
+    <div class="card-body">
+    <div class="card-icon">🏗️</div>
+    <div class="card-title">系统设计实战案例</div>
+    <div class="card-desc">IM即时通讯 · 支付系统 · 短链接 · 秒杀 · 信息流 · 5大经典设计实战</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">6 张配图</span>
+    </div>
+    </div>
+  </a>
+  <!-- Go工程实践 -->
+  <a href="/go-engineering.html" class="card" data-category="senior">
+    <div class="card-body">
+    <div class="card-icon">🔧</div>
+    <div class="card-title">Go 工程实践</div>
+    <div class="card-desc">项目结构 · Wire依赖注入 · 错误处理 · 测试 · 日志/OTel · 配置管理</div>
+    <div class="card-meta">
+      <span class="card-tag tag-done">✅ 已完成</span>
+      <span class="card-tag tag-done">7 张配图</span>
+    </div>
+    </div>
+  </a>
+
+
+</div>
+
+<p class="footer"> —— 能简单讲清楚，才是真理解。<br>
+  每个模块配备生活类比 + SVG 架构图 + 实战真题
+</p>
+
+<script src="/mobile.js"></script>
+<script>
+// Search + Category filter
+(function() {
+  const input = document.getElementById('search');
+  const select = document.getElementById('cat-select');
+  const cards = document.querySelectorAll('.card');
+
+  function filter() {
+    const q = (input.value || '').toLowerCase();
+    const cat = select.value;
+    cards.forEach(function(c) {
+      const text = c.textContent.toLowerCase();
+      const cardCat = c.getAttribute('data-category') || '';
+      const matchSearch = !q || text.indexOf(q) !== -1;
+      const matchCat = cat === 'all' || cardCat === cat;
+      c.style.display = (matchSearch && matchCat) ? '' : 'none';
+    });
+  }
+
+  input.addEventListener('input', filter);
+  select.addEventListener('change', filter);
+
+  // Also filter on page load (for Ebbinghaus-reordered cards)
+  setTimeout(filter, 100);
+})();
+</script>
+
+<script>
+// ── Ebbinghaus Review Dashboard ──
+(function(){
+  var STORAGE_KEY = 'ebbinghaus_reviews';
+
+  function getAllStatus() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; }
+  }
+
+  var statuses = getAllStatus();
+  var cardGrid = document.getElementById('card-grid');
+  var reviewSections = document.getElementById('review-sections');
+
+  function getName(id) {
+    var names = {};
+
+    document.querySelectorAll('.card').forEach(function(c){
+      var href = c.getAttribute('href');
+      if (href) {
+        var key = href.replace('.html','').replace('/','');
+        names[key] = c.querySelector('.card-title') ? c.querySelector('.card-title').textContent.trim() : key;
+      }
+    });
+    return names[id] || id;
+  }
+
+  function refreshCards() {
+    statuses = getAllStatus();
+
+    // Sort cards: due first, then in-progress, then new
+    var container = cardGrid;
+    var items = Array.prototype.slice.call(container.querySelectorAll('.card'));
+    if (!items.length) return;
+
+    items.sort(function(a, b) {
+      var idA = (a.getAttribute('href') || '').replace('.html','').replace('/','');
+      var idB = (b.getAttribute('href') || '').replace('.html','').replace('/','');
+      var sA = statuses[idA] || {};
+      var sB = statuses[idB] || {};
+      var pA = sA.needsReview ? 0 : sA.reviewCount > 0 ? 1 : 2;
+      var pB = sB.needsReview ? 0 : sB.reviewCount > 0 ? 1 : 2;
+      return pA - pB;
+    });
+
+    items.forEach(function(c) { container.appendChild(c); });
+
+    // Update visual status
+    items.forEach(function(c) {
+      var id = (c.getAttribute('href') || '').replace('.html','').replace('/','');
+      var s = statuses[id] || {};
+      var bar = c.querySelector('.card-review-bar');
+      if (!bar) return;
+
+      var fill = bar.querySelector('.card-review-fill');
+      var tag = c.querySelector('.rtag-due, .rtag-done, .rtag-progress, .rtag-new');
+
+      if (!s || !s.reviewCount || s.reviewCount === 0) {
+        fill.style.width = '0%'; fill.className = 'card-review-fill';
+        if (tag) { tag.textContent = '📖 未开始'; tag.className = 'card-review-tag rtag-new'; }
+      } else if (s.reviewCount >= 7) {
+        fill.style.width = '100%'; fill.className = 'card-review-fill done';
+        if (tag) { tag.textContent = '✅ 已掌握'; tag.className = 'card-review-tag rtag-done'; }
+      } else if (s.needsReview) {
+        fill.style.width = '100%'; fill.className = 'card-review-fill due';
+        if (tag) { tag.textContent = '⚠️ 待复习'; tag.className = 'card-review-tag rtag-due'; }
+      } else {
+        var pct = (s.reviewCount / 7 * 100);
+        fill.style.width = pct + '%'; fill.className = 'card-review-fill progress';
+        if (tag) { tag.textContent = '📌 ' + s.reviewCount + '/7'; tag.className = 'card-review-tag rtag-progress'; }
+      }
+    });
+  }
+
+  function refreshDashboard() {
+    if (!reviewSections) return;
+    statuses = getAllStatus();
+    var now = Date.now();
+    var due = []; var soon = []; var done = []; var newer = [];
+
+    Object.keys(statuses).forEach(function(id) {
+      var s = statuses[id];
+      if (s.reviewCount >= 7) { done.push(id); return; }
+      if (s.needsReview) { due.push(id); return; }
+      if (s.nextReview) {
+        var diff = s.nextReview - now;
+        if (diff < 86400000) { soon.push(id); return; }
+      }
+    });
+
+    document.querySelectorAll('.card').forEach(function(c) {
+      var id = (c.getAttribute('href') || '').replace('.html','').replace('/','');
+      if (!statuses[id] || !statuses[id].reviewCount) newer.push(id);
+    });
+
+    var html = '';
+    function section(title, items, cls) {
+      if (!items.length) return '';
+      return '<div class="review-section"><div class="review-section-title">'+title+'</div><div class="review-due-list">'
+        + items.map(function(id) {
+            var s = statuses[id] || {};
+            var label = s.stageLabel || '';
+            return '<a href="/'+id+'.html" class="review-due-item '+cls+'">'
+              + getName(id) + (label ? ' · '+label : '') + '</a>';
+          }).join('')
+        + '</div></div>';
+    }
+
+    html += section('⚠️ 紧急复习', due, 'urgent');
+    html += section('📌 24小时内', soon, 'soon');
+    html += section('✅ 已掌握', done, 'done');
+    html += section('📖 未开始', newer, 'new');
+
+    if (!html) {
+      html = '<div class="review-empty">📖 开始学习吧！打开文章阅读后点击"标记已复习"，系统会自动安排7轮间隔复习。</div>';
+    }
+
+    reviewSections.innerHTML = html;
+  }
+
+  refreshCards();
+
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) { refreshCards(); }
+  });
+  window.addEventListener('storage', function(e) {
+    if (e.key === STORAGE_KEY) { refreshCards(); }
+  });
+})();
+</script>
+</body>
+</html>

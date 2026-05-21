@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>计算机组成原理 · 存储系统·Cache · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .verbal-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .verbal-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 480px; }
+  }
+  @media (max-width: 480px) {
+    .section h2 { font-size: 18px; }
+    body { font-size: 14px; }
+    pre { font-size: 11px; padding: 10px 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">Cache基础</div>
+  <a class="nav-item" href="#hierarchy">🗼 存储器层次结构</a>
+  <a class="nav-item" href="#principle">🎯 局部性原理</a>
+  <a class="nav-item" href="#mapping">🔄 映射方式</a>
+  <a class="nav-item" href="#replace">♻️ 替换算法</a>
+  <a class="nav-item" href="#write">📝 写策略</a>
+  <a class="nav-item" href="#coherence">🤝 MESI一致性</a>
+  <div class="nav-section">练习</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ================================================================== -->
+<!-- 总览 -->
+<!-- ================================================================== -->
+<section id="overview" class="section">
+  <h2>🗃️ 存储系统·Cache</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>Cache 是计算机体系结构中<strong>最伟大的性能作弊器</strong>——它在 CPU 和主存之间加一层极快但极小的 SRAM，利用程序的<strong>局部性</strong>，让 CPU 大部分时间都在纳秒级访问数据，而不必等那几百纳秒的内存。没有 Cache，现代 CPU 的 5GHz 主频毫无意义，因为内存根本喂不饱它。</p>
+    <p><span class="analogy">🍳 类比：咖啡师的台面</span> —— 咖啡师（CPU）做咖啡需要咖啡豆、牛奶、杯子。如果每做一杯都要去仓库拿，一天做不了几杯。<strong>台面（L1 Cache）</strong> 放最常用的工具和原料，几秒钟取到；<strong>吧台柜（L2 Cache）</strong> 放备用的；<strong>仓库（主存）</strong> 放所有原料，但拿一趟要几分钟。聪明的咖啡师会把接下来要用的原料提前放到台面上——这就是<strong>预取</strong>。</p>
+  </div>
+  <table>
+    <tr><th>层次</th><th>核心问题</th><th>一句话解答</th></tr>
+    <tr><td><span class="badge badge-green">① 层次结构</span></td><td>为什么 CPU 不能直接连内存？</td><td>速度差太大（~0.3ns vs ~100ns），Cache 做缓冲桥梁</td></tr>
+    <tr><td><span class="badge badge-cyan">② 局部性</span></td><td>Cache 为什么能工作？</td><td>时间局部性（刚用的很快再用）+ 空间局部性（附近的很快会用）</td></tr>
+    <tr><td><span class="badge badge-purple">③ 映射方式</span></td><td>内存数据怎么放到 Cache 里？</td><td>直接映射/全相联/组相联——三种放法，各有取舍</td></tr>
+    <tr><td><span class="badge badge-orange">④ 替换算法</span></td><td>Cache 满了踢谁出去？</td><td>LRU / Clock / 随机——踢最不常用的那个</td></tr>
+    <tr><td><span class="badge badge-red">⑤ 写策略</span></td><td>写数据时 Cache 和内存怎么同步？</td><td>写直达（同步写）vs 写回（先写 Cache，淘汰时再写回）</td></tr>
+    <tr><td><span class="badge badge-green">⑥ MESI</span></td><td>多核 Cache 之间怎么保持一致？</td><td>MESI 四种状态 + 总线嗅探，核之间协商谁拥有最新数据</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================== -->
+<!-- 存储器层次结构 -->
+<!-- ================================================================== -->
+<section id="hierarchy" class="section">
+  <h2>🗼 存储器层次结构</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏢 类比：图书馆的取书速度</span></p>
+    <p>想象你去图书馆找一本书：</p>
+    <ul>
+      <li><strong>口袋里的便签（寄存器）</strong>—— 零延迟，但只能放几张小纸条</li>
+      <li><strong>桌面上的书（L1 Cache）</strong>—— 伸手就拿到，~1ns，32KB</li>
+      <li><strong>旁边的书架（L2 Cache）</strong>—— 转身取，~5ns，256KB</li>
+      <li><strong>同一楼层的书柜（L3 Cache）</strong>—— 走几步，~15ns，8MB+</li>
+      <li><strong>楼下书库（主存）</strong>—— 坐电梯去取，~100ns，16GB+</li>
+      <li><strong>远程大书库（磁盘/SSD）</strong>—— 快递寄送，~10⁶ns（毫秒级）</li>
+    </ul>
+    <p>每一层都是上一层的<strong>Cache</strong>：L1 Cache 是 L2 的 Cache，L2 是 L3 的 Cache，L3 是主存的 Cache，主存是磁盘的 Cache。每往下走一层，时间增加 5-10 倍，容量增加 50-100 倍。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
+        </marker>
+      </defs>
+
+      <!-- Title -->
+      <text x="400" y="30" fill="#22d3ee" font-size="16" font-weight="bold" text-anchor="middle">存储器层次结构金字塔</text>
+      <text x="400" y="48" fill="#8b949e" font-size="11" text-anchor="middle">越往上越快、越贵、越小 | 越往下越慢、越便宜、越大</text>
+
+      <!-- Layer 1: Registers -->
+      <rect x="320" y="65" width="160" height="36" rx="6" fill="rgba(248,81,73,0.15)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="400" y="83" fill="#f87171" font-size="13" font-weight="bold" text-anchor="middle">寄存器 Registers</text>
+      <text x="400" y="96" fill="#f87171" font-size="9" text-anchor="middle">~0.3ns · ~1KB · CPU 内部</text>
+
+      <!-- Down arrow -->
+      <line x1="400" y1="101" x2="400" y2="115" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+      <!-- Layer 2: L1 Cache -->
+      <rect x="270" y="118" width="260" height="36" rx="6" fill="rgba(251,191,36,0.15)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="400" y="136" fill="#fbbf24" font-size="13" font-weight="bold" text-anchor="middle">L1 Cache（指令/数据分离）</text>
+      <text x="400" y="149" fill="#fbbf24" font-size="9" text-anchor="middle">~1ns · 32KB I + 32KB D · 2-4 cycle</text>
+
+      <!-- Down arrow -->
+      <line x1="400" y1="154" x2="400" y2="168" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+      <!-- Layer 3: L2 Cache -->
+      <rect x="220" y="171" width="360" height="36" rx="6" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="400" y="189" fill="#a78bfa" font-size="13" font-weight="bold" text-anchor="middle">L2 Cache（统一）</text>
+      <text x="400" y="202" fill="#a78bfa" font-size="9" text-anchor="middle">~5ns · 256KB~512KB · 10-20 cycle</text>
+
+      <!-- Down arrow -->
+      <line x1="400" y1="207" x2="400" y2="221" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+      <!-- Layer 4: L3 Cache -->
+      <rect x="150" y="224" width="500" height="36" rx="6" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="400" y="242" fill="#22d3ee" font-size="13" font-weight="bold" text-anchor="middle">L3 Cache（多核共享）</text>
+      <text x="400" y="255" fill="#22d3ee" font-size="9" text-anchor="middle">~15ns · 8MB~32MB · 30-50 cycle · 多核共享</text>
+
+      <!-- Down arrow -->
+      <line x1="400" y1="260" x2="400" y2="274" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+      <!-- Layer 5: Main Memory -->
+      <rect x="80" y="277" width="640" height="36" rx="6" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="400" y="295" fill="#3fb950" font-size="13" font-weight="bold" text-anchor="middle">主存 Main Memory（DRAM）</text>
+      <text x="400" y="308" fill="#3fb950" font-size="9" text-anchor="middle">~100ns · 8GB~512GB · 200-400 cycle · DDR4/DDR5</text>
+
+      <!-- Down arrow -->
+      <line x1="400" y1="313" x2="400" y2="327" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+      <!-- Layer 6: Disk / SSD -->
+      <rect x="40" y="330" width="720" height="36" rx="6" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="400" y="348" fill="#f87171" font-size="13" font-weight="bold" text-anchor="middle">磁盘 / SSD（持久存储）</text>
+      <text x="400" y="361" fill="#f87171" font-size="9" text-anchor="middle">~10⁶ns（SSD）~10⁷ns（HDD）· TB级 · 非易失</text>
+
+      <!-- Speed comparison bar at bottom -->
+      <rect x="40" y="388" width="720" height="22" rx="4" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="60" y="403" fill="#8b949e" font-size="10">CPU 频率: 5GHz → 0.2ns/cycle</text>
+      <text x="340" y="403" fill="#8b949e" font-size="10">速度差距: Cache→内存 差 100×</text>
+      <text x="590" y="403" fill="#8b949e" font-size="10">内存→磁盘 差 10⁴×</text>
+    </svg>
+    <div class="diagram-caption">存储器层次结构：每一层都是下一层的 Cache，速度差达 10⁵ 倍</div>
+  </div>
+
+  <div class="info-card">
+    <h4>📊 关键数字：为什么 Cache 不可或缺？</h4>
+    <p>假设 CPU 每周期执行 1 条指令（实际超标量更高）：</p>
+    <ul>
+      <li>如果只连主存（100ns），CPU 每取一个数据要等 <strong>~500 个周期</strong>——这就是 <strong>Memory Wall（存储墙）</strong></li>
+      <li>L1 Cache 命中时只要 <strong>2-4 个周期</strong>，现代 CPU 的 <strong>Cache 命中率 > 95%</strong></li>
+      <li>没有 Cache，5GHz CPU 实际性能会降到跟 10MHz 差不多——<strong>99.8% 的时间都在等内存</strong></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 局部性原理 -->
+<!-- ================================================================== -->
+<section id="principle" class="section">
+  <h2>🎯 局部性原理——Cache 能工作的根本原因</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📺 类比：你的追剧习惯</span></p>
+    <p><strong>时间局部性：</strong>你昨晚看了《庆余年》第 10 集，今晚大概率会看第 11 集而不是突然去看《甄嬛传》。刚访问过的数据<strong>很快会被再次访问</strong>。</p>
+    <p><strong>空间局部性：</strong>你从书架上拿了一本书，顺手也拿了旁边的书——因为它们挨着，你省得多跑一趟。访问了一个地址，<strong>附近的地址很快也会被访问</strong>。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <defs>
+        <marker id="arrow2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
+        </marker>
+      </defs>
+
+      <text x="400" y="30" fill="#22d3ee" font-size="16" font-weight="bold" text-anchor="middle">程序的局部性原理</text>
+
+      <!-- Time Locality Box -->
+      <rect x="30" y="50" width="360" height="320" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="210" y="75" fill="#fbbf24" font-size="14" font-weight="bold" text-anchor="middle">⏰ 时间局部性</text>
+      <text x="210" y="92" fill="#8b949e" font-size="10" text-anchor="middle">刚用的数据 → 很快再用</text>
+
+      <!-- Loop example -->
+      <rect x="50" y="105" width="320" height="38" rx="4" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="0.8"/>
+      <text x="210" y="118" fill="#fbbf24" font-size="10" text-anchor="middle">for i := 0; i &lt; 1000000; i++ {</text>
+      <text x="210" y="133" fill="#e6edf3" font-size="10" text-anchor="middle">  sum += arr[i]  ← 反复访问 sum 变量</text>
+      <text x="210" y="143" fill="#fbbf24" font-size="9" text-anchor="middle">}</text>
+
+      <!-- Arrow showing repeated access -->
+      <path d="M390,124 C410,124 410,164 390,164" fill="none" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrow2)" stroke-dasharray="4,3"/>
+      <text x="405" y="148" fill="#fbbf24" font-size="8" text-anchor="middle">反复</text>
+
+      <!-- Cache line reuse illustration -->
+      <rect x="50" y="190" width="320" height="50" rx="4" fill="rgba(251,191,36,0.05)" stroke="#475569" stroke-width="0.8"/>
+      <text x="210" y="207" fill="#8b949e" font-size="10" text-anchor="middle">访问 arr[0], arr[1], arr[2] ...</text>
+      <text x="210" y="222" fill="#a78bfa" font-size="10" text-anchor="middle">Cache Line (64B) 加载 → 多次命中</text>
+
+      <!-- Hit time label -->
+      <rect x="50" y="260" width="320" height="30" rx="4" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="0.8"/>
+      <text x="210" y="275" fill="#fbbf24" font-size="10" text-anchor="middle">L1 Hit: ~1ns | L1 Miss → L2: ~5ns</text>
+
+      <!-- Miss impact -->
+      <rect x="50" y="305" width="320" height="50" rx="4" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="0.8"/>
+      <text x="210" y="322" fill="#f87171" font-size="10" text-anchor="middle">Cache Miss → 等主存：~100ns = 500 cycles</text>
+      <text x="210" y="340" fill="#f87171" font-size="10" text-anchor="middle">这就是为什么 1% Miss 率可能拖慢 50%</text>
+
+      <!-- Spatial Locality Box -->
+      <rect x="410" y="50" width="360" height="320" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="590" y="75" fill="#22d3ee" font-size="14" font-weight="bold" text-anchor="middle">📍 空间局部性</text>
+      <text x="590" y="92" fill="#8b949e" font-size="10" text-anchor="middle">附近的地址 → 很快会被访问</text>
+
+      <!-- Array traversal -->
+      <rect x="430" y="105" width="320" height="38" rx="4" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="0.8"/>
+      <text x="590" y="118" fill="#22d3ee" font-size="10" text-anchor="middle">for i := 0; i &lt; N; i++ {</text>
+      <text x="590" y="133" fill="#e6edf3" font-size="10" text-anchor="middle">  arr[i]++  ← 顺序访问连续地址</text>
+      <text x="590" y="143" fill="#22d3ee" font-size="9" text-anchor="middle">}</text>
+
+      <!-- Memory layout -->
+      <rect x="430" y="165" width="320" height="65" rx="4" fill="rgba(57,197,207,0.05)" stroke="#475569" stroke-width="0.8"/>
+      <text x="590" y="182" fill="#8b949e" font-size="10" text-anchor="middle">内存布局：</text>
+      <!-- Memory cells -->
+      <rect x="445" y="191" width="28" height="22" rx="3" fill="rgba(57,197,207,0.2)" stroke="#22d3ee" stroke-width="1"/><text x="459" y="206" fill="#22d3ee" font-size="8" text-anchor="middle">a[0]</text>
+      <rect x="477" y="191" width="28" height="22" rx="3" fill="rgba(57,197,207,0.2)" stroke="#22d3ee" stroke-width="1"/><text x="491" y="206" fill="#22d3ee" font-size="8" text-anchor="middle">a[1]</text>
+      <rect x="509" y="191" width="28" height="22" rx="3" fill="rgba(57,197,207,0.2)" stroke="#22d3ee" stroke-width="1"/><text x="523" y="206" fill="#22d3ee" font-size="8" text-anchor="middle">a[2]</text>
+      <rect x="541" y="191" width="28" height="22" rx="3" fill="rgba(57,197,207,0.2)" stroke="#22d3ee" stroke-width="1"/><text x="555" y="206" fill="#22d3ee" font-size="8" text-anchor="middle">a[3]</text>
+      <rect x="573" y="191" width="28" height="22" rx="3" fill="rgba(57,197,207,0.2)" stroke="#22d3ee" stroke-width="1"/><text x="587" y="206" fill="#22d3ee" font-size="8" text-anchor="middle">a[4]</text>
+      <text x="615" y="206" fill="#8b949e" font-size="9">···</text>
+
+      <!-- Cache line box -->
+      <rect x="430" y="250" width="320" height="50" rx="4" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="0.8"/>
+      <text x="590" y="268" fill="#22d3ee" font-size="10" text-anchor="middle">Cache Line = 64B = 16 个 int</text>
+      <text x="590" y="284" fill="#8b949e" font-size="10" text-anchor="middle">访问 arr[0] 时，arr[0..15] 全部加载到 Cache</text>
+
+      <!-- Bad spatial locality -->
+      <rect x="430" y="315" width="320" height="40" rx="4" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="0.8"/>
+      <text x="590" y="332" fill="#f87171" font-size="10" text-anchor="middle">❌ 跳跃访问（链表/指针追逐）破坏空间局部性</text>
+      <text x="590" y="346" fill="#f87171" font-size="9" text-anchor="middle">每次访问都 Miss → 性能灾难</text>
+    </svg>
+    <div class="diagram-caption">时间局部性（反复用同一变量）vs 空间局部性（顺序访问连续数据）</div>
+  </div>
+
+  <div class="info-card">
+    <h4>💡 Cache Line: Cache 的最小传输单位</h4>
+    <p>Cache 不是按字节搬运的——一次加载 <strong>64 字节（一个 Cache Line）</strong>。这意味着：</p>
+    <ul>
+      <li>你访问 arr[0]，CPU 会把 arr[0]~arr[15] 全部搬进 Cache</li>
+      <li>遍历数组时，每 16 个整数只有<strong>第一次会 Miss</strong>，后面 15 次全 Hit</li>
+      <li><strong>False Sharing（伪共享）</strong>：多核修改同一 Cache Line 中的不同变量 → 互相踢 → 性能暴跌</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 映射方式 -->
+<!-- ================================================================== -->
+<section id="mapping" class="section">
+  <h2>🔄 三种映射方式——数据怎么放进 Cache？</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📚 类比：图书馆的存包柜</span></p>
+    <p>图书馆有 1000 个存包柜（Cache 行），但每天有 5000 个读者（内存块）要存包。怎么决定每个读者的包放哪个柜子？</p>
+    <ul>
+      <li><strong>直接映射：</strong>根据读者编号取模——1号读者→1号柜，1001号读者→1号柜（冲突）。简单但容易打架。</li>
+      <li><strong>全相联：</strong>不限制柜子——任何读者可以存任何空闲柜。最灵活但找柜子需要翻遍所有柜子（速度慢）。</li>
+      <li><strong>组相联：</strong>折中——把柜子分成 100 组，每组 10 个。根据读者编号决定去哪个组，然后在组内随便选一个。既快又灵活。</li>
+    </ul>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 460" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <defs>
+        <marker id="arrow3" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
+        </marker>
+      </defs>
+
+      <text x="410" y="30" fill="#22d3ee" font-size="16" font-weight="bold" text-anchor="middle">三种 Cache 映射方式对比</text>
+
+      <!-- ===== Direct Mapped ===== -->
+      <rect x="15" y="48" width="255" height="395" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="142" y="70" fill="#fbbf24" font-size="13" font-weight="bold" text-anchor="middle">直接映射</text>
+      <text x="142" y="85" fill="#8b949e" font-size="9" text-anchor="middle">固定位置，无选择</text>
+
+      <!-- Memory addresses -->
+      <text x="25" y="108" fill="#8b949e" font-size="9">内存地址:</text>
+      <rect x="25" y="113" width="56" height="22" rx="3" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" stroke-width="0.8"/>
+      <text x="53" y="128" fill="#fbbf24" font-size="8" text-anchor="middle">0x000</text>
+      <rect x="83" y="113" width="56" height="22" rx="3" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" stroke-width="0.8"/>
+      <text x="111" y="128" fill="#fbbf24" font-size="8" text-anchor="middle">0x100</text>
+      <rect x="141" y="113" width="56" height="22" rx="3" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" stroke-width="0.8"/>
+      <text x="169" y="128" fill="#fbbf24" font-size="8" text-anchor="middle">0x200</text>
+      <text x="205" y="128" fill="#8b949e" font-size="8">...</text>
+
+      <!-- Mapping arrows -->
+      <path d="M53,135 L53,155 L70,155" fill="none" stroke="#fbbf24" stroke-width="1" marker-end="url(#arrow3)"/>
+      <path d="M111,135 L111,155 L70,155" fill="none" stroke="#fbbf24" stroke-width="0.8" marker-end="url(#arrow3)" stroke-dasharray="3,2"/>
+      <path d="M169,135 L169,155 L70,155" fill="none" stroke="#fbbf24" stroke-width="0.8" marker-end="url(#arrow3)" stroke-dasharray="3,2"/>
+
+      <!-- Cache lines -->
+      <rect x="40" y="160" width="205" height="24" rx="3" fill="rgba(251,191,36,0.08)" stroke="#475569" stroke-width="0.8"/>
+      <text x="60" y="177" fill="#fbbf24" font-size="9">行0</text><text x="120" y="177" fill="#8b949e" font-size="8">← 0x000 / 0x100 / 0x200 ... 竞争</text>
+
+      <rect x="40" y="188" width="205" height="24" rx="3" fill="rgba(251,191,36,0.08)" stroke="#475569" stroke-width="0.8"/>
+      <text x="60" y="205" fill="#fbbf24" font-size="9">行1</text><text x="120" y="205" fill="#8b949e" font-size="8">← 0x001 / 0x101 / 0x201 ...</text>
+
+      <rect x="40" y="216" width="205" height="24" rx="3" fill="rgba(251,191,36,0.08)" stroke="#475569" stroke-width="0.8"/>
+      <text x="60" y="233" fill="#fbbf24" font-size="9">行2</text><text x="120" y="233" fill="#8b949e" font-size="8">← ...</text>
+
+      <rect x="40" y="244" width="205" height="24" rx="3" fill="rgba(251,191,36,0.08)" stroke="#475569" stroke-width="0.8"/>
+      <text x="60" y="261" fill="#fbbf24" font-size="9">···</text>
+
+      <!-- Tag field formula -->
+      <rect x="25" y="285" width="235" height="50" rx="4" fill="rgba(251,191,36,0.05)" stroke="#475569" stroke-width="0.8"/>
+      <text x="142" y="302" fill="#f87171" font-size="9" text-anchor="middle">冲突率高 | 硬件简单 | 适合小 Cache</text>
+      <text x="142" y="316" fill="#8b949e" font-size="9" text-anchor="middle">地址格式: Tag | Index | Offset</text>
+      <text x="142" y="328" fill="#8b949e" font-size="8" text-anchor="middle">Index 决定行号 → 只能放那一行</text>
+
+      <!-- pros/cons -->
+      <rect x="25" y="350" width="235" height="80" rx="4" fill="rgba(63,185,80,0.05)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="142" y="367" fill="#3fb950" font-size="10" text-anchor="middle">✅ 优点</text>
+      <text x="35" y="382" fill="#8b949e" font-size="9">• 硬件极简：一次比较即可</text>
+      <text x="35" y="395" fill="#8b949e" font-size="9">• 速度快（并行比较 Tag）</text>
+      <text x="35" y="408" fill="#8b949e" font-size="9">• 功耗低</text>
+      <text x="142" y="422" fill="#f87171" font-size="10" text-anchor="middle">❌ 缺点</text>
+      <text x="35" y="437" fill="#8b949e" font-size="9">• 冲突率高 → 频繁替换</text>
+      <text x="35" y="450" fill="#8b949e" font-size="9">• 命中率较低</text>
+
+
+      <!-- ===== Fully Associative ===== -->
+      <rect x="282" y="48" width="255" height="395" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="409" y="70" fill="#a78bfa" font-size="13" font-weight="bold" text-anchor="middle">全相联</text>
+      <text x="409" y="85" fill="#8b949e" font-size="9" text-anchor="middle">任意位置，完全自由</text>
+
+      <!-- Memory addresses -->
+      <text x="292" y="108" fill="#8b949e" font-size="9">内存地址:</text>
+      <rect x="292" y="113" width="56" height="22" rx="3" fill="rgba(163,113,247,0.1)" stroke="#a78bfa" stroke-width="0.8"/>
+      <text x="320" y="128" fill="#a78bfa" font-size="8" text-anchor="middle">0xA00</text>
+      <rect x="352" y="113" width="56" height="22" rx="3" fill="rgba(163,113,247,0.1)" stroke="#a78bfa" stroke-width="0.8"/>
+      <text x="380" y="128" fill="#a78bfa" font-size="8" text-anchor="middle">0xB00</text>
+      <rect x="412" y="113" width="56" height="22" rx="3" fill="rgba(163,113,247,0.1)" stroke="#a78bfa" stroke-width="0.8"/>
+      <text x="440" y="128" fill="#a78bfa" font-size="8" text-anchor="middle">0xC00</text>
+
+      <!-- Any-to-any arrows -->
+      <path d="M320,135 L320,155 L350,175" fill="none" stroke="#a78bfa" stroke-width="1" marker-end="url(#arrow3)"/>
+      <path d="M380,135 L420,155 L380,175" fill="none" stroke="#a78bfa" stroke-width="1" marker-end="url(#arrow3)"/>
+      <path d="M440,135 L460,155 L440,175" fill="none" stroke="#a78bfa" stroke-width="1" marker-end="url(#arrow3)"/>
+
+      <!-- Cache entries -->
+      <rect x="300" y="160" width="220" height="22" rx="3" fill="rgba(163,113,247,0.08)" stroke="#475569" stroke-width="0.8"/>
+      <text x="315" y="176" fill="#a78bfa" font-size="9">Tag:0xA00</text><text x="395" y="176" fill="#8b949e" font-size="8">| Data</text>
+
+      <rect x="300" y="186" width="220" height="22" rx="3" fill="rgba(163,113,247,0.08)" stroke="#475569" stroke-width="0.8"/>
+      <text x="315" y="202" fill="#a78bfa" font-size="9">Tag:0xC00</text><text x="395" y="202" fill="#8b949e" font-size="8">| Data</text>
+
+      <rect x="300" y="212" width="220" height="22" rx="3" fill="rgba(163,113,247,0.08)" stroke="#475569" stroke-width="0.8"/>
+      <text x="315" y="228" fill="#a78bfa" font-size="9">Tag:0xB00</text><text x="395" y="228" fill="#8b949e" font-size="8">| Data</text>
+
+      <!-- Search cost -->
+      <rect x="282" y="285" width="235" height="50" rx="4" fill="rgba(163,113,247,0.05)" stroke="#475569" stroke-width="0.8"/>
+      <text x="399" y="302" fill="#f87171" font-size="9" text-anchor="middle">搜索慢 | 硬件复杂 | 适合很小 Cache</text>
+      <text x="399" y="316" fill="#8b949e" font-size="9" text-anchor="middle">地址格式: Tag | Offset (无Index)</text>
+      <text x="399" y="328" fill="#8b949e" font-size="8" text-anchor="middle">需要并行比较所有 Tag → 功耗高</text>
+
+      <rect x="282" y="350" width="235" height="80" rx="4" fill="rgba(63,185,80,0.05)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="399" y="367" fill="#3fb950" font-size="10" text-anchor="middle">✅ 优点</text>
+      <text x="292" y="382" fill="#8b949e" font-size="9">• 冲突率最低 → 命中率最高</text>
+      <text x="292" y="395" fill="#8b949e" font-size="9">• 空间利用率最好</text>
+      <text x="399" y="422" fill="#f87171" font-size="10" text-anchor="middle">❌ 缺点</text>
+      <text x="292" y="437" fill="#8b949e" font-size="9">• 需要 N 路比较器 → 慢 + 耗电</text>
+      <text x="292" y="450" fill="#8b949e" font-size="9">• N 大时不可行（TLB 用全相联）</text>
+
+      <!-- ===== Set Associative ===== -->
+      <rect x="549" y="48" width="255" height="395" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="676" y="70" fill="#22d3ee" font-size="13" font-weight="bold" text-anchor="middle">组相联（4路组相联）</text>
+      <text x="676" y="85" fill="#8b949e" font-size="9" text-anchor="middle">折中方案 | 实际 CPU 都采用</text>
+
+      <!-- Set index -->
+      <text x="559" y="108" fill="#8b949e" font-size="9">Set 0:</text>
+      <rect x="598" y="98" width="38" height="22" rx="3" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="0.8"/>
+      <text x="617" y="113" fill="#22d3ee" font-size="8" text-anchor="middle">路0</text>
+      <rect x="640" y="98" width="38" height="22" rx="3" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="0.8"/>
+      <text x="659" y="113" fill="#22d3ee" font-size="8" text-anchor="middle">路1</text>
+      <rect x="682" y="98" width="38" height="22" rx="3" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="0.8"/>
+      <text x="701" y="113" fill="#22d3ee" font-size="8" text-anchor="middle">路2</text>
+      <rect x="724" y="98" width="38" height="22" rx="3" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="0.8"/>
+      <text x="743" y="113" fill="#22d3ee" font-size="8" text-anchor="middle">路3</text>
+
+      <text x="559" y="138" fill="#8b949e" font-size="9">Set 1:</text>
+      <rect x="598" y="128" width="38" height="22" rx="3" fill="rgba(57,197,207,0.08)" stroke="#475569" stroke-width="0.8"/>
+      <rect x="640" y="128" width="38" height="22" rx="3" fill="rgba(57,197,207,0.08)" stroke="#475569" stroke-width="0.8"/>
+      <rect x="682" y="128" width="38" height="22" rx="3" fill="rgba(57,197,207,0.08)" stroke="#475569" stroke-width="0.8"/>
+      <rect x="724" y="128" width="38" height="22" rx="3" fill="rgba(57,197,207,0.08)" stroke="#475569" stroke-width="0.8"/>
+
+      <text x="559" y="168" fill="#8b949e" font-size="9">Set 2:</text>
+      <rect x="598" y="158" width="38" height="22" rx="3" fill="rgba(57,197,207,0.08)" stroke="#475569" stroke-width="0.8"/>
+      <rect x="640" y="158" width="38" height="22" rx="3" fill="rgba(57,197,207,0.08)" stroke="#475569" stroke-width="0.8"/>
+      <rect x="682" y="158" width="38" height="22" rx="3" fill="rgba(57,197,207,0.08)" stroke="#475569" stroke-width="0.8"/>
+      <rect x="724" y="158" width="38" height="22" rx="3" fill="rgba(57,197,207,0.08)" stroke="#475569" stroke-width="0.8"/>
+
+      <text x="559" y="198" fill="#8b949e" font-size="9">···</text>
+
+      <!-- Address format -->
+      <rect x="549" y="215" width="240" height="70" rx="4" fill="rgba(57,197,207,0.05)" stroke="#475569" stroke-width="0.8"/>
+      <text x="669" y="232" fill="#22d3ee" font-size="11" text-anchor="middle">地址格式：</text>
+      <rect x="559" y="239" width="60" height="22" rx="3" fill="rgba(248,81,73,0.15)" stroke="#f87171" stroke-width="0.8"/>
+      <text x="589" y="254" fill="#f87171" font-size="9" text-anchor="middle">Tag</text>
+      <rect x="623" y="239" width="60" height="22" rx="3" fill="rgba(251,191,36,0.15)" stroke="#fbbf24" stroke-width="0.8"/>
+      <text x="653" y="254" fill="#fbbf24" font-size="9" text-anchor="middle">Index</text>
+      <rect x="687" y="239" width="50" height="22" rx="3" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="712" y="254" fill="#3fb950" font-size="9" text-anchor="middle">Offset</text>
+      <text x="669" y="280" fill="#8b949e" font-size="9" text-anchor="middle">Index 决定去哪个 Set，Set 内 4 路比较 Tag</text>
+
+      <rect x="549" y="305" width="240" height="50" rx="4" fill="rgba(57,197,207,0.05)" stroke="#475569" stroke-width="0.8"/>
+      <text x="669" y="322" fill="#a78bfa" font-size="10" text-anchor="middle">计算 4 路组相联 Cache 容量</text>
+      <text x="669" y="338" fill="#8b949e" font-size="9" text-anchor="middle">每组 4 行 × 256 组 × 64B = 64KB</text>
+      <text x="669" y="350" fill="#8b949e" font-size="9" text-anchor="middle">路数越高 → 冲突越低 → 硬件越贵</text>
+
+      <rect x="549" y="365" width="240" height="65" rx="4" fill="rgba(63,185,80,0.05)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="669" y="382" fill="#3fb950" font-size="10" text-anchor="middle">✅ 优点</text>
+      <text x="559" y="398" fill="#8b949e" font-size="9">• 冲突率适中，命中率高</text>
+      <text x="559" y="412" fill="#8b949e" font-size="9">• 硬件复杂度可控（N 路比较器）</text>
+      <text x="559" y="426" fill="#8b949e" font-size="9">• 现代 CPU 标准选择：8~16 路组相联</text>
+    </svg>
+    <div class="diagram-caption">三种映射方式：直接映射（简单但冲突高）→ 组相联（折中，实际使用）→ 全相联（灵活但慢）</div>
+  </div>
+
+  <table>
+    <tr><th>特性</th><th>直接映射</th><th>全相联</th><th>N路组相联</th></tr>
+    <tr><td>放置位置</td><td>唯一固定</td><td>任意位置</td><td>特定组内任意</td></tr>
+    <tr><td>查找方式</td><td>Index 索引</td><td>遍历所有行</td><td>Index 索引组 + 遍历组内 N 路</td></tr>
+    <tr><td>冲突率</td><td>高</td><td>低</td><td>中（N↑→↓）</td></tr>
+    <tr><td>硬件复杂度</td><td>低</td><td>高</td><td>中</td></tr>
+    <tr><td>实际应用</td><td>早期 CPU / 专用场景</td><td>TLB（路数少）</td><td>L1/L2/L3 Cache（8-16路）</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================== -->
+<!-- 替换算法 -->
+<!-- ================================================================== -->
+<section id="replace" class="section">
+  <h2>♻️ 替换算法——Cache 满了踢谁？</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🚪 类比：大学宿舍的座位</span></p>
+    <p>自习室只有 50 个座位，但有 200 个学生。座位满了，新来的学生必须把某人赶走。赶谁？</p>
+    <ul>
+      <li><strong>FIFO：</strong>赶来得最早的那个——不管他现在学得多认真。可能把学霸赶走了。</li>
+      <li><strong>LRU：</strong>赶最久没翻书的那个人——学霸一直在学习不会被赶，学霸旁边的学渣半小时没翻书了，被赶。合理！</li>
+      <li><strong>随机：</strong>闭着眼赶一个——简单粗暴，运气好赶走学渣，运气不好赶走学霸。</li>
+      <li><strong>Clock：</strong>管理员每隔 10 分钟巡查一圈，看到正在学习的就标记一下，看到没标记的就赶走——LRU 的低成本版本。</li>
+    </ul>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <defs>
+        <marker id="arrow4" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
+        </marker>
+      </defs>
+
+      <text x="400" y="30" fill="#22d3ee" font-size="16" font-weight="bold" text-anchor="middle">Cache 替换算法对比</text>
+
+      <!-- FIFO -->
+      <rect x="15" y="48" width="245" height="170" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="137" y="70" fill="#fbbf24" font-size="13" font-weight="bold" text-anchor="middle">FIFO 先进先出</text>
+
+      <!-- Queue arrows -->
+      <text x="30" y="95" fill="#8b949e" font-size="9">进入顺序: [A] → [B] → [C] → [D]</text>
+      <rect x="30" y="102" width="40" height="24" rx="3" fill="rgba(251,191,36,0.15)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="50" y="118" fill="#fbbf24" font-size="10" text-anchor="middle">A</text>
+      <rect x="74" y="102" width="40" height="24" rx="3" fill="rgba(251,191,36,0.1)" stroke="#475569" stroke-width="0.8"/>
+      <text x="94" y="118" fill="#e6edf3" font-size="10" text-anchor="middle">B</text>
+      <rect x="118" y="102" width="40" height="24" rx="3" fill="rgba(251,191,36,0.1)" stroke="#475569" stroke-width="0.8"/>
+      <text x="138" y="118" fill="#e6edf3" font-size="10" text-anchor="middle">C</text>
+      <rect x="162" y="102" width="40" height="24" rx="3" fill="rgba(251,191,36,0.1)" stroke="#475569" stroke-width="0.8"/>
+      <text x="182" y="118" fill="#e6edf3" font-size="10" text-anchor="middle">D</text>
+
+      <path d="M50,126 L50,138 L10,138 L10,145" fill="none" stroke="#f87171" stroke-width="1.5" marker-end="url(#arrow4)"/>
+      <text x="8" y="142" fill="#f87171" font-size="8">新来 E → 踢 A</text>
+
+      <rect x="15" y="155" width="245" height="55" rx="4" fill="rgba(248,81,73,0.05)" stroke="#475569" stroke-width="0.8"/>
+      <text x="137" y="172" fill="#f87171" font-size="10" text-anchor="middle">⚠️ Belady 异常</text>
+      <text x="137" y="188" fill="#8b949e" font-size="9" text-anchor="middle">增加容量反而缺页更多！</text>
+      <text x="137" y="202" fill="#8b949e" font-size="9" text-anchor="middle">只有 FIFO 有这个问题</text>
+
+      <!-- LRU -->
+      <rect x="275" y="48" width="245" height="170" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="397" y="70" fill="#a78bfa" font-size="13" font-weight="bold" text-anchor="middle">LRU 最近最少使用</text>
+
+      <text x="290" y="95" fill="#8b949e" font-size="9">排序: [最久未用 → ... → 最新使用]</text>
+      <rect x="290" y="102" width="40" height="24" rx="3" fill="rgba(248,81,73,0.15)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="310" y="118" fill="#f87171" font-size="10" text-anchor="middle">A</text>
+      <rect x="334" y="102" width="40" height="24" rx="3" fill="rgba(251,191,36,0.1)" stroke="#475569" stroke-width="0.8"/>
+      <text x="354" y="118" fill="#e6edf3" font-size="10" text-anchor="middle">B</text>
+      <rect x="378" y="102" width="40" height="24" rx="3" fill="rgba(57,197,207,0.1)" stroke="#475569" stroke-width="0.8"/>
+      <text x="398" y="118" fill="#e6edf3" font-size="10" text-anchor="middle">C</text>
+      <rect x="422" y="102" width="40" height="24" rx="3" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="442" y="118" fill="#3fb950" font-size="10" text-anchor="middle">D</text>
+
+      <text x="290" y="132" fill="#8b949e" font-size="8">A 最久未用 → 被踢</text>
+      <text x="290" y="142" fill="#a78bfa" font-size="8">D 刚刚用过 → 保留</text>
+
+      <rect x="275" y="155" width="245" height="55" rx="4" fill="rgba(63,185,80,0.05)" stroke="#475569" stroke-width="0.8"/>
+      <text x="397" y="172" fill="#3fb950" font-size="10" text-anchor="middle">✅ 命中率最高</text>
+      <text x="397" y="188" fill="#f87171" font-size="10" text-anchor="middle">❌ 实现成本高</text>
+      <text x="397" y="202" fill="#8b949e" font-size="9" text-anchor="middle">每次访问都要更新全序</text>
+
+      <!-- Clock -->
+      <rect x="535" y="48" width="250" height="170" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="660" y="70" fill="#22d3ee" font-size="13" font-weight="bold" text-anchor="middle">Clock（近似 LRU）</text>
+
+      <!-- Clock circle -->
+      <circle cx="660" cy="130" r="52" fill="none" stroke="#475569" stroke-width="1"/>
+      <rect x="622" y="85" width="28" height="20" rx="3" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="636" y="99" fill="#22d3ee" font-size="8" text-anchor="middle">D</text>
+      <rect x="670" y="85" width="28" height="20" rx="3" fill="rgba(57,197,207,0.1)" stroke="#475569" stroke-width="0.8"/>
+      <text x="684" y="99" fill="#e6edf3" font-size="8" text-anchor="middle">A</text>
+      <rect x="696" y="115" width="28" height="20" rx="3" fill="rgba(57,197,207,0.1)" stroke="#475569" stroke-width="0.8"/>
+      <text x="710" y="129" fill="#e6edf3" font-size="8" text-anchor="middle">C</text>
+      <rect x="670" y="145" width="28" height="20" rx="3" fill="rgba(57,197,207,0.1)" stroke="#475569" stroke-width="0.8"/>
+      <text x="684" y="159" fill="#e6edf3" font-size="8" text-anchor="middle">B</text>
+      <rect x="622" y="145" width="28" height="20" rx="3" fill="rgba(57,197,207,0.1)" stroke="#475569" stroke-width="0.8"/>
+      <text x="636" y="159" fill="#e6edf3" font-size="8" text-anchor="middle">E</text>
+      <rect x="608" y="115" width="28" height="20" rx="3" fill="rgba(57,197,207,0.1)" stroke="#475569" stroke-width="0.8"/>
+      <text x="622" y="129" fill="#e6edf3" font-size="8" text-anchor="middle">F</text>
+
+      <!-- Clock pointer -->
+      <path d="M660,130 L700,90" fill="none" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrow4)"/>
+      <text x="708" y="88" fill="#fbbf24" font-size="8">指针</text>
+
+      <rect x="535" y="155" width="250" height="55" rx="4" fill="rgba(57,197,207,0.05)" stroke="#475569" stroke-width="0.8"/>
+      <text x="660" y="172" fill="#22d3ee" font-size="10" text-anchor="middle">✅ 每个行只需 1 bit（use bit）</text>
+      <text x="660" y="188" fill="#3fb950" font-size="10" text-anchor="middle">✅ 性能接近 LRU，成本极低</text>
+      <text x="660" y="202" fill="#8b949e" font-size="9" text-anchor="middle">Linux 缺页置换也用类似算法</text>
+
+      <!-- Bottom comparison -->
+      <rect x="15" y="235" width="770" height="170" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="258" fill="#22d3ee" font-size="14" font-weight="bold" text-anchor="middle">算法对比</text>
+
+      <!-- Table headers -->
+      <rect x="25" y="270" width="140" height="28" rx="3" fill="#21242c" stroke="#475569" stroke-width="0.8"/>
+      <text x="95" y="289" fill="#e6edf3" font-size="11" font-weight="bold" text-anchor="middle">算法</text>
+      <rect x="169" y="270" width="120" height="28" rx="3" fill="#21242c" stroke="#475569" stroke-width="0.8"/>
+      <text x="229" y="289" fill="#e6edf3" font-size="11" font-weight="bold" text-anchor="middle">实现方式</text>
+      <rect x="293" y="270" width="130" height="28" rx="3" fill="#21242c" stroke="#475569" stroke-width="0.8"/>
+      <text x="358" y="289" fill="#e6edf3" font-size="11" font-weight="bold" text-anchor="middle">命中率</text>
+      <rect x="427" y="270" width="130" height="28" rx="3" fill="#21242c" stroke="#475569" stroke-width="0.8"/>
+      <text x="492" y="289" fill="#e6edf3" font-size="11" font-weight="bold" text-anchor="middle">硬件代价</text>
+      <rect x="561" y="270" width="110" height="28" rx="3" fill="#21242c" stroke="#475569" stroke-width="0.8"/>
+      <text x="616" y="289" fill="#e6edf3" font-size="11" font-weight="bold" text-anchor="middle">实际使用</text>
+
+      <rect x="25" y="302" width="140" height="24" rx="3" fill="rgba(251,191,36,0.08)" stroke="#475569" stroke-width="0.6"/>
+      <text x="95" y="319" fill="#fbbf24" font-size="11" text-anchor="middle">FIFO</text>
+      <rect x="169" y="302" width="120" height="24" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="229" y="319" fill="#8b949e" font-size="10" text-anchor="middle">队列 + 指针</text>
+      <rect x="293" y="302" width="130" height="24" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="358" y="319" fill="#f87171" font-size="10" text-anchor="middle">低（有 Belady）</text>
+      <rect x="427" y="302" width="130" height="24" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="492" y="319" fill="#3fb950" font-size="10" text-anchor="middle">极低</text>
+      <rect x="561" y="302" width="110" height="24" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="616" y="319" fill="#8b949e" font-size="10" text-anchor="middle">极少</text>
+
+      <rect x="25" y="330" width="140" height="24" rx="3" fill="rgba(163,113,247,0.08)" stroke="#475569" stroke-width="0.6"/>
+      <text x="95" y="347" fill="#a78bfa" font-size="11" text-anchor="middle">LRU</text>
+      <rect x="169" y="330" width="120" height="24" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="229" y="347" fill="#8b949e" font-size="10" text-anchor="middle">链表 + 栈</text>
+      <rect x="293" y="330" width="130" height="24" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="358" y="347" fill="#3fb950" font-size="10" text-anchor="middle">最高</text>
+      <rect x="427" y="330" width="130" height="24" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="492" y="347" fill="#f87171" font-size="10" text-anchor="middle">很高</text>
+      <rect x="561" y="330" width="110" height="24" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="616" y="347" fill="#8b949e" font-size="10" text-anchor="middle">软件场景</text>
+
+      <rect x="25" y="358" width="140" height="24" rx="3" fill="rgba(57,197,207,0.08)" stroke="#475569" stroke-width="0.6"/>
+      <text x="95" y="375" fill="#22d3ee" font-size="11" text-anchor="middle">Clock</text>
+      <rect x="169" y="358" width="120" height="24" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="229" y="375" fill="#8b949e" font-size="10" text-anchor="middle">循环 + UseBit</text>
+      <rect x="293" y="358" width="130" height="24" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="358" y="375" fill="#a78bfa" font-size="10" text-anchor="middle">中高（≈LRU）</text>
+      <rect x="427" y="358" width="130" height="24" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="492" y="375" fill="#3fb950" font-size="10" text-anchor="middle">低（1bit）</text>
+      <rect x="561" y="358" width="110" height="24" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="616" y="375" fill="#22d3ee" font-size="10" text-anchor="middle">OS 缺页置换</text>
+
+      <rect x="25" y="386" width="140" height="16" rx="3" fill="rgba(248,81,73,0.08)" stroke="#475569" stroke-width="0.6"/>
+      <text x="95" y="398" fill="#f87171" font-size="11" text-anchor="middle">随机</text>
+      <rect x="169" y="386" width="120" height="16" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="229" y="398" fill="#8b949e" font-size="10" text-anchor="middle">随机数</text>
+      <rect x="293" y="386" width="130" height="16" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="358" y="398" fill="#f87171" font-size="10" text-anchor="middle">中</text>
+      <rect x="427" y="386" width="130" height="16" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="492" y="398" fill="#3fb950" font-size="10" text-anchor="middle">极低</text>
+      <rect x="561" y="386" width="110" height="16" rx="3" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.6"/>
+      <text x="616" y="398" fill="#8b949e" font-size="10" text-anchor="middle">基准测试</text>
+    </svg>
+    <div class="diagram-caption">四种替换算法对比：LRU 命中率最高但代价最大，Clock 是工程最优解</div>
+  </div>
+
+  <div class="info-card">
+    <h4>🔧 实际 CPU 用什么？</h4>
+    <p>现代 CPU 的 Cache 替换算法是 <strong>pseudo-LRU（伪 LRU）</strong>：</p>
+    <ul>
+      <li>不维护完整的访问序链表（太贵）</li>
+      <li>而是用 <strong>Tree-based PLRU</strong>：一棵二叉树，每个节点记录"最近访问了左子树还是右子树"，只需 N-1 bit</li>
+      <li>对于 4 路组相联，只需要 <strong>3 bit</strong> 就能近似 LRU</li>
+      <li>4 路组相联用 PLRU，命中率只比精确 LRU 低 1-2%，但硬件成本降低 90%</li>
+    </ul>
+  </div>
+
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(248,81,73,0.06),rgba(251,191,36,0.04));border-color:rgba(248,81,73,0.3)">
+    <p><strong>⚠️ LRU 的致命缺陷：</strong>如果程序的工作集刚好比 Cache 大一点点，会发生 <strong>Cache Thrashing（缓存抖动）</strong>——每访问一个新数据都把旧数据踢出去，下一个循环又需要旧数据，来回踢，命中率趋近于 0%。这就是为什么 <strong>Cache 大小必须 > 程序工作集</strong>，否则再好的替换算法也救不了。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 写策略 -->
+<!-- ================================================================== -->
+<section id="write" class="section">
+  <h2>📝 写策略——写数据时怎么保证一致？</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📋 类比：两种记账方式</span></p>
+    <p>你在笔记本（Cache）上记了一笔账，但正式的账本（主存）还没更新：</p>
+    <ul>
+      <li><strong>写直达（Write-Through）：</strong>每次写笔记的同时，立马把账本也写上。数据绝对一致，但每次写都要等账本更新完——<strong>慢但安全</strong>。</li>
+      <li><strong>写回（Write-Back）：</strong>先只写笔记，笔记本上画个圈（Dirty Bit）表示"这本账还没抄到正式账本"。等笔记本要换页时，再把画了圈的内容抄到账本上——<strong>快但复杂</strong>。</li>
+    </ul>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <defs>
+        <marker id="arrow5a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
+        </marker>
+        <marker id="arrow5b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 Z" fill="#fbbf24"/>
+        </marker>
+      </defs>
+
+      <text x="400" y="30" fill="#22d3ee" font-size="16" font-weight="bold" text-anchor="middle">写策略对比：Write-Through vs Write-Back</text>
+
+      <!-- Write-Through -->
+      <rect x="15" y="50" width="370" height="270" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="200" y="75" fill="#fbbf24" font-size="14" font-weight="bold" text-anchor="middle">写直达 Write-Through</text>
+
+      <!-- CPU -->
+      <rect x="30" y="90" width="80" height="40" rx="6" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="70" y="115" fill="#f87171" font-size="12" font-weight="bold" text-anchor="middle">CPU</text>
+
+      <!-- Write arrow to cache -->
+      <line x1="110" y1="105" x2="160" y2="105" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrow5b)"/>
+      <text x="135" y="98" fill="#fbbf24" font-size="9">写数据</text>
+
+      <!-- Cache -->
+      <rect x="160" y="88" width="100" height="40" rx="6" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="210" y="113" fill="#fbbf24" font-size="12" font-weight="bold" text-anchor="middle">Cache</text>
+
+      <!-- Write arrow to memory -->
+      <line x1="260" y1="105" x2="310" y2="105" stroke="#f87171" stroke-width="1.5" marker-end="url(#arrow5a)"/>
+      <text x="273" y="98" fill="#f87171" font-size="9">同步写</text>
+
+      <!-- Memory -->
+      <rect x="310" y="88" width="100" height="40" rx="6" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="360" y="113" fill="#3fb950" font-size="12" font-weight="bold" text-anchor="middle">主存</text>
+
+      <!-- Write buffer -->
+      <rect x="30" y="150" width="340" height="40" rx="4" fill="rgba(57,197,207,0.05)" stroke="#475569" stroke-width="0.8"/>
+      <text x="200" y="168" fill="#22d3ee" font-size="11" text-anchor="middle">🔄 优化：Write Buffer（写缓冲）</text>
+      <text x="200" y="182" fill="#8b949e" font-size="9" text-anchor="middle">CPU 把数据写到 Buffer 就返回，Buffer 异步写内存</text>
+
+      <!-- Pros/cons -->
+      <rect x="30" y="205" width="340" height="100" rx="4" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.8"/>
+      <text x="35" y="222" fill="#3fb950" font-size="10">✅ 优点：</text>
+      <text x="35" y="238" fill="#8b949e" font-size="9">• Cache 和内存永远一致</text>
+      <text x="35" y="252" fill="#8b949e" font-size="9">• Cache 行不用存 Dirty Bit</text>
+      <text x="35" y="266" fill="#8b949e" font-size="9">• 替换时直接丢弃，无需写回</text>
+      <text x="35" y="283" fill="#f87171" font-size="10">❌ 缺点：</text>
+      <text x="35" y="299" fill="#8b949e" font-size="9">• 每次写都要等内存 → 慢（写缓冲缓解）</text>
+
+      <!-- Write-Back -->
+      <rect x="400" y="50" width="385" height="270" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="592" y="75" fill="#22d3ee" font-size="14" font-weight="bold" text-anchor="middle">写回 Write-Back</text>
+
+      <!-- CPU -->
+      <rect x="415" y="90" width="80" height="40" rx="6" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="455" y="115" fill="#f87171" font-size="12" font-weight="bold" text-anchor="middle">CPU</text>
+
+      <!-- Write arrow to cache -->
+      <line x1="495" y1="105" x2="540" y2="105" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrow5b)"/>
+      <text x="515" y="98" fill="#fbbf24" font-size="9">写数据</text>
+
+      <!-- Cache with dirty bit -->
+      <rect x="540" y="88" width="100" height="40" rx="6" fill="rgba(57,197,207,0.1)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="590" y="113" fill="#22d3ee" font-size="12" font-weight="bold" text-anchor="middle">Cache</text>
+      <rect x="575" y="130" width="30" height="16" rx="3" fill="rgba(248,81,73,0.15)" stroke="#f87171" stroke-width="0.8"/>
+      <text x="590" y="142" fill="#f87171" font-size="8" text-anchor="middle">D</text>
+      <text x="600" y="141" fill="#8b949e" font-size="8"> = Dirty Bit</text>
+
+      <!-- Delayed write arrow -->
+      <line x1="640" y1="105" x2="690" y2="105" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrow5a)" stroke-dasharray="4,3"/>
+      <text x="653" y="98" fill="#8b949e" font-size="9">延迟写</text>
+
+      <!-- Memory -->
+      <rect x="690" y="88" width="80" height="40" rx="6" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="730" y="113" fill="#3fb950" font-size="12" font-weight="bold" text-anchor="middle">主存</text>
+
+      <!-- Eviction flow -->
+      <rect x="415" y="150" width="355" height="55" rx="4" fill="rgba(248,81,73,0.05)" stroke="#475569" stroke-width="0.8"/>
+      <text x="592" y="170" fill="#f87171" font-size="11" text-anchor="middle">替换时：检查 Dirty Bit</text>
+      <text x="592" y="188" fill="#8b949e" font-size="9" text-anchor="middle">Dirty=1 → 写回主存 | Dirty=0 → 直接覆盖</text>
+
+      <rect x="415" y="220" width="355" height="85" rx="4" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="0.8"/>
+      <text x="420" y="237" fill="#3fb950" font-size="10">✅ 优点：</text>
+      <text x="420" y="253" fill="#8b949e" font-size="9">• 写操作只写 Cache，速度极快</text>
+      <text x="420" y="267" fill="#8b949e" font-size="9">• 同一行多次写只需 1 次内存访问</text>
+      <text x="420" y="284" fill="#f87171" font-size="10">❌ 缺点：</text>
+      <text x="420" y="300" fill="#8b949e" font-size="9">• Cache 和内存可能不一致（Dirty 行）</text>
+    </svg>
+    <div class="diagram-caption">写直达（写 Cache 同时写内存）vs 写回（写 Cache 标记 Dirty，替换时写回）</div>
+  </div>
+
+  <table>
+    <tr><th>特性</th><th>写直达 (Write-Through)</th><th>写回 (Write-Back)</th></tr>
+    <tr><td>写 Cache 同时写内存？</td><td>✅ 是</td><td>❌ 仅写 Cache</td></tr>
+    <tr><td>内存一致性</td><td>始终一致</td><td>可能不一致（Dirty）</td></tr>
+    <tr><td>写入速度</td><td>慢（等内存）</td><td>快（仅 Cache）</td></tr>
+    <tr><td>Dirty Bit 需要？</td><td>❌ 不需要</td><td>✅ 需要</td></tr>
+    <tr><td>替换时开销</td><td>低（直接覆盖）</td><td>可能高（需写回）</td></tr>
+    <tr><td>写缓冲优化</td><td>✅ 常用</td><td>不适用</td></tr>
+    <tr><td>实际使用</td><td>L1 Cache（写直达 + 写缓冲）</td><td>L2/L3 Cache（写回为主）</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================== -->
+<!-- MESI一致性 -->
+<!-- ================================================================== -->
+<section id="coherence" class="section">
+  <h2>🤝 MESI 缓存一致性协议</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏠 类比：合租公寓的冰箱</span></p>
+    <p>你和室友合租，共用厨房冰箱。你买了一瓶牛奶放进去。如果室友不知道这件事，他也去买了一瓶——冰箱里就有两瓶牛奶，但你们两人都以为牛奶是自己的，互不知道对方的。</p>
+    <p><strong>MESI 协议就是冰箱上的状态标签：</strong></p>
+    <ul>
+      <li><strong>M (Modified) = "我独有的，且我修改过"</strong> —— 你冰箱里的牛奶被你喝了一半，标签上写着"我独享，已开封"</li>
+      <li><strong>E (Exclusive) = "只有我有"</strong> —— 你放了一瓶新牛奶，标签上写"仅此一份"</li>
+      <li><strong>S (Shared) = "大家都有"</strong> —— 你和室友各买了一瓶，标签上写"共享"</li>
+      <li><strong>I (Invalid) = "过期了/被拿走了"</strong> —— 你的牛奶被室友喝完了，标签撕掉</li>
+    </ul>
+    <p>每当你要拿牛奶，先看一眼标签（<strong>总线嗅探</strong>）。如果别人标签是 M，先等他放回冰箱（<strong>写回内存</strong>），你再拿。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <defs>
+        <marker id="arrow6" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
+        </marker>
+      </defs>
+
+      <text x="400" y="30" fill="#22d3ee" font-size="16" font-weight="bold" text-anchor="middle">MESI 缓存一致性协议 · 状态转换</text>
+
+      <!-- Four state boxes -->
+      <!-- M - Modified -->
+      <rect x="20" y="55" width="175" height="100" rx="8" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="2"/>
+      <text x="107" y="80" fill="#f87171" font-size="22" font-weight="bold" text-anchor="middle">M</text>
+      <text x="107" y="98" fill="#f87171" font-size="11" font-weight="bold" text-anchor="middle">Modified</text>
+      <text x="107" y="113" fill="#e6edf3" font-size="9" text-anchor="middle">已修改·独有</text>
+      <text x="107" y="127" fill="#8b949e" font-size="8" text-anchor="middle">此核独占，数据已改</text>
+      <text x="107" y="141" fill="#8b949e" font-size="8" text-anchor="middle">内存副本已过期</text>
+
+      <!-- E - Exclusive -->
+      <rect x="215" y="55" width="175" height="100" rx="8" fill="rgba(57,197,207,0.12)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="302" y="80" fill="#22d3ee" font-size="22" font-weight="bold" text-anchor="middle">E</text>
+      <text x="302" y="98" fill="#22d3ee" font-size="11" font-weight="bold" text-anchor="middle">Exclusive</text>
+      <text x="302" y="113" fill="#e6edf3" font-size="9" text-anchor="middle">独占·未修改</text>
+      <text x="302" y="127" fill="#8b949e" font-size="8" text-anchor="middle">此核独占，和内存一致</text>
+      <text x="302" y="141" fill="#8b949e" font-size="8" text-anchor="middle">其他核没有此数据</text>
+
+      <!-- S - Shared -->
+      <rect x="410" y="55" width="175" height="100" rx="8" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="2"/>
+      <text x="497" y="80" fill="#3fb950" font-size="22" font-weight="bold" text-anchor="middle">S</text>
+      <text x="497" y="98" fill="#3fb950" font-size="11" font-weight="bold" text-anchor="middle">Shared</text>
+      <text x="497" y="113" fill="#e6edf3" font-size="9" text-anchor="middle">共享·未修改</text>
+      <text x="497" y="127" fill="#8b949e" font-size="8" text-anchor="middle">多核都有，且都未改</text>
+      <text x="497" y="141" fill="#8b949e" font-size="8" text-anchor="middle">和内存一致</text>
+
+      <!-- I - Invalid -->
+      <rect x="605" y="55" width="175" height="100" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="2"/>
+      <text x="692" y="80" fill="#475569" font-size="22" font-weight="bold" text-anchor="middle">I</text>
+      <text x="692" y="98" fill="#8b949e" font-size="11" font-weight="bold" text-anchor="middle">Invalid</text>
+      <text x="692" y="113" fill="#8b949e" font-size="9" text-anchor="middle">无效</text>
+      <text x="692" y="127" fill="#8b949e" font-size="8" text-anchor="middle">数据已过期</text>
+      <text x="692" y="141" fill="#8b949e" font-size="8" text-anchor="middle">需重新加载</text>
+
+      <!-- Transition arrows -->
+      <!-- I → E: Local Read (no sharers) -->
+      <path d="M20,105 C10,105 10,170 107,170" fill="none" stroke="#22d3ee" stroke-width="1.2" marker-end="url(#arrow6)"/>
+      <text x="30" y="165" fill="#22d3ee" font-size="8">本地读 (无共享)</text>
+
+      <!-- I → S: Local Read (with sharers) -->
+      <path d="M605,105 C620,105 620,170 497,170" fill="none" stroke="#3fb950" stroke-width="1.2" marker-end="url(#arrow6)"/>
+      <text x="530" y="165" fill="#3fb950" font-size="8">本地读 (有共享)</text>
+
+      <!-- E → S: Remote Read -->
+      <path d="M390,80 C400,80 400,170 497,170" fill="none" stroke="#3fb950" stroke-width="1.2" marker-end="url(#arrow6)"/>
+      <text x="420" y="160" fill="#3fb950" font-size="8">远端读</text>
+
+      <!-- E → M: Local Write -->
+      <path d="M390,80 C400,80 400,195 107,195" fill="none" stroke="#f87171" stroke-width="1.2" marker-end="url(#arrow6)"/>
+      <text x="240" y="195" fill="#f87171" font-size="8">本地写</text>
+
+      <!-- S → E: Local Write (invalidating others) -->
+      <path d="M390,105 C410,105 410,195 302,195" fill="none" stroke="#f87171" stroke-width="1.2" marker-end="url(#arrow6)"/>
+      <text x="320" y="200" fill="#f87171" font-size="8">本地写 (通知其他核)</text>
+
+      <!-- S → I: Remote Write -->
+      <path d="M585,80 C595,80 595,170 692,170" fill="none" stroke="#f87171" stroke-width="1.2" marker-end="url(#arrow6)"/>
+      <text x="640" y="165" fill="#f87171" font-size="8">远端写</text>
+
+      <!-- E → I: Remote Write -->
+      <path d="M390,80 C400,80 400,170 680,170" fill="none" stroke="#f87171" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arrow6)"/>
+
+      <!-- M → I: Remote Read with Write-Back -->
+      <path d="M175,80 C185,80 185,170 692,170" fill="none" stroke="#f87171" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arrow6)"/>
+      <text x="300" y="175" fill="#f87171" font-size="8">远端读 (先写回)</text>
+
+      <!-- Bottom: Bus Snooping -->
+      <rect x="20" y="215" width="760" height="50" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="235" fill="#fbbf24" font-size="13" font-weight="bold" text-anchor="middle">🔍 总线嗅探（Bus Snooping）</text>
+      <text x="400" y="252" fill="#8b949e" font-size="10" text-anchor="middle">每个核监听总线上的所有访存请求。检测到涉及自己的 Cache Line → 执行对应状态转换并响应</text>
+
+      <!-- Transaction types -->
+      <rect x="20" y="280" width="760" height="85" rx="8" fill="rgba(30,41,59,0.2)" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="300" fill="#22d3ee" font-size="13" font-weight="bold" text-anchor="middle">总线事务类型</text>
+
+      <rect x="30" y="310" width="140" height="22" rx="3" fill="rgba(248,81,73,0.08)" stroke="#475569" stroke-width="0.6"/>
+      <text x="100" y="325" fill="#f87171" font-size="10" text-anchor="middle">BusRd: 读请求</text>
+      <rect x="175" y="310" width="140" height="22" rx="3" fill="rgba(251,191,36,0.08)" stroke="#475569" stroke-width="0.6"/>
+      <text x="245" y="325" fill="#fbbf24" font-size="10" text-anchor="middle">BusRdX: 独占读</text>
+      <rect x="320" y="310" width="140" height="22" rx="3" fill="rgba(57,197,207,0.08)" stroke="#475569" stroke-width="0.6"/>
+      <text x="390" y="325" fill="#22d3ee" font-size="10" text-anchor="middle">Flush: 写回&共享</text>
+      <rect x="465" y="310" width="140" height="22" rx="3" fill="rgba(163,113,247,0.08)" stroke="#475569" stroke-width="0.6"/>
+      <text x="535" y="325" fill="#a78bfa" font-size="10" text-anchor="middle">FlushOpt: 写回</text>
+      <text x="645" y="325" fill="#8b949e" font-size="10">...</text>
+    </svg>
+    <div class="diagram-caption">MESI 四状态及转换：M/E/S/I 通过总线嗅探协同，保证多核数据一致性</div>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4>💣 False Sharing（伪共享）</h4>
+      <p>核 A 写变量 <code>x</code>，核 B 写变量 <code>y</code>——按理互不影响。但如果 <code>x</code> 和 <code>y</code> 在<strong>同一个 Cache Line（64B）</strong> 里：</p>
+      <p>核 A 写 x → 整行变 M → 核 B 的该行变 I → 核 B 写 y → 整行变 M → 核 A 的该行变 I → ... 来回踢！</p>
+      <p>本应各自独立的两个变量，因为共享了一个 Cache Line 而<strong>互相竞争</strong>，性能暴跌。</p>
+    </div>
+    <div>
+      <h4>🛡️ 解决方案</h4>
+      <p><strong>Cache Line Padding（缓存行填充）：</strong></p>
+      <pre><code><span class="kw">type</span> Counter <span class="kw">struct</span> {
+    val <span class="kt">int64</span>
+    <span class="cm">// 填充 56 字节，确保 val 独占一个 Cache Line</span>
+    _ [56]<span class="kt">byte</span>
+}</code></pre>
+      <p>Go 的 <code>sync.Pool</code>、Java 的 <code>@Contended</code>、Linux 内核的 <code>____cacheline_aligned</code> 都是此原理。</p>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>🧪 MESI 状态转换示例</h4>
+    <p><strong>场景：</strong>双核系统，初始都未加载地址 A 的数据：</p>
+    <pre><code>1. 核0 读 A  → 核0: I→E（独占，内存有副本）
+2. 核1 读 A  → 核1: I→S，核0: E→S（共享）
+3. 核0 写 A  → 核0: S→M（修改），核1: S→I（无效）
+4. 核1 读 A  → 核1: I→S，核0 Flush 写回，M→S（共享且内存已更新）</code></pre>
+  </div>
+
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(248,81,73,0.06),rgba(251,191,36,0.04));border-color:rgba(248,81,73,0.3)">
+    <p><strong>⚠️ MESI 的局限：</strong>当核数增多（>8核），总线嗅探的广播流量成为瓶颈——每个核的每次 Miss 都要广播到所有核，总线带宽迅速耗尽。现代 CPU（如 Intel Mesh/AMD CCX）使用 <strong>目录协议（Directory-Based Coherence）</strong>，用一个中心目录记录每行的共享者列表，只有相关核才收到通知，大幅降低广播开销。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 实战问答 -->
+<!-- ================================================================== -->
+<section id="qa" class="section">
+  <h2>❓ 实战问答</h2>
+
+  <div class="qa-box">
+    <h4>Q1: 为什么现代 CPU 需要三级 Cache？直接一个大 Cache 不行吗？</h4>
+    <p><span class="q">A:</span> 这是<strong>速度 × 容量 × 延迟</strong> 的不可能三角：</p>
+    <ul>
+      <li><strong>大 Cache 一定慢：</strong>SRAM 越大，访问延迟就越高（寻址路径更长，驱动电流更大）。32KB 的 L1 可以 2 周期访问，8MB 的 L3 需要 30-50 周期。</li>
+      <li><strong>大 Cache 一定贵：</strong>SRAM 6 晶体管/bit vs DRAM 1 晶体管/bit。8MB SRAM 的芯片面积 ≈ 一个 CPU 核心。</li>
+      <li><strong>三级结构完美折中：</strong>L1 极小但极快（处理 90%+ 的访问），L2 中等（处理剩下的 9%），L3 大而共享（兜底最后 1%）。</li>
+    </ul>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q2: 什么是 Cache Thrashing（缓存抖动）？怎么解决？</h4>
+    <p><span class="q">A:</span> Thrashing 指程序的工作集刚好比 Cache 大一点，导致<strong>频繁的 Cache Miss</strong>。例如一个 4 路组相联 Cache，程序反复访问 5 个映射到同一组的地址 → 每次访问都替换 → 命中率趋近 0%。</p>
+    <p><strong>解决方案：</strong></p>
+    <ul>
+      <li><strong>增大 Cache 关联度：</strong>8路组相联比4路抗抖动能力强</li>
+      <li><strong>Cache 分块（Cache Blocking）：</strong>将大数组切成 Cache 能容纳的小块处理</li>
+      <li><strong>数据对齐：</strong>避免多个频繁访问的数据落在同一组</li>
+      <li><strong>硬件预取：</strong>提前预测下一步需要的数据并加载</li>
+    </ul>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q3: 写直达 + 写缓冲 和 写回，哪个更优？</h4>
+    <p><span class="q">A:</span> 没有绝对优劣，取决于<strong>写模式</strong>：</p>
+    <ul>
+      <li><strong>写直达 + 写缓冲</strong>适合<strong>写频繁且写入位置分散</strong>的场景（如 L1 Cache 的写操作）。写缓冲可以合并多次写，CPU 无需等待内存。</li>
+      <li><strong>写回</strong>适合<strong>写频繁且写入位置集中</strong>的场景（如 L2/L3 Cache）。多次修改同一行只需一次写回，效率极高。</li>
+      <li>实际 CPU 是<strong>混合策略</strong>：L1 用写直达（配合写缓冲），L2/L3 用写回。这兼顾了 L1 的速度要求和 L2/L3 的带宽效率。</li>
+    </ul>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q4: 什么是 TLB？和 Cache 有什么关系？</h4>
+    <p><span class="q">A:</span> TLB（Translation Lookaside Buffer）是 <strong>页表的 Cache</strong>：</p>
+    <ul>
+      <li>每次 CPU 访问内存，MMU 需要把虚拟地址翻译成物理地址——需要查<strong>页表</strong>（在内存中）</li>
+      <li>如果每次都去内存查页表，那每次内存访问都多了一次或多次内存访问（四级页表需要 4 次）</li>
+      <li><strong>TLB 就是页表项的 Cache</strong>——它缓存最近用过的虚拟地址→物理地址的映射</li>
+      <li>TLB 命中 → 一次翻译只要 1 个周期。TLB Miss → 需要遍历页表（4 次内存访问）</li>
+      <li>TLB 通常是 <strong>全相联</strong> 或 <strong>组相联</strong>（路数少，因为 TLB 项数少）</li>
+    </ul>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q5: 伪共享（False Sharing）怎么检测和修复？</h4>
+    <p><span class="q">A:</span> <strong>检测：</strong></p>
+    <ul>
+      <li><strong>性能分析：</strong>perf stat -e cache-misses 观察异常高的 Miss 率</li>
+      <li><strong>核心特征：</strong>多核程序加速比不升反降，CPU 利用率高但实际计算量小</li>
+    </ul>
+    <p><span class="q">A:</span> <strong>修复：</strong></p>
+    <ul>
+      <li><strong>Cache Line Padding：</strong>在每个频繁修改的变量后填充 56 字节（64-8），确保独占 Cache Line</li>
+      <li><strong>Go 示例：</strong></li>
+    </ul>
+    <pre><code><span class="kw">type</span> PaddedCounter <span class="kw">struct</span> {
+    Val   <span class="kt">int64</span>
+    Pad   [7]<span class="kt">int64</span>  <span class="cm">// 7 × 8 = 56 字节填充</span>
+}</code></pre>
+    <ul>
+      <li><strong>数据局部化：</strong>将不同线程的数据分散到不同内存区域</li>
+      <li><strong>原子操作拆分：</strong>避免多个核同时修改同一 Cache Line 中的不同字段</li>
+    </ul>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q6: 为什么 MESI 在大规模多核系统中不够用？有什么替代方案？</h4>
+    <p><span class="q">A:</span> MESI 使用<strong>总线嗅探（Snooping）</strong>——每个核广播所有请求，所有核监听。随着核数增加（>8-16核）：</p>
+    <ul>
+      <li><strong>总线带宽瓶颈：</strong>广播请求淹没总线，O(N²) 的通信复杂度</li>
+      <li><strong>监听开销：</strong>每个核都要检查每个请求，功耗飙升</li>
+    </ul>
+    <p><strong>替代方案：目录协议（Directory-Based Coherence）</strong></p>
+    <ul>
+      <li>用<strong>中心化目录</strong>记录每个 Cache Line 的共享者列表</li>
+      <li>只有相关的核收到通知（点对点，而非广播）</li>
+      <li>复杂度 O(N) 而非 O(N²)</li>
+      <li>Intel Mesh 架构、AMD CCX/CCD 都使用目录协议</li>
+    </ul>
+  </div>
+
+  <div class="verbal-summary">
+    <p><strong>🎙️ 口播总结（1分钟版）：</strong></p>
+    <p>「计算机组成原理里存储系统·Cache 这一块，我用一个框架帮你串起来：</p>
+    <p><strong>首先，为什么需要 Cache？</strong>因为 CPU 太快（0.2ns/cycle）、主存太慢（100ns），差了 500 倍。没有 Cache，5GHz 的 CPU 实际性能和 10MHz 差不多。所以有了<strong>金字塔式的存储层次</strong>——寄存器 → L1（32KB，1ns）→ L2（256KB，5ns）→ L3（8MB+，15ns）→ 主存（100ns）→ 磁盘。</p>
+    <p><strong>Cache 为什么能工作？局部性。</strong>时间局部性（刚用的很快再用）和空间局部性（附近的很快会用）。一次加载 64 字节的 Cache Line，顺序遍历数组时每 16 个 int 只有第一次 Miss。</p>
+    <p><strong>数据怎么放进去？三种映射方式。</strong>直接映射（固定位置但冲突高）、全相联（任意位置但慢）、组相联（折中——现代 CPU 用 8-16 路）。</p>
+    <p><strong>满了怎么办？替换算法。</strong>严格 LRU 最好但太贵，实际用伪 LRU（PLRU）或 Clock，只需 1 个 bit 就能接近 LRU 的效果。</p>
+    <p><strong>写数据时呢？</strong>写直达（同步写内存，配合写缓冲）和写回（只写 Cache，替换时再写回——大部分场景更快）。</p>
+    <p><strong>多核怎么办？MESI 协议。</strong>Modified/Exclusive/Shared/Invalid 四种状态，总线嗅探保证核间一致性。但核多了总线撑不住，大规模系统用目录协议替代。</p>
+    <p>实战时特别注意<strong>伪共享（False Sharing）</strong>——两个变量在同一 Cache Line 被不同核写，来回踢，性能暴跌。解决方案就是 Cache Line Padding。」</p>
+  </div>
+</section>
+
+</main>
+</div>
+
+<!-- Ebbinghaus 复习按钮 -->
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'computer-arch-cache';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '⏰ '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

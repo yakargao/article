@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧩 动态规划 · LeetCode 解法模式 · 费曼学习法</title>
+<style>  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 40px 20px 80px; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .back { color: var(--muted); font-size: 13px; text-decoration: none; display: inline-block; margin-bottom: 24px; }
+  .back:hover { color: var(--accent); }
+  h1 { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 32px; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; overflow-x: auto; margin: 10px 0; font-size: 12px; line-height: 1.5; }
+  pre code { background: none; color: var(--text); padding: 0; }
+
+  .desc-box { background: linear-gradient(135deg,rgba(88,166,255,0.06),rgba(163,113,247,0.04)); border:1px solid rgba(88,166,255,0.2); border-radius:12px; padding:20px 24px; margin-bottom:32px; position:relative; }
+  .desc-box::before { content:'💡 核心思想'; position:absolute; top:-11px; left:20px; background:var(--bg); padding:2px 12px; border-radius:10px; font-size:12px; font-weight:600; color:var(--accent); }
+  .desc-box .tip { color:var(--green); font-size:13px; margin-top:8px; }
+
+  .diagram { background:#0a0c13; border:1px solid var(--border); border-radius:12px; padding:12px; margin:24px 0; text-align:center; overflow-x:auto; }
+  .diagram-caption { font-size:12px; color:var(--muted); margin-top:8px; }
+
+  .prob-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; margin-top:24px; }
+  .prob-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 18px; cursor:pointer; transition:all .15s; position:relative; }
+  .prob-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .prob-id { font-size:11px; color:var(--muted); font-weight:600; }
+  .prob-title { font-size:15px; font-weight:600; color:#fff; margin:4px 0 8px; }
+  .prob-idea { font-size:12px; color:var(--muted); line-height:1.6; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .prob-meta { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .prob-diff { font-size:10px; padding:2px 8px; border-radius:8px; font-weight:600; }
+  .diff-Easy { background:rgba(63,185,80,0.12); color:var(--green); }
+  .diff-Medium { background:rgba(210,153,34,0.12); color:var(--orange); }
+  .diff-Hard { background:rgba(248,81,73,0.12); color:var(--red); }
+  .card-tag { font-size:10px; padding:2px 7px; border-radius:8px; font-weight:600; background:rgba(163,113,247,0.10); color:var(--purple); }
+
+  /* Modal */
+  .modal { display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.7); align-items:center; justify-content:center; }
+  .modal.active { display:flex; }
+  .modal-content { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:28px 32px; max-width:700px; width:92%; max-height:85vh; overflow-y:auto; }
+  .modal-close { float:right; background:none; border:none; color:var(--muted); font-size:22px; cursor:pointer; }
+  .modal h3 { font-size:20px; color:#fff; margin-bottom:12px; }
+  .modal h4 { font-size:14px; color:var(--accent); margin:16px 0 8px; }
+  .idea-box { background:rgba(88,166,255,0.06); border-left:3px solid var(--accent); padding:10px 14px; border-radius:0 8px 8px 0; margin:10px 0; font-size:13px; }
+  .key { color:var(--green); font-weight:600; }
+  .code-toggle { background:var(--card); border:1px solid var(--border); color:var(--accent); padding:6px 14px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; margin:8px 0; }
+  .code-block { display:none; }
+  .code-block.show { display:block; }
+  @media (max-width:768px) { body{padding:20px 12px 80px;} .prob-grid{grid-template-columns:1fr;} .modal-content{padding:18px;} }</style>
+</head>
+<body>
+<div class="container">
+<a href="/leetcode-patterns.html" class="back">← 所有模式</a>
+<h1>🧩 动态规划</h1>
+<p class="subtitle">21 道题 · LeetCode Top 100 解法模式</p>
+<div class="desc-box">
+<p>LeetCode 之王（21 题），从爬楼梯到编辑距离。核心：定义 dp[i] 的含义 → 找出状态转移方程 → 确定 base case → 填表。背包问题是一类特殊的 DP。</p>
+<p class="tip">💡 核心技巧：先想暴力递归，再加 memo 或转 DP</p>
+</div>
+<div class="diagram">
+<svg viewBox="0 0 700 160" style="max-width:700px;width:100%"><rect x="20" y="20" width="280" height="120" rx="8" fill="rgba(88,166,255,0.04)" stroke="#58a6ff" stroke-width="1" stroke-dasharray="4,2"/><text x="160" y="45" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">🧩 DP 三步走</text><text x="160" y="70" text-anchor="middle" fill="#94a3b8" font-size="10">1️⃣ 定义 dp[i] 含义</text><text x="160" y="95" text-anchor="middle" fill="#94a3b8" font-size="10">2️⃣ 找状态转移方程</text><text x="160" y="120" text-anchor="middle" fill="#94a3b8" font-size="10">3️⃣ 确定 base case + 填表方向</text><rect x="330" y="30" width="170" height="100" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/><text x="415" y="55" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">自顶向下</text><text x="415" y="80" text-anchor="middle" fill="#94a3b8" font-size="9">递归 + memo</text><text x="415" y="105" text-anchor="middle" fill="#64748b" font-size="8">(记忆化搜索)</text><rect x="530" y="30" width="150" height="100" rx="8" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.5"/><text x="605" y="55" text-anchor="middle" fill="#f87171" font-size="11" font-weight="600">自底向上</text><text x="605" y="80" text-anchor="middle" fill="#94a3b8" font-size="9">迭代 + dp 数组</text><text x="605" y="105" text-anchor="middle" fill="#64748b" font-size="8">(空间可优化)</text></svg>
+<div class="diagram-caption">动态规划 模式图解</div>
+</div>
+<h3 style="margin-top:32px">📝 题目列表（21 题）</h3>
+<div class="prob-grid">
+<div class="prob-card" onclick="showProblem(70)">
+<div class="prob-id">#70 <span class="prob-diff diff-Easy">Easy</span></div>
+<div class="prob-title">Climbing Stairs</div>
+<div class="prob-idea">斐波那契。dp[i]=dp[i-1]+dp[i-2]。</div>
+<div class="prob-meta"><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(338)">
+<div class="prob-id">#338 <span class="prob-diff diff-Easy">Easy</span></div>
+<div class="prob-title">Counting Bits</div>
+<div class="prob-idea">dp[i]=dp[i>>1]+(i&1)。</div>
+<div class="prob-meta"><span class="card-tag">位运算</span><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(5)">
+<div class="prob-id">#5 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Longest Palindromic Substring</div>
+<div class="prob-idea">中心扩散：从每个字符(和每对字符)向两边扩。DP：dp[i][j]=s[i]==s[j]&&dp[i+1][j-1]。</div>
+<div class="prob-meta"><span class="card-tag">DP</span><span class="card-tag">双指针</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(53)">
+<div class="prob-id">#53 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Maximum Subarray</div>
+<div class="prob-idea">dp[i]=max(nums[i],dp[i-1]+nums[i])。</div>
+<div class="prob-meta"><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(62)">
+<div class="prob-id">#62 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Unique Paths</div>
+<div class="prob-idea">dp[i][j]=dp[i-1][j]+dp[i][j-1]。数学解=C(m+n-2,m-1)。</div>
+<div class="prob-meta"><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(64)">
+<div class="prob-id">#64 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Minimum Path Sum</div>
+<div class="prob-idea">dp[i][j]=grid[i][j]+min(dp[i-1][j],dp[i][j-1])。</div>
+<div class="prob-meta"><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(91)">
+<div class="prob-id">#91 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Decode Ways</div>
+<div class="prob-idea">dp[i]=前i解码数。单独解码+dp[i-1]；一起(10~26)+dp[i-2]。</div>
+<div class="prob-meta"><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(139)">
+<div class="prob-id">#139 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Word Break</div>
+<div class="prob-idea">dp[i]=前i能否拆分。dp[i]=dp[j]&&s[j:i]∈set。</div>
+<div class="prob-meta"><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(152)">
+<div class="prob-id">#152 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Maximum Product Subarray</div>
+<div class="prob-idea">同时维护最大乘积和最小乘积(负数乘负数变最大)。</div>
+<div class="prob-meta"><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(198)">
+<div class="prob-id">#198 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">House Robber</div>
+<div class="prob-idea">dp[i]=max(dp[i-1],dp[i-2]+nums[i])。</div>
+<div class="prob-meta"><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(221)">
+<div class="prob-id">#221 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Maximal Square</div>
+<div class="prob-idea">dp[i][j]=min(左,上,左上)+1。面=边长²。</div>
+<div class="prob-meta"><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(279)">
+<div class="prob-id">#279 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Perfect Squares</div>
+<div class="prob-idea">dp[i]=min(dp[i-j²]+1)。</div>
+<div class="prob-meta"><span class="card-tag">DP</span><span class="card-tag">BFS</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(300)">
+<div class="prob-id">#300 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Longest Increasing Subsequence</div>
+<div class="prob-idea">DP O(N²)。贪心+二分O(N log N)：tails数组存各长度最小结尾。</div>
+<div class="prob-meta"><span class="card-tag">DP</span><span class="card-tag">二分</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(309)">
+<div class="prob-id">#309 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Best Time with Cooldown</div>
+<div class="prob-idea">状态DP。三个状态：持有、不持有(刚卖)、不持有(非刚卖)。</div>
+<div class="prob-meta"><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(322)">
+<div class="prob-id">#322 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Coin Change</div>
+<div class="prob-idea">完全背包。dp[i]=min(dp[i-coin]+1)。</div>
+<div class="prob-meta"><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(416)">
+<div class="prob-id">#416 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Partition Equal Subset Sum</div>
+<div class="prob-idea">0-1背包。能否选一些数和=total/2。dp[j]=dp[j]||dp[j-num]。</div>
+<div class="prob-meta"><span class="card-tag">DP</span><span class="card-tag">背包</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(494)">
+<div class="prob-id">#494 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Target Sum</div>
+<div class="prob-idea">P-N=target,P+N=sum→P=(target+sum)/2。找和为P的子集数。</div>
+<div class="prob-meta"><span class="card-tag">DP</span><span class="card-tag">背包</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(10)">
+<div class="prob-id">#10 <span class="prob-diff diff-Hard">Hard</span></div>
+<div class="prob-title">Regular Expression Matching</div>
+<div class="prob-idea">dp[i][j]=前i和前j是否匹配。*匹配0次(dp[i][j-2])或多次(dp[i-1][j]且当前匹配)。</div>
+<div class="prob-meta"><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(32)">
+<div class="prob-id">#32 <span class="prob-diff diff-Hard">Hard</span></div>
+<div class="prob-title">Longest Valid Parentheses</div>
+<div class="prob-idea">栈存下标。遇)弹出，栈空→入栈；栈不空→用i-stack.top()更新。</div>
+<div class="prob-meta"><span class="card-tag">栈</span><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(72)">
+<div class="prob-id">#72 <span class="prob-diff diff-Hard">Hard</span></div>
+<div class="prob-title">Edit Distance</div>
+<div class="prob-idea">dp[i][j]=前i→前j最少操作。==→dp[i-1][j-1]；否则min+1。</div>
+<div class="prob-meta"><span class="card-tag">DP</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(85)">
+<div class="prob-id">#85 <span class="prob-diff diff-Hard">Hard</span></div>
+<div class="prob-title">Maximal Rectangle</div>
+<div class="prob-idea">逐行转化为#84柱状图问题。</div>
+<div class="prob-meta"><span class="card-tag">单调栈</span><span class="card-tag">DP</span></div>
+</div>
+</div>
+</div>
+
+<div class="modal" id="modal"><div class="modal-content"><button class="modal-close" onclick="closeModal()">✕</button><div id="modalBody"></div></div></div>
+
+<script src="/leetcode-data.js"></script>
+<script>
+let currentId=null;
+function showProblem(id){currentId=id;const p=PROBLEMS[id];if(!p)return;
+let h='<h3>#'+p.id+' '+p.title+' <span class="prob-diff diff-'+p.diff+'" style="display:inline-block;vertical-align:middle">'+p.diff+'</span></h3>';
+h+='<p style="color:var(--text);line-height:1.9">'+p.desc+'</p>';
+h+='<h4>输入</h4><pre><code>'+p.inp+'</code></pre><h4>输出</h4><pre><code>'+p.out+'</code></pre>';
+h+='<div class="idea-box"><span class="key">💡 解题思路：</span>'+p.idea+'</div>';
+if(p.code){h+='<button class="code-toggle" onclick="this.nextElementSibling.classList.toggle('show')">查看代码</button>';
+h+='<div class="code-block"><pre><code>'+p.code.replace(/</g,'&lt;')+'</code></pre></div>';}
+if(p.tags){h+='<div class="modal-tags" style="margin-top:12px">';p.tags.forEach(t=>{h+='<span class="card-tag">'+t+'</span>';});h+='</div>';}
+document.getElementById('modalBody').innerHTML=h;document.getElementById('modal').classList.add('active');document.body.style.overflow='hidden';}
+function closeModal(){document.getElementById('modal').classList.remove('active');document.body.style.overflow='';currentId=null;}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&currentId)closeModal();});
+</script>
+</body>
+</html>

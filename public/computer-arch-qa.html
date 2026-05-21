@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>计算机组成原理 · 第7篇：核心追问题汇总 · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .voice-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .voice-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 420px; }
+  }
+
+  /* Quick reference specific */
+  .quickref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .quickref-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .quickref-card h4 { margin: 0 0 10px 0; font-size: 14px; color: var(--cyan); }
+  .quickref-card table { margin: 0; font-size: 12px; }
+  .quickref-card th { font-size: 11px; padding: 5px 8px; }
+  .quickref-card td { font-size: 11px; padding: 4px 8px; }
+  .quickref-full { margin: 16px 0; }
+  @media (max-width: 768px) {
+    .quickref-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">综合</div>
+  <a class="nav-item" href="#questions">❓ 高频真题</a>
+  <a class="nav-item" href="#quickref">📖 速查表</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ================================================================== -->
+<!-- 总览 -->
+<!-- ================================================================== -->
+<section id="overview" class="section">
+  <h2>📋 计算机组成原理 · 全系列总览</h2>
+
+  <div class="feynman">
+    <p><strong>一句话：</strong>计算机组成原理是 <span class="handwritten">硬件眼中的软件世界</span>——它揭示了CPU如何看懂并执行指令、Cache如何让内存变\"快\"、中断和DMA如何让I/O不拖后腿。本系列7篇文章从计算机的骨架到血肉，逐层拆解每一个高频考点。本文就是<a href="#questions" style="color:var(--accent)">实战真题汇总</a> + <a href="#quickref" style="color:var(--cyan)">速查宝典</a>，考前翻这一篇就够了。</p>
+  </div>
+
+  <table>
+    <tr><th>篇目</th><th>核心考点</th><th>一句话回答</th></tr>
+    <tr>
+      <td><span class="badge badge-cyan">① 系统概述</span></td>
+      <td>冯·诺依曼结构、计算机层次、性能指标</td>
+      <td>五部件+存储程序思想；六层抽象从晶体管到Python；CPU时间=IC×CPI×T</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-orange">② 指令集与流水线</span></td>
+      <td>ISA、寻址方式、CISC/RISC、流水线冒险、乱序执行</td>
+      <td>指令格式(OP+地址)；RISC精简指令单周期；流水线有结构/数据/控制三类冒险</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-green">③ 存储系统</span></td>
+      <td>Cache映射/替换/写策略、虚拟内存、TLB</td>
+      <td>直接/全相联/组相联三种映射；LRU替换；写回/写通；页表+TLB加速地址转换</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-purple">④ 输入输出</span></td>
+      <td>中断系统、DMA、程序查询、I/O接口</td>
+      <td>程序查询轮询CPU忙；中断处理由CPU响应；DMA硬件搬运不占CPU</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-red">⑤ 总线系统</span></td>
+      <td>总线仲裁、同步/异步、总线标准</td>
+      <td>链式/计时/独立请求三种仲裁；同步总线时钟驱动，异步需要握手</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-cyan">⑥ 控制器</span></td>
+      <td>硬连线控制、微程序控制、微指令格式</td>
+      <td>硬连线速度快但设计复杂；微程序灵活可编程；水平/垂直微指令编码</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-orange">⑦ 核心追问题</span></td>
+      <td>综合计算题+概念对比+速查表（本篇）</td>
+      <td>IEEE 754、Cache映射、流水线5阶段、CISC vs RISC、中断/DMA对比</td>
+    </tr>
+  </table>
+
+  <div class="info-card">
+    <h4>💡 本篇适用人群</h4>
+    <p>✅ <strong>实战冲刺</strong>——6-8道高频真题带计算，直接练手<br>
+    ✅ <strong>考前速记</strong>——速查表涵盖IEEE 754、Cache、流水线、寻址方式等核心考点<br>
+    ✅ <strong>知识体系自查</strong>——看总览表格能否每个都一句话说清，说不清就是薄弱点</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 高频真题 -->
+<!-- ================================================================== -->
+<section id="questions" class="section">
+  <h2>❓ 综合核心追问题</h2>
+
+  <div class="qa-box">
+    <h4>Q1 <span style="font-size:12px;color:var(--muted);font-weight:400">（计算题）</span></h4>
+    <p class="q">一个计算机的主频为 2.5GHz，执行某程序共 10⁹ 条指令。其中 ALU 指令占 40% (CPI=1)、Load/Store 占 20% (CPI=4)、分支指令占 10% (CPI=2)、浮点运算占 30% (CPI=6)。求该程序的 CPU 执行时间。</p>
+    <p class="a"><strong>解：</strong><br>
+    第一步：计算平均 CPI（加权平均）<br>
+    CPI_avg = 0.4×1 + 0.2×4 + 0.1×2 + 0.3×6 = 0.4 + 0.8 + 0.2 + 1.8 = <strong>3.2</strong><br><br>
+    第二步：计算时钟周期 T = 1/f = 1/(2.5×10⁹) = 0.4 ns<br><br>
+    第三步：CPU_time = IC × CPI_avg × T = 10⁹ × 3.2 × 0.4×10⁻⁹ = <strong>1.28 秒</strong><br><br>
+    <span style="color:var(--green)">✅ 答案：1.28秒。如果优化浮点运算降低 CPI，或者用 SIMD 减少浮点指令数，都能进一步加速。</span></p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q2 <span style="font-size:12px;color:var(--muted);font-weight:400">（计算题）</span></h4>
+    <p class="q">将 -6.75 转换为 IEEE 754 单精度浮点数格式（32位），用十六进制表示。</p>
+    <p class="a"><strong>解：</strong><br>
+    ① 转二进制：6.75 = 110.11₂（因为 0.75=3/4=0.11₂）<br>
+    ② 规格化：110.11 = 1.1011 × 2²<br>
+    ③ 符号位 S = 1（负数）<br>
+    ④ 阶码 E = 2 + 127 = 129 = 10000001₂<br>
+    ⑤ 尾数 M = 1011 后面补 0 到 23 位：10110000000000000000000₂<br>
+    ⑥ 拼接：S(1bit) | E(8bit) | M(23bit) = 1 10000001 10110000000000000000000<br>
+    ⑦ 分组转十六进制：1100 0000 1101 1000 0000 0000 0000 0000 = <strong>C0D80000₁₆</strong><br><br>
+    <span style="color:var(--green)">✅ 答案：C0D80000₁₆。关键口诀：<strong>符号1位，阶码8位（移127），尾数23位（隐藏1）</strong>。</span></p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q3 <span style="font-size:12px;color:var(--muted);font-weight:400">（计算题）</span></h4>
+    <p class="q">某计算机主存地址空间为 256MB，按字节编址；Cache 大小为 64KB，每块 64B。分别求直接映射、4路组相联映射和全相联映射下的：① Cache 有多少行（块）？② 地址格式的各字段位数？</p>
+    <p class="a"><strong>解：</strong><br>
+    主存地址 = 256MB = 2²⁸，所以地址总位数 = <strong>28 bit</strong><br>
+    Cache 总大小 = 64KB，块大小 = 64B = 2⁶，所以块内偏移位数 = <strong>6 bit</strong><br>
+    Cache 块数 = 64KB / 64B = 1024 = 2¹⁰<br><br>
+
+    <strong>① 直接映射：</strong><br>
+    • Cache 行数 = 1024（每个行号对应一个 Cache 行）<br>
+    • 索引位数 = log₂(1024) = <strong>10 bit</strong><br>
+    • 标记位数 = 28 - 10 - 6 = <strong>12 bit</strong><br>
+    ✅ 地址格式：Tag(12bit) | Index(10bit) | Offset(6bit)<br><br>
+
+    <strong>② 4路组相联：</strong><br>
+    • 组数 = 1024 / 4 = 256 组，组索引位数 = log₂(256) = <strong>8 bit</strong><br>
+    • 标记位数 = 28 - 8 - 6 = <strong>14 bit</strong><br>
+    ✅ 地址格式：Tag(14bit) | Index(8bit) | Offset(6bit)<br><br>
+
+    <strong>③ 全相联：</strong><br>
+    • 没有索引字段，任意块可存任意行。Cache 行数 = 1024<br>
+    • 标记位数 = 28 - 6 = <strong>22 bit</strong><br>
+    ✅ 地址格式：Tag(22bit) | Offset(6bit)<br><br>
+
+    <span style="color:var(--green)">✅ 核心规律：组相联的路数越多 → 索引字段越短 → 标记字段越长 → 冲突概率越低，但比较器逻辑越复杂。</span></p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q4 <span style="font-size:12px;color:var(--muted);font-weight:400">（概念题）</span></h4>
+    <p class="q">请详细解释流水线的三类冒险（Hazard）及其解决方法。</p>
+    <p class="a"><strong>三类冒险：</strong><br><br>
+
+    <strong>① 结构冒险（Structural Hazard）：</strong><br>
+    • 原因：硬件资源冲突，如同一周期内两条指令都想访问同一个功能单元（如 ALU 或存储器）<br>
+    • 例子：冯·诺依曼结构取指和访问数据都用同一存储器，可能冲突<br>
+    • 解决：<strong>哈佛结构</strong>（L1i / L1d 分离）、<strong>资源复制</strong>（多个 ALU）<br><br>
+
+    <strong>② 数据冒险（Data Hazard）：</strong><br>
+    • 原因：下一条指令需要上一条指令的计算结果，但结果还没写回<br>
+    • 三种类型：RAW（读后写，最常见）、WAR（写后读）、WAW（写后写）<br>
+    • 解决：<strong>前递/旁路（Forwarding/Bypassing）</strong>——结果从 ALU 输出直接送给下条指令，不经过寄存器写回；<strong>插入气泡（Stall）</strong>——让流水线停一拍；<strong>编译器调度</strong>——插入无关指令隔开<br><br>
+
+    <strong>③ 控制冒险（Control Hazard）：</strong><br>
+    • 原因：分支/跳转指令导致下一条要执行的指令不确定<br>
+    • 解决：<strong>分支预测</strong>（静态预测/动态预测）、<strong>延迟槽（Delay Slot）</strong>——分支后的指令必然执行、<strong>分支目标缓冲器（BTB）</strong><br><br>
+
+    <span style="color:var(--green)">✅ 实战加分点：现代 CPU 解决这三种冒险的核心技术就是 <strong>乱序执行+分支预测+寄存器重命名</strong> 的组合。</span></p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q5 <span style="font-size:12px;color:var(--muted);font-weight:400">（概念题）</span></h4>
+    <p class="q">请从原理、延迟、CPU占用三个角度对比：程序查询方式、中断方式和 DMA 方式。</p>
+    <p class="a"><strong>三种I/O方式对比：</strong><br><br>
+
+    <strong>① 程序查询方式（Programmed I/O）：</strong><br>
+    • 原理：CPU 不断轮询设备状态寄存器，看数据是否准备好<br>
+    • 延迟：每次需要 CPU 主动查询，响应慢，且浪费 CPU 时间在\"等\"上<br>
+    • CPU 占用：<strong>100% 占用</strong>——CPU 大部分时间在忙等，不能做其他事<br>
+    • 适用：简单嵌入式系统，对效率要求低的场合<br><br>
+
+    <strong>② 中断方式（Interrupt-driven I/O）：</strong><br>
+    • 原理：设备准备好后主动发中断信号，CPU 暂停当前程序去处理中断服务程序<br>
+    • 延迟：有中断响应延迟（保存现场、识别中断源、查询中断向量表），典型 ~几微秒<br>
+    • CPU 占用：<strong>仅在数据传输时占用</strong>——期间 CPU 可以执行其他程序<br>
+    • 适用：大多数通用外设（键盘、鼠标、网卡）<br><br>
+
+    <strong>③ DMA 方式（Direct Memory Access）：</strong><br>
+    • 原理：DMA 控制器接管总线控制权，直接在内存和外设之间传输数据，传输完成后发中断通知 CPU<br>
+    • 延迟：一次初始化 + 一次中断响应，批量传输期间 CPU 不参与<br>
+    • CPU 占用：<strong>仅初始化+结束时占用</strong>——批量数据传输不占用 CPU<br>
+    • 适用：大批量数据传输（磁盘、显示、网卡）</p>
+
+    <table>
+      <tr><th>对比维度</th><th>程序查询</th><th>中断</th><th>DMA</th></tr>
+      <tr><td><strong>谁发起传输</strong></td><td>CPU 主动轮询</td><td>设备主动发中断</td><td>DMA 控制器驱动</td></tr>
+      <tr><td><strong>数据传输者</strong></td><td>CPU</td><td>CPU</td><td>DMA 控制器（硬件）</td></tr>
+      <tr><td><strong>每次传输数据量</strong></td><td>1 字</td><td>1 字</td><td>批量（块）</td></tr>
+      <tr><td><strong>CPU 占用率</strong></td><td>高（忙等）</td><td>中（需要响应处理）</td><td>低（仅初始化+结束）</td></tr>
+      <tr><td><strong>响应速度</strong></td><td>慢（依赖轮询频率）</td><td>中（几微秒级）</td><td>快（硬件直接传输）</td></tr>
+      <tr><td><strong>硬件开销</strong></td><td>无</td><td>中断控制器</td><td>DMA 控制器（较贵）</td></tr>
+    </table>
+
+    <span style="color:var(--green)">✅ 实战加分点：中断有\"中断嵌套\"和\"中断优先级\"机制；DMA 有\"周期挪用\"和\"burst 传输\"两种模式，突发传输效率更高但会短暂阻塞 CPU 访问内存。</span></p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q6 <span style="font-size:12px;color:var(--muted);font-weight:400">（计算题）</span></h4>
+    <p class="q">某五级流水线（IF、ID、EX、MEM、WB）的每级延迟如下：IF=200ps, ID=150ps, EX=200ps, MEM=250ps, WB=100ps。寄存器延迟为 50ps。求：① 流水线时钟周期；② 执行 1000 条指令（无冒险）所需的时钟周期数和时间。</p>
+    <p class="a"><strong>解：</strong><br><br>
+
+    <strong>① 时钟周期 = max(各级延迟) + 寄存器延迟</strong><br>
+    各级延迟 = [200, 150, 200, 250, 100]，最大 = 250ps（MEM 阶段）<br>
+    时钟周期 = 250 + 50 = <strong>300 ps</strong><br><br>
+
+    <strong>② 无冒险时 n 条指令所需周期数：</strong><br>
+    第一条指令需要 5 个周期填满流水线，之后每个周期完成一条指令。<br>
+    总周期数 = 5 + (n - 1) = 5 + 999 = <strong>1004 个周期</strong><br>
+    总时间 = 1004 × 300ps = 1004 × 0.3ns = <strong>301.2 ns</strong><br><br>
+
+    <span style="color:var(--green)">✅ 对比：如果用单周期CPU（所有指令一个周期完成），周期 = 所有级之和 = 200+150+200+250+100+50×5 = 900+250=1150ps，1000条指令需要 1000×1150=1150ns。流水线加速比为 1150/301.2 ≈ <strong>3.82 倍</strong>。</span></p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q7 <span style="font-size:12px;color:var(--muted);font-weight:400">（概念题）</span></h4>
+    <p class="q">请解释 Cache 的三种映射方式、替换算法和写策略。</p>
+    <p class="a"><strong>三种映射方式：</strong><br>
+    • <strong>直接映射：</strong>每个主存块只能映射到 Cache 的固定行。优点：简单、查找快；缺点：冲突率高（频繁访问的两个块映射到同一行会相互驱逐）<br>
+    • <strong>全相联映射：</strong>每个主存块可以映射到 Cache 的任意行。优点：灵活、冲突率最低；缺点：需要比较所有行，硬件复杂（全相联比较器）<br>
+    • <strong>组相联映射：</strong>折中方案——分若干组，块可以映射到指定组内任意行。N 路组相联就是每 N 行构成一组。优点：兼顾冲突率和硬件复杂度（只需比较组内 N 个标记）<br><br>
+
+    <strong>替换算法：</strong><br>
+    • <strong>LRU (最近最少使用)：</strong>替换最长时间没有被访问的块。效果好但硬件实现复杂（需要记录访问历史）<br>
+    • <strong>FIFO (先进先出)：</strong>替换最早进入 Cache 的块。简单但可能把常用块替换掉<br>
+    • <strong>随机替换：</strong>随机选一块替换。硬件开销最小，性能可接受<br>
+    • <strong>LFU (最不经常使用)：</strong>替换访问次数最少的块。实现复杂，很少用<br><br>
+
+    <strong>写策略：</strong><br>
+    • <strong>写回 (Write-Back)：</strong>只写 Cache，标记脏位，被替换时才写回主存。优点：减少写主存次数；缺点：一致性麻烦<br>
+    • <strong>写通 (Write-Through)：</strong>同时写 Cache 和主存。优点：一致性简单；缺点：写主存速度慢，常用写缓冲缓解<br>
+    • <strong>写分配 (Write-Allocate)：</strong>写不命中时先调入 Cache 再写（常配合写回）<br>
+    • <strong>非写分配 (No-Write-Allocate)：</strong>写不命中时直接写主存，不调入 Cache（常配合写通）</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q8 <span style="font-size:12px;color:var(--muted);font-weight:400">（综合计算题）</span></h4>
+    <p class="q">某系统采用页式虚拟内存管理。页大小 4KB，虚拟地址 32 位，物理地址 28 位。TLB 为 4 路组相联共 16 组。求：① 页表项格式；② TLB 标记位数和索引位数；③ 如果虚拟地址为 0x12345678，请给出页号（VPN）和页内偏移。</p>
+    <p class="a"><strong>解：</strong><br><br>
+
+    <strong>① 页大小 = 4KB = 2¹²，页内偏移 = 12 bit</strong><br>
+    虚拟地址 32 位：VPN = 32 - 12 = <strong>20 bit</strong>（虚拟页号）<br>
+    物理地址 28 位：PPN = 28 - 12 = <strong>16 bit</strong>（物理页号）<br>
+    页表项格式：<strong>有效位 + 脏位 + 引用位 + 保护位 + PPN(16bit) ≈ 20-32 bit/项</strong><br>
+    一级页表大小 = 2²⁰ 页表项 × 4 字节 ≈ 4MB（太大，所以用多级页表）<br><br>
+
+    <strong>② TLB 分析：</strong><br>
+    • TLB 共 4 路组相联，16 组 → 总行数 = 16 × 4 = 64 个条目<br>
+    • 组索引位数 = log₂(16) = <strong>4 bit</strong><br>
+    • TLB 的标记位数 = VPN 位数 - 组索引位数 = 20 - 4 = <strong>16 bit</strong><br>
+    • 每组 4 个比较器并行比较标记<br><br>
+
+    <strong>③ 0x12345678 分析：</strong><br>
+    0x12345678 的二进制：0001 0010 0011 0100 0101 0110 0111 1000₂<br>
+    低 12 位（页内偏移）= 0x678 = <strong>1656</strong><br>
+    高 20 位（VPN）= 0x12345 = <strong>74565</strong><br>
+    虚拟页号 VPN = 0x12345，页内偏移 = 0x678<br>
+    TLB 组索引 = VPN 的低 4 位 = 0x12345 & 0xF = <strong>5</strong><br>
+    TLB 标记 = VPN 的高 16 位 = 0x12345 >> 4 = <strong>0x1234</strong></p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 速查表 -->
+<!-- ================================================================== -->
+<section id="quickref" class="section">
+  <h2>📖 速查表（计算机组成原理核心知识点汇总）</h2>
+
+  <div class="feynman">
+    <p><strong>说明：</strong>以下速查表覆盖计算机组成原理实战最高频的 <strong>7 大知识点</strong>——考前 5 分钟翻一遍，考场上就能脱口而出。建议配合 <a href="computer-arch-overview.html" style="color:var(--accent)">系列文章</a> 整体学习。</p>
+  </div>
+
+  <!-- 1. IEEE 754 -->
+  <div class="quickref-full">
+    <h3>① IEEE 754 单精度浮点数格式（32位）</h3>
+    <table>
+      <tr><th>字段</th><th>位数</th><th>说明</th><th>举例：1.0</th></tr>
+      <tr><td><strong>S (符号位)</strong></td><td>1 bit</td><td>0=正数，1=负数</td><td>0</td></tr>
+      <tr><td><strong>E (阶码)</strong></td><td>8 bit</td><td>真值 + 127（移码表示），全1=NaN/∞</td><td>127 = 01111111₂</td></tr>
+      <tr><td><strong>M (尾数)</strong></td><td>23 bit</td><td>规格化尾数为 1.xxxx，隐藏整数位1</td><td>000...0₂</td></tr>
+      <tr><td colspan="4" style="text-align:center;"><strong>值公式：(-1)^S × 2^(E-127) × (1.M)</strong></td></tr>
+      <tr><td colspan="4" style="text-align:center;color:var(--muted);font-size:12px;">特殊值：E=0且M=0 → ±0；E=255且M=0 → ±∞；E=255且M≠0 → NaN</td></tr>
+    </table>
+  </div>
+
+  <!-- 2. Cache 三种映射 -->
+  <div class="quickref-full">
+    <h3>② Cache 三种映射方式对比</h3>
+    <table>
+      <tr><th>映射方式</th><th>地址格式</th><th>优点</th><th>缺点</th><th>典型应用</th></tr>
+      <tr><td><strong>直接映射</strong></td><td>Tag | Index | Offset</td><td>硬件简单、查找快</td><td>冲突率高</td><td>简单嵌入式CPU</td></tr>
+      <tr><td><strong>全相联映射</strong></td><td>Tag | Offset</td><td>冲突率最低、空间利用率高</td><td>比较器复杂、成本高</td><td>TLB（通常为全相联）</td></tr>
+      <tr><td><strong>组相联映射</strong></td><td>Tag | Index | Offset</td><td>兼顾冲突率和复杂度，最常用</td><td>介于两者之间</td><td>现代CPU L1/L2/L3 Cache</td></tr>
+      <tr><td colspan="5" style="text-align:center;color:var(--muted);font-size:12px;">组相联特点：路数=每组行数。4路组相联 = 每组4行。路数越多→冲突越少→比较器越多→硬件越复杂</td></tr>
+    </table>
+  </div>
+
+  <!-- 3. 流水线5阶段 -->
+  <div class="quickref-full">
+    <h3>③ 经典五级流水线（RISC V / MIPS）</h3>
+    <table>
+      <tr><th>阶段</th><th>全称</th><th>功能</th><th>关键硬件</th></tr>
+      <tr><td><strong>IF</strong></td><td>Instruction Fetch</td><td>从指令Cache取指令，PC自增</td><td>PC + 指令Cache</td></tr>
+      <tr><td><strong>ID</strong></td><td>Instruction Decode</td><td>译码，读取寄存器，生成控制信号</td><td>译码器 + 寄存器堆</td></tr>
+      <tr><td><strong>EX</strong></td><td>Execute</td><td>ALU运算、地址计算、分支判断</td><td>ALU + 加法器</td></tr>
+      <tr><td><strong>MEM</strong></td><td>Memory Access</td><td>访存（Load/Store），读数据Cache</td><td>数据Cache</td></tr>
+      <tr><td><strong>WB</strong></td><td>Write Back</td><td>结果写回寄存器堆</td><td>寄存器堆写端口</td></tr>
+      <tr><td colspan="4" style="text-align:center;color:var(--muted);font-size:12px;">理想吞吐：每个时钟周期完成一条指令。但冒险（结构/数据/控制）会降低实际吞吐，需通过前递、分支预测等技术弥补</td></tr>
+    </table>
+  </div>
+
+  <!-- 4. 寻址方式 -->
+  <div class="quickref-full">
+    <h3>④ 常用寻址方式对比</h3>
+    <table>
+      <tr><th>寻址方式</th><th>有效地址计算</th><th>举例 (x86)</th><th>用途</th></tr>
+      <tr><td><strong>立即数寻址</strong></td><td>操作数=指令中的立即数</td><td><code>mov eax, 42</code></td><td>常量赋值</td></tr>
+      <tr><td><strong>寄存器寻址</strong></td><td>操作数=寄存器内容</td><td><code>mov eax, ebx</code></td><td>寄存器间传值</td></tr>
+      <tr><td><strong>直接寻址</strong></td><td>EA = 指令中的地址</td><td><code>mov eax, [0x1000]</code></td><td>访存固定地址</td></tr>
+      <tr><td><strong>寄存器间接</strong></td><td>EA = (寄存器)</td><td><code>mov eax, [ebx]</code></td><td>指针解引用</td></tr>
+      <tr><td><strong>基址+变址</strong></td><td>EA = 基址 + 变址</td><td><code>mov eax, [ebx+esi]</code></td><td>数组/结构体</td></tr>
+      <tr><td><strong>相对寻址</strong></td><td>EA = PC + 偏移</td><td><code>je +100</code></td><td>分支/跳转</td></tr>
+      <tr><td><strong>比例变址</strong></td><td>EA = 基 + 变址×比例 + 位移</td><td><code>mov eax, [ebx+esi*4+8]</code></td><td>数组元素访问</td></tr>
+    </table>
+  </div>
+
+  <!-- 5. CISC vs RISC -->
+  <div class="quickref-full">
+    <h3>⑤ CISC vs RISC 对比</h3>
+    <table>
+      <tr><th>对比维度</th><th>CISC（复杂指令集）</th><th>RISC（精简指令集）</th></tr>
+      <tr><td><strong>指令格式</strong></td><td>变长指令（1~15 字节），格式多样</td><td>定长指令（通常 32 位），格式统一</td></tr>
+      <tr><td><strong>指令数量</strong></td><td>大量（数百条），功能复杂</td><td>精简（几十~百余条），功能单一</td></tr>
+      <tr><td><strong>寻址方式</strong></td><td>多种（>10 种），指令可直接访存</td><td>少量（<5 种），Load/Store 架构单独分开</td></tr>
+      <tr><td><strong>寄存器</strong></td><td>较少（x86: 8 个通用寄存器）</td><td>较多（ARM: 16 个，RISC-V: 32 个）</td></tr>
+      <tr><td><strong>CPI</strong></td><td>1~20（复杂指令多周期）</td><td>≈ 1（单周期/流水线友好）</td></tr>
+      <tr><td><strong>微程序控制</strong></td><td>常用（方便实现复杂指令）</td><td>硬连线/微程序均可</td></tr>
+      <tr><td><strong>代表架构</strong></td><td>x86 / x86-64</td><td>ARM / RISC-V / MIPS</td></tr>
+      <tr><td><strong>编译器复杂度</strong></td><td>复杂（需要选择合适的变长指令）</td><td>简单（指令选择更直接）</td></tr>
+      <tr><td colspan="3" style="text-align:center;color:var(--muted);font-size:12px;">现代趋势：CISC 内部用微操作转换为 RISC 风格执行（如 x86 的 μop），两者边界正在模糊</td></tr>
+    </table>
+  </div>
+
+  <!-- 6. 中断优先级 -->
+  <div class="quickref-full">
+    <h3>⑥ 中断优先级与中断处理流程</h3>
+    <table>
+      <tr><th>优先级</th><th>中断类型</th><th>典型来源</th><th>特点</th></tr>
+      <tr><td><strong>最高</strong></td><td>内部异常（故障）</td><td>除零错、缺页、非法指令</td><td>同步，CPU 内部产生，必须立即处理</td></tr>
+      <tr><td><strong>较高</strong></td><td>不可屏蔽中断 (NMI)</td><td>电源故障、硬件严重错误</td><td>无法被屏蔽，强制 CPU 响应</td></tr>
+      <tr><td><strong>中</strong></td><td>高速外设中断</td><td>磁盘、网卡、显示</td><td>可屏蔽，优先级可编程设置</td></tr>
+      <tr><td><strong>较低</strong></td><td>低速外设中断</td><td>键盘、鼠标、打印机</td><td>可屏蔽，延迟容忍度较高</td></tr>
+      <tr><td><strong>最低</strong></td><td>软件中断（陷阱）</td><td>系统调用 (int 0x80)、断点</td><td>程序主动触发，同步</td></tr>
+      <tr><td colspan="4" style="text-align:center;color:var(--muted);font-size:12px;">中断响应流程：关中断 → 保护断点(PC等) → 识别中断源 → 转中断服务程序 → 开中断 → 执行ISR → 恢复现场 → 返回原程序</td></tr>
+    </table>
+  </div>
+
+  <!-- 7. DMA vs 中断 vs 程序查询 -->
+  <div class="quickref-full">
+    <h3>⑦ I/O方式对比：DMA vs 中断 vs 程序查询</h3>
+    <table>
+      <tr><th>对比项</th><th>程序查询</th><th>中断</th><th>DMA</th></tr>
+      <tr><td><strong>传输单位</strong></td><td>字（Word）</td><td>字（Word）</td><td>块（Block）</td></tr>
+      <tr><td><strong>数据路径</strong></td><td>CPU → 内存/外设</td><td>CPU → 内存/外设</td><td>外设 ↔ 内存（硬件直传）</td></tr>
+      <tr><td><strong>CPU 状态</strong></td><td>忙等轮询</td><td>暂停（保存现场后执行ISR）</td><td>继续执行（DMA 周期挪用）</td></tr>
+      <tr><td><strong>硬件代价</strong></td><td>无</td><td>中断控制器</td><td>DMA 控制器</td></tr>
+      <tr><td><strong>适用场景</strong></td><td>简单低端设备</td><td>中低速外设</td><td>高速批量传输</td></tr>
+      <tr><td><strong>一次传输CPU开销</strong></td><td>每次都查询（高）</td><td>中断响应+ISR执行（中）</td><td>仅初始化+完成中断（低）</td></tr>
+      <tr><td><strong>实时性</strong></td><td>差（依赖轮询频率）</td><td>好（设备主动通知）</td><td>极好（硬件直传）</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 口播总结 -->
+<!-- ================================================================== -->
+<section class="section">
+  <div class="voice-summary">
+    <p><strong>朋友，我们终于来到了计算机组成原理系列的最后一篇。</strong></p>
+    <p>回顾整个系列，从冯·诺依曼的五大部件，到指令集的编码方式，从 Cache 的三种映射到流水线的三类冒险，从中断和 DMA 的 I/O 体系到总线仲裁的多种策略——我们已经把计算机组成原理的骨架和血肉完整地搭建起来了。</p>
+    <p>这篇核心追问题汇总，核心就是三件事：</p>
+    <p>第一，<strong>算对题</strong>——平均 CPI 加权求和、IEEE 754 规格化转二进制、流水线吞吐计算、Cache 地址格式拆解。考场上一道计算题就能拉开分差。</p>
+    <p>第二，<strong>说清楚概念对比</strong>——CISC vs RISC 不只是\"复杂 vs 简单\"，要看指令格式、寻址方式、CPI 和编译器的不同；中断 vs DMA 不只是\"CPU参与与否\"，要理解传输单位、数据路径和适用场景的差异。</p>
+    <p>第三，<strong>建立知识体系</strong>——速查表里的 7 大知识点不是孤立的：浮点数的阶码和尾数、Cache 的标记和索引、流水线的各个阶段、寻址方式的各种组合……它们共同构成了计算机组成原理的知识网络。你不需要死记硬背，理解了为什么这么设计，实战自然说得出来。</p>
+    <p>最后送你一句话：<strong>计算机组成原理，不是背出来的，是\"拆\"出来的</strong>——从一条指令怎么执行拆到晶体管怎么开关，从一层 Cache 怎么工作拆到虚拟地址怎么转换。每次实战问到一个知识点，问问自己：\"这个设计要解决什么问题？它的 trade-off 是什么？\"——能回答这两个问题，读者就会给你加分。💪</p>
+    <p>祝实战顺利，我们后会有期！🎯</p>
+  </div>
+</section>
+
+</main>
+
+</div><!-- .app -->
+
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

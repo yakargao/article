@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<title>系统设计实战 · 5大经典案例 · 知识库</title>
+<style>
+  :root {
+    --bg: #0f172a; --sidebar-bg: #1e293b; --card: #1e293b; --border: #334155;
+    --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --green: #34d399;
+    --orange: #fbbf24; --red: #f87171; --purple: #a78bfa; --cyan: #22d3ee;
+    --pink: #fb7185; --yellow: #fbbf24; --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.8;
+    min-height: 100vh; display: flex;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 240px; min-height: 100vh; background: var(--sidebar-bg);
+    border-right: 1px solid var(--border); padding: 24px 0; position: fixed;
+    left: 0; top: 0; overflow-y: auto; z-index: 100;
+    transition: transform 0.3s ease;
+  }
+  .sidebar-logo { font-size: 18px; font-weight: 800; padding: 0 20px 20px; color: var(--text); border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { font-size: 11px; font-weight: 700; color: var(--muted); padding: 12px 20px 6px; text-transform: uppercase; letter-spacing: 1px; }
+  .nav-item { display: block; padding: 8px 20px; font-size: 13px; color: var(--muted); text-decoration: none; transition: all 0.2s; border-left: 3px solid transparent; }
+  .nav-item:hover { color: var(--text); background: rgba(56,189,248,0.06); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.1); font-weight: 600; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    background: var(--border); border: none; color: var(--muted);
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; transition: all 0.2s;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  .sidebar.collapsed { transform: translateX(-210px); }
+  .sidebar.collapsed + .main-content { margin-left: 30px; }
+  .sidebar.collapsed .sidebar-logo, .sidebar.collapsed .nav-section, .sidebar.collapsed .nav-item { opacity: 0; pointer-events: none; }
+
+  /* ── Main Content ── */
+  .main-content { margin-left: 240px; flex: 1; min-height: 100vh; transition: margin-left 0.3s ease; }
+  .container { max-width: 900px; margin: 0 auto; padding: 32px 28px 80px; }
+
+  .top-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .back-btn {
+    padding: 7px 16px; background: var(--card); border: 1.5px solid var(--border);
+    border-radius: 10px; color: var(--muted); font-size: 13px; text-decoration: none;
+    transition: all 0.2s; box-shadow: var(--shadow);
+  }
+  .back-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  h1 { font-size: 26px; margin-bottom: 6px; }
+  h1 span { color: var(--accent); }
+  .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+
+  /* ── Feynman Card ── */
+  .feynman {
+    background: linear-gradient(135deg, rgba(56,189,248,0.08), rgba(167,139,250,0.05));
+    border: 1.5px solid rgba(56,189,248,0.18);
+    border-radius: 14px; padding: 20px 24px; margin: 24px 0;
+  }
+  .feynman .analogy { color: var(--orange); font-weight: 700; font-size: 15px; display: block; margin-bottom: 8px; }
+  .feynman p { font-size: 14px; color: var(--text); margin: 6px 0; }
+
+  h2 { font-size: 20px; color: var(--accent); margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+  h2:first-of-type { margin-top: 0; }
+  h3 { font-size: 17px; color: var(--text); margin: 24px 0 12px; }
+  h4 { font-size: 15px; color: var(--cyan); margin: 16px 0 8px; }
+  p { font-size: 14px; margin: 8px 0; line-height: 1.9; color: #cbd5e1; }
+
+  /* ── Case Card ── */
+  .case-card {
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 24px; margin: 20px 0;
+    box-shadow: var(--shadow);
+  }
+  .case-card h3 { margin-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+
+  /* ── Diagram ── */
+  .diagram { margin: 24px 0; background: #0f172a; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+  .diagram svg { display: block; width: 100%; height: auto; }
+  .diagram-caption { text-align: center; font-size: 13px; color: var(--muted); margin-top: 10px; padding: 0 20px 4px; font-weight: 500; }
+  .diagram-caption strong { color: var(--cyan); }
+
+  /* ── Design Decision Grid ── */
+  .decision-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .decision-card {
+    background: rgba(15,23,42,0.6); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+  }
+  .decision-card .icon { font-size: 18px; }
+  .decision-card strong { color: var(--accent); font-size: 13px; display: block; margin-bottom: 4px; }
+  .decision-card p { font-size: 12px; color: var(--muted); margin: 0; }
+
+  /* ── Pitfall ── */
+  .pitfall {
+    background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.2);
+    border-radius: 10px; padding: 14px 18px; margin: 14px 0;
+  }
+  .pitfall strong { color: var(--red); display: block; margin-bottom: 4px; }
+  .pitfall p { font-size: 13px; color: var(--muted); margin: 2px 0; }
+
+  /* ── Data Flow ── */
+  .dataflow { background: rgba(52,211,153,0.05); border: 1px solid rgba(52,211,153,0.15); border-radius: 10px; padding: 14px 18px; margin: 14px 0; }
+  .dataflow strong { color: var(--green); display: block; margin-bottom: 6px; }
+  .dataflow ol { margin: 0 0 0 18px; font-size: 13px; color: #cbd5e1; }
+  .dataflow li { margin: 3px 0; }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+  th { background: rgba(56,189,248,0.08); color: var(--accent); padding: 9px 14px; text-align: left; border: 1px solid var(--border); font-weight: 700; }
+  td { padding: 9px 14px; border: 1px solid var(--border); vertical-align: top; color: #cbd5e1; }
+  tr:nth-child(even) td { background: rgba(15,23,42,0.4); }
+
+  /* ── QA ── */
+  .qa { background: var(--card); border: 1.5px solid var(--border); border-radius: 12px; margin: 14px 0; overflow: hidden; box-shadow: var(--shadow); }
+  .q { padding: 12px 18px; background: rgba(56,189,248,0.06); color: var(--accent); font-weight: 700; font-size: 14px; border-bottom: 1px solid var(--border); }
+  .a { padding: 14px 18px; font-size: 13px; color: #cbd5e1; line-height: 1.8; }
+  .a code { background: rgba(56,189,248,0.1); color: var(--cyan); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+
+  /* ── Badges ── */
+  .badge { display: inline-block; font-size: 11px; padding: 2px 10px; border-radius: 6px; font-weight: 600; margin-right: 4px; }
+  .badge-red { background: rgba(248,113,113,0.12); color: var(--red); }
+  .badge-green { background: rgba(52,211,153,0.12); color: var(--green); }
+  .badge-orange { background: rgba(251,191,36,0.12); color: var(--orange); }
+  .badge-purple { background: rgba(167,139,250,0.12); color: var(--purple); }
+  .badge-cyan { background: rgba(34,211,238,0.12); color: var(--cyan); }
+
+  /* ── Tags at top ── */
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
+  .tag-row .badge { font-size: 11px; }
+
+  /* ── Overview Grid ── */
+  .overview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin: 20px 0; }
+  .overview-card {
+    background: var(--card); border: 1.5px solid var(--border); border-radius: 14px;
+    padding: 18px 20px; box-shadow: var(--shadow); transition: all 0.2s;
+  }
+  .overview-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .overview-card h4 { font-size: 15px; color: var(--accent); margin-bottom: 6px; }
+  .overview-card p { font-size: 12px; color: var(--muted); margin: 0; }
+
+  /* ── Mobile ── */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); width: 100%; }
+    .sidebar.collapsed { transform: translateX(-100%); }
+    .sidebar:not(.collapsed) { transform: translateX(0); }
+    .main-content { margin-left: 0; }
+    .sidebar.collapsed + .main-content { margin-left: 0; }
+    .container { padding: 16px 14px 70px; }
+    h1 { font-size: 20px; }
+    h2 { font-size: 17px; }
+    h3 { font-size: 15px; }
+    p, li { font-size: 13px; }
+    .decision-grid { grid-template-columns: 1fr; }
+    .feynman { padding: 14px 16px; }
+    .case-card { padding: 16px; }
+    table { font-size: 12px; display: block; overflow-x: auto; }
+    th, td { padding: 6px 10px; }
+    .diagram svg { max-height: 280px; }
+    .overview-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    .container { padding: 12px 8px 60px; }
+    h1 { font-size: 18px; }
+    .diagram svg { max-height: 240px; }
+  }
+
+  /* ── Hamburger for mobile ── */
+  .hamburger {
+    display: none; position: fixed; top: 12px; left: 12px; z-index: 200;
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    width: 36px; height: 36px; border-radius: 8px; font-size: 18px;
+    cursor: pointer; box-shadow: var(--shadow);
+  }
+  @media (max-width: 768px) {
+    .hamburger { display: flex; align-items: center; justify-content: center; }
+  }
+
+  /* ── Code ── */
+  pre { background: #0f172a; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin: 14px 0; overflow-x: auto; }
+  code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 13px; color: var(--cyan); }
+  pre code { color: #cbd5e1; }
+
+  /* ── Key Insight ── */
+  .insight { background: rgba(167,139,250,0.06); border: 1px solid rgba(167,139,250,0.2); border-radius: 10px; padding: 14px 18px; margin: 14px 0; }
+  .insight strong { color: var(--purple); display: block; margin-bottom: 4px; }
+  .insight p { font-size: 13px; color: var(--muted); margin: 2px 0; }
+</style>
+</head>
+<body>
+
+<button class="hamburger" onclick="toggleSidebar()">☰</button>
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">🔵 知<span>识库</span></div>
+  <a class="nav-item" href="#overview">📋 总览</a>
+  <div class="nav-section">实战案例</div>
+  <a class="nav-item" href="#im">💬 即时通讯</a>
+  <a class="nav-item" href="#payment">💳 支付系统</a>
+  <a class="nav-item" href="#shorturl">🔗 短链接</a>
+  <a class="nav-item" href="#seckill">⚡ 秒杀系统</a>
+  <a class="nav-item" href="#feed">📰 信息流</a>
+  <div class="nav-section">实战</div>
+  <a class="nav-item" href="#qa">❓ 高频实战问答</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<!-- ── Main Content ── -->
+<div class="main-content">
+<div class="container">
+
+  <div class="top-bar">
+    <a href="/" class="back-btn">← 返回首页</a>
+    <span class="badge badge-cyan">系统设计</span>
+  </div>
+
+  <h1><span>5大经典系统设计实战案例</span></h1>
+  <p class="subtitle">大厂高频真题 · 架构 · 数据流 · 坑点全解析</p>
+
+  <!-- ── Overview Feynman ── -->
+  <div class="feynman">
+    <span class="analogy">🎯 为什么要学系统设计？</span>
+    <p>系统设计实战就像"搭积木"——读者给你一堆需求，看你怎么把 Redis、Kafka、MySQL 这些"积木"搭成能抗住千万流量的系统。别怕，下面这5道题覆盖了<strong>80%的实战场景</strong>，吃透了它们，面大厂心里就有底了。</p>
+  </div>
+
+  <!-- ── Overview Section ── -->
+  <h2 id="overview">📋 总览：5个案例速览</h2>
+
+  <div class="overview-grid">
+    <div class="overview-card">
+      <h4>💬 即时通讯</h4>
+      <p>微信/WhatsApp 架构。WebSocket 长连接、消息模型、离线推送、消息可靠性。</p>
+      <div class="tag-row" style="margin-top:8px">
+        <span class="badge badge-cyan">WebSocket</span>
+        <span class="badge badge-purple">消息队列</span>
+        <span class="badge badge-green">离线推送</span>
+      </div>
+    </div>
+    <div class="overview-card">
+      <h4>💳 支付系统</h4>
+      <p>支付宝/微信支付。对账、幂等设计、资金安全、分布式事务、最终一致性。</p>
+      <div class="tag-row" style="margin-top:8px">
+        <span class="badge badge-red">资金安全</span>
+        <span class="badge badge-orange">幂等</span>
+        <span class="badge badge-green">对账</span>
+      </div>
+    </div>
+    <div class="overview-card">
+      <h4>🔗 短链接</h4>
+      <p>短网址生成。Base62 编码、重定向、访问统计、高并发读写。</p>
+      <div class="tag-row" style="margin-top:8px">
+        <span class="badge badge-cyan">Base62</span>
+        <span class="badge badge-purple">302跳转</span>
+        <span class="badge badge-green">布隆过滤器</span>
+      </div>
+    </div>
+    <div class="overview-card">
+      <h4>⚡ 秒杀系统</h4>
+      <p>双11/秒杀活动。防超卖、削峰填谷、静态化、限流、库存预热。</p>
+      <div class="tag-row" style="margin-top:8px">
+        <span class="badge badge-red">超卖</span>
+        <span class="badge badge-orange">削峰</span>
+        <span class="badge badge-cyan">静态化</span>
+      </div>
+    </div>
+    <div class="overview-card">
+      <h4>📰 信息流</h4>
+      <p>微博/抖音推荐。推拉结合模式、Feed 排序、热词发现、去重。</p>
+      <div class="tag-row" style="margin-top:8px">
+        <span class="badge badge-purple">推拉结合</span>
+        <span class="badge badge-green">Feed排序</span>
+        <span class="badge badge-orange">去重</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- CASE 1: 即时通讯 -->
+  <!-- ================================================================ -->
+  <h2 id="im">💬 案例一：即时通讯系统</h2>
+
+  <div class="feynman">
+    <span class="analogy">📩 生活类比：邮局 vs 电话</span>
+    <p>即时通讯就像"对讲机"——你按下说话，对方立刻听到。传统的 HTTP 像"寄信"：每封信都要骑车送到邮局（建立连接）、盖上邮戳（HTTP 头）、送到对方手里再等回执。而 <strong>WebSocket</strong> 就像你和对讲机之间拉了一根专线，一直通着电，随时可以说话。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a;font-family:'PingFang SC',sans-serif;">
+      <defs>
+        <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#818cf8"/></linearGradient>
+        <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#38bdf8"/></linearGradient>
+      </defs>
+      <!-- User A -->
+      <rect x="30" y="140" width="120" height="60" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+      <text x="90" y="175" text-anchor="middle" fill="#38bdf8" font-size="15" font-weight="bold">用户A</text>
+      <text x="90" y="192" text-anchor="middle" fill="#64748b" font-size="11">手机/PC</text>
+      <!-- User B -->
+      <rect x="650" y="140" width="120" height="60" rx="10" fill="#1e293b" stroke="#34d399" stroke-width="2"/>
+      <text x="710" y="175" text-anchor="middle" fill="#34d399" font-size="15" font-weight="bold">用户B</text>
+      <text x="710" y="192" text-anchor="middle" fill="#64748b" font-size="11">手机/PC</text>
+      <!-- WS Lines -->
+      <path d="M150 170 C200 170, 200 100, 260 100" stroke="#475569" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+      <path d="M540 100 C600 100, 600 170, 650 170" stroke="#475569" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+      <text x="240" y="90" text-anchor="middle" fill="#64748b" font-size="11">WebSocket 长连接</text>
+      <text x="600" y="90" text-anchor="middle" fill="#64748b" font-size="11">WebSocket 长连接</text>
+      <!-- Gateway -->
+      <rect x="200" y="210" width="120" height="45" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="260" y="238" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="bold">接入网关</text>
+      <path d="M150 200 L200 232" stroke="#475569" stroke-width="1.5" fill="none"/>
+      <path d="M320 232 L540 110" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- Message Queue -->
+      <rect x="200" y="290" width="130" height="45" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="265" y="307" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">消息队列</text>
+      <text x="265" y="322" text-anchor="middle" fill="#64748b" font-size="10">Kafka / RabbitMQ</text>
+      <path d="M260 255 L260 290" stroke="#475569" stroke-width="1.5" fill="none"/>
+      <path d="M330 315 L400 315" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- Logic Server -->
+      <rect x="400" y="80" width="130" height="50" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="1.5"/>
+      <text x="465" y="102" text-anchor="middle" fill="#34d399" font-size="12" font-weight="bold">逻辑服务器</text>
+      <text x="465" y="118" text-anchor="middle" fill="#64748b" font-size="10">消息路由/存储</text>
+      <path d="M320 100 L400 105" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- DB -->
+      <rect x="400" y="160" width="130" height="45" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="465" y="178" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold">消息存储</text>
+      <text x="465" y="193" text-anchor="middle" fill="#64748b" font-size="10">MySQL + Redis</text>
+      <path d="M465 130 L465 160" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- Offline Push -->
+      <rect x="580" y="260" width="120" height="45" rx="8" fill="#1e293b" stroke="#fb7185" stroke-width="1.5"/>
+      <text x="640" y="277" text-anchor="middle" fill="#fb7185" font-size="11" font-weight="bold">推送服务</text>
+      <text x="640" y="293" text-anchor="middle" fill="#64748b" font-size="10">APNs/FCM</text>
+      <path d="M400 315 L580 282" stroke="#475569" stroke-width="1.5" fill="none"/>
+      <path d="M700 260 L730 170" stroke="#475569" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>
+      <text x="730" y="220" text-anchor="middle" fill="#fb7185" font-size="10">离线推送</text>
+
+      <!-- Arrow labels -->
+      <text x="180" y="135" fill="#64748b" font-size="10">① 建立连接</text>
+      <text x="140" y="250" fill="#64748b" font-size="10">② 消息上行</text>
+      <text x="300" y="140" fill="#64748b" font-size="10">③ 路由转发</text>
+      <text x="460" y="250" fill="#64748b" font-size="10">④ 持久化</text>
+      <text x="530" y="145" fill="#64748b" font-size="10">⑤ 推送</text>
+    </svg>
+    <div class="diagram-caption"><strong>即时通讯架构</strong> — WebSocket 长连接保持在线，消息队列异步削峰，Redis 缓存会话状态</div>
+  </div>
+
+  <div class="dataflow">
+    <strong>📊 核心数据流</strong>
+    <ol>
+      <li>用户 A 与接入网关建立 <strong>WebSocket 长连接</strong>（一次握手，全双工通信）</li>
+      <li>消息发送：A 发送内容 → 接入网关解析协议（Protobuf/JSON）→ 逻辑服务器</li>
+      <li>逻辑服务器通过 <strong>一致性哈希</strong> 找到 B 所在连接节点，转发消息</li>
+      <li>消息同时写入 <strong>MySQL</strong>（历史记录）和 <strong>Redis</strong>（最近会话缓存）</li>
+      <li>如果 B 不在线 → 消息写入离线队列 → 通过 APNs/FCM 推送通知</li>
+    </ol>
+  </div>
+
+  <div class="case-card">
+    <h3>🔑 关键设计决策</h3>
+    <div class="decision-grid">
+      <div class="decision-card">
+        <div class="icon">🌐</div>
+        <strong>WebSocket vs 轮询</strong>
+        <p>HTTP 轮询每次请求都有几百字节的 Header 开销，30秒轮询一次 × 1亿用户 = 巨大的带宽浪费。WebSocket 建立连接后 Header 仅 2 字节，实时性从秒级降到毫秒级。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">📦</div>
+        <strong>消息模型：推 vs 拉</strong>
+        <p>"推模式"低延迟但服务端压力大；"拉模式"客户端可控但消息有延迟。微信采用<strong>推送通知 + 拉取内容</strong>：先推一条通知，客户端再拉取具体消息内容。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">🔒</div>
+        <strong>消息可靠性（ACK机制）</strong>
+        <p>每条消息有唯一 ID，客户端收到后回 ACK。超时未 ACK 则重传，最多 3 次。类似 TCP 的确认重传机制，但应用层实现更灵活。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">🗄️</div>
+        <strong>消息存储策略</strong>
+        <p>使用 <strong>Timeline 模型</strong>——每个会话维护一个有序消息列表。读扩散（拉模式）走 MySQL 分表，写扩散（推模式）写 Redis。离线消息存 7 天后自动清理。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pitfall">
+    <strong>⚠️ 常见坑点</strong>
+    <p><strong>坑1：WebSocket 连接风暴</strong> — 客户端断线重连时，所有用户同时发起连接，瞬间打崩网关。解法：<strong>指数退避重连</strong>（1s→2s→4s→8s），加随机抖动。</p>
+    <p><strong>坑2：消息乱序</strong> — 消息走不同线程发送，抵达顺序可能乱。解法：每条消息带 <strong>sequence_id</strong>，客户端按 seq 排序显示，丢弃过期消息。</p>
+    <p><strong>坑3："已读"标记放大</strong> — 群聊中 1000 人，一条消息要写 1000 条已读记录。解法：只存"最新已读消息 ID"，用户维度聚合。</p>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- CASE 2: 支付系统 -->
+  <!-- ================================================================ -->
+  <h2 id="payment">💳 案例二：支付系统</h2>
+
+  <div class="feynman">
+    <span class="analogy">🏦 生活类比：自助售货机</span>
+    <p>你往售货机投币，它确认收到后才掉饮料。但万一它收了钱却没掉饮料呢？这就需要<strong>对账</strong>——每天关门后数钱，看看投币数和出货数能不能对上。<strong>幂等</strong>就像"按一下按钮出货一次"——你再怎么狂按按钮，它也只出一瓶饮料。资金安全就是售货机内部的所有记录都不能篡改，每一分钱都要有迹可循。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a;font-family:'PingFang SC',sans-serif;">
+      <defs>
+        <linearGradient id="payG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#38bdf8"/></linearGradient>
+        <linearGradient id="payG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f87171"/><stop offset="100%" stop-color="#fbbf24"/></linearGradient>
+      </defs>
+      <!-- User -->
+      <rect x="20" y="160" width="110" height="55" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+      <text x="75" y="186" text-anchor="middle" fill="#38bdf8" font-size="14" font-weight="bold">用户</text>
+      <text x="75" y="202" text-anchor="middle" fill="#64748b" font-size="11">App/H5</text>
+      <!-- API Gateway -->
+      <rect x="170" y="100" width="120" height="50" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="230" y="122" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="bold">API 网关</text>
+      <text x="230" y="138" text-anchor="middle" fill="#64748b" font-size="10">限流/鉴权</text>
+      <path d="M130 187 L170 125" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- 幂等层 -->
+      <rect x="170" y="200" width="120" height="45" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="230" y="218" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">幂等校验层</text>
+      <text x="230" y="234" text-anchor="middle" fill="#64748b" font-size="10">Redis + 分布式锁</text>
+      <path d="M230 150 L230 200" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- 订单服务 -->
+      <rect x="340" y="80" width="130" height="50" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="1.5"/>
+      <text x="405" y="102" text-anchor="middle" fill="#34d399" font-size="12" font-weight="bold">订单服务</text>
+      <text x="405" y="118" text-anchor="middle" fill="#64748b" font-size="10">创建/更新订单</text>
+      <path d="M290 120 L340 105" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- 支付服务 -->
+      <rect x="340" y="160" width="130" height="50" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="405" y="182" text-anchor="middle" fill="#f87171" font-size="12" font-weight="bold">支付服务</text>
+      <text x="405" y="198" text-anchor="middle" fill="#64748b" font-size="10">扣款/退款</text>
+      <path d="M290 140 L340 185" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- 对账服务 -->
+      <rect x="340" y="240" width="130" height="50" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="405" y="262" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">对账服务</text>
+      <text x="405" y="278" text-anchor="middle" fill="#64748b" font-size="10">T+1 对账/差错处理</text>
+      <path d="M290 220 L340 265" stroke="#475569" stroke-width="1.5" fill="none"/>
+      <path d="M230 245 L340 260" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- 外部支付渠道 -->
+      <rect x="530" y="130" width="140" height="50" rx="8" fill="#1e293b" stroke="#fb7185" stroke-width="1.5"/>
+      <text x="600" y="152" text-anchor="middle" fill="#fb7185" font-size="12" font-weight="bold">支付渠道</text>
+      <text x="600" y="168" text-anchor="middle" fill="#64748b" font-size="10">支付宝/微信/银联</text>
+      <path d="M470 185 L530 155" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- DB -->
+      <rect x="530" y="230" width="140" height="60" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="1.5"/>
+      <text x="600" y="252" text-anchor="middle" fill="#34d399" font-size="12" font-weight="bold">数据库</text>
+      <text x="600" y="268" text-anchor="middle" fill="#64748b" font-size="10">订单表 / 流水表</text>
+      <path d="M405 210 L530 260" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- MQ -->
+      <rect x="530" y="310" width="140" height="45" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="600" y="328" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">消息队列</text>
+      <text x="600" y="344" text-anchor="middle" fill="#64748b" font-size="10">最终一致</text>
+      <path d="M600 290 L600 310" stroke="#475569" stroke-width="1.5" fill="none" stroke-dasharray="4,2"/>
+
+      <!-- Flow labels -->
+      <text x="135" y="100" fill="#64748b" font-size="10">① 下单支付</text>
+      <text x="135" y="225" fill="#64748b" font-size="10">② 幂等校验</text>
+      <text x="280" y="145" fill="#64748b" font-size="10">③ 调渠道</text>
+      <text x="500" y="230" fill="#64748b" font-size="10">④ 异步对账</text>
+    </svg>
+    <div class="diagram-caption"><strong>支付系统架构</strong> — 幂等校验是资金安全的第一道防线，T+1 对账是最后兜底</div>
+  </div>
+
+  <div class="dataflow">
+    <strong>📊 核心数据流</strong>
+    <ol>
+      <li>用户发起支付 → API 网关校验签名 + 限流</li>
+      <li><strong>幂等校验</strong>：根据 <code>order_id + amount</code> 生成幂等 Key，查 Redis 是否已处理。已处理直接返回结果，防止重复扣款</li>
+      <li>订单服务创建订单（状态：待支付）→ 支付服务调外部渠道 → 渠道返回结果</li>
+      <li>支付成功：更新订单状态 + 写入流水表（<strong>事务性确保一致性</strong>）</li>
+      <li><strong>T+1 对账</strong>：每天凌晨拉取渠道对账单 vs 内部流水，逐笔勾对。不符的进入差错处理流程</li>
+    </ol>
+  </div>
+
+  <div class="case-card">
+    <h3>🔑 关键设计决策</h3>
+    <div class="decision-grid">
+      <div class="decision-card">
+        <div class="icon">🔄</div>
+        <strong>幂等设计</strong>
+        <p>支付接口天然非幂等（一次扣款和两次扣款结果不同）。使用 <strong>全局唯一幂等 Key</strong>（用户ID+订单号+时间戳），Redis SETNX 加分布式锁，确保同一请求只处理一次。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">💰</div>
+        <strong>资金安全：T+1对账</strong>
+        <p>内部流水与外部渠道<strong>逐笔勾对</strong>，分为：一致（正常）、长款（渠道有、我方无）、短款（我方有、渠道无）。短款自动发起补单，长款人工审核退款。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">📋</div>
+        <strong>分布式事务方案</strong>
+        <p>采用 <strong>TCC（Try-Confirm-Cancel）</strong> 模式：Try 阶段冻结资金，Confirm 阶段实际扣款，Cancel 阶段解冻。配合事务消息（半消息+回调）实现最终一致性。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">🔐</div>
+        <strong>敏感数据保护</strong>
+        <p>支付密码 <strong>bcrypt</strong> 加盐存储，银行卡号 AES-256 加密+掩码展示。所有操作审计日志留存 3 年以上，支持追溯每一笔资金的完整链路。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pitfall">
+    <strong>⚠️ 常见坑点</strong>
+    <p><strong>坑1：重复回调</strong> — 支付渠道可能因网络问题回调多次。解法：回调处理接口必须幂等，以最终结果为准。</p>
+    <p><strong>坑2：掉单</strong> — 用户支付成功但系统未收到回调。解法：主动查询 + 定时任务补偿（每分钟扫一次"支付中"状态的订单，主动问渠道）。</p>
+    <p><strong>坑3：对账差异</strong> — 时间差导致跨天对账不平。解法：对账窗口加宽到 T+1，允许 24 小时内的时间差，同时保留"在途"标记。</p>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- CASE 3: 短链接 -->
+  <!-- ================================================================ -->
+  <h2 id="shorturl">🔗 案例三：短链接系统</h2>
+
+  <div class="feynman">
+    <span class="analogy">📎 生活类比：快递取件码</span>
+    <p>快递柜给你一个长长的地址"XX省XX市XX区XX小区3号楼快递柜第24格"，但你只需要一个 <strong>6位取件码</strong> "A3B2C9" 就能拿到包裹。短链接就是这个道理——把一长串 URL 映射到一个短字符串，<strong>Base62</strong> 就是取件码的字母表（0-9 a-z A-Z = 62个字符），6位 Base62 能编码 568 亿个链接，够用很久。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 370" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a;font-family:'PingFang SC',sans-serif;">
+      <!-- User -->
+      <rect x="20" y="140" width="110" height="55" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+      <text x="75" y="166" text-anchor="middle" fill="#38bdf8" font-size="14" font-weight="bold">用户/客户端</text>
+      <text x="75" y="183" text-anchor="middle" fill="#64748b" font-size="11">生成/访问短链</text>
+
+      <!-- DNS / LB -->
+      <rect x="170" y="90" width="120" height="45" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="230" y="110" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="bold">负载均衡</text>
+      <text x="230" y="126" text-anchor="middle" fill="#64748b" font-size="10">Nginx/LVS</text>
+      <path d="M130 167 L170 112" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- Web Server -->
+      <rect x="340" y="60" width="130" height="50" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="1.5"/>
+      <text x="405" y="82" text-anchor="middle" fill="#34d399" font-size="12" font-weight="bold">Web 服务器</text>
+      <text x="405" y="98" text-anchor="middle" fill="#64748b" font-size="10">生成/重定向</text>
+      <path d="M290 112 L340 85" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- ID生成器 -->
+      <rect x="340" y="140" width="130" height="45" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="405" y="158" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">ID 生成器</text>
+      <text x="405" y="174" text-anchor="middle" fill="#64748b" font-size="10">发号器 / 雪花算法</text>
+      <path d="M405 110 L405 140" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- Cache -->
+      <rect x="340" y="230" width="130" height="45" rx="8" fill="#1e293b" stroke="#fb7185" stroke-width="1.5"/>
+      <text x="405" y="248" text-anchor="middle" fill="#fb7185" font-size="11" font-weight="bold">Redis 缓存</text>
+      <text x="405" y="264" text-anchor="middle" fill="#64748b" font-size="10">热点短链加速</text>
+      <path d="M405 185 L405 230" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- DB -->
+      <rect x="340" y="305" width="130" height="45" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="405" y="323" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold">MySQL</text>
+      <text x="405" y="339" text-anchor="middle" fill="#64748b" font-size="10">短链 → 长链映射</text>
+      <path d="M405 275 L405 305" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- Bloom Filter -->
+      <rect x="530" y="140" width="140" height="45" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="1.5"/>
+      <text x="600" y="158" text-anchor="middle" fill="#34d399" font-size="11" font-weight="bold">布隆过滤器</text>
+      <text x="600" y="174" text-anchor="middle" fill="#64748b" font-size="10">查重/防遍历</text>
+      <path d="M470 162 L530 162" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- Analytics -->
+      <rect x="530" y="230" width="140" height="45" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="600" y="248" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">统计服务</text>
+      <text x="600" y="264" text-anchor="middle" fill="#64748b" font-size="10">点击/来源/IP</text>
+      <path d="M470 185 L600 230" stroke="#475569" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>
+
+      <!-- Flow labels -->
+      <text x="80" y="80" fill="#64748b" font-size="10">① 生成/访问</text>
+      <text x="170" y="40" fill="#64748b" font-size="10">② 302 重定向</text>
+      <text x="310" y="200" fill="#64748b" font-size="10">③ 查缓存</text>
+      <text x="520" y="115" fill="#64748b" font-size="10">④ 布隆查重</text>
+    </svg>
+    <div class="diagram-caption"><strong>短链接系统架构</strong> — 发号器生成唯一 ID → Base62 编码 → Redis 缓存加速 → 布隆过滤器防遍历攻击</div>
+  </div>
+
+  <div class="dataflow">
+    <strong>📊 核心数据流</strong>
+    <ol>
+      <li><strong>生成短链接</strong>：用户传入长链接 → 发号器生成全局唯一 ID（雪花算法/Redis INCR）→ Base62 编码得到 6-7 位短码 → 存 MySQL（短码→长链）+ Redis 缓存</li>
+      <li><strong>访问短链接</strong>：用户点击短链接 → DNS 解析到服务器 → 查 Redis 缓存（命中返回）→ 查 MySQL（未命中）→ 返回 302 重定向到原 URL</li>
+      <li><strong>统计</strong>：每次访问异步记录日志（点击时间、IP、User-Agent、Referer）→ 写入 Kafka → 离线聚合分析（PV/UV/IP 分布）</li>
+    </ol>
+  </div>
+
+  <div class="case-card">
+    <h3>🔑 关键设计决策</h3>
+    <div class="decision-grid">
+      <div class="decision-card">
+        <div class="icon">🔤</div>
+        <strong>Base62 vs MD5 截取</strong>
+        <p>MD5 截取有碰撞风险（4位 MD5 的生日攻击碰撞概率约 1%）。Base62 编码采用<strong>发号器模式</strong>，ID 递增天然唯一，无碰撞。6位 Base62 = 62⁶ ≈ 568 亿，够用了。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">⚡</div>
+        <strong>302 vs 301 重定向</strong>
+        <p>301 永久重定向会被浏览器缓存，后续请求不再经过服务器，无法统计。使用 <strong>302 临时重定向</strong>，每次访问都经过服务器，可做点击统计和风险控制。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">🛡️</div>
+        <strong>防恶意攻击</strong>
+        <p>布隆过滤器快速判断短码是否存在（不存在直接 404，不用查库）。限制单 IP 生成频率（每分钟最多 100 个），加验证码防刷。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">📊</div>
+        <strong>统计设计</strong>
+        <p>访问日志走 <strong>Kafka 异步写入</strong>，不阻塞主流程。离线用 Spark/Flink 做小时级聚合，实时展示 PV/UV。存原始日志 30 天，聚合结果永久保存。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pitfall">
+    <strong>⚠️ 常见坑点</strong>
+    <p><strong>坑1：ID 冲突</strong> — 多机部署发号器可能生成重复 ID。解法：雪花算法（机器ID+时间戳+序列号），或 Redis 集群的 INCR 命令。</p>
+    <p><strong>坑2：热点短链接</strong> — 一条短链接被微博大 V 转发，百万 QPS 打过来。解法：Redis 缓存 + 本地缓存（Caffeine/Guava Cache）多级缓存，避免直穿 DB。</p>
+    <p><strong>坑3：恶意遍历</strong> — 遍历短码猜链接内容。解法：布隆过滤器挡无效请求，对可疑 IP 限流，敏感链接加访问密码。</p>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- CASE 4: 秒杀系统 -->
+  <!-- ================================================================ -->
+  <h2 id="seckill">⚡ 案例四：秒杀系统</h2>
+
+  <div class="feynman">
+    <span class="analogy">🎪 生活类比：限量版球鞋发售</span>
+    <p>1000 双限量球鞋，10 万人抢购——这就是秒杀。如果让 10 万人同时涌进实体店，店门都会被挤爆。所以你要：<strong>静态化</strong>（提前把商品信息贴门口，不用进店也能看）→ <strong>削峰</strong>（设排队区，一波一波放人进去）→ <strong>防超卖</strong>（POS 机每扫一次减 1 件库存，数字绝对不准多）。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a;font-family:'PingFang SC',sans-serif;">
+      <!-- Client -->
+      <rect x="15" y="170" width="100" height="50" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+      <text x="65" y="194" text-anchor="middle" fill="#38bdf8" font-size="13" font-weight="bold">用户</text>
+      <text x="65" y="210" text-anchor="middle" fill="#64748b" font-size="10">10万人涌入</text>
+
+      <!-- CDN -->
+      <rect x="15" y="80" width="100" height="45" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="65" y="99" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="bold">CDN 静态页</text>
+      <text x="65" y="115" text-anchor="middle" fill="#64748b" font-size="10">商品详情</text>
+      <path d="M65 80 L65 50 L200 50 L200 85" stroke="#475569" stroke-width="1" fill="none"/>
+
+      <!-- Gateway + Rate Limiter -->
+      <rect x="160" y="100" width="130" height="55" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="225" y="122" text-anchor="middle" fill="#f87171" font-size="12" font-weight="bold">限流网关</text>
+      <text x="225" y="138" text-anchor="middle" fill="#64748b" font-size="10">令牌桶/漏斗限流</text>
+      <path d="M115 195 L160 127" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- 削峰队列 -->
+      <rect x="160" y="200" width="130" height="50" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="225" y="218" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">削峰队列</text>
+      <text x="225" y="234" text-anchor="middle" fill="#64748b" font-size="10">MQ / Redis List</text>
+      <path d="M225 155 L225 200" stroke="#475569" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>
+
+      <!-- Stock Service -->
+      <rect x="350" y="100" width="140" height="55" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="1.5"/>
+      <text x="420" y="122" text-anchor="middle" fill="#34d399" font-size="12" font-weight="bold">库存服务</text>
+      <text x="420" y="138" text-anchor="middle" fill="#64748b" font-size="10">Redis 预减库存</text>
+      <path d="M290 127 L350 127" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- Order Service -->
+      <rect x="350" y="190" width="140" height="55" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="420" y="212" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="bold">订单服务</text>
+      <text x="420" y="228" text-anchor="middle" fill="#64748b" font-size="10">异步生成订单</text>
+      <path d="M290 225 L350 217" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- DB (Master) -->
+      <rect x="350" y="280" width="140" height="50" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="420" y="300" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold">MySQL 主库</text>
+      <text x="420" y="316" text-anchor="middle" fill="#64748b" font-size="10">最终库存扣减</text>
+      <path d="M420 245 L420 280" stroke="#475569" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>
+
+      <!-- Redis (Pre-heat) -->
+      <rect x="350" y="360" width="140" height="45" rx="8" fill="#1e293b" stroke="#fb7185" stroke-width="1.5"/>
+      <text x="420" y="378" text-anchor="middle" fill="#fb7185" font-size="11" font-weight="bold">Redis 预热</text>
+      <text x="420" y="394" text-anchor="middle" fill="#64748b" font-size="10">库存预热到内存</text>
+      <path d="M490 127 L560 127 L560 385 L490 385" stroke="#475569" stroke-width="1" fill="none" stroke-dasharray="5,3"/>
+
+      <!-- Flow labels -->
+      <text x="50" y="65" fill="#64748b" font-size="10">① 静态页面</text>
+      <text x="130" y="85" fill="#64748b" font-size="10">② 限流</text>
+      <text x="130" y="230" fill="#64748b" font-size="10">③ 排队</text>
+      <text x="300" y="90" fill="#64748b" font-size="10">④ 预减库存</text>
+      <text x="300" y="170" fill="#64748b" font-size="10">⑤ 异步落单</text>
+      <text x="530" y="270" fill="#64748b" font-size="10">⑥ 最终扣减</text>
+    </svg>
+    <div class="diagram-caption"><strong>秒杀系统架构</strong> — CDN 静态化 → 限流削峰 → Redis 预减库存 → 异步落单，层层过滤保 DB</div>
+  </div>
+
+  <div class="dataflow">
+    <strong>📊 核心数据流</strong>
+    <ol>
+      <li>秒杀前：商品详情页 <strong>静态化</strong> 到 CDN，用户不经过源站就能看详情，避免把服务器打爆</li>
+      <li>用户点击"抢购" → <strong>限流网关</strong> 做第一层过滤（令牌桶算法，每秒放行 1000 个请求）</li>
+      <li>通过限流的请求进入 <strong>削峰队列</strong>（Redis List / Kafka），排队等待处理</li>
+      <li>库存服务从队列消费：<strong>Redis 预减库存</strong>（DECR 原子操作），库存 > 0 才继续</li>
+      <li>预减成功 → <strong>异步生成订单</strong>（写入订单表），库存不足则返回"已售罄"</li>
+      <li>最终异步将 Redis 库存同步回 <strong>MySQL</strong>（定时批量更新，避免行锁争抢）</li>
+    </ol>
+  </div>
+
+  <div class="case-card">
+    <h3>🔑 关键设计决策</h3>
+    <div class="decision-grid">
+      <div class="decision-card">
+        <div class="icon">🚫</div>
+        <strong>防超卖：Redis 原子减</strong>
+        <p>库存扣减用 Redis <code>DECR</code> 或 Lua 脚本，保证原子性。判断 <code>DECR</code> 返回值 ≥ 0 才算成功。不用 MySQL 行锁（UPDATE ... WHERE stock > 0），因为 InnoDB 行锁在万级并发下性能急剧下降。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">⏳</div>
+        <strong>削峰填谷：请求队列化</strong>
+        <p>10 万 QPS 压过来，直接处理肯定打崩。用消息队列或 Redis List <strong>先排队再处理</strong>，服务端以可控速率消费。用户体验上展示"排队中"，实际处理可能延迟 1-2 秒。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">📄</div>
+        <strong>动静分离：页面静态化</strong>
+        <p>秒杀页面的商品信息（名称、价格、图片）很少变化，提前渲染成 HTML/CSS/JS 推到 CDN。动态部分（剩余库存）走独立的 JS 接口异步拉取，大幅降低源站压力。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">🎫</div>
+        <strong>分层限流策略</strong>
+        <p>三层限流：<strong>网关层</strong>（Nginx 限流模块，按 IP/UserID 限流）→ <strong>应用层</strong>（令牌桶，限制总 QPS）→ <strong>服务层</strong>（信号量，限制同时处理数）。超过限制直接返回"繁忙，请稍后再试"。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pitfall">
+    <strong>⚠️ 常见坑点</strong>
+    <p><strong>坑1：库存超卖</strong> — 不加锁的 "先查后扣" 模式，两个请求读到同一库存量。解法：Redis <strong>原子 DECR + Lua 脚本</strong>保证操作不可分割。</p>
+    <p><strong>坑2：重复下单</strong> — 用户疯狂点击导致多次扣库存。解法：前端防抖 + 后端接口幂等（用户ID+活动ID 做唯一约束）。</p>
+    <p><strong>坑3：库存 DB 不一致</strong> — Redis 库存扣了但 MySQL 事务回滚。解法：Redis 预减只是"占位"，最终以 MySQL 订单生成为准，定时<strong>对账补偿</strong>（Redis 与 MySQL 库存差异 ≤ 偏差阈值时自动回滚 Redis）。</p>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- CASE 5: 信息流 -->
+  <!-- ================================================================ -->
+  <h2 id="feed">📰 案例五：信息流系统</h2>
+
+  <div class="feynman">
+    <span class="analogy">📬 生活类比：班级通知黑板 vs 私信</span>
+    <p><strong>推模式</strong>就像班主任在教室黑板上写通知——写一次，全班人都能看到（适合大 V 发微博）。<strong>拉模式</strong>就像你看信箱——每封信只属于你一个人，别人看不了（适合朋友圈）。<strong>推拉结合</strong>就是班主任写黑板通知，但你在外地看不到，于是班长单独用微信告诉你——大 V 写一次推给所有在线粉丝，不在线的粉丝上线后再拉取。微博的 Feed 就是这样做的。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a;font-family:'PingFang SC',sans-serif;">
+      <!-- Content Creator -->
+      <rect x="15" y="30" width="120" height="55" rx="10" fill="#1e293b" stroke="#fbbf24" stroke-width="2"/>
+      <text x="75" y="56" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">内容发布者</text>
+      <text x="75" y="73" text-anchor="middle" fill="#64748b" font-size="10">大 V / 关注的人</text>
+
+      <!-- Timeline Service -->
+      <rect x="170" y="150" width="140" height="55" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+      <text x="240" y="172" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="bold">Timeline 服务</text>
+      <text x="240" y="188" text-anchor="middle" fill="#64748b" font-size="10">推/拉策略决策</text>
+
+      <!-- Fan-out (Push) -->
+      <rect x="170" y="60" width="140" height="50" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="1.5"/>
+      <text x="240" y="80" text-anchor="middle" fill="#34d399" font-size="11" font-weight="bold">写扩散（推）</text>
+      <text x="240" y="96" text-anchor="middle" fill="#64748b" font-size="10">粉丝 ≤ 10万</text>
+      <path d="M135 57 L170 85" stroke="#475569" stroke-width="1.5" fill="none"/>
+      <path d="M240 110 L240 150" stroke="#475569" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>
+
+      <!-- Pull -->
+      <rect x="170" y="240" width="140" height="50" rx="8" fill="#1e293b" stroke="#fb7185" stroke-width="1.5"/>
+      <text x="240" y="260" text-anchor="middle" fill="#fb7185" font-size="11" font-weight="bold">读扩散（拉）</text>
+      <text x="240" y="276" text-anchor="middle" fill="#64748b" font-size="10">粉丝 &gt; 10万</text>
+      <path d="M240 205 L240 240" stroke="#475569" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>
+
+      <!-- Fanout Queue -->
+      <rect x="370" y="60" width="140" height="50" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="440" y="80" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="bold">粉丝推送队列</text>
+      <text x="440" y="96" text-anchor="middle" fill="#64748b" font-size="10">异步写 Feed 收件箱</text>
+      <path d="M310 85 L370 85" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- Feed Consumer -->
+      <rect x="370" y="150" width="140" height="55" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="1.5"/>
+      <text x="440" y="172" text-anchor="middle" fill="#34d399" font-size="12" font-weight="bold">Feed 消费者</text>
+      <text x="440" y="188" text-anchor="middle" fill="#64748b" font-size="10">浏览 Feed / 刷新</text>
+      <path d="M310 177 L370 177" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- Redis Feed Box -->
+      <rect x="560" y="60" width="140" height="55" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="630" y="80" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold">Feed 收件箱</text>
+      <text x="630" y="96" text-anchor="middle" fill="#64748b" font-size="10">Redis ZSET 时间线</text>
+      <path d="M510 85 L560 87" stroke="#475569" stroke-width="1.5" fill="none"/>
+      <path d="M560 120 L630 140 L630 177 L510 177" stroke="#475569" stroke-width="1" fill="none" stroke-dasharray="5,3"/>
+
+      <!-- Score/Analytics -->
+      <rect x="560" y="150" width="140" height="55" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="630" y="172" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">Feed 排序引擎</text>
+      <text x="630" y="188" text-anchor="middle" fill="#64748b" font-size="10">热度/时间/亲密度</text>
+      <path d="M630 115 L630 150" stroke="#475569" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>
+
+      <!-- DB -->
+      <rect x="560" y="250" width="140" height="50" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="630" y="270" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="bold">内容存储</text>
+      <text x="630" y="286" text-anchor="middle" fill="#64748b" font-size="10">MySQL / HBase</text>
+      <path d="M630 205 L630 250" stroke="#475569" stroke-width="1.5" fill="none"/>
+
+      <!-- Flow labels -->
+      <text x="80" y="120" fill="#64748b" font-size="10">内容发布</text>
+      <text x="120" y="195" fill="#64748b" font-size="10">策略判断</text>
+      <text x="310" y="130" fill="#64748b" font-size="10">推/拉</text>
+      <text x="520" y="50" fill="#64748b" font-size="10">收件箱</text>
+    </svg>
+    <div class="diagram-caption"><strong>信息流架构</strong> — 推拉结合策略：粉丝数 ≤ 10万 写扩散（推），粉丝 &gt; 10万 读扩散（拉）</div>
+  </div>
+
+  <div class="dataflow">
+    <strong>📊 核心数据流</strong>
+    <ol>
+      <li><strong>内容发布</strong>：用户发微博/帖子 → 内容写入 DB → 触发 Feed 分发流程</li>
+      <li><strong>推拉策略决策</strong>：获取粉丝数。≤ 10万用<strong>写扩散（推模式）</strong>：把内容写入每个粉丝的 Feed 收件箱（Redis ZSET）。&gt; 10万用<strong>读扩散（拉模式）</strong>：仅存内容，粉丝刷新时拉取关注列表的最新内容</li>
+      <li><strong>Feed 排序</strong>：用户拉取 Feed 时，排序引擎综合<strong>时间 + 热度 + 亲密度</strong>计算得分，返回 Top N 条内容</li>
+      <li><strong>Feed 刷新</strong>：支持下拉刷新（拉最新）和上滑加载更多（拉历史）。走缓存优先，Cache Miss 才查 DB</li>
+    </ol>
+  </div>
+
+  <div class="case-card">
+    <h3>🔑 关键设计决策</h3>
+    <div class="decision-grid">
+      <div class="decision-card">
+        <div class="icon">📨</div>
+        <strong>推 vs 拉的取舍</strong>
+        <p><strong>纯推</strong>：发一条微博写百万次收件箱，僵尸粉丝浪费大量存储。<strong>纯拉</strong>：百万粉丝的大 V 发帖，粉丝同时刷新打崩查询。推拉结合：大部分普通用户推，大 V 粉丝拉，平衡写放大和读放大。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">📊</div>
+        <strong>Feed 排序算法</strong>
+        <p>不按时间倒序简单排列，采用 <strong>Score = α×新鲜度 + β×热度 + γ×亲密度</strong>。新鲜度 = 时间衰减函数，热度 = 点赞/评论/转发数，亲密度 = 历史互动频率。参数 α/β/γ 通过 AB 测试调优。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">⚡</div>
+        <strong>冷启动加速</strong>
+        <p>新用户没有关注列表 → 根据<strong>注册时选的兴趣标签</strong>（科技/体育/娱乐），自动推送各领域 Top 内容。同时收集用户前 10 次交互行为，快速建模兴趣偏好。</p>
+      </div>
+      <div class="decision-card">
+        <div class="icon">🗑️</div>
+        <strong>Feed 去重</strong>
+        <p>用户可能被不同好友转发同一条内容（重复展示）。为每条内容生成唯一 ID，用户维度维护已读 ID 集合（布隆过滤器），排序时过滤掉已读内容。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pitfall">
+    <strong>⚠️ 常见坑点</strong>
+    <p><strong>坑1：写扩散风暴（100万粉丝大V发帖）</strong> — 如果小看大 V 粉丝数，给所有粉丝都推，瞬间写入量爆炸。解法：阈值判断，超过 10 万粉丝切换为拉模式。</p>
+    <p><strong>坑2：僵尸粉丝刷量</strong> — 大量僵尸号关注大 V，推模式下写无效数据。解法：记录粉丝活跃度，低活跃粉丝不推送，上线时再拉取。</p>
+    <p><strong>坑3：Feed 空洞</strong> — 用户刷新看到的是 2 小时前的内容（因为最近关注的人没发帖）。解法：插入<strong>补全策略</strong>——当前关注列表内容不足时，填充热门内容和推荐内容。</p>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- 对比总结 -->
+  <!-- ================================================================ -->
+  <h2>📊 架构模式对比</h2>
+
+  <table>
+    <tr><th>系统</th><th>核心挑战</th><th>关键中间件</th><th>实战最高频</th></tr>
+    <tr>
+      <td><strong>💬 即时通讯</strong></td>
+      <td>消息可靠性、连接保活、离线推送</td>
+      <td>WebSocket + Kafka + Redis</td>
+      <td>WebSocket 原理、消息有序、ACK 机制</td>
+    </tr>
+    <tr>
+      <td><strong>💳 支付系统</strong></td>
+      <td>资金安全、幂等、对账一致性</td>
+      <td>Redis + MQ + MySQL（事务）</td>
+      <td>幂等设计、TCC、掉单处理</td>
+    </tr>
+    <tr>
+      <td><strong>🔗 短链接</strong></td>
+      <td>ID 唯一性、高并发读、防遍历</td>
+      <td>Redis + MySQL + 布隆过滤器</td>
+      <td>Base62、302 vs 301、发号器</td>
+    </tr>
+    <tr>
+      <td><strong>⚡ 秒杀</strong></td>
+      <td>防超卖、削峰、库存一致性</td>
+      <td>Redis + MQ + CDN</td>
+      <td>Redis 预减库存、限流策略、静态化</td>
+    </tr>
+    <tr>
+      <td><strong>📰 信息流</strong></td>
+      <td>推拉开销、Feed 排序、去重</td>
+      <td>Redis ZSET + MQ + 布隆过滤器</td>
+      <td>推拉结合、Feed 排序公式、冷启动</td>
+    </tr>
+  </table>
+
+  <div class="insight">
+    <strong>💡 读者想听什么？</strong>
+    <p>系统设计实战 <strong>80% 在考察 trade-off 意识</strong>——你不是在设计"完美的系统"，而是在各种约束下做最合理的取舍。上面 5 个案例，每个都有明确的瓶颈和对应的解决方案。实战时只要能把"为什么这样选而不是那样选"说清楚，就已经超过了大多数候选人。</p>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- QA Section -->
+  <!-- ================================================================ -->
+  <h2 id="qa">❓ 高频实战问答</h2>
+
+  <div class="qa">
+    <div class="q">Q1：WebSocket 和 HTTP 长轮询的区别？什么场景选哪个？</div>
+    <div class="a">
+      <p><strong>WebSocket：</strong>建立连接后全双工通信，Header 小（2-10 字节），实时性高（毫秒级），服务端可主动推送。</p>
+      <p><strong>HTTP 长轮询：</strong>客户端发起请求，服务端挂起直到有新数据或超时返回。每次请求都有几百字节 Header 开销，实时性受轮询间隔限制。</p>
+      <p><strong>选型：</strong>即时通讯、在线协作、实时行情 → WebSocket。简单的消息通知、兼容老旧设备 → 长轮询。Facebook 早期用长轮询，后来切到 WebSocket。</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Q2：消息队列在系统设计中的作用？Kafka vs RabbitMQ 怎么选？</div>
+    <div class="a">
+      <p><strong>作用：</strong>异步解耦（把强依赖变弱依赖）、削峰填谷（平摊突发流量）、广播（一对多消费）、可靠通信（消息持久化 + ACK）。</p>
+      <p><strong>Kafka：</strong>高吞吐（百万条/秒）、持久化到磁盘、分区顺序、适合日志收集/流处理/大数据场景。</p>
+      <p><strong>RabbitMQ：</strong>低延迟、灵活的路由（Topic/Direct/Fanout）、消息确认机制完善、适合业务消息/任务队列。</p>
+      <p>秒杀系统用 Kafka 削峰，支付系统用 RabbitMQ 做可靠分布式事务通知。</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Q3：Redis 在系统设计中一般承担哪些角色？</div>
+    <div class="a">
+      <p><strong>① 缓存层：</strong>加速热点数据访问，保护 MySQL（短链接查询、用户 Session）</p>
+      <p><strong>② 分布式锁：</strong>SETNX + Redlock，保证多机互斥操作（秒杀减库存、幂等校验）</p>
+      <p><strong>③ 计数器：</strong>INCR/DECR 原子操作（秒杀库存、PV 统计、限流计数）</p>
+      <p><strong>④ 有序集合：</strong>ZSET 做排行榜、Feed 收件箱时间线、延迟队列</p>
+      <p><strong>⑤ 发布订阅：</strong>轻量级消息通知、集群节点心跳</p>
+      <p>Redis 故障要能降级（本地缓存兜底），不能因为 Redis 挂了导致整个系统瘫痪。</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Q4：分布式 ID 生成方案有哪些？各有什么优劣？</div>
+    <div class="a">
+      <p><strong>① UUID：</strong>128位，全球唯一，不依赖中心。缺点：太长（索引性能差）、无序、不適合做主键。</p>
+      <p><strong>② 数据库自增：</strong>实现简单，严格递增。缺点：DB 单点瓶颈，并发低。</p>
+      <p><strong>③ Redis INCR：</strong>高并发自增。缺点：Redis 持久化问题可能导致 ID 重复。</p>
+      <p><strong>④ 雪花算法：</strong>64位（1bit 不用 + 41bit 时间戳 + 10bit 机器ID + 12bit 序列号）。趋势递增、高性能、无中心。缺点：时钟回拨可能导致 ID 重复（需要回拨检测+等待）。</p>
+      <p>短链接用雪花算法，秒杀订单用 Redis INCR，消息 ID 用雪花算法居多。</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Q5：如何保证系统的高可用？有哪些常用手段？</div>
+    <div class="a">
+      <p><strong>① 冗余部署：</strong>多机房 + 多副本，单点故障自动切换。</p>
+      <p><strong>② 限流降级：</strong>令牌桶/漏桶限流，超过阈值降级返回默认值（秒杀"繁忙"提示）。</p>
+      <p><strong>③ 熔断：</strong>Hystrix/Sentinel，下游故障率超标时快速失败，防止雪崩。</p>
+      <p><strong>④ 超时重试：</strong>合理设置超时时间（500ms-3s），重试用指数退避。</p>
+      <p><strong>⑤ 健康检查：</strong>心跳检测 + 自动摘除故障节点。</p>
+      <p><strong>⑥ 容量规划：</strong>压测确定系统瓶颈，预留 30%-50% 余量。</p>
+      <p>高可用不是某一个手段搞定的，是一整套<strong>故障预防 + 故障发现 + 故障恢复</strong>的体系。</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Q6：秒杀系统为什么不用 MySQL 的行锁来防超卖？</div>
+    <div class="a">
+      <p>MySQL <code>UPDATE stock SET count = count - 1 WHERE id = ? AND count &gt; 0</code> 确实能防超卖，但问题是：</p>
+      <p><strong>① 性能差：</strong>万级并发同时更新同一行，InnoDB 行锁排队，TPS 急剧下降（实测单行并发更新 &gt; 5000 QPS 时延飙升到秒级）。</p>
+      <p><strong>② 连接池耗尽：</strong>每个请求持有 DB 连接等待锁释放，连接池（通常 200-500）很快耗尽。</p>
+      <p><strong>③ 死锁风险：</strong>多索引 + 不同顺序更新可能触发死锁。</p>
+      <p>所以秒杀的标准做法是 <strong>Redis 预减（O(1)，单线程无锁争抢）→ 异步写入 MySQL</strong>，把 MySQL 的写压力从 10万 QPS 降到 100 QPS 级别。</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Q7：支付系统的最终一致性如何实现？</div>
+    <div class="a">
+      <p>采用 <strong>TCC + 事务消息</strong> 组合方案：</p>
+      <p><strong>Try 阶段：</strong>冻结用户资金（不实际扣款），状态为"处理中"。</p>
+      <p><strong>Confirm 阶段：</strong>收到支付渠道成功回调后，执行实际扣款。如果 Confirm 失败（网络/异常），通过<strong>定时任务重试</strong>。</p>
+      <p><strong>Cancel 阶段：</strong>超过一定时间（通常 30 分钟）未收到回调，解冻资金。</p>
+      <p><strong>事务消息：</strong>MQ 的半消息机制——先发一条半消息，本地事务执行成功后确认消息，确认前消费者不可见。如果事务超时未确认，MQ 回查事务状态。</p>
+      <p>最终状态由<strong>对账系统</strong>兜底：T+1 对账，发现不一致走差错处理流程。三步保证：<strong>事务保障</strong>→<strong>补偿重试</strong>→<strong>对账兜底</strong>。</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Q8：设计一个系统时，读者最看重什么能力？怎么准备？</div>
+    <div class="a">
+      <p><strong>最看重的是：</strong></p>
+      <p>① <strong>结构化思维：</strong>先讲需求分析 → 容量估算 → 核心流程 → 架构图 → 关键设计 → 坑点。有条理地讲，不要跳来跳去。</p>
+      <p>② <strong>Trade-off 意识：</strong>为什么选 Kafka 而不是 RabbitMQ？为什么用 Redis 而不是直接写 MySQL？能说出每个选择的利弊。</p>
+      <p>③ <strong>深度：</strong>提到 WebSocket 要能说出帧格式、心跳机制、断线重连策略。提到 Redis 要能说出持久化方案、集群模式、内存淘汰策略。</p>
+      <p>④ <strong>实战坑点：</strong>知道"理论"和"实际"的差距——"理论上线上的分布式锁听起来很美，但实际会遇到 GC 停顿导致锁超时释放"这种级别的认知。</p>
+      <p><strong>怎么准备：</strong>每个案例找张白纸画 3 遍架构图，直到可以不用查资料默画出来。然后对着镜子讲 2 遍，让自己能 5 分钟内说清核心逻辑。</p>
+    </div>
+  </div>
+
+  <!-- ── Footer ── -->
+  <div class="feynman" style="margin-top:48px">
+    <span class="analogy">🎓 写在最后</span>
+    <p>这 5 个案例覆盖了系统设计实战 <strong>80% 的考点</strong>。但最重要的是理解<strong>背后的设计哲学</strong>：缓存 + 队列 + 分治 + 冗余 + 异步——所有系统都是这些基本元素的排列组合。遇到新题目不要慌，按我们学的框架（需求→估算→架构→设计→坑点）一步步推演，一定能给出让读者点头的方案。</p>
+    <p style="margin-top:12px">祝实战顺利！🚀</p>
+  </div>
+
+</div>
+</div>
+
+<script>
+// ── Sidebar Toggle ──
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.classList.toggle('collapsed');
+  const btn = sidebar.querySelector('.toggle-btn');
+  btn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+}
+// ── Active Nav Highlighting ──
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+// ── Highlight current section on scroll ──
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.getAttribute('id');
+      document.querySelectorAll('.nav-item').forEach(n => {
+        n.classList.toggle('active', n.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-80px 0px -80% 0px' });
+document.querySelectorAll('h2[id]').forEach(section => observer.observe(section));
+</script>
+
+</body>
+</html>

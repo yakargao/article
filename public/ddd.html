@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>领域驱动设计 DDD · 费曼学习法</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascada Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+
+  /* 苏格拉底提问 */
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🧭 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">第一章：核心思想</div>
+  <a class="nav-item" href="#ddd-intro">🧭 什么是 DDD</a>
+  <a class="nav-item" href="#ddd-language">🗣️ 通用语言</a>
+  <div class="nav-section">第二章：战略设计</div>
+  <a class="nav-item" href="#ddd-bounded">📦 限界上下文</a>
+  <a class="nav-item" href="#ddd-contextmap">🗺️ 上下文映射</a>
+  <a class="nav-item" href="#ddd-subdomain">🏷️ 子域分类</a>
+  <div class="nav-section">第三章：战术设计</div>
+  <a class="nav-item" href="#ddd-entity">🆔 实体 Entity</a>
+  <a class="nav-item" href="#ddd-vo">💵 值对象 Value Object</a>
+  <a class="nav-item" href="#ddd-aggregate">🏰 聚合 Aggregate</a>
+  <a class="nav-item" href="#ddd-repo">📁 资源库 Repository</a>
+  <a class="nav-item" href="#ddd-service">⚙️ 领域服务</a>
+  <div class="nav-section">第四章：进阶</div>
+  <a class="nav-item" href="#ddd-event">📨 领域事件</a>
+  <a class="nav-item" href="#ddd-go">🔧 Go 工程实践</a>
+  <a class="nav-item" href="#ddd-qa">❓ 核心题</a>
+  <a class="nav-item" href="#ddd-summary">🎙️ 口播总结</a>
+  <a class="nav-item" href="#ddd-socratic">💬 苏格拉底提问</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>🧭 领域驱动设计 DDD</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>DDD 不是写代码的技巧，是<strong>把业务建模成代码</strong>的方法论。核心 = 通用语言 + 限界上下文 + 聚合。</p>
+    <p>和传统开发的本质区别：传统开发是"数据库表驱动"（先设计表再写代码），DDD 是"业务模型驱动"（先理解业务再建模，数据库只是实现细节）。</p>
+  </div>
+</section>
+
+<!-- ═══════ 1. 什么是 DDD ═══════ -->
+<section id="ddd-intro" class="section">
+  <h2>🧭 什么是 DDD？让代码说业务的语言</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🗺️ 类比：</span>盖房子有两种方式——① 直接搬砖，看哪里需要砌哪里（CRUD 式开发）。② 先画蓝图（领域建模），标注每个房间的用途和关系，然后按图施工（DDD）。</p>
+    <p>DDD 的核心价值：<strong>当业务变复杂时，你的代码结构仍然清晰反映业务结构。</strong>改需求时不用"翻译"（业务语言→技术语言），直接改。</p>
+  </div>
+
+  <h3>DDD 的两层设计</h3>
+  <table>
+    <tr><th>层</th><th>做什么</th><th>产出</th><th>关键词</th></tr>
+    <tr><td><strong>战略设计</strong></td><td>划分业务边界、理顺上下文关系</td><td>限界上下文 + 上下文映射</td><td>"这个功能属于哪个模块？"</td></tr>
+    <tr><td><strong>战术设计</strong></td><td>在每个上下文内，怎么建模</td><td>实体、值对象、聚合、资源库</td><td>"这个对象是什么角色？"</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>DDD 不是银弹——什么时候该用？</h4>
+    <p><span class="badge badge-green">适合</span>：业务逻辑复杂（流程、规则、状态机多）、长期维护的核心系统（电商、金融、ERP）</p>
+    <p><span class="badge badge-red">不适合</span>：简单 CRUD（后台管理）、纯技术性系统（网关、日志采集）、一次性项目</p>
+  </div>
+</section>
+
+<!-- ═══════ 2. 通用语言 ═══════ -->
+<section id="ddd-language" class="section">
+  <h2>🗣️ 通用语言：让产品、开发、测试说同一种话</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏥 类比：</span>医生之间说"ST 段抬高型心肌梗死"，而不是"心脏那个血管堵了"。DDD 的通用语言 = 团队定义的一套精确术语，代码中的类名、方法名直接使用这套术语。</p>
+  </div>
+
+  <h3>一个例子看懂</h3>
+  <table>
+    <tr><th>没有通用语言（传统）</th><th>有通用语言（DDD）</th></tr>
+    <tr>
+      <td>产品说"用户下单后要锁定库存"<br>代码里：<code>UpdateOrderStatus(1, "paid")</code><br>数据库：<code>UPDATE orders SET status=2 WHERE id=1</code></td>
+      <td>产品说"用户提交订单后，订单进入已确认状态"<br>代码里：<code>order.Confirm()</code><br>数据库中触发：<code>OrderConfirmed</code> 事件</td>
+    </tr>
+  </table>
+  <p>DDD 的代码<strong>直接映射业务术语</strong>——不需要脑内翻译。</p>
+
+  <div class="info-card">
+    <h4>通用语言的落地原则</h4>
+    <ol>
+      <li><strong>同一个词在不同上下文可以不同含义。</strong>"客户"在售前上下文=潜在买家，在售后上下文=已购买用户</li>
+      <li><strong>类名、方法名、变量名全用业务术语。</strong>不用 <code>setStatus(1)</code>，用 <code>confirmOrder()</code></li>
+      <li><strong>代码即文档。</strong>读 DDD 代码应该像读业务说明书</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ═══════ 3. 限界上下文 ═══════ -->
+<section id="ddd-bounded" class="section">
+  <h2>📦 限界上下文：DDD 最重要的概念</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏢 类比：</span>一个大公司——财务部说的"资产"（现金、应收账款）和 IT 部说的"资产"（服务器、电脑）不是同一个东西。每个部门有自己的术语体系和职责边界。DDD 把每个部门叫一个<strong>限界上下文 (Bounded Context)</strong>。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 280" style="max-width:820px;width:100%">
+      <defs><marker id="aD" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
+      <!-- Context 1 -->
+      <rect x="15" y="15" width="250" height="120" rx="10" fill="rgba(34,211,238,0.05)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="140" y="40" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">订单上下文</text>
+      <rect x="35" y="55" width="100" height="28" rx="5" fill="rgba(34,211,238,0.10)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="85" y="73" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10">Order 实体</text>
+      <rect x="145" y="55" width="105" height="28" rx="5" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="197" y="73" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10">OrderLineItem</text>
+      <text x="140" y="122" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">商品 = ProductId + 数量 + 单价</text>
+
+      <!-- Context 2 -->
+      <rect x="285" y="15" width="250" height="120" rx="10" fill="rgba(163,113,247,0.05)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="410" y="40" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">商品上下文</text>
+      <rect x="305" y="55" width="100" height="28" rx="5" fill="rgba(163,113,247,0.10)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="355" y="73" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10">Product 实体</text>
+      <rect x="415" y="55" width="105" height="28" rx="5" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="467" y="73" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10">ProductStock</text>
+      <text x="410" y="122" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">商品 = 名称 + 描述 + 库存 + 分类</text>
+
+      <!-- Context 3 -->
+      <rect x="555" y="15" width="250" height="120" rx="10" fill="rgba(63,185,80,0.05)" stroke="#3fb950" stroke-width="2"/>
+      <text x="680" y="40" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">支付上下文</text>
+      <rect x="575" y="55" width="100" height="28" rx="5" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1"/>
+      <text x="625" y="73" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10">Payment 实体</text>
+      <rect x="685" y="55" width="105" height="28" rx="5" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1"/>
+      <text x="737" y="73" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10">Transaction</text>
+      <text x="680" y="122" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">支付 = 金额 + 方式 + 流水号</text>
+
+      <!-- Context Map below -->
+      <rect x="15" y="155" width="790" height="115" rx="10" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="35" y="180" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">上下文映射 (Context Map) —— 上下文之间的关系</text>
+
+      <text x="35" y="210" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="10">上游: 商品 → 下游: 订单</text>
+      <text x="35" y="226" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">订单里的"商品"是商品上下文的只读快照（ProductId + 下单时价格），不关心商品详情变化</text>
+      <text x="35" y="246" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="10">订单 → 支付</text>
+      <text x="35" y="262" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">订单确认后发领域事件 → 支付上下文监听并处理，通过 OrderId 关联</text>
+    </svg>
+    <div class="diagram-caption">三个限界上下文 + 上下文映射：订单、商品、支付各自独立，通过 ID 和事件通信</div>
+  </div>
+
+  <h3>限界上下文的物理形态</h3>
+  <p>一个限界上下文通常对应<strong>一个微服务</strong>或<strong>一个模块（Go package）</strong>。但不是绝对的——一个复杂的上下文可以拆成多个微服务，一个简单的上下文也可以和其他合并。</p>
+  <p>关键原则：<strong>每个上下文有自己的数据库</strong>，不共享表。上下文之间通过 API 或领域事件通信。</p>
+</section>
+
+<!-- ═══════ 4. 上下文映射 ═══════ -->
+<section id="ddd-contextmap" class="section">
+  <h2>🗺️ 上下文映射：上下文之间怎么协作？</h2>
+  <table>
+    <tr><th>关系类型</th><th>含义</th><th>实现方式</th><th>例子</th></tr>
+    <tr><td><strong>共享内核</strong></td><td>两个上下文共享一部分模型</td><td>公共 library / package</td><td>用户 ID、地址值对象</td></tr>
+    <tr><td><strong>客户-供应商</strong></td><td>上游提供，下游消费，上游主导</td><td>API 调用</td><td>订单服务调用商品服务</td></tr>
+    <tr><td><strong>防腐层 ACL</strong></td><td>下游加一层翻译，保护自己不受上游变化影响</td><td>Adapter 模式</td><td>对接第三方支付 SDK</td></tr>
+    <tr><td><strong>开放主机 OHS</strong></td><td>上游提供标准化 API 供多下游消费</td><td>REST / gRPC / 事件</td><td>用户中心提供统一的用户 API</td></tr>
+    <tr><td><strong>各行其道</strong></td><td>两个上下文没有直接关系</td><td>不集成</td><td>报表系统和订单系统无关</td></tr>
+  </table>
+
+  <h4>防腐层（ACL）——最重要的集成模式</h4>
+  <div class="feynman">
+    <p><span class="analogy">🔌 类比：</span>出国旅游需要电源转换插头——你的设备（领域模型）不变，只是翻译一下外部接口。防腐层 = 转换插头，让外部系统的脏模型不污染你的领域。</p>
+  </div>
+  <pre><code><span class="cm">// 防腐层：把外部支付 SDK 的模型翻译成领域模型</span>
+<span class="kw">type</span> PaymentACL <span class="kw">struct</span> { client *alipay.Client }
+
+<span class="kw">func</span> (acl *PaymentACL) <span class="fn">ProcessPayment</span>(order *domain.Order) (*domain.Payment, error) {
+    <span class="cm">// 把领域对象翻译成支付宝的请求格式</span>
+    aliReq := &alipay.PayRequest{
+        OutTradeNo:  order.ID.String(),
+        TotalAmount: order.TotalAmount().String(),
+        Subject:     order.Description(),
+    }
+    aliResp, err := acl.client.Pay(aliReq)
+    <span class="kw">if</span> err != <span class="kw">nil</span> { <span class="kw">return</span> <span class="kw">nil</span>, err }
+    <span class="cm">// 把支付宝的响应翻译成领域对象</span>
+    <span class="kw">return</span> domain.NewPayment(order.ID, aliResp.TradeNo, aliResp.Amount), <span class="kw">nil</span>
+}</code></pre>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 340" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="ddArr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker>
+        <marker id="ddArr2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#a78bfa"/></marker>
+        <marker id="ddArr3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#f87171"/></marker>
+      </defs>
+      <rect x="30" y="30" width="170" height="100" rx="10" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="115" y="56" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">📦 商品上下文</text>
+      <text x="115" y="78" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">ProductContext</text>
+      <text x="115" y="98" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">商品 CRUD·类目·SKU</text>
+      <text x="115" y="115" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">上游·供应商</text>
+      <rect x="340" y="30" width="170" height="100" rx="10" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="425" y="56" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">🛒 订单上下文</text>
+      <text x="425" y="78" text-anchor="middle" fill="#ddd6fe" font-family="JetBrains Mono,monospace" font-size="9">OrderContext</text>
+      <text x="425" y="98" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">下单·支付·退款</text>
+      <text x="425" y="115" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">核心领域</text>
+      <rect x="640" y="30" width="160" height="100" rx="10" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="2"/>
+      <text x="720" y="56" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">👤 用户上下文</text>
+      <text x="720" y="78" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="9">UserContext</text>
+      <text x="720" y="98" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">注册·认证·地址</text>
+      <text x="720" y="115" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">支撑子域</text>
+      <rect x="30" y="190" width="170" height="100" rx="10" fill="rgba(248,113,113,0.08)" stroke="#f87171" stroke-width="2"/>
+      <text x="115" y="216" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">💰 支付上下文</text>
+      <text x="115" y="238" text-anchor="middle" fill="#fecaca" font-family="JetBrains Mono,monospace" font-size="9">PaymentContext</text>
+      <text x="115" y="258" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">支付宝·微信·退款</text>
+      <text x="115" y="275" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">防腐层保护</text>
+      <rect x="340" y="190" width="170" height="100" rx="10" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="425" y="216" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">📊 报表上下文</text>
+      <text x="425" y="238" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="9">ReportContext</text>
+      <text x="425" y="258" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">日销·GMV·看板</text>
+      <text x="425" y="275" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">各行其道</text>
+      <path d="M 200 80 Q 270 60 340 70" fill="none" stroke="#22d3ee" stroke-width="2" marker-end="url(#ddArr)"/>
+      <text x="260" y="52" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="8" font-weight="600">客户-供应商</text>
+      <path d="M 340 120 Q 270 150 200 190" fill="none" stroke="#a78bfa" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#ddArr2)"/>
+      <text x="230" y="170" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="8" font-weight="600">共享内核 (PaymentID)</text>
+      <path d="M 640 80 Q 540 60 510 70" fill="none" stroke="#3fb950" stroke-width="2" marker-end="url(#ddArr3)"/>
+      <text x="570" y="52" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8" font-weight="600">开放主机 OHS</text>
+      <path d="M 425 190 Q 425 160 425 130" fill="none" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <text x="495" y="165" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="7">各行其道 (CDC 同步)</text>
+      <rect x="500" y="250" width="110" height="30" rx="6" fill="rgba(139,148,158,0.1)" stroke="#64748b" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="555" y="269" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">🔌 外部支付宝</text>
+      <line x1="200" y1="250" x2="498" y2="265" stroke="#f87171" stroke-width="1.5" marker-end="url(#ddArr3)"/>
+      <text x="340" y="258" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="8">防腐层 ACL</text>
+      <rect x="30" y="306" width="770" height="28" rx="6" fill="rgba(30,41,59,0.4)" stroke="#475569" stroke-width="1"/>
+      <line x1="50" y1="320" x2="80" y2="320" stroke="#22d3ee" stroke-width="2"/><text x="86" y="324" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">客户-供应商</text>
+      <line x1="170" y1="320" x2="200" y2="320" stroke="#a78bfa" stroke-width="2" stroke-dasharray="6,3"/><text x="206" y="324" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">共享内核</text>
+      <line x1="290" y1="320" x2="320" y2="320" stroke="#3fb950" stroke-width="2"/><text x="326" y="324" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">OHS</text>
+      <line x1="390" y1="320" x2="420" y2="320" stroke="#f87171" stroke-width="1.5"/><text x="426" y="324" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">ACL 防腐层</text>
+      <line x1="530" y1="320" x2="560" y2="320" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="4,4"/><text x="566" y="324" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">各行其道</text>
+    </svg>
+    <div class="diagram-caption">限界上下文映射：5 种集成关系可视化——同一个系统的不同上下文如何协作</div>
+  </div>
+
+</section>
+
+<!-- ═══════ 5. 子域 ═══════ -->
+<section id="ddd-subdomain" class="section">
+  <h2>🏷️ 子域分类：分清主次，把钱花在刀刃上</h2>
+  <table>
+    <tr><th>类型</th><th>是什么</th><th>核心竞争力？</th><th>投入策略</th><th>例子（电商）</th></tr>
+    <tr><td><strong>核心域</strong></td><td>让你区别于竞争对手的业务</td><td>✅ 是</td><td>重兵投入、自研、精雕</td><td>推荐算法、定价引擎</td></tr>
+    <tr><td><strong>支撑域</strong></td><td>支撑核心业务但不独特</td><td>❌ 不是</td><td>自研或定制化采购</td><td>订单管理后台</td></tr>
+    <tr><td><strong>通用域</strong></td><td>所有人都需要的通用能力</td><td>❌ 不是</td><td>用现成的、别自己造</td><td>用户认证、文件存储</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 6. 实体 ═══════ -->
+<section id="ddd-entity" class="section">
+  <h2>🆔 实体 Entity：有身份证号的对象</h2>
+  <div class="feynman">
+    <p><span class="analogy">👤 类比：</span>你这个人 = 实体。改了名字、换了发型、搬了家，你还是你——因为你有唯一的身份证号。实体通过<strong>标识 ID</strong> 来区分，而不是属性。</p>
+  </div>
+
+  <pre><code><span class="cm">// 实体：有唯一标识、可变、有生命周期</span>
+<span class="kw">type</span> Order <span class="kw">struct</span> {
+    ID          OrderID        <span class="cm">// 唯一标识（UUID / 雪花ID）</span>
+    CustomerID  CustomerID
+    Status      OrderStatus    <span class="cm">// 可变状态</span>
+    Items       []OrderItem
+    TotalAmount Money
+    CreatedAt   time.Time
+    UpdatedAt   time.Time
+}
+
+<span class="kw">func</span> (o *Order) <span class="fn">Confirm</span>() error {   <span class="cm">// 行为 > 属性</span>
+    <span class="kw">if</span> o.Status != Pending {
+        <span class="kw">return</span> ErrInvalidTransition
+    }
+    o.Status = Confirmed
+    o.UpdatedAt = time.Now()
+    <span class="kw">return</span> <span class="kw">nil</span>
+}</code></pre>
+</section>
+
+<!-- ═══════ 7. 值对象 ═══════ -->
+<section id="ddd-vo" class="section">
+  <h2>💵 值对象 Value Object：只关心面值的 100 元纸币</h2>
+  <div class="feynman">
+    <p><span class="analogy">💵 类比：</span>两张 50 元纸币——你不在乎哪张是哪张，只要面值一样就完全等价。值对象<strong>没有 ID</strong>，通过<strong>属性值</strong>判断相等性，且<strong>不可变</strong>。</p>
+  </div>
+
+  <h3>值对象 vs 实体，一张表看懂</h3>
+  <div class="compare">
+    <div>
+      <h4>实体 Entity</h4>
+      <ul><li>有唯一 ID</li><li>可变（状态会变）</li><li>通过 ID 判等</li><li>有生命周期</li><li>例：User, Order</li></ul>
+    </div>
+    <div>
+      <h4>值对象 Value Object</h4>
+      <ul><li>无 ID</li><li>不可变（改了就是新对象）</li><li>通过属性值判等</li><li>无生命周期</li><li>例：Money, Address, PhoneNumber</li></ul>
+    </div>
+  </div>
+
+  <pre><code><span class="cm">// 值对象：不可变、无 ID、通过值判等</span>
+<span class="kw">type</span> Money <span class="kw">struct</span> {
+    Amount   <span class="kw">int64</span>
+    Currency <span class="kw">string</span>
+}
+
+<span class="cm">// 不可变：Add 返回新对象，不修改原对象</span>
+<span class="kw">func</span> (m Money) <span class="fn">Add</span>(other Money) Money {
+    <span class="kw">if</span> m.Currency != other.Currency { <span class="kw">panic</span>(<span class="str">"currency mismatch"</span>) }
+    <span class="kw">return</span> Money{Amount: m.Amount + other.Amount, Currency: m.Currency}
+}
+
+<span class="kw">type</span> Address <span class="kw">struct</span> {  <span class="cm">// 地址天然是值对象</span>
+    Province, City, District, Street <span class="kw">string</span>
+}
+<span class="cm">// 两个地址 Province+City+District+Street 相同 → 就是同一个地址</span></code></pre>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 130" style="max-width:820px;width:100%">
+      <rect x="15" y="10" width="380" height="110" rx="8" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="205" y="35" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">🆔 实体 Entity</text>
+      <text x="35" y="60" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10">有 ID · 可变 · 通过 ID 判等 · 有生命周期</text>
+      <rect x="45" y="72" width="150" height="30" rx="4" fill="rgba(34,211,238,0.10)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="120" y="92" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10">User{ID, Name, Email}</text>
+      <text x="220" y="92" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">改名了还是同一个人</text>
+      <rect x="420" y="10" width="380" height="110" rx="8" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="610" y="35" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">💵 值对象 Value Object</text>
+      <text x="440" y="60" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10">无 ID · 不可变 · 通过值判等 · 创建即销毁</text>
+      <rect x="450" y="72" width="150" height="30" rx="4" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1"/>
+      <text x="525" y="92" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10">Money{100, "CNY"}</text>
+      <text x="625" y="92" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">两张100元完全等价</text>
+    </svg>
+    <div class="diagram-caption">Entity（有身份） vs Value Object（只关心值）——同一概念在不同上下文可以不同</div>
+  </div>
+
+  <h4>什么时候用值对象而不是实体？</h4>
+  <p>问自己三个字：<strong>"它变吗？它有身份吗？"</strong>。金额不变、地址在你搬家前也不变、电话号码会变但它本身没有"身份"——这些都是值对象。</p>
+</section>
+
+<!-- ═══════ 8. 聚合 ═══════ -->
+<section id="ddd-aggregate" class="section">
+  <h2>🏰 聚合 Aggregate：DDD 的核心武器</h2>
+  <div class="feynman">
+    <p><span class="analogy">🛂 类比：</span>入境海关——你不能随便进入一个国家，必须通过海关检查（聚合根）。海关检查你的护照，决定你能不能入境。聚合 = 一组紧密相关的对象，只能通过"海关"（聚合根）访问内部。</p>
+  </div>
+
+  <div class="info-card">
+    <h4>聚合的四条铁律</h4>
+    <ol>
+      <li><strong>只有一个聚合根：</strong>外部只能通过聚合根修改内部对象</li>
+      <li><strong>通过 ID 引用其他聚合：</strong>不持有其他聚合的引用，只存 ID</li>
+      <li><strong>最终一致性：</strong>聚合之间的状态通过领域事件最终一致（不要跨聚合事务）</li>
+      <li><strong>小聚合：</strong>一个聚合尽量小，只包含必须一起保证一致性的对象</li>
+    </ol>
+  </div>
+
+  <pre><code><span class="cm">// Order 聚合：Order 是聚合根，OrderItem 是内部实体</span>
+<span class="kw">type</span> Order <span class="kw">struct</span> {          <span class="cm">// ← 聚合根 (Aggregate Root)</span>
+    ID          OrderID
+    CustomerID  CustomerID      <span class="cm">// 引用其他聚合 → 只存 ID！</span>
+    Status      OrderStatus
+    items       []OrderItem     <span class="cm">// 内部实体，不对外暴露</span>
+    totalAmount Money
+}
+
+<span class="kw">type</span> OrderItem <span class="kw">struct</span> {       <span class="cm">// 聚合内部实体</span>
+    ProductID   ProductID       <span class="cm">// 引用商品聚合 → 只存 ID</span>
+    Quantity    <span class="kw">int</span>
+    UnitPrice   Money
+}
+
+<span class="cm">// ✅ 正确：通过聚合根操作，保证业务规则</span>
+<span class="kw">func</span> (o *Order) <span class="fn">AddItem</span>(productID ProductID, qty <span class="kw">int</span>, price Money) error {
+    <span class="kw">if</span> o.Status != Pending { <span class="kw">return</span> ErrOrderLocked }
+    <span class="kw">if</span> qty <= <span class="num">0</span> { <span class="kw">return</span> ErrInvalidQuantity }
+    o.items = <span class="kw">append</span>(o.items, OrderItem{...})
+    o.recalculateTotal()
+    <span class="kw">return</span> <span class="kw">nil</span>
+}
+<span class="cm">// ❌ 错误：外部直接修改 items——绕过了业务规则</span>
+<span class="cm">// order.Items = append(order.Items, ...)</span></code></pre>
+
+  <h4>聚合大小设计——DDD 的最大难点</h4>
+  <p><span class="badge badge-red">太大</span>：性能差、并发冲突多。<span class="badge badge-red">太小</span>：一致性保证不了。</p>
+  <p><strong>经验值：</strong>一个聚合通常包含根实体 + 1~3 个内部实体。如果犹豫，<strong>往小了拆</strong>，用领域事件保证最终一致性。</p>
+</section>
+
+<!-- ═══════ 9. 资源库 ═══════ -->
+<section id="ddd-repo" class="section">
+  <h2>📁 资源库 Repository：聚合的"档案室管理员"</h2>
+  <div class="feynman">
+    <p><span class="analogy">📂 类比：</span>公司的档案室——你要取一份合同（聚合），跟管理员说要合同编号（聚合 ID），管理员去档案柜（数据库）找出来给你。你不需要知道档案柜是什么牌子的。</p>
+  </div>
+
+  <pre><code><span class="cm">// Repository 接口（定义在领域层）</span>
+<span class="kw">type</span> OrderRepository <span class="kw">interface</span> {
+    Save(ctx context.Context, order *Order) error
+    FindByID(ctx context.Context, id OrderID) (*Order, error)
+    FindByCustomerID(ctx context.Context, customerID CustomerID) ([]*Order, error)
+}
+
+<span class="cm">// Repository 实现（在基础设施层）</span>
+<span class="kw">type</span> orderRepo <span class="kw">struct</span> { db *sql.DB }
+<span class="kw">func</span> (r *orderRepo) <span class="fn">Save</span>(ctx context.Context, order *Order) error {
+    <span class="kw">return</span> r.db.ExecContext(ctx,
+        <span class="str">"INSERT INTO orders (id, status, ...) VALUES (?,?,...) ON DUPLICATE KEY UPDATE ..."</span>,
+        order.ID, order.Status,
+    )
+}
+<span class="kw">func</span> (r *orderRepo) <span class="fn">FindByID</span>(ctx context.Context, id OrderID) (*Order, error) {
+    row := r.db.QueryRowContext(ctx, <span class="str">"SELECT ... FROM orders WHERE id=?"</span>, id)
+    <span class="kw">return</span> scanOrder(row)  <span class="cm">// 从数据库行重建聚合</span>
+}</code></pre>
+
+  <h4>Repository 的关键原则</h4>
+  <ul>
+    <li><strong>一个聚合一个 Repository</strong>——不为内部实体单独建 Repository</li>
+    <li><strong>接口定义在领域层，实现在基础设施层</strong>——依赖倒置</li>
+    <li><strong>Save 而不是 Update</strong>——Repository 负责整存整取，不暴露字段级更新</li>
+  </ul>
+</section>
+
+<!-- ═══════ 10. 领域服务 ═══════ -->
+<section id="ddd-service" class="section">
+  <h2>⚙️ 领域服务：不属于任何一个实体的业务逻辑</h2>
+  <div class="feynman">
+    <p><span class="analogy">⚖️ 类比：</span>转账——既不单独属于 A 账户，也不单独属于 B 账户，是"银行转账系统"这个服务的职责。领域服务 = 跨聚合的业务逻辑。</p>
+  </div>
+
+  <pre><code><span class="cm">// 领域服务：协调两个聚合之间的操作</span>
+<span class="kw">type</span> TransferService <span class="kw">struct</span> {
+    accountRepo AccountRepository
+}
+
+<span class="kw">func</span> (s *TransferService) <span class="fn">Transfer</span>(
+    ctx context.Context,
+    fromID, toID AccountID,
+    amount Money,
+) error {
+    from, _ := s.accountRepo.FindByID(ctx, fromID)
+    to, _   := s.accountRepo.FindByID(ctx, toID)
+    <span class="kw">if</span> err := from.Debit(amount); err != <span class="kw">nil</span> { <span class="kw">return</span> err }
+    to.Credit(amount)
+    <span class="kw">return</span> s.accountRepo.SaveBoth(ctx, from, to)
+  <span class="cm">// 注意：跨聚合事务最好用最终一致性（发事件），而非 XA 事务</span>
+}</code></pre>
+</section>
+
+<!-- ═══════ 11. 领域事件 ═══════ -->
+<section id="ddd-event" class="section">
+  <h2>📨 领域事件：发生了重要的事，告诉相关方</h2>
+  <div class="feynman">
+    <p><span class="analogy">📢 类比：</span>公司 OA 系统——张三提交了请假申请 → 系统自动通知部门经理审批 + HR 备案 + 工资系统扣钱。领域事件 = 业务领域内发生了重要事情，广播给所有关注方。</p>
+  </div>
+
+  <pre><code><span class="cm">// 领域事件：不可变的、描述已发生的事实</span>
+<span class="kw">type</span> OrderConfirmed <span class="kw">struct</span> {
+    OrderID    OrderID    `json:"order_id"`
+    CustomerID CustomerID `json:"customer_id"`
+    TotalAmount Money     `json:"total_amount"`
+    ConfirmedAt time.Time `json:"confirmed_at"`
+}
+
+<span class="cm">// 聚合内部产生事件</span>
+<span class="kw">func</span> (o *Order) <span class="fn">Confirm</span>() error {
+    <span class="kw">if</span> o.Status != Pending { <span class="kw">return</span> ErrInvalidTransition }
+    o.Status = Confirmed
+    o.AddDomainEvent(OrderConfirmed{       <span class="cm">// 记录事件</span>
+        OrderID:    o.ID,
+        TotalAmount: o.totalAmount,
+        ConfirmedAt: time.Now(),
+    })
+    <span class="kw">return</span> <span class="kw">nil</span>
+}
+
+<span class="cm">// Repository Save 时发布事件</span>
+<span class="kw">func</span> (r *orderRepo) <span class="fn">Save</span>(ctx context.Context, order *Order) error {
+    tx, _ := r.db.BeginTx(ctx)
+    <span class="cm">// 1. 保存聚合</span>
+    tx.Exec(<span class="str">"UPDATE orders SET status=? WHERE id=?"</span>, order.Status, order.ID)
+    <span class="cm">// 2. 在同一个事务中写入事件表 (Outbox Pattern)</span>
+    <span class="kw">for</span> _, evt := <span class="kw">range</span> order.DomainEvents() {
+        tx.Exec(<span class="str">"INSERT INTO outbox (type, payload) VALUES (?,?)"</span>, ...)
+    }
+    <span class="kw">return</span> tx.Commit()
+}</code></pre>
+</section>
+
+<!-- ═══════ 12. Go 工程实践 ═══════ -->
+<section id="ddd-go" class="section">
+  <h2>🔧 Go 中的 DDD 项目结构</h2>
+  <pre><code><span class="cm">// 推荐的四层目录结构</span>
+project/
+├── domain/                <span class="cm">// 领域层（核心，零外部依赖）</span>
+│   ├── order/
+│   │   ├── order.go       <span class="cm">// 聚合根 + 实体 + 值对象</span>
+│   │   ├── repository.go  <span class="cm">// Repository 接口</span>
+│   │   └── events.go      <span class="cm">// 领域事件</span>
+│   └── product/
+│       └── ...
+├── application/           <span class="cm">// 应用层（用例编排，薄层）</span>
+│   └── order_service.go   <span class="cm">// 应用服务 = 领域服务 + 事务管理</span>
+├── infrastructure/        <span class="cm">// 基础设施层（技术实现）</span>
+│   ├── persistence/
+│   │   └── order_repo.go  <span class="cm">// Repository 实现</span>
+│   └── messaging/
+│       └── kafka.go       <span class="cm">// 消息队列</span>
+└── interfaces/            <span class="cm">// 接口层（对外暴露）</span>
+    ├── http/
+    │   └── order_handler.go
+    └── grpc/
+        └── order_service.go</code></pre>
+</section>
+
+<!-- ═══════ 13. 核心题 ═══════ -->
+<section id="ddd-qa" class="section">
+  <h2>❓ 高频考题</h2>
+
+  <div class="qa"><div class="q">Q1: 用 DDD 设计一个电商系统的订单模块</div><div class="a">
+    <strong>限界上下文：</strong>订单上下文（独立于商品、支付、用户）。<br>
+    <strong>聚合根：</strong>Order（包含 OrderItem）。只能通过 Order 修改内部项。<br>
+    <strong>值对象：</strong>Money（金额）、Address（收货地址）、OrderID。<br>
+    <strong>领域事件：</strong>OrderPlaced → 扣库存（商品上下文）+ 发支付请求（支付上下文）。<br>
+    <strong>Repository：</strong>OrderRepository 只负责存取 Order 聚合。
+  </div></div>
+
+  <div class="qa"><div class="q">Q2: 实体和值对象怎么区分？一个对象今天当实体明天能当值对象吗？</div><div class="a">
+    <strong>看业务场景。</strong>电话号码——在用户上下文是值对象（换号就换号），在运营商 CRM 系统是实体（每个号码有归属、套餐、账单）。<strong>同一概念在不同上下文可以是不同类型。</strong>
+  </div></div>
+
+  <div class="qa"><div class="q">Q3: 聚合和微服务的关系？</div><div class="a">
+    <strong>一个微服务 ≈ 一个限界上下文</strong>（不是绝对的）。一个限界上下文内可以有多个聚合。微服务之间通过 API/事件通信，聚合之间通过 ID 引用 + 领域事件保持最终一致。不要把多个聚合塞进一个微服务事务——用 Saga 或 Outbox 模式。
+  </div></div>
+
+  <div class="qa"><div class="q">Q4: DDD 和 Clean Architecture / 六边形架构的关系？</div><div class="a">
+    <strong>DDD 是"建什么"（业务建模），Clean Architecture 是"怎么建"（代码组织）。</strong>两者完美互补：DDD 的领域层 = Clean Architecture 的 Entity + UseCase 层。DDD 不规定目录结构，Clean Architecture 提供了分层的实践方案。
+  </div></div>
+
+  <div class="qa"><div class="q">Q5: 为什么聚合要设计得尽量小？</div><div class="a">
+    ① <strong>并发冲突：</strong>大聚合 = 多人同时改不同字段也会冲突（锁整个聚合）。<br>
+    ② <strong>性能：</strong>每次加载聚合要加载所有内部对象 → 内存和查询开销。<br>
+    ③ <strong>事务边界：</strong>DDD 建议一个事务只改一个聚合，大聚合意味着大事务。
+  </div></div>
+
+  <div class="qa"><div class="q">Q6: DDD 落地最大的困难是什么？</div><div class="a">
+    ① <strong>领域专家难找</strong>——需要懂业务的人持续参与。② <strong>团队共识难</strong>——通用语言需要所有人遵守。③ <strong>过度设计</strong>——简单 CRUD 硬上 DDD 是浪费。<strong>建议：先在一个核心模块试点，成功了再推广。</strong>
+  </div></div>
+</section>
+
+<p style="text-align:center;color:var(--muted);margin-top:60px;padding-bottom:40px;font-size:12px">
+  🧭 DDD 复习完成 · 通用语言 + 限界上下文 + 聚合 = DDD 三板斧<br>
+  <a href="/" style="color:var(--accent)">← 返回首页</a>
+</p>
+
+
+<!-- ═══════ 苏格拉底式提问 ═══════ -->
+<section id="ddd-socratic" class="section">
+  <h2>💬 苏格拉底式提问 —— 检验真理解</h2>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:20px">以下问题用来逼你追问本质。先自己想 30 秒，再点开验证。</p>
+  <details class="socratic"><summary>限界上下文按什么划分？<span class="socratic-num">Q1</span></summary><div class="socratic-a"><span class="highlight">按"语言边界"。</span>同一个词在不同上下文有不同含义——"订单"在交易是待支付，在物流是待发货。<br><span class="highlight">判断标准：</span>① 同一术语有不同含义 → 拆；② 两个功能独立演化 → 拆；③ 两个团队对同一概念无法达成一致 → 拆。<br><span class="highlight">常见错误：</span>按数据库表拆（技术驱动），按组织结构拆（政治驱动）。边界应该是<span class="highlight">业务语言的边界</span>。</div></details>
+  <details class="socratic"><summary>聚合根之间为什么只用 ID 引用？<span class="socratic-num">Q2</span></summary><div class="socratic-a"><span class="highlight">三个原因：</span><br>① <strong>事务边界：</strong>一个事务只能修改一个聚合。持有对象引用容易跨聚合修改。<br>② <strong>加载成本：</strong>加载 Order 时如果还要加载整个 Product——性能灾难。<br>③ <strong>独立演化：</strong>聚合 A 和 B 应能独立修改和部署。<br><span class="highlight">本质：</span>ID 引用 = 弱关联。"不持有对象"不是偷懒，是保护聚合的独立性和事务边界。</div></details>
+  <details class="socratic"><summary>领域事件和 MQ Event 的本质区别？<span class="socratic-num">Q3</span></summary><div class="socratic-a"><span class="highlight">MQ Event：</span>技术事件。"用户下单了，通知物流系统"。关注"数据传递"。<br><span class="highlight">领域事件：</span>业务事件。"订单已提交"是业务事实。关注"业务含义的不可变性"。<br><span class="highlight">差异：</span>① 命名：技术 = "OrderCreated"，领域 = "OrderSubmitted"；② 用途：技术用于通知，领域用于驱动流程；③ 领域事件一旦产生不可修改。<br><span class="highlight">一句话：</span>领域事件是"发生了什么事"，MQ Event 是"请做这个操作"。</div></details>
+</section>
+
+
+<div class="feynman" style="margin-top:40px;background:linear-gradient(135deg,rgba(163,113,247,0.06),rgba(76,29,149,0.04));border-color:rgba(163,113,247,0.3)">
+  <p style="font-size:11px;color:#c4b5fd;margin-bottom:8px;font-weight:700">📖 本文思想来源</p>
+  <p style="font-size:12px;line-height:1.9">
+    <strong>《领域驱动设计》</strong> —— Eric Evans（DDD 圣经，2003 年经典）<br>
+    • <span style="color:#a78bfa">第 14 章「保持模型的完整性」</span>：限界上下文、上下文映射、防腐层的原始定义<br>
+    • <span style="color:#a78bfa">第 6 章「聚合」</span>：聚合根的事务边界——Evans 的原话比任何博客都透彻<br>
+    <strong>《实现领域驱动设计》</strong> —— Vaughn Vernon<br>
+    • <span style="color:#a78bfa">第 4 章「架构」</span>：六边形架构 + CQRS 在 DDD 中的实践落地<br>
+    • <span style="color:#94a3b8">另见：</span>Martin Fowler 的 DDD 相关博文、Alberto Brandolini 的 EventStorming
+  </p>
+</div>
+
+<section id="ddd-summary" class="section" style="margin-top:40px">
+  <h2>🎙️ 口播总结</h2>
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(248,81,73,0.04));border-color:rgba(251,191,36,0.3)">
+    <p style="font-size:15px;line-height:2"><strong>这篇文章帮你理解领域驱动设计的全部核心概念。</strong></p>
+    <p>DDD 不是写代码的技巧，是把业务建模成代码的方法论。核心三板斧：通用语言、限界上下文、聚合。通用语言让产品、开发、测试说同一种话，代码直接映射业务术语。限界上下文就像公司部门——财务部说的"资产"和 IT 部说的"资产"不同，每个上下文有自己的术语和数据。</p>
+    <p>战术设计层有五个核心概念：实体是有身份证号的对象，值对象是没有 ID 只关心值的对象，聚合是一组紧密相关对象的堡垒只能通过聚合根访问，资源库是聚合的档案室管理员负责存取，领域服务是不属于任何一个实体的跨聚合业务逻辑。</p>
+    <p>聚合的四条铁律是 DDD 最难掌握的地方：只有一个聚合根、通过 ID 引用其他聚合、最终一致性、尽量小。防腐层就像出国转换插头，保护你的领域模型不被外部系统的脏模型污染。</p>
+    <p>领域事件让上下文之间解耦通信。Go 中用四层目录结构落地 DDD：domain 领域层零外部依赖、application 应用层做用例编排、infrastructure 基础设施层实现技术细节、interfaces 接口层对外暴露。</p>
+    <p><strong>如果只能记住一个概念，那就是"聚合"。</strong>理解聚合根、聚合的四条铁律、聚合大小设计，就掌握了 DDD 的精髓。</p>
+  </div>
+</section>
+
+
+</main>
+</div>
+
+<script src="/mobile.js"></script>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

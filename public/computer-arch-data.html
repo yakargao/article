@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>计算机组成原理·数据的表示与运算 · 进制/补码/浮点IEEE 754/ALU · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .verbal-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .verbal-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection — prevent overlap on narrow screens */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 480px; }
+  }
+  @media (max-width: 480px) {
+    .section h2 { font-size: 18px; }
+    body { font-size: 14px; }
+    pre { font-size: 11px; padding: 10px 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">数据表示</div>
+  <a class="nav-item" href="#base">🔢 进制转换</a>
+  <a class="nav-item" href="#complement">➖ 原码反码补码</a>
+  <a class="nav-item" href="#ieee754">💯 浮点IEEE 754</a>
+  <a class="nav-item" href="#arithmetic">🧮 定点运算</a>
+  <a class="nav-item" href="#alu">⚙️ ALU 结构</a>
+  <div class="nav-section">练习</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ================================================================== -->
+<!-- 总览 -->
+<!-- ================================================================== -->
+<section id="overview" class="section">
+  <h2>🔢 计算机组成原理 · 数据的表示与运算</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>计算机内部只有 <code>0</code> 和 <code>1</code>，但用这简单的两个符号，它能表示整数、浮点数、负数、字符——甚至你正在读的这段文字。数据的表示与运算是计算机科学的 <span class="handwritten">"数字化学"</span>——学习 <span class="handwritten">"二进制如何编码有符号整数？IEEE 754 如何表示 0.1？ALU 的内部逻辑是什么？"</span>。本文从进制转换出发，逐步深入到补码、浮点标准、定点运算和 ALU 结构。</p>
+  </div>
+
+  <table>
+    <tr><th>模块</th><th>核心问题</th><th>一句话解答</th></tr>
+    <tr><td><span class="badge badge-green">① 进制转换</span></td><td>不同进制之间怎么互转？</td><td>按位权展开多项式求值或用除基取余法逐位转换</td></tr>
+    <tr><td><span class="badge badge-orange">② 原码反码补码</span></td><td>负数在计算机里怎么存？</td><td>补码：取反加一，统一加减法电路，避免 +0 和 -0 歧义</td></tr>
+    <tr><td><span class="badge badge-purple">③ IEEE 754 浮点</span></td><td>0.1 + 0.2 为什么会误差？</td><td>浮点用指数×尾数表示实数，有限精度导致舍入误差</td></tr>
+    <tr><td><span class="badge badge-red">④ 定点运算</span></td><td>加减乘除基本原理是什么？</td><td>加法串行进位/超前进位，乘法 Booth 算法，除法恢复/不恢复余数</td></tr>
+    <tr><td><span class="badge badge-cyan">⑤ ALU 结构</span></td><td>CPU 的"计算器"内部长什么样？</td><td>ALU = 加法器 + 移位器 + 逻辑运算 + 标志位输出</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================== -->
+<!-- 🔢 进制转换 -->
+<!-- ================================================================== -->
+<section id="base" class="section">
+  <h2>🔢 进制转换</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🪙 类比：不同语言的"数字"</span></p>
+    <p>十进制是我们日常说的"中文"描述数字，二进制是计算机的"机器语"——只有 0 和 1 两个词。八进制（0-7）和十六进制（0-9, A-F）是"方言"，因为 3 位二进制凑 1 位八进制、4 位二进制凑 1 位十六进制，读写起来比二进制串方便得多。</p>
+    <p><span class="handwritten">核心口诀：</span>整数部分"除基取余倒序排"，小数部分"乘基取整正序排"。</p>
+  </div>
+
+  <h3>四种进制的位权</h3>
+  <table>
+    <tr><th>进制</th><th>基数</th><th>数字符号</th><th>位权示例</th><th>计算机中的用途</th></tr>
+    <tr><td><strong>二进制</strong> (Binary)</td><td>2</td><td>0, 1</td><td><code>1010₂ = 1×2³ + 0×2² + 1×2¹ + 0×2⁰</code></td><td>机器内部唯一的数据表示</td></tr>
+    <tr><td><strong>八进制</strong> (Octal)</td><td>8</td><td>0-7</td><td><code>12₈ = 1×8¹ + 2×8⁰</code></td><td>Unix 权限 (chmod 755)</td></tr>
+    <tr><td><strong>十进制</strong> (Decimal)</td><td>10</td><td>0-9</td><td><code>10 = 1×10¹ + 0×10⁰</code></td><td>人类日常使用</td></tr>
+    <tr><td><strong>十六进制</strong> (Hex)</td><td>16</td><td>0-9, A-F</td><td><code>FF₁₆ = 15×16¹ + 15×16⁰ = 255</code></td><td>内存地址/颜色值/调试信息</td></tr>
+  </table>
+
+  <h3>转换方法速览</h3>
+  <div class="compare">
+    <div>
+      <h4>🔁 十进制 → X 进制</h4>
+      <p><strong>整数部分：</strong>除基取余，倒序排列</p>
+      <pre><code><span class="cm">// 十进制 42 → 二进制</span>
+42 ÷ 2 = 21 ... 0  ↑
+21 ÷ 2 = 10 ... 1  │
+10 ÷ 2 =  5 ... 0  │
+ 5 ÷ 2 =  2 ... 1  │
+ 2 ÷ 2 =  1 ... 0  │
+ 1 ÷ 2 =  0 ... 1  │
+                    │
+结果：101010₂     倒序↑</code></pre>
+      <p><strong>小数部分：</strong>乘基取整，正序排列</p>
+      <pre><code><span class="cm">// 十进制 0.625 → 二进制</span>
+0.625 × 2 = 1.25 → 取 1
+0.25  × 2 = 0.5  → 取 0
+0.5   × 2 = 1.0  → 取 1
+结果：0.101₂</code></pre>
+    </div>
+    <div>
+      <h4>🔁 X 进制 → 十进制</h4>
+      <p><strong>按位权展开求和</strong></p>
+      <pre><code><span class="cm">// 二进制 101010 → 十进制</span>
+1×2⁵ + 0×2⁴ + 1×2³
++ 0×2² + 1×2¹ + 0×2⁰
+= 32 + 0 + 8 + 0 + 2 + 0
+= 42
+
+<span class="cm">// 十六进制 2F → 十进制</span>
+2×16¹ + 15×16⁰ = 32 + 15 = 47</code></pre>
+      <h4>💡 快速技巧</h4>
+      <p>二进制 ⇔ 八进制：3 位一组</p>
+      <pre><code>101 010₂ = 52₈</code></pre>
+      <p>二进制 ⇔ 十六进制：4 位一组</p>
+      <pre><code>0010 1010₂ = 2A₁₆</code></pre>
+    </div>
+  </div>
+
+  <h3>进制转换速查表</h3>
+  <table>
+    <tr><th>十进制</th><th>二进制</th><th>八进制</th><th>十六进制</th></tr>
+    <tr><td>0</td><td>0000</td><td>0</td><td>0</td></tr>
+    <tr><td>1</td><td>0001</td><td>1</td><td>1</td></tr>
+    <tr><td>2</td><td>0010</td><td>2</td><td>2</td></tr>
+    <tr><td>3</td><td>0011</td><td>3</td><td>3</td></tr>
+    <tr><td>4</td><td>0100</td><td>4</td><td>4</td></tr>
+    <tr><td>5</td><td>0101</td><td>5</td><td>5</td></tr>
+    <tr><td>6</td><td>0110</td><td>6</td><td>6</td></tr>
+    <tr><td>7</td><td>0111</td><td>7</td><td>7</td></tr>
+    <tr><td>8</td><td>1000</td><td>10</td><td>8</td></tr>
+    <tr><td>9</td><td>1001</td><td>11</td><td>9</td></tr>
+    <tr><td>10</td><td>1010</td><td>12</td><td>A</td></tr>
+    <tr><td>11</td><td>1011</td><td>13</td><td>B</td></tr>
+    <tr><td>12</td><td>1100</td><td>14</td><td>C</td></tr>
+    <tr><td>13</td><td>1101</td><td>15</td><td>D</td></tr>
+    <tr><td>14</td><td>1110</td><td>16</td><td>E</td></tr>
+    <tr><td>15</td><td>1111</td><td>17</td><td>F</td></tr>
+  </table>
+
+  <div class="diagram">
+    <svg viewBox="0 0 780 380" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+      <defs>
+        <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#22d3ee" stop-opacity="0.15"/><stop offset="100%" stop-color="#22d3ee" stop-opacity="0.05"/></linearGradient>
+        <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3fb950" stop-opacity="0.15"/><stop offset="100%" stop-color="#3fb950" stop-opacity="0.05"/></linearGradient>
+        <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#a78bfa" stop-opacity="0.15"/><stop offset="100%" stop-color="#a78bfa" stop-opacity="0.05"/></linearGradient>
+        <linearGradient id="g4" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fbbf24" stop-opacity="0.15"/><stop offset="100%" stop-color="#fbbf24" stop-opacity="0.05"/></linearGradient>
+      </defs>
+      <rect width="780" height="380" fill="#0f172a" rx="8"/>
+
+      <!-- Title -->
+      <text x="390" y="36" fill="#e2e8f0" font-size="16" font-weight="bold" text-anchor="middle">进制转换 — 思维导图</text>
+
+      <!-- Center: 十进制 -->
+      <rect x="310" y="55" width="160" height="40" rx="20" fill="#1e293b" stroke="#22d3ee" stroke-width="2"/>
+      <text x="390" y="81" fill="#22d3ee" font-size="14" font-weight="bold" text-anchor="middle">十进制 (Decimal)</text>
+
+      <!-- Binary box -->
+      <rect x="30" y="130" width="220" height="100" rx="8" fill="url(#g1)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="140" y="157" fill="#22d3ee" font-size="14" font-weight="bold" text-anchor="middle">二进制 Binary (0-1)</text>
+      <text x="60" y="180" fill="#c9d1d9" font-size="12">1010₂ = 10₁₀</text>
+      <text x="60" y="200" fill="#c9d1d9" font-size="12">除 2 取余法（整数）</text>
+      <text x="60" y="220" fill="#c9d1d9" font-size="12">乘 2 取整法（小数）</text>
+
+      <!-- Octal box -->
+      <rect x="280" y="130" width="220" height="100" rx="8" fill="url(#g2)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="390" y="157" fill="#3fb950" font-size="14" font-weight="bold" text-anchor="middle">八进制 Octal (0-7)</text>
+      <text x="310" y="180" fill="#c9d1d9" font-size="12">12₈ = 10₁₀</text>
+      <text x="310" y="200" fill="#c9d1d9" font-size="12">二进制 3 位一组</text>
+      <text x="310" y="220" fill="#c9d1d9" font-size="12">Unix 权限 (chmod 755)</text>
+
+      <!-- Hex box -->
+      <rect x="530" y="130" width="220" height="100" rx="8" fill="url(#g3)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="640" y="157" fill="#a78bfa" font-size="14" font-weight="bold" text-anchor="middle">十六进制 Hex (0-F)</text>
+      <text x="560" y="180" fill="#c9d1d9" font-size="12">FF₁₆ = 255₁₀</text>
+      <text x="560" y="200" fill="#c9d1d9" font-size="12">二进制 4 位一组</text>
+      <text x="560" y="220" fill="#c9d1d9" font-size="12">内存地址 / 颜色值</text>
+
+      <!-- Arrows from Decimal to each -->
+      <line x1="360" y1="95" x2="180" y2="128" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.6"/>
+      <line x1="390" y1="95" x2="390" y2="128" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.6"/>
+      <line x1="420" y1="95" x2="600" y2="128" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.6"/>
+
+      <!-- Conversion table at bottom -->
+      <text x="390" y="275" fill="#fbbf24" font-size="14" font-weight="bold" text-anchor="middle">快速转换对照</text>
+      <rect x="30" y="285" width="720" height="85" rx="6" fill="url(#g4)" stroke="#fbbf24" stroke-width="1"/>
+
+      <text x="60" y="308" fill="#e2e8f0" font-size="12" font-weight="bold">十进制</text>
+      <text x="165" y="308" fill="#e2e8f0" font-size="12" font-weight="bold">二进制</text>
+      <text x="300" y="308" fill="#e2e8f0" font-size="12" font-weight="bold">八进制</text>
+      <text x="435" y="308" fill="#e2e8f0" font-size="12" font-weight="bold">十六进制</text>
+
+      <text x="60" y="330" fill="#c9d1d9" font-size="11">0</text>
+      <text x="165" y="330" fill="#c9d1d9" font-size="11">0000</text>
+      <text x="300" y="330" fill="#c9d1d9" font-size="11">0</text>
+      <text x="435" y="330" fill="#c9d1d9" font-size="11">0</text>
+
+      <text x="60" y="350" fill="#c9d1d9" font-size="11">10</text>
+      <text x="165" y="350" fill="#c9d1d9" font-size="11">1010</text>
+      <text x="300" y="350" fill="#c9d1d9" font-size="11">12</text>
+      <text x="435" y="350" fill="#c9d1d9" font-size="11">A</text>
+
+      <text x="530" y="330" fill="#c9d1d9" font-size="11">⋯ 行内对齐示例：</text>
+      <text x="530" y="350" fill="#22d3ee" font-size="11">42₁₀ = 101010₂ = 52₈ = 2A₁₆</text>
+    </svg>
+    <div class="diagram-caption">图1：进制转换思维导图——四进制之间的关系和转换方法速查</div>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- ➖ 原码反码补码 -->
+<!-- ================================================================== -->
+<section id="complement" class="section">
+  <h2>➖ 原码 / 反码 / 补码</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🕹️ 类比：温度计的刻度</span></p>
+    <p>想象一个圆形温度计，从 0° 顺时针到 359°，再转一圈回到 0°。<strong>补码就像这个圆形温度计</strong>——-1 在圆上等价于 359（即 360 - 1）。对于 n 位二进制数，<code>-x</code> 的补码就是 <code>2ⁿ - x</code>。这样可以用<strong>同一个加法器</strong>处理正数和负数，不需要单独的减法器。</p>
+    <p><span class="handwritten">为什么用补码？</span>因为 CPU 不需要设计减法电路，加法和减法统一为加法运算——3 - 5 = 3 + (-5) = 3 + [1011]补 = [1110]补 = -2。硬件更简单、更便宜、更快！</p>
+  </div>
+
+  <h3>三种编码对比（以一个字节 8 位为例）</h3>
+  <table>
+    <tr><th>十进制</th><th>原码</th><th>反码</th><th>补码</th><th>说明</th></tr>
+    <tr><td>+5</td><td>00000101</td><td>00000101</td><td>00000101</td><td>正数：三码相同</td></tr>
+    <tr><td>-5</td><td>10000101</td><td>11111010</td><td>11111011</td><td>符号位不变，其他取反 → +1</td></tr>
+    <tr><td>+0</td><td>00000000</td><td>00000000</td><td>00000000</td><td>补码的 +0 唯一表示</td></tr>
+    <tr><td>-0</td><td>10000000</td><td>11111111</td><td>00000000</td><td>❌ 原码/反码有歧义！补码无歧义</td></tr>
+    <tr><td>-128</td><td>❌ 溢出</td><td>❌ 溢出</td><td>10000000</td><td>补码多表示一个最小负数</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🔄 补码的"取反加一"推导</h4>
+    <p><strong>公式：</strong>对一个 n 位二进制数 x，其补码定义为：</p>
+    <pre><code><span class="cm">// 补码定义</span>
+[x]补 = 
+    x                    (0 ≤ x ≤ 2ⁿ⁻¹-1, 正数)
+    2ⁿ + x              (-2ⁿ⁻¹ ≤ x &lt; 0, 负数)
+    
+<span class="cm">// 以 n=8, x=-5 为例</span>
+[-5]补 = 2⁸ + (-5) = 256 - 5 = 251 = 11111011₂
+
+<span class="cm">// 快速计算方法：原码取反加一</span>
+  -5 的原码 = 10000101
+  取反     = 11111010  （符号位不变，数值位取反）
+  +1       = 11111011  ✅</code></pre>
+  </div>
+
+  <h3>原码 → 反码 → 补码：<span class="handwritten">可视化对比</span></h3>
+  <div class="diagram">
+    <svg viewBox="0 0 790 450" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+      <rect width="790" height="450" fill="#0f172a" rx="8"/>
+
+      <text x="395" y="36" fill="#e2e8f0" font-size="16" font-weight="bold" text-anchor="middle">原码 / 反码 / 补码 — 8 位数轴对比</text>
+
+      <!-- Number line for 原码 -->
+      <text x="30" y="70" fill="#f87171" font-size="14" font-weight="bold">原码</text>
+      <line x1="100" y1="65" x2="760" y2="65" stroke="#334155" stroke-width="2"/>
+      <text x="100" y="58" fill="#f87171" font-size="10" text-anchor="middle">-127</text>
+      <text x="430" y="58" fill="#f87171" font-size="10" text-anchor="middle">-0</text>
+      <text x="430" y="78" fill="#3fb950" font-size="10" text-anchor="middle">+0</text>
+      <text x="760" y="58" fill="#3fb950" font-size="10" text-anchor="middle">+127</text>
+      <line x1="100" y1="60" x2="100" y2="70" stroke="#f87171" stroke-width="1.5"/>
+      <line x1="430" y1="60" x2="430" y2="70" stroke="#f87171" stroke-width="1.5"/>
+      <line x1="430" y1="60" x2="430" y2="70" stroke="#3fb950" stroke-width="1.5"/>
+      <line x1="760" y1="60" x2="760" y2="70" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="430" y="92" fill="#64748b" font-size="10" text-anchor="middle">← 两个 0，浪费！</text>
+
+      <!-- Number line for 反码 -->
+      <text x="30" y="125" fill="#fbbf24" font-size="14" font-weight="bold">反码</text>
+      <line x1="100" y1="120" x2="760" y2="120" stroke="#334155" stroke-width="2"/>
+      <text x="100" y="113" fill="#fbbf24" font-size="10" text-anchor="middle">-127</text>
+      <text x="430" y="113" fill="#fbbf24" font-size="10" text-anchor="middle">-0</text>
+      <text x="430" y="133" fill="#3fb950" font-size="10" text-anchor="middle">+0</text>
+      <text x="760" y="113" fill="#3fb950" font-size="10" text-anchor="middle">+127</text>
+      <line x1="100" y1="115" x2="100" y2="125" stroke="#fbbf24" stroke-width="1.5"/>
+      <line x1="430" y1="115" x2="430" y2="125" stroke="#fbbf24" stroke-width="1.5"/>
+      <line x1="430" y1="115" x2="430" y2="125" stroke="#3fb950" stroke-width="1.5"/>
+      <line x1="760" y1="115" x2="760" y2="125" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="430" y="147" fill="#64748b" font-size="10" text-anchor="middle">← 还是两个 0！</text>
+
+      <!-- Number line for 补码 → circular -->
+      <text x="30" y="180" fill="#22d3ee" font-size="14" font-weight="bold">补码</text>
+      <line x1="100" y1="175" x2="760" y2="175" stroke="#334155" stroke-width="2"/>
+      <text x="100" y="168" fill="#f87171" font-size="10" text-anchor="middle">-128</text>
+      <text x="205" y="168" fill="#f87171" font-size="10" text-anchor="middle">-64</text>
+      <text x="370" y="168" fill="#64748b" font-size="10" text-anchor="middle">-1</text>
+      <text x="430" y="168" fill="#3fb950" font-size="10" text-anchor="middle">0</text>
+      <text x="490" y="168" fill="#3fb950" font-size="10" text-anchor="middle">+1</text>
+      <text x="655" y="168" fill="#3fb950" font-size="10" text-anchor="middle">+127</text>
+      <line x1="100" y1="170" x2="100" y2="180" stroke="#f87171" stroke-width="1.5"/>
+      <line x1="205" y1="170" x2="205" y2="180" stroke="#f87171" stroke-width="1.5"/>
+      <line x1="370" y1="170" x2="370" y2="180" stroke="#64748b" stroke-width="1.5"/>
+      <line x1="430" y1="170" x2="430" y2="180" stroke="#3fb950" stroke-width="1.5"/>
+      <line x1="490" y1="170" x2="490" y2="180" stroke="#3fb950" stroke-width="1.5"/>
+      <line x1="655" y1="170" x2="655" y2="180" stroke="#3fb950" stroke-width="1.5"/>
+      <line x1="760" y1="170" x2="760" y2="180" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="430" y="200" fill="#22d3ee" font-size="10" text-anchor="middle">← 唯一 0，多一个 -128！</text>
+
+      <!-- Circular analogy -->
+      <rect x="40" y="215" width="710" height="100" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="395" y="240" fill="#22d3ee" font-size="14" font-weight="bold" text-anchor="middle">🔄 模运算视角：补码 = 时钟回拨</text>
+      <text x="395" y="262" fill="#c9d1d9" font-size="12" text-anchor="middle">8 位无符号数范围 0 ~ 255，但计算机用"模 256"绕回：</text>
+      <text x="395" y="282" fill="#c9d1d9" font-size="12" text-anchor="middle">-1 ≡ 255 (mod 256) → 11111111₂</text>
+      <text x="395" y="302" fill="#fbbf24" font-size="12" text-anchor="middle">所以 [-x]补 = 2ⁿ - x = 取反 + 1</text>
+
+      <!-- Examples at bottom -->
+      <text x="395" y="340" fill="#a78bfa" font-size="14" font-weight="bold" text-anchor="middle">加减法统一为加法</text>
+
+      <rect x="40" y="355" width="220" height="80" rx="6" fill="#1e293b" stroke="#3fb950" stroke-width="1"/>
+      <text x="150" y="378" fill="#3fb950" font-size="13" font-weight="bold" text-anchor="middle">3 + 5 = 8</text>
+      <text x="60" y="400" fill="#c9d1d9" font-size="12">  00000011 (+3)</text>
+      <text x="60" y="420" fill="#c9d1d9" font-size="12">+ 00000101 (+5)</text>
+      <text x="60" y="440" fill="#3fb950" font-size="12" font-weight="bold">= 00001000 (+8) ✅</text>
+
+      <rect x="285" y="355" width="220" height="80" rx="6" fill="#1e293b" stroke="#f87171" stroke-width="1"/>
+      <text x="395" y="378" fill="#f87171" font-size="13" font-weight="bold" text-anchor="middle">3 - 5 = -2</text>
+      <text x="305" y="400" fill="#c9d1d9" font-size="12">  00000011 (+3)</text>
+      <text x="305" y="420" fill="#c9d1d9" font-size="12">+ 11111011 (-5 补码)</text>
+      <text x="305" y="440" fill="#3fb950" font-size="12" font-weight="bold">= 11111110 (-2 补码) ✅</text>
+
+      <rect x="530" y="355" width="220" height="80" rx="6" fill="#1e293b" stroke="#fbbf24" stroke-width="1"/>
+      <text x="640" y="378" fill="#fbbf24" font-size="13" font-weight="bold" text-anchor="middle">-3 - 5 = -8</text>
+      <text x="550" y="400" fill="#c9d1d9" font-size="12">  11111101 (-3 补码)</text>
+      <text x="550" y="420" fill="#c9d1d9" font-size="12">+ 11111011 (-5 补码)</text>
+      <text x="550" y="440" fill="#3fb950" font-size="12" font-weight="bold">= 11111000 (-8 补码) ✅</text>
+    </svg>
+    <div class="diagram-caption">图2：原码/反码/补码的数轴对比与加减法统一为加法的计算示例</div>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 💯 浮点 IEEE 754 -->
+<!-- ================================================================== -->
+<section id="ieee754" class="section">
+  <h2>💯 浮点数 IEEE 754 标准</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🔬 类比：科学记数法</span></p>
+    <p>十进制科学记数法：<code>3.14159 × 10⁰</code>（尾数 × 底数^指数）。IEEE 754 浮点数就是<strong>二进制的科学记数法</strong>——用 <code>尾数 × 2^指数</code> 表示实数。但因为二进制和有限精度，<span class="handwritten">0.1 + 0.2 ≠ 0.3</span>，这才是"浮点误差"的根源。</p>
+    <p><span class="handwritten">核心口诀：</span>符号位 S(1) | 阶码位 E(8或11) | 尾数位 M(23或52)</p>
+  </div>
+
+  <h3>单精度 (float) vs 双精度 (double)</h3>
+  <table>
+    <tr><th>属性</th><th>单精度 float (32-bit)</th><th>双精度 double (64-bit)</th></tr>
+    <tr><td>总位数</td><td>32</td><td>64</td></tr>
+    <tr><td>符号位 S</td><td>1 bit (bit 31)</td><td>1 bit (bit 63)</td></tr>
+    <tr><td>阶码 E</td><td>8 bits (bit 30-23)</td><td>11 bits (bit 62-52)</td></tr>
+    <tr><td>尾数 M</td><td>23 bits (bit 22-0)</td><td>52 bits (bit 51-0)</td></tr>
+    <tr><td>偏置 (Bias)</td><td>127</td><td>1023</td></tr>
+    <tr><td>真值公式</td><td>(-1)^S × 2^(E-127) × 1.M</td><td>(-1)^S × 2^(E-1023) × 1.M</td></tr>
+    <tr><td>精度</td><td>~7 位十进制</td><td>~16 位十进制</td></tr>
+    <tr><td>范围</td><td>±1.2×10⁻³⁸ ~ ±3.4×10³⁸</td><td>±2.2×10⁻³⁰⁸ ~ ±1.8×10³⁰⁸</td></tr>
+  </table>
+
+  <h3>IEEE 754 单精度编码结构</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 800 430" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+      <rect width="800" height="430" fill="#0f172a" rx="8"/>
+
+      <text x="400" y="36" fill="#e2e8f0" font-size="16" font-weight="bold" text-anchor="middle">IEEE 754 单精度浮点数 (32-bit) 编码结构</text>
+
+      <!-- Bit layout visualization -->
+      <!-- S box -->
+      <rect x="30" y="60" width="60" height="40" rx="4" fill="#f87171" stroke="#f87171" stroke-width="2"/>
+      <text x="60" y="85" fill="#fff" font-size="13" font-weight="bold" text-anchor="middle">S</text>
+      <text x="60" y="112" fill="#f87171" font-size="10" text-anchor="middle">1 bit</text>
+
+      <!-- E box (8 bits) -->
+      <rect x="100" y="60" width="240" height="40" rx="4" fill="#fbbf24" stroke="#fbbf24" stroke-width="2"/>
+      <text x="220" y="85" fill="#fff" font-size="13" font-weight="bold" text-anchor="middle">E 阶码（指数 + 偏置127）</text>
+      <text x="220" y="112" fill="#fbbf24" font-size="10" text-anchor="middle">8 bits</text>
+
+      <!-- M box (23 bits) -->
+      <rect x="350" y="60" width="420" height="40" rx="4" fill="#22d3ee" stroke="#22d3ee" stroke-width="2"/>
+      <text x="560" y="85" fill="#fff" font-size="13" font-weight="bold" text-anchor="middle">M 尾数（隐含 1. 的 23 位小数部分）</text>
+      <text x="560" y="112" fill="#22d3ee" font-size="10" text-anchor="middle">23 bits</text>
+
+      <!-- Bit positions -->
+      <text x="60" y="130" fill="#64748b" font-size="9" text-anchor="middle">bit 31</text>
+      <text x="220" y="130" fill="#64748b" font-size="9" text-anchor="middle">bit 30 ~ 23</text>
+      <text x="560" y="130" fill="#64748b" font-size="9" text-anchor="middle">bit 22 ~ 0</text>
+
+      <!-- Formula -->
+      <rect x="40" y="150" width="720" height="60" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="400" y="175" fill="#a78bfa" font-size="14" font-weight="bold" text-anchor="middle">真值 = (-1)^S × 2^(E - 127) × (1 + M/2²³)</text>
+      <text x="400" y="198" fill="#64748b" font-size="11" text-anchor="middle">其中偏置 Bias = 127（单精度），M 是 23 位无符号整数</text>
+
+      <!-- Example: float 3.14 -->
+      <rect x="40" y="225" width="720" height="90" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="400" y="250" fill="#3fb950" font-size="13" font-weight="bold" text-anchor="middle">示例：浮点数 3.14 的 IEEE 754 编码</text>
+      <text x="60" y="275" fill="#c9d1d9" font-size="12">3.14₁₀ = 11.00100011110101110000101₂（约）</text>
+      <text x="60" y="295" fill="#c9d1d9" font-size="12">= 1.100100011110101110000101₂ × 2¹</text>
+      <text x="60" y="315" fill="#fbbf24" font-size="12">S=0 | E=127+1=128 (10000000₂) | M=10010001111010111000010</text>
+
+      <!-- Special values table -->
+      <text x="400" y="355" fill="#f87171" font-size="14" font-weight="bold" text-anchor="middle">特殊值编码</text>
+
+      <text x="60" y="380" fill="#c9d1d9" font-size="11">E=0, M=0</text>
+      <text x="200" y="380" fill="#c9d1d9" font-size="11">→ ±0 (S=0正零, S=1负零)</text>
+      <text x="60" y="400" fill="#c9d1d9" font-size="11">E=255, M=0</text>
+      <text x="200" y="400" fill="#c9d1d9" font-size="11">→ ±∞ (正无穷 / 负无穷)</text>
+      <text x="60" y="420" fill="#c9d1d9" font-size="11">E=255, M≠0</text>
+      <text x="200" y="420" fill="#c9d1d9" font-size="11">→ NaN (Not a Number，如 0/0)</text>
+    </svg>
+    <div class="diagram-caption">图3：IEEE 754 单精度浮点数结构——S/E/M 三段编码 + 真值公式 + 特殊值</div>
+  </div>
+
+  <h3>为什么 0.1 + 0.2 ≠ 0.3？</h3>
+  <div class="info-card">
+    <pre><code><span class="cm">// JavaScript 中验证</span>
+console.log(0.1 + 0.2);   <span class="cm">// 0.30000000000000004</span>
+console.log(0.1 + 0.2 === 0.3);  <span class="cm">// false</span>
+
+<span class="cm">// 原因：0.1 和 0.2 在二进制中都是无限循环小数</span>
+<span class="cm">// 0.1 = 0.000110011001100110011...（无限循环）</span>
+<span class="cm">// 双精度只有 52 位尾数，截断后产生误差</span>
+
+<span class="cm">// 解决方案：使用整数计算或引入误差容限</span>
+const EPSILON = 1e-10;
+Math.abs((0.1 + 0.2) - 0.3) &lt; EPSILON;  <span class="cm">// true</span></code></pre>
+  </div>
+
+  <h3>浮点数规格化与非规格化</h3>
+  <div class="compare">
+    <div>
+      <h4>📐 规格化数</h4>
+      <p>E ≠ 0 且 E ≠ 255（单精度）</p>
+      <p>尾数隐含前缀 <strong>1.</strong></p>
+      <p>覆盖大部分常规浮点数</p>
+      <pre><code><span class="cm">// 3.14 规格化</span>
+1.1001...×2¹
+↑ 隐含的 1</code></pre>
+    </div>
+    <div>
+      <h4>📐 非规格化数</h4>
+      <p>E = 0</p>
+      <p>尾数隐含前缀 <strong>0.</strong></p>
+      <p>用于表示接近 0 的极小值</p>
+      <pre><code><span class="cm">// 最小正非规格化数</span>
+0.000...1 × 2⁻¹²⁶
+≈ 1.4 × 10⁻⁴⁵</code></pre>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>🧮 手动编码一个 float 的完整步骤</h4>
+    <p>以 <code>-6.25</code> 为例，编码为 32 位单精度浮点数：</p>
+    <pre><code><span class="cm">// 第1步：转二进制</span>
+-6.25 → 110.01₂
+
+<span class="cm">// 第2步：规格化</span>
+110.01₂ = 1.1001₂ × 2²
+→ S=1（负数）
+→ E = 2 + 127 = 129 = 10000001₂
+→ M = 10010000000000000000000₂（23位，补0）
+
+<span class="cm">// 第3步：拼接</span>
+S |    E     |          M
+1 | 10000001 | 10010000000000000000000
+
+<span class="cm">// 十六进制</span>
+= 0xC0C80000</code></pre>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 🧮 定点运算 -->
+<!-- ================================================================== -->
+<section id="arithmetic" class="section">
+  <h2>🧮 定点运算</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🧮 类比：小时候学的竖式计算</span></p>
+    <p>加法的"进位"、减法的"借位"、乘法的"部分积相加"、除法的"试商减去除数"——计算机的定点运算本质上就是 <span class="handwritten">竖式的二进制版</span>。区别在于：计算机用门电路实现，需要优化速度和面积。超前进位加法器用"预测进位"代替"逐位传播"；Booth 算法用编码技巧减少乘法累加次数。</p>
+  </div>
+
+  <h3>定点加法与减法</h3>
+  <table>
+    <tr><th>类型</th><th>原理</th><th>延迟</th><th>电路复杂度</th></tr>
+    <tr><td>串行进位加法器 (RCA)</td><td>每一位的进位等待前一位输出</td><td>O(n) — 32 位需约 32 个门延迟</td><td>低</td></tr>
+    <tr><td>超前进位加法器 (CLA)</td><td>并行计算所有位的进位</td><td>O(log n) — 32 位约 4-5 级</td><td>中高</td></tr>
+    <tr><td>进位选择加法器</td><td>预计算进位 0/1 两种结果，用 MUX 选</td><td>O(√n)</td><td>高</td></tr>
+  </table>
+
+  <h3>定点乘法</h3>
+  <div class="info-card">
+    <h4>✖️ Booth 算法原理</h4>
+    <p>传统竖式乘法需要 n 次加法（n 为位数），Booth 算法通过编码 <code>011...110</code> 这类模式减少加法的次数：</p>
+    <pre><code><span class="cm">// 原始竖式：0101 × 0110（5×6）</span>
+      0101  （被乘数）
+×     0110  （乘数）
+-----------
+      0000   ← 0 × 0101
+     0101    ← 1 × 0101  ← 左移
+    0101     ← 1 × 0101
++   0000     ← 0 × 0101
+-----------
+=   00011110 = 30 ✅
+
+<span class="cm">// Booth 算法：</span>
+<span class="cm">// 扫描乘数位对 (yᵢ, yᵢ₋₁)，三位决定操作</span>
+<span class="cm">// 00→无操作 01→+被乘数 10→-被乘数 11→无操作</span>
+<span class="cm">// 处理乘数 0110（最末补0）：</span>
+<span class="cm">//   (1,0) → -被乘数 → 1011（补码）</span>
+<span class="cm">//   (1,1) → 无操作</span>
+<span class="cm">//   (0,1) → +被乘数 → 0101</span>
+<span class="cm">// 最终结果一致，但更快处理连续的 1 串</span></code></pre>
+  </div>
+
+  <h3>定点除法</h3>
+  <div class="compare">
+    <div>
+      <h4>🔁 恢复余数法</h4>
+      <pre><code><span class="cm">// 每一步：</span>
+<span class="cm">// 1. 被除数 - 除数</span>
+<span class="cm">// 2. 如果余数为负 → 恢复（加回除数）</span>
+<span class="cm">//    商位写 0</span>
+<span class="cm">// 3. 如果余数为非负 → 不恢复</span>
+<span class="cm">//    商位写 1</span>
+<span class="cm">// 4. 左移，继续</span>
+
+<span class="cm">// 0111 ÷ 0010 (7÷2)</span>
+<span class="cm">// 结果：商 0011 (3)，余数 0001 (1)</span></code></pre>
+    </div>
+    <div>
+      <h4>⚡ 不恢复余数法</h4>
+      <pre><code><span class="cm">// 优化：不恢复，直接下次修正</span>
+<span class="cm">// 如果余数 R &lt; 0：</span>
+<span class="cm">//   R_next = R + 除数（左移后）</span>
+<span class="cm">// 如果 R ≥ 0：</span>
+<span class="cm">//   R_next = R - 除数（左移后）</span>
+
+<span class="cm">// 少了"恢复"步骤，每轮固定一次操作</span>
+<span class="cm">// 控制逻辑更统一，硬件更省</span></code></pre>
+    </div>
+  </div>
+
+  <h3>定点加法器：<span class="handwritten">串行 vs 超前进位对比</span></h3>
+  <div class="diagram">
+    <svg viewBox="0 0 790 420" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+      <rect width="790" height="420" fill="#0f172a" rx="8"/>
+
+      <text x="395" y="36" fill="#e2e8f0" font-size="16" font-weight="bold" text-anchor="middle">定点加法器 — 串行进位 vs 超前进位</text>
+
+      <!-- RCA -->
+      <text x="30" y="70" fill="#f87171" font-size="14" font-weight="bold">串行进位加法器 (Ripple-Carry Adder)</text>
+
+      <rect x="40" y="85" width="60" height="50" rx="4" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="70" y="105" fill="#f87171" font-size="11" text-anchor="middle" font-weight="bold">FA₀</text>
+      <text x="70" y="120" fill="#64748b" font-size="9" text-anchor="middle">C₀→C₁</text>
+
+      <text x="110" y="110" fill="#64748b" font-size="14">→</text>
+
+      <rect x="130" y="85" width="60" height="50" rx="4" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="160" y="105" fill="#f87171" font-size="11" text-anchor="middle" font-weight="bold">FA₁</text>
+      <text x="160" y="120" fill="#64748b" font-size="9" text-anchor="middle">C₁→C₂</text>
+
+      <text x="200" y="110" fill="#64748b" font-size="14">→</text>
+
+      <rect x="220" y="85" width="60" height="50" rx="4" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="250" y="105" fill="#f87171" font-size="11" text-anchor="middle" font-weight="bold">FA₂</text>
+      <text x="250" y="120" fill="#64748b" font-size="9" text-anchor="middle">C₂→C₃</text>
+
+      <text x="290" y="110" fill="#64748b" font-size="14">→</text>
+
+      <rect x="310" y="85" width="60" height="50" rx="4" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="340" y="105" fill="#f87171" font-size="11" text-anchor="middle" font-weight="bold">FA₃</text>
+      <text x="340" y="120" fill="#64748b" font-size="9" text-anchor="middle">C₃→C₄</text>
+
+      <text x="380" y="110" fill="#64748b" font-size="14">...</text>
+
+      <rect x="400" y="85" width="70" height="50" rx="4" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="435" y="105" fill="#f87171" font-size="11" text-anchor="middle" font-weight="bold">FA₃₁</text>
+      <text x="435" y="120" fill="#64748b" font-size="9" text-anchor="middle">C₃₁→C₃₂</text>
+
+      <text x="500" y="105" fill="#f87171" font-size="12" font-weight="bold">⏱ 32 级门延迟</text>
+      <text x="500" y="125" fill="#64748b" font-size="10">进位像波浪一样传播</text>
+
+      <!-- CLA -->
+      <text x="30" y="175" fill="#22d3ee" font-size="14" font-weight="bold">超前进位加法器 (Carry-Lookahead Adder)</text>
+
+      <rect x="40" y="195" width="80" height="35" rx="4" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="80" y="216" fill="#22d3ee" font-size="10" text-anchor="middle" font-weight="bold">PG 生成</text>
+
+      <text x="128" y="216" fill="#64748b" font-size="12">Gᵢ Pᵢ</text>
+
+      <rect x="170" y="195" width="80" height="35" rx="4" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="210" y="216" fill="#22d3ee" font-size="10" text-anchor="middle" font-weight="bold">CLA 逻辑</text>
+
+      <text x="258" y="216" fill="#64748b" font-size="12">Cᵢ</text>
+
+      <rect x="300" y="195" width="80" height="35" rx="4" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="340" y="216" fill="#22d3ee" font-size="10" text-anchor="middle" font-weight="bold">和计算</text>
+
+      <text x="400" y="216" fill="#22d3ee" font-size="12" font-weight="bold">⏱ 4-5 级门延迟</text>
+      <text x="400" y="238" fill="#64748b" font-size="10">进位并行计算，不再逐位等待</text>
+
+      <!-- Formula -->
+      <rect x="40" y="250" width="710" height="70" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1"/>
+      <text x="395" y="274" fill="#a78bfa" font-size="13" font-weight="bold" text-anchor="middle">超前进位核心公式</text>
+      <text x="60" y="298" fill="#c9d1d9" font-size="12">Gᵢ = Aᵢ · Bᵢ （生成：Aᵢ和Bᵢ同时为1，必然产生进位）</text>
+      <text x="60" y="318" fill="#c9d1d9" font-size="12">Pᵢ = Aᵢ ⊕ Bᵢ （传播：Aᵢ和Bᵢ有一个为1，进位会传播）</text>
+      <text x="395" y="338" fill="#fbbf24" font-size="12" text-anchor="middle">Cᵢ₊₁ = Gᵢ + Pᵢ · Cᵢ （展开后深度为O(log n)）</text>
+
+      <!-- Timing comparison -->
+      <text x="395" y="372" fill="#3fb950" font-size="14" font-weight="bold" text-anchor="middle">性能对比（32 位）</text>
+
+      <rect x="80" y="385" width="300" height="30" rx="4" fill="#1e293b" stroke="#f87171" stroke-width="1"/>
+      <text x="230" y="404" fill="#f87171" font-size="12" text-anchor="middle">RCA: ~32τ 延迟</text>
+
+      <rect x="420" y="385" width="300" height="30" rx="4" fill="#1e293b" stroke="#22d3ee" stroke-width="1"/>
+      <text x="570" y="404" fill="#22d3ee" font-size="12" text-anchor="middle">CLA: ~4τ 延迟（8 倍提速！）</text>
+    </svg>
+    <div class="diagram-caption">图4：定点加法器对比——串行进位 vs 超前进位加法器的工作原理与性能差异</div>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- ⚙️ ALU 结构 -->
+<!-- ================================================================== -->
+<section id="alu" class="section">
+  <h2>⚙️ ALU 基本结构</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🖩 类比：一个高级计算器</span></p>
+    <p>ALU (Arithmetic Logic Unit) 就是 CPU 里的 <span class="handwritten">"超级计算器"</span>——给定两个输入 A 和 B，以及操作码 OpCode，它输出计算结果和标志位。加、减、乘、除、与、或、异或、移位……所有你能想到的基本操作都在这里完成。</p>
+    <p><span class="handwritten">关键概念：</span>多功能运算器 + 标志寄存器，现代 CPU 还包含桶形移位器、条件码逻辑等增强组件。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 790 500" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+      <rect width="790" height="500" fill="#0f172a" rx="8"/>
+
+      <text x="395" y="36" fill="#e2e8f0" font-size="16" font-weight="bold" text-anchor="middle">ALU 内部结构示意</text>
+
+      <!-- Input A -->
+      <rect x="60" y="75" width="120" height="45" rx="6" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="120" y="102" fill="#22d3ee" font-size="13" font-weight="bold" text-anchor="middle">A 输入</text>
+      <text x="120" y="128" fill="#64748b" font-size="9" text-anchor="middle">32-bit</text>
+
+      <!-- Input B -->
+      <rect x="60" y="150" width="120" height="45" rx="6" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="120" y="177" fill="#22d3ee" font-size="13" font-weight="bold" text-anchor="middle">B 输入</text>
+      <text x="120" y="203" fill="#64748b" font-size="9" text-anchor="middle">32-bit</text>
+
+      <!-- OpCode -->
+      <rect x="60" y="225" width="120" height="45" rx="6" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="120" y="252" fill="#fbbf24" font-size="13" font-weight="bold" text-anchor="middle">OpCode</text>
+      <text x="120" y="278" fill="#64748b" font-size="9" text-anchor="middle">4-bit 操作选择</text>
+
+      <!-- ALU Core -->
+      <rect x="250" y="90" width="300" height="200" rx="12" fill="#1e293b" stroke="#a78bfa" stroke-width="2"/>
+      <text x="400" y="125" fill="#a78bfa" font-size="15" font-weight="bold" text-anchor="middle">ALU 核心</text>
+      <line x1="280" y1="135" x2="520" y2="135" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="157" fill="#c9d1d9" font-size="12" text-anchor="middle">加法器 (ADD / SUB)</text>
+      <text x="400" y="177" fill="#c9d1d9" font-size="12" text-anchor="middle">逻辑运算 (AND / OR / XOR / NOT)</text>
+      <text x="400" y="197" fill="#c9d1d9" font-size="12" text-anchor="middle">移位器 (SLL / SRL / SRA) </text>
+      <text x="400" y="217" fill="#c9d1d9" font-size="12" text-anchor="middle">比较器 (CMP / SLT)</text>
+      <text x="400" y="237" fill="#c9d1d9" font-size="12" text-anchor="middle">乘法器 / 除法器单元</text>
+      <text x="400" y="257" fill="#c9d1d9" font-size="12" text-anchor="middle">多路选择器（MUX 选通输出）</text>
+
+      <!-- Arrows from inputs to ALU -->
+      <line x1="180" y1="97" x2="250" y2="110" stroke="#22d3ee" stroke-width="1.5" opacity="0.6"/>
+      <line x1="180" y1="172" x2="250" y2="150" stroke="#22d3ee" stroke-width="1.5" opacity="0.6"/>
+      <line x1="180" y1="247" x2="250" y2="210" stroke="#fbbf24" stroke-width="1.5" opacity="0.6"/>
+
+      <!-- Output -->
+      <rect x="620" y="105" width="140" height="55" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="690" y="130" fill="#3fb950" font-size="14" font-weight="bold" text-anchor="middle">Result</text>
+      <text x="690" y="150" fill="#64748b" font-size="9" text-anchor="middle">32-bit 输出</text>
+
+      <line x1="550" y1="120" x2="620" y2="132" stroke="#3fb950" stroke-width="1.5" opacity="0.6"/>
+
+      <!-- Flags -->
+      <rect x="620" y="185" width="140" height="100" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="690" y="210" fill="#f87171" font-size="13" font-weight="bold" text-anchor="middle">标志位 Flags</text>
+      <line x1="640" y1="218" x2="740" y2="218" stroke="#334155" stroke-width="1"/>
+      <text x="690" y="238" fill="#c9d1d9" font-size="11" text-anchor="middle">ZF 零标志（结果=0）</text>
+      <text x="690" y="255" fill="#c9d1d9" font-size="11" text-anchor="middle">CF 进位/借位标志</text>
+      <text x="690" y="272" fill="#c9d1d9" font-size="11" text-anchor="middle">OF 溢出标志</text>
+      <text x="690" y="289" fill="#c9d1d9" font-size="11" text-anchor="middle">SF 符号标志（负）</text>
+
+      <line x1="550" y1="200" x2="620" y2="210" stroke="#f87171" stroke-width="1.5" opacity="0.6"/>
+
+      <!-- Control Logic -->
+      <rect x="250" y="310" width="300" height="50" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="400" y="340" fill="#f87171" font-size="13" font-weight="bold" text-anchor="middle">控制逻辑 — OpCode 译码器</text>
+
+      <line x1="400" y1="290" x2="400" y2="310" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,2" opacity="0.6"/>
+
+      <!-- Operations table -->
+      <text x="395" y="395" fill="#fbbf24" font-size="14" font-weight="bold" text-anchor="middle">常见 ALU OpCode 表</text>
+      <rect x="60" y="410" width="150" height="20" rx="3" fill="#21242c"/>
+      <text x="135" y="425" fill="#e2e8f0" font-size="10" text-anchor="middle" font-weight="bold">OpCode</text>
+      <rect x="210" y="410" width="220" height="20" rx="3" fill="#21242c"/>
+      <text x="320" y="425" fill="#e2e8f0" font-size="10" text-anchor="middle" font-weight="bold">操作</text>
+      <rect x="430" y="410" width="160" height="20" rx="3" fill="#21242c"/>
+      <text x="510" y="425" fill="#e2e8f0" font-size="10" text-anchor="middle" font-weight="bold">输出</text>
+
+      <text x="135" y="445" fill="#c9d1d9" font-size="10" text-anchor="middle">0000</text>
+      <text x="320" y="445" fill="#c9d1d9" font-size="10" text-anchor="middle">ADD</text>
+      <text x="510" y="445" fill="#3fb950" font-size="10" text-anchor="middle">A + B</text>
+
+      <text x="135" y="460" fill="#c9d1d9" font-size="10" text-anchor="middle">0001</text>
+      <text x="320" y="460" fill="#c9d1d9" font-size="10" text-anchor="middle">SUB</text>
+      <text x="510" y="460" fill="#3fb950" font-size="10" text-anchor="middle">A - B</text>
+
+      <text x="135" y="475" fill="#c9d1d9" font-size="10" text-anchor="middle">0010</text>
+      <text x="320" y="475" fill="#c9d1d9" font-size="10" text-anchor="middle">AND</text>
+      <text x="510" y="475" fill="#3fb950" font-size="10" text-anchor="middle">A & B</text>
+
+      <text x="135" y="490" fill="#c9d1d9" font-size="10" text-anchor="middle">0011</text>
+      <text x="320" y="490" fill="#c9d1d9" font-size="10" text-anchor="middle">OR</text>
+      <text x="510" y="490" fill="#3fb950" font-size="10" text-anchor="middle">A | B</text>
+    </svg>
+    <div class="diagram-caption">图5：ALU 内部结构——输入输出、运算单元、标志位及控制逻辑</div>
+  </div>
+
+  <h3>1-bit ALU 与 32-bit ALU</h3>
+  <div class="compare">
+    <div>
+      <h4>🔲 1-bit ALU</h4>
+      <p>最小的 ALU 单元，包含：</p>
+      <ul>
+        <li>全加器（FA）</li>
+        <li>AND / OR 逻辑门</li>
+        <li>MUX 选择器（2选1）</li>
+        <li>进位输入/输出线</li>
+      </ul>
+      <pre><code><span class="cm">// 1-bit ALU 组合逻辑</span>
+Sum   = A ⊕ B ⊕ CarryIn
+CarryOut = (A·B) + (A·CarryIn) 
+              + (B·CarryIn)
+AND   = A · B
+OR    = A + B</code></pre>
+    </div>
+    <div>
+      <h4>🔳 32-bit ALU</h4>
+      <p>由 32 个 1-bit ALU 级联：</p>
+      <ul>
+        <li>ADD/SUB：通过 SUB 信号控制 B 取反 + CarryIn=1</li>
+        <li>SLT (Set Less Than)：A&lt;B = A - B 的符号位</li>
+        <li>溢出检测：CarryIn₃₁ ≠ CarryOut₃₁ → OF=1</li>
+        <li>零检测：所有结果位相或非 → ZF</li>
+      </ul>
+      <pre><code><span class="cm">// RISC-V 中 ADD/SUB 用同一个 ALU</span>
+// SUB = ADD 且 B取反 + CarryIn=1
+// SLT = SUB 的符号位传给结果最低位</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- ❓ 实战问答 -->
+<!-- ================================================================== -->
+<section id="qa" class="section">
+  <h2>❓ 实战问答</h2>
+
+  <div class="qa-box">
+    <h4>Q1</h4>
+    <p class="q">❓ 为什么计算机用补码而不是原码表示负数？</p>
+    <p class="a">✅ <strong>三个核心原因：</strong></p>
+    <p class="a">① <strong>统一加减法电路：</strong>补码下 3-5 = 3+(-5) = -2，加法和减法用同一套加法器实现，不需要独立的减法器，硬件更简单。</p>
+    <p class="a">② <strong>消除 ±0 歧义：</strong>原码有 00000000(+0) 和 10000000(-0) 两种 0；补码只有 00000000 一种 0，10000000 表示 -128。</p>
+    <p class="a">③ <strong>多表示一个数：</strong>8 位原码/反码表示范围 -127~+127，补码 -128~+127，多表示一个最小负数。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q2</h4>
+    <p class="q">❓ 浮点数 0.1 + 0.2 为什么不等于 0.3？如何解决？</p>
+    <p class="a">✅ <strong>原因：</strong>0.1 和 0.2 在二进制中是无限循环小数（0.1 = 0.0001100110011…）IEEE 754 双精度只有 52 位尾数，截断后引入舍入误差。</p>
+    <p class="a">✅ <strong>解决方案：</strong>① 使用整数计算（如货币用分代替元）② 引入误差容限 <code>|a - b| &lt; EPSILON</code> ③ 使用高精度库（如 Python decimal、Java BigDecimal）。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q3</h4>
+    <p class="q">❓ IEEE 754 中为什么要用偏置（Bias）表示阶码？</p>
+    <p class="a">✅ 用偏置（单精度 Bias=127）把阶码转换为无符号数，好处是：</p>
+    <p class="a">① <strong>便于浮点比较：</strong>阶码大的数一定大，直接用无符号整数比较器即可，不需要处理负数阶码。</p>
+    <p class="a">② <strong>简化硬件：</strong>浮点加法时阶码对齐、规格化等操作直接用整数加减法处理。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q4</h4>
+    <p class="q">❓ 超前进位加法器（CLA）为什么比串行进位加法器（RCA）快？</p>
+    <p class="a">✅ RCA 的进位像水波一样逐位传播，32 位加法需要 32 个门延迟。CLA 通过 Gᵢ = Aᵢ·Bᵢ（生成进位）和 Pᵢ = Aᵢ⊕Bᵢ（传播进位）两个信号，并行计算所有位的进位，只需要 4~5 级门延迟，速度提升约 8 倍。代价是电路复杂度增加。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q5</h4>
+    <p class="q">❓ 如何判断定点加法是否溢出？</p>
+    <p class="a">✅ 两种判断方法：</p>
+    <p class="a">① <strong>双符号位法：</strong>使用两位符号位，运算后两位符号位不同则溢出（01 为正溢出，10 为负溢出）。</p>
+    <p class="a">② <strong>进位异或法：</strong>最高位进位和次高位进位不同则溢出。即 <code>Overflow = CarryIn₃₁ ⊕ CarryOut₃₁</code>。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q6</h4>
+    <p class="q">❓ 什么是 NaN？浮点运算中 NaN 的传递规则是什么？</p>
+    <p class="a">✅ NaN (Not a Number) 是 IEEE 754 中阶码全为 1、尾数不为 0 的特殊值（如 0/0、∞-∞、sqrt(-1)）。</p>
+    <p class="a"><strong>传递规则：</strong>任何包含 NaN 的运算结果都是 NaN。即 <code>NaN + x = NaN</code>、<code>NaN * x = NaN</code>。比较运算中 NaN 与任何值（包括自身）比较都返回 false——这就是为什么 <code>NaN == NaN</code> 为 false。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 🎙️ 口播总结 -->
+<!-- ================================================================== -->
+<section class="section">
+  <div class="verbal-summary">
+    <p>🎧 以下是这篇文章的口播总结，适合录制成音频或复习时听：</p>
+    <p><strong>「数据的表示与运算」核心要点（2 分钟版）</strong></p>
+    <p>🧩 <strong>第一：进制转换。</strong>计算机只认二进制，但为了方便阅读和书写，我们常用八进制（3位一组）和十六进制（4位一组）。核心方法：整数除基取余倒序排，小数乘基取整正序排。</p>
+    <p>🧩 <strong>第二：原码反码补码。</strong>这是计算机表示有符号数的方案，补码是终极答案。它通过"取反加一"把负数编码，让加法和减法共用同一个电路，而且没有 ±0 的问题。记住：-x 的补码就是 2ⁿ - x。</p>
+    <p>🧩 <strong>第三：IEEE 754 浮点标准。</strong>浮点数 = 符号位 + 阶码（带偏置）+ 尾数（隐含 1.）。单精度偏移 127，双精度偏移 1023。0.1 + 0.2 ≠ 0.3 的本质是无理数在有限精度下的舍入。</p>
+    <p>🧩 <strong>第四：定点运算。</strong>加法器从串行进位（慢但简单）进化到超前进位（快但复杂）。乘法用 Booth 算法优化，除法用恢复/不恢复余数法。</p>
+    <p>🧩 <strong>第五：ALU 结构。</strong>ALU = 加法器 + 逻辑单元 + 移位器 + 多路选择器 + 标志位输出。OpCode 决定做什么操作，标志位为条件分支提供依据。</p>
+    <p>💡 <strong>核心追问：</strong>为什么用补码？浮点数精度问题？ALU 标志位有哪些？</p>
+  </div>
+</section>
+
+</main>
+
+</div><!-- /.app -->
+
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+
+<script>
+(function(){
+  var key = 'sidebar-state';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

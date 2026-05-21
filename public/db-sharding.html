@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据库分片实战 · 从零到一理解分库分表 · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .voice-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .voice-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 420px; }
+  }
+
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) { .diagram svg { min-width: 420px; } }
+  .qa-q { cursor: pointer; user-select: none; }
+  .qa-q::after { content: ' ▾'; opacity: 0.5; }
+  .qa-q.open::after { content: ' ▴'; }
+  .qa-a { display: none; }
+  .qa-a.open { display: block; }
+  .process-flow { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+  .process-step { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; text-align: center; font-size: 12px; min-width: 80px; }
+  .process-step .step-num { display: block; font-size: 10px; color: var(--muted); }
+  .process-arrow { color: var(--muted); font-size: 18px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">分片基础</div>
+  <a class="nav-item" href="#why">📚 为什么分片</a>
+  <a class="nav-item" href="#split">✂️ 垂直vs水平拆分</a>
+  <a class="nav-item" href="#strategy">🎯 分片策略</a>
+  <a class="nav-item" href="#challenges">⚠️ 分片后问题</a>
+  <a class="nav-item" href="#shardingsphere">🛡️ ShardingSphere</a>
+  <a class="nav-item" href="#tidb">🚀 TiDB</a>
+  <a class="nav-item" href="#id">🔢 全局ID</a>
+  <div class="nav-section">实战</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ====== 总览 ====== -->
+<section class="section" id="overview">
+  <h2>📋 总览：数据库分片是什么</h2>
+  <p><strong>数据库分片（Database Sharding）</strong> 是将一个巨大的数据库拆分成多个较小的、独立的数据库（分片），每个分片拥有相同的数据结构但存储不同的数据子集。它是解决<strong>单库数据量过大、写入吞吐过高</strong>问题的核心手段。</p>
+
+  <div class="feynman">
+    <p>想象一座城市只有一个图书馆：<span class="analogy">人少的时候挺好，书都能找到。</span></p>
+    <p>但城市人口爆炸后：<span class="analogy">书多得放不下（磁盘不够）、借书要排队等半天（连接数瓶颈）、找一本书要在几十万本书里翻（查询变慢）。</span></p>
+    <p><strong>分片就是：</strong>不扩建这个图书馆，而是<span class="analogy">在城市的东、南、西、北各开一个分馆</span>——每个分馆存一部分书。A-G 姓氏的人去东馆，H-N 去南馆，O-Z 去西馆。每个馆的读者变少、找书变快、书架也够用了。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="380" fill="#0f172a" rx="8"/>
+      <!-- Title -->
+      <text x="400" y="36" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">从单库到分片：为什么需要分片？</text>
+
+      <!-- Before: Single DB -->
+      <rect x="30" y="60" width="280" height="160" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="170" y="88" text-anchor="middle" fill="#f87171" font-size="14" font-weight="bold">❌ 单库瓶颈</text>
+
+      <rect x="50" y="105" width="240" height="28" rx="6" fill="#f87171" opacity="0.12"/>
+      <text x="170" y="124" text-anchor="middle" fill="#f87171" font-size="11">📊 500GB 数据 → 单表超 2 亿行</text>
+      <rect x="50" y="142" width="240" height="28" rx="6" fill="#f87171" opacity="0.12"/>
+      <text x="170" y="161" text-anchor="middle" fill="#f87171" font-size="11">🐌 慢查询 → 一条 SQL 跑 10+ 秒</text>
+      <rect x="50" y="179" width="240" height="28" rx="6" fill="#f87171" opacity="0.12"/>
+      <text x="170" y="198" text-anchor="middle" fill="#f87171" font-size="11">🔗 连接池耗尽 → 5000+ QPS 就扛不住</text>
+
+      <!-- Arrow -->
+      <text x="340" y="150" fill="#8b949e" font-size="28">→</text>
+
+      <!-- After: Sharded -->
+      <rect x="380" y="60" width="390" height="160" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="575" y="88" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">✅ 分片后（4 个分片）</text>
+
+      <rect x="400" y="105" width="82" height="50" rx="6" fill="#22d3ee" opacity="0.12" stroke="#22d3ee" stroke-width="1"/>
+      <text x="441" y="125" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="bold">📂 分片 1</text>
+      <text x="441" y="145" text-anchor="middle" fill="#94a3b8" font-size="10">125GB</text>
+
+      <rect x="492" y="105" width="82" height="50" rx="6" fill="#3fb950" opacity="0.12" stroke="#3fb950" stroke-width="1"/>
+      <text x="533" y="125" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">📂 分片 2</text>
+      <text x="533" y="145" text-anchor="middle" fill="#94a3b8" font-size="10">125GB</text>
+
+      <rect x="584" y="105" width="82" height="50" rx="6" fill="#fbbf24" opacity="0.12" stroke="#fbbf24" stroke-width="1"/>
+      <text x="625" y="125" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">📂 分片 3</text>
+      <text x="625" y="145" text-anchor="middle" fill="#94a3b8" font-size="10">125GB</text>
+
+      <rect x="676" y="105" width="82" height="50" rx="6" fill="#a78bfa" opacity="0.12" stroke="#a78bfa" stroke-width="1"/>
+      <text x="717" y="125" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="bold">📂 分片 4</text>
+      <text x="717" y="145" text-anchor="middle" fill="#94a3b8" font-size="10">125GB</text>
+
+      <text x="575" y="195" text-anchor="middle" fill="#3fb950" font-size="11">✅ 查询快 4 倍 | 写入分散 | 连接数翻 4 倍</text>
+
+      <!-- Bottom comparison -->
+      <line x1="30" y1="240" x2="770" y2="240" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="265" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">什么时候该考虑分片？</text>
+
+      <rect x="50" y="280" width="220" height="42" rx="6" fill="#22d3ee" opacity="0.08" stroke="#22d3ee" stroke-width="1"/>
+      <text x="160" y="300" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="bold">📏 单表超过 500 万 ~ 1 亿行</text>
+
+      <rect x="290" y="280" width="220" height="42" rx="6" fill="#3fb950" opacity="0.08" stroke="#3fb950" stroke-width="1"/>
+      <text x="400" y="300" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">📈 写入 QPS 超过单机上限</text>
+
+      <rect x="530" y="280" width="220" height="42" rx="6" fill="#fbbf24" opacity="0.08" stroke="#fbbf24" stroke-width="1"/>
+      <text x="640" y="300" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">💾 数据总大小超过磁盘容量</text>
+
+      <text x="400" y="355" text-anchor="middle" fill="#8b949e" font-size="11">⚠️ 重要：分片是最后的手段！先考虑索引优化、缓存、读写分离、分区表</text>
+    </svg>
+    <div class="diagram-caption">图 1：单库瓶颈 vs 分片方案——分片让数据分散到多台机器</div>
+  </div>
+</section>
+
+<!-- ====== 为什么分片 ====== -->
+<section class="section" id="why">
+  <h2>📚 为什么要分片？——图书馆的困境</h2>
+  <p>当业务快速增长时，单库会遇到<strong>三层瓶颈</strong>：存储层放不下、计算层跑不动、连接层扛不住。</p>
+
+  <div class="compare">
+    <div>
+      <h4>🐌 分片之前</h4>
+      <ul>
+        <li>单表 2 亿行，<code>SELECT COUNT(*)</code> 跑 30 秒</li>
+        <li>MySQL 单库最多支撑约 3000~6000 QPS</li>
+        <li>磁盘 I/O 成为瓶颈（HDD 约 200 IOPS）</li>
+        <li>备份一个 500GB 数据库要 hours</li>
+        <li>索引再优化也扛不住写入压力</li>
+        <li>数据库挂了 = 所有业务崩溃</li>
+      </ul>
+    </div>
+    <div>
+      <h4>🚀 分片之后</h4>
+      <ul>
+        <li>每个分片只查 5000 万行，查询快 4x</li>
+        <li>4 个分片 = 4 倍写入吞吐</li>
+        <li>磁盘 I/O 分散到多台机器</li>
+        <li>每个分片单独备份，并行进行</li>
+        <li>扩容：再加分片即可</li>
+        <li>一个分片挂了不影响其他分片</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="feynman">
+    <p><span class="analogy">想象一个图书馆只有 1 个管理员（单库）：每天几百人来借书，管理员要在一排排书架间跑，找一本书要 10 分钟。</span></p>
+    <p>分片 = <span class="analogy">开 4 个分馆，每个馆配一个管理员，读者按姓氏分流到不同分馆。每个管理员只需要管 1/4 的书架，找书只要 2.5 分钟。</span></p>
+    <p>但问题来了：如果你想借的书在另一个分馆怎么办？（<strong>跨分片查询</strong>）这就麻烦了——分片不是银弹，后面会讲这些问题。</p>
+  </div>
+
+  <div class="info-card">
+    <h4>🎯 一句话记住</h4>
+    <p><strong>分片解决的是"量"的问题</strong>——数据量大到单机存不下、写入多到单机写不完。如果只是查询慢（数据量不大），先试试索引优化、缓存、读写分离。</p>
+  </div>
+</section>
+
+<!-- ====== 垂直拆分 vs 水平拆分 ====== -->
+<section class="section" id="split">
+  <h2>✂️ 垂直拆分 vs 水平拆分</h2>
+  <p>很多人把"垂直拆分"和"水平拆分"搞混。记住一句话：<strong>垂直 = 按"列"切，水平 = 按"行"切</strong>。</p>
+
+  <div class="compare">
+    <div>
+      <h4>📐 垂直拆分（Vertical）</h4>
+      <p><strong>按业务模块拆分</strong>——把一个大表拆成多个表/库，每个表只存部分字段。</p>
+      <ul>
+        <li>用户表拆成：<code>user_base</code>（常用字段）+ <code>user_ext</code>（扩展字段）</li>
+        <li>或拆成：用户库、订单库、商品库</li>
+        <li>优点：实现简单，业务隔离</li>
+        <li>缺点：粒度较粗，单表行数仍然会增长</li>
+        <li><span class="badge badge-orange">适用于</span>：微服务拆分、大字段分离</li>
+      </ul>
+    </div>
+    <div>
+      <h4>📊 水平拆分（Horizontal）</h4>
+      <p><strong>按某列的值拆分</strong>——每个分片结构完全相同，只存部分行。</p>
+      <ul>
+        <li><code>user_0</code> 存 user_id % 4 = 0 的用户</li>
+        <li><code>user_1</code> 存 user_id % 4 = 1 的用户</li>
+        <li>优点：理论上无限扩展</li>
+        <li>缺点：跨分片查询复杂</li>
+        <li><span class="badge badge-green">适用于</span>：海量数据、高并发写入</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="460" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">垂直拆分 vs 水平拆分</text>
+
+      <!-- Original table -->
+      <rect x="40" y="55" width="280" height="140" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="180" y="78" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">原始大表：user</text>
+      <text x="60" y="100" fill="#94a3b8" font-size="11">user_id | name | email | avatar</text>
+      <text x="60" y="118" fill="#94a3b8" font-size="11">bio | created_at | login_ip</text>
+      <text x="60" y="136" fill="#94a3b8" font-size="11">phone | address | birthday</text>
+      <text x="60" y="155" fill="#94a3b8" font-size="11">... 更多字段</text>
+      <text x="60" y="178" fill="#f87171" font-size="10">行数太多 → 索引大 → 查询慢</text>
+
+      <!-- Vertical Split -->
+      <text x="400" y="60" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">⬇️ 垂直拆分（按列）</text>
+
+      <rect x="330" y="80" width="200" height="100" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="1"/>
+      <text x="430" y="102" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">📐 user_base</text>
+      <text x="350" y="122" fill="#94a3b8" font-size="11">user_id | name | email</text>
+      <text x="350" y="140" fill="#94a3b8" font-size="11">phone | created_at</text>
+      <text x="350" y="165" fill="#3fb950" font-size="10">✅ 高频字段，小而快</text>
+
+      <rect x="550" y="80" width="200" height="100" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1"/>
+      <text x="650" y="102" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">📐 user_ext</text>
+      <text x="570" y="122" fill="#94a3b8" font-size="11">avatar | bio | address</text>
+      <text x="570" y="140" fill="#94a3b8" font-size="11">login_ip | birthday</text>
+      <text x="570" y="165" fill="#fbbf24" font-size="10">🟡 低频 + 大字段</text>
+
+      <!-- Horizontal Split -->
+      <text x="400" y="215" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">⬇️ 水平拆分（按行）</text>
+
+      <rect x="50" y="235" width="155" height="100" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="1"/>
+      <text x="127" y="258" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">📊 user_0</text>
+      <text x="65" y="280" fill="#94a3b8" font-size="11">user_id % 4 = 0</text>
+      <text x="65" y="300" fill="#94a3b8" font-size="11">2500 万行</text>
+      <text x="65" y="322" fill="#3fb950" font-size="10">✅</text>
+
+      <rect x="225" y="235" width="155" height="100" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1"/>
+      <text x="302" y="258" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">📊 user_1</text>
+      <text x="240" y="280" fill="#94a3b8" font-size="11">user_id % 4 = 1</text>
+      <text x="240" y="300" fill="#94a3b8" font-size="11">2500 万行</text>
+      <text x="240" y="322" fill="#3fb950" font-size="10">✅</text>
+
+      <rect x="400" y="235" width="155" height="100" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1"/>
+      <text x="477" y="258" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">📊 user_2</text>
+      <text x="415" y="280" fill="#94a3b8" font-size="11">user_id % 4 = 2</text>
+      <text x="415" y="300" fill="#94a3b8" font-size="11">2500 万行</text>
+      <text x="415" y="322" fill="#3fb950" font-size="10">✅</text>
+
+      <rect x="575" y="235" width="155" height="100" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1"/>
+      <text x="652" y="258" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="bold">📊 user_3</text>
+      <text x="590" y="280" fill="#94a3b8" font-size="11">user_id % 4 = 3</text>
+      <text x="590" y="300" fill="#94a3b8" font-size="11">2500 万行</text>
+      <text x="590" y="322" fill="#3fb950" font-size="10">✅</text>
+
+      <text x="400" y="375" text-anchor="middle" fill="#f87171" font-size="12" font-weight="bold">关键区别</text>
+      <text x="400" y="400" text-anchor="middle" fill="#94a3b8" font-size="11">垂直拆分：结构不同（字段不同），但每个表行的数量不变</text>
+      <text x="400" y="420" text-anchor="middle" fill="#94a3b8" font-size="11">水平拆分：结构完全相同，但每个表只有一部分行数据</text>
+      <text x="400" y="445" text-anchor="middle" fill="#8b949e" font-size="11">⚠️ 实际生产中通常是 垂直 + 水平 结合使用</text>
+    </svg>
+    <div class="diagram-caption">图 2：垂直拆分（按列拆分）vs 水平拆分（按行拆分）</div>
+  </div>
+
+  <div class="feynman">
+    <p><span class="analogy">垂直拆分就像把一本书按章节拆成不同的小册子——文学常识一本、数学公式一本、英语单词一本，各看各的。</span></p>
+    <p><span class="analogy">水平拆分就像把一套《百科全书》按字母分成 A-D、E-H、I-L、M-P、Q-T、U-Z 六卷——每卷结构一样，只是内容范围不同。</span></p>
+    <p>实际项目中通常是<strong>先做垂直拆分（按业务分库），再对数据量大的库做水平拆分</strong>。</p>
+  </div>
+</section>
+
+<!-- ====== 分片策略 ====== -->
+<section class="section" id="strategy">
+  <h2>🎯 四大分片策略</h2>
+  <p>如何决定一行数据去哪个分片？这个"路由规则"就是<strong>分片策略</strong>。常见的有四种：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 440" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="440" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">四大分片策略对比</text>
+
+      <!-- Strategy 1: Range -->
+      <rect x="20" y="55" width="360" height="165" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="200" y="80" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">📏 Range 分片（范围）</text>
+      <text x="40" y="105" fill="#94a3b8" font-size="11">user_id 1-1000万 → 分片1</text>
+      <text x="40" y="125" fill="#94a3b8" font-size="11">user_id 1001万-2000万 → 分片2</text>
+      <text x="40" y="145" fill="#94a3b8" font-size="11">user_id 2001万-3000万 → 分片3</text>
+      <text x="40" y="170" fill="#3fb950" font-size="11">✅ 范围查询友好</text>
+      <text x="40" y="190" fill="#f87171" font-size="11">❌ 数据热点（新数据全写最后一个分片）</text>
+      <text x="40" y="210" fill="#f87171" font-size="11">❌ 扩容需要大量数据迁移</text>
+
+      <!-- Strategy 2: Hash -->
+      <rect x="420" y="55" width="360" height="165" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="600" y="80" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">#️⃣ Hash 分片（取模）</text>
+      <text x="440" y="105" fill="#94a3b8" font-size="11">shard = hash(shard_key) % N</text>
+      <text x="440" y="125" fill="#94a3b8" font-size="11">user_id=100 → 100 % 4 = 0 → 分片0</text>
+      <text x="440" y="145" fill="#94a3b8" font-size="11">user_id=101 → 101 % 4 = 1 → 分片1</text>
+      <text x="440" y="170" fill="#3fb950" font-size="11">✅ 数据均匀分布，无热点</text>
+      <text x="440" y="190" fill="#3fb950" font-size="11">✅ 实现简单，性能高</text>
+      <text x="440" y="210" fill="#f87171" font-size="11">❌ 扩容 N 变化 → 全部数据要 rehash</text>
+
+      <!-- Strategy 3: Consistent Hash -->
+      <rect x="20" y="235" width="360" height="165" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="200" y="260" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">🔄 一致性 Hash</text>
+      <text x="40" y="285" fill="#94a3b8" font-size="11">将 hash 空间组织成环</text>
+      <text x="40" y="305" fill="#94a3b8" font-size="11">数据和服务节点都映射到环上</text>
+      <text x="40" y="325" fill="#94a3b8" font-size="11">顺时针找最近的节点存储</text>
+      <text x="40" y="350" fill="#3fb950" font-size="11">✅ 扩容只影响少量数据（约 1/N）</text>
+      <text x="40" y="370" fill="#3fb950" font-size="11">✅ 热点数据可加虚拟节点</text>
+      <text x="40" y="390" fill="#f87171" font-size="11">❌ 实现比取模复杂</text>
+
+      <!-- Strategy 4: Time -->
+      <rect x="420" y="235" width="360" height="165" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="600" y="260" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">📅 时间分片</text>
+      <text x="440" y="285" fill="#94a3b8" font-size="11">按年/月/日建表或分片</text>
+      <text x="440" y="305" fill="#94a3b8" font-size="11">order_202301, order_202302...</text>
+      <text x="440" y="325" fill="#94a3b8" font-size="11">log_2026_05, log_2026_06...</text>
+      <text x="440" y="350" fill="#3fb950" font-size="11">✅ 适合时序数据、日志</text>
+      <text x="440" y="370" fill="#3fb950" font-size="11">✅ 数据生命周期管理方便</text>
+      <text x="440" y="390" fill="#f87171" font-size="11">❌ 热点集中在最新时间</text>
+    </svg>
+    <div class="diagram-caption">图 3：四种分片策略及优缺点对比</div>
+  </div>
+
+  <h3>各策略适用场景</h3>
+  <table>
+    <tr><th>策略</th><th>适用场景</th><th>不适用场景</th></tr>
+    <tr><td>Range</td><td>按 ID 范围查询频繁的 OLTP 系统</td><td>写入增长快的业务（尾部热点）</td></tr>
+    <tr><td>Hash</td><td>大部分 OLTP 系统，均匀写入</td><td>频繁范围查询（如时间范围）</td></tr>
+    <tr><td>一致性 Hash</td><td>需要频繁扩容的分布式缓存/数据库</td><td>实现复杂度敏感的小团队</td></tr>
+    <tr><td>时间</td><td>日志、监控、审计等时序数据</td><td>频繁查历史+最新数据的业务</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>💡 核心追问追问：取模分片扩容难题</h4>
+    <p>假设原来 4 个分片（hash % 4），业务增长要扩到 8 个分片（hash % 8）。</p>
+    <p>问题：user_id=100 原来在分片 0（100%4=0），现在在分片 4（100%8=4）——<strong>几乎所有数据都要迁移</strong>！</p>
+    <p>解决方案：<strong>一致性 Hash</strong> 或 <strong>虚拟桶（双层映射）</strong>——数据先映射到固定数量的逻辑"桶"，桶再映射到物理分片。扩物理分片时只需要移动桶的映射关系。</p>
+  </div>
+</section>
+
+<!-- ====== 分片后问题 ====== -->
+<section class="section" id="challenges">
+  <h2>⚠️ 分片后的三座大山</h2>
+  <p>分片不是银弹——拆完之后会遇到三个核心问题：<strong>跨节点查询、全局 ID 生成、分布式事务</strong>。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="420" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">分片后的三大挑战</text>
+
+      <!-- Challenge 1 -->
+      <rect x="30" y="60" width="230" height="150" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="145" y="90" text-anchor="middle" fill="#f87171" font-size="14" font-weight="bold">🔍 跨节点查询</text>
+      <text x="50" y="115" fill="#94a3b8" font-size="11">• ORDER BY + LIMIT 要聚合</text>
+      <text x="50" y="135" fill="#94a3b8" font-size="11">• JOIN 不同分片不支持</text>
+      <text x="50" y="155" fill="#94a3b8" font-size="11">• COUNT / SUM / AVG 要汇总</text>
+      <text x="50" y="180" fill="#3fb950" font-size="11">解决方案：</text>
+      <text x="50" y="200" fill="#3fb950" font-size="10">中间件聚合 / ES 搜索</text>
+
+      <!-- Challenge 2 -->
+      <rect x="285" y="60" width="230" height="150" rx="10" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="400" y="90" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="bold">🔢 全局 ID 生成</text>
+      <text x="305" y="115" fill="#94a3b8" font-size="11">• 自增 ID 在各分片冲突</text>
+      <text x="305" y="135" fill="#94a3b8" font-size="11">• 需要全局唯一 ID</text>
+      <text x="305" y="155" fill="#94a3b8" font-size="11">• 最好有序（B+树友好）</text>
+      <text x="305" y="180" fill="#3fb950" font-size="11">解决方案：</text>
+      <text x="305" y="200" fill="#3fb950" font-size="10">Snowflake / Leaf / 号段</text>
+
+      <!-- Challenge 3 -->
+      <rect x="540" y="60" width="230" height="150" rx="10" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="655" y="90" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="bold">🔄 分布式事务</text>
+      <text x="560" y="115" fill="#94a3b8" font-size="11">• 跨分片数据一致性</text>
+      <text x="560" y="135" fill="#94a3b8" font-size="11">• 本地事务无法跨库</text>
+      <text x="560" y="155" fill="#94a3b8" font-size="11">• 两阶段提交性能差</text>
+      <text x="560" y="180" fill="#3fb950" font-size="11">解决方案：</text>
+      <text x="560" y="200" fill="#3fb950" font-size="10">TCC / Saga / Seata</text>
+
+      <!-- Detailed bottom -->
+      <rect x="30" y="230" width="740" height="175" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="255" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">详细问题 &amp; 解法</text>
+
+      <text x="50" y="282" fill="#f87171" font-size="11" font-weight="bold">跨节点查询</text>
+      <text x="50" y="300" fill="#8b949e" font-size="10">→ 中间件（ShardingSphere）自动聚合 OR 在应用层做归并排序</text>
+      <text x="50" y="318" fill="#8b949e" font-size="10">→ 尽量避免跨分片查询，按分片键查询</text>
+
+      <text x="50" y="340" fill="#fbbf24" font-size="11" font-weight="bold">分布式事务</text>
+      <text x="50" y="358" fill="#8b949e" font-size="10">→ 强一致性：XA 两阶段提交（性能差，不推荐）</text>
+      <text x="50" y="376" fill="#8b949e" font-size="10">→ 最终一致性：TCC（Try-Confirm-Cancel）或 Saga 补偿</text>
+
+      <text x="430" y="282" fill="#a78bfa" font-size="11" font-weight="bold">数据倾斜（热点）</text>
+      <text x="430" y="300" fill="#8b949e" font-size="10">→ 某些分片数据量/写入量远大于其他分片</text>
+      <text x="430" y="318" fill="#8b949e" font-size="10">→ 分片键选择不当导致，需重新评估</text>
+
+      <text x="430" y="340" fill="#f87171" font-size="11" font-weight="bold">扩缩容困难</text>
+      <text x="430" y="358" fill="#8b949e" font-size="10">→ 取模分片扩 N 需要大量数据迁移</text>
+      <text x="430" y="376" fill="#8b949e" font-size="10">→ 一致性 Hash 或虚拟桶方案缓解</text>
+    </svg>
+    <div class="diagram-caption">图 4：分片后的三大挑战及解决方案</div>
+  </div>
+
+  <h3>跨节点查询的挑战</h3>
+  <p>分片后，<code>ORDER BY ... LIMIT ... OFFSET</code> 变得非常棘手——因为数据分散在各个分片，你需要在各分片查到结果后<strong>在应用层做归并排序</strong>。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">假设你向 4 个分馆分别问\"你们馆里最近上架的 10 本书是什么？\"——每个馆都给你 10 本。</span></p>
+    <p>你现在有了 40 本书，需要在总馆再排一次序，找出真正的\"最近上架 TOP 10\"。</p>
+    <p>更麻烦的是分页——<span class="analogy">\"查第 100 页\"意味着每个分馆要查 1000 条数据（而不是 10 条），因为不知道 TOP 10 是不是全在最后一个馆。</span></p>
+    <p>这就是<strong>OFFSET 越深、性能越差</strong>的原因——<code>LIMIT 10 OFFSET 100</code> 每个分片要查 1010 条再聚合！</p>
+  </div>
+
+  <div class="info-card">
+    <h4>🎯 最佳实践</h4>
+    <p><strong>尽量避免跨分片查询。</strong> 设计分片键时，让 90% 以上的查询 <code>WHERE shard_key = ?</code> 能精确定位到一个分片。不得不跨分片时，用搜索引擎（ES）做宽表，或使用 ShardingSphere 等中间件自动聚合。</p>
+  </div>
+</section>
+
+<!-- ====== ShardingSphere ====== -->
+<section class="section" id="shardingsphere">
+  <h2>🛡️ ShardingSphere —— 分片中间件实战</h2>
+  <p><strong>Apache ShardingSphere</strong> 是最流行的 Java 分片中间件，提供<strong>读写分离 + 分库分表 + 分布式事务</strong>一站式解决方案。它有两种模式：<strong>JDBC 模式</strong>（轻量级，嵌入应用）和 <strong>Proxy 模式</strong>（独立部署，像连接 MySQL 一样用）。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="400" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">ShardingSphere 两种部署模式</text>
+
+      <!-- JDBC Mode -->
+      <rect x="30" y="55" width="350" height="150" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="205" y="80" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">📦 JDBC 模式（Embedded）</text>
+
+      <rect x="50" y="95" width="100" height="36" rx="6" fill="#22d3ee" opacity="0.12" stroke="#22d3ee" stroke-width="1"/>
+      <text x="100" y="117" text-anchor="middle" fill="#22d3ee" font-size="11">App</text>
+
+      <text x="168" y="118" fill="#8b949e" font-size="12">⇄</text>
+
+      <rect x="190" y="95" width="160" height="36" rx="6" fill="#fbbf24" opacity="0.12" stroke="#fbbf24" stroke-width="1"/>
+      <text x="270" y="117" text-anchor="middle" fill="#fbbf24" font-size="11">ShardingSphere-JDBC</text>
+
+      <text x="50" y="155" fill="#94a3b8" font-size="11">• 嵌入 App 中，无额外部署</text>
+      <text x="50" y="175" fill="#94a3b8" font-size="11">• 轻量级，延迟最低</text>
+      <text x="50" y="195" fill="#94a3b8" font-size="11">• 支持任意 Java 框架</text>
+
+      <!-- Proxy Mode -->
+      <rect x="420" y="55" width="350" height="150" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="595" y="80" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">🌐 Proxy 模式（Server）</text>
+
+      <rect x="440" y="95" width="100" height="36" rx="6" fill="#22d3ee" opacity="0.12" stroke="#22d3ee" stroke-width="1"/>
+      <text x="490" y="117" text-anchor="middle" fill="#22d3ee" font-size="11">App</text>
+
+      <text x="558" y="118" fill="#8b949e" font-size="12">⇄</text>
+
+      <rect x="580" y="95" width="160" height="36" rx="6" fill="#a78bfa" opacity="0.12" stroke="#a78bfa" stroke-width="1"/>
+      <text x="660" y="117" text-anchor="middle" fill="#a78bfa" font-size="11">ShardingSphere-Proxy</text>
+
+      <text x="440" y="155" fill="#94a3b8" font-size="11">• 独立部署，像 MySQL 一样访问</text>
+      <text x="440" y="175" fill="#94a3b8" font-size="11">• 适合非 Java 应用（MySQL 协议）</text>
+      <text x="440" y="195" fill="#94a3b8" font-size="11">• 连接管理简单</text>
+
+      <!-- Bottom config -->
+      <rect x="30" y="225" width="740" height="160" rx="8" fill="#16181d" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="250" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">ShardingSphere 配置示例（分库 + 分表 + 读写分离）</text>
+
+      <text x="50" y="278" fill="#8b949e" font-size="11" font-family="monospace"># 分片规则：按 user_id 分库，按 order_id % 4 分表</text>
+      <text x="50" y="298" fill="#c9d1d9" font-size="11" font-family="monospace">shardingRule:</text>
+      <text x="50" y="318" fill="#c9d1d9" font-size="11" font-family="monospace">  tables:</text>
+      <text x="50" y="338" fill="#c9d1d9" font-size="11" font-family="monospace">    t_order:</text>
+      <text x="50" y="358" fill="#c9d1d9" font-size="11" font-family="monospace">      actualDataNodes: ds$->{0..1}.t_order_$->{0..3}</text>
+      <text x="50" y="378" fill="#c9d1d9" font-size="11" font-family="monospace">      databaseStrategy: ... # user_id % 2 分库</text>
+    </svg>
+    <div class="diagram-caption">图 5：ShardingSphere 的 JDBC 和 Proxy 两种部署模式</div>
+  </div>
+
+  <h3>核心功能一览</h3>
+  <table>
+    <tr><th>功能</th><th>说明</th><th>配置项</th></tr>
+    <tr><td>分库分表</td><td>自动路由 SQL 到正确的分片</td><td><code>databaseStrategy</code> / <code>tableStrategy</code></td></tr>
+    <tr><td>读写分离</td><td>主库写、从库读</td><td><code>readwrite-splitting</code></td></tr>
+    <tr><td>分布式事务</td><td>XA / BASE / Seata 集成</td><td><code>transaction</code></td></tr>
+    <tr><td>数据加密</td><td>透明加密敏感字段</td><td><code>encryptRule</code></td></tr>
+    <tr><td>影子库</td><td>压测流量路由到影子库</td><td><code>shadowRule</code></td></tr>
+    <tr><td>弹性伸缩</td><td>不中断业务扩缩容</td><td><code>scaling</code></td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>💡 读写分离配置示例</h4>
+    <pre><code># ShardingSphere YAML 配置
+rules:
+- !READWRITE_SPLITTING
+  dataSources:
+    ds_0:
+      writeDataSourceName: ds_0_master
+      readDataSourceNames:
+        - ds_0_slave_1
+        - ds_0_slave_2
+      loadBalancerName: round_robin
+    ds_1:
+      writeDataSourceName: ds_1_master
+      readDataSourceNames:
+        - ds_1_slave_1
+        - ds_1_slave_2
+      loadBalancerName: random</code></pre>
+    <p>这个配置定义了两个分库（ds_0 和 ds_1），每个库有 1 主 2 从，写操作走主库、读操作负载均衡到从库。</p>
+  </div>
+
+  <div class="feynman">
+    <p><span class="analogy">ShardingSphere 就像图书馆的\"全市统一借书系统\"：</span></p>
+    <p>你在任意分馆的电脑上搜一本\"西游记\"，系统自动告诉你：<strong>这本书在南馆 3 楼 5 号书架</strong>（SQL 路由到正确分片）。</p>
+    <p>如果你要借的书不在当前馆——系统<strong>自动去别的馆帮你调书</strong>（跨分片聚合）。</p>
+    <p>如果你只是想去看看杂志不需要借走——系统推荐你<strong>去最近的分馆</strong>（读写分离，从库只读）。</p>
+  </div>
+</section>
+
+<!-- ====== TiDB ====== -->
+<section class="section" id="tidb">
+  <h2>🚀 TiDB：NewSQL 时代的自动分片</h2>
+  <p><strong>TiDB</strong> 是 PingCAP 开源的分布式数据库，属于 <strong>NewSQL</strong> 阵营。它的核心理念是：<strong>你不用管分片，数据库自动帮你分</strong>。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="420" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">TiDB 架构：计算与存储分离</text>
+
+      <!-- TiDB Layer -->
+      <rect x="30" y="55" width="740" height="60" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="400" y="78" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">🖥️ TiDB Server（计算层 — SQL 引擎）</text>
+      <text x="400" y="100" text-anchor="middle" fill="#94a3b8" font-size="11">MySQL 协议兼容 | 分布式 SQL 解析 | 自动聚合跨 Region 数据</text>
+
+      <!-- Arrow -->
+      <text x="400" y="135" text-anchor="middle" fill="#8b949e" font-size="18">⇅</text>
+
+      <!-- PD -->
+      <rect x="240" y="145" width="320" height="50" rx="10" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="6,3"/>
+      <text x="400" y="170" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">🧠 PD（Placement Driver — 调度大脑）</text>
+      <text x="400" y="190" text-anchor="middle" fill="#94a3b8" font-size="11">管理元数据 + 调度 Region</text>
+
+      <!-- Arrow -->
+      <text x="400" y="210" text-anchor="middle" fill="#8b949e" font-size="18">⇅</text>
+
+      <!-- Storage Layer -->
+      <rect x="30" y="225" width="740" height="80" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="400" y="250" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">💾 TiKV（存储层 — 分布式 KV 引擎）</text>
+
+      <rect x="50" y="265" width="115" height="28" rx="6" fill="#22d3ee" opacity="0.12" stroke="#22d3ee" stroke-width="1"/>
+      <text x="107" y="284" text-anchor="middle" fill="#22d3ee" font-size="10">📦 Region 1</text>
+
+      <rect x="175" y="265" width="115" height="28" rx="6" fill="#3fb950" opacity="0.12" stroke="#3fb950" stroke-width="1"/>
+      <text x="232" y="284" text-anchor="middle" fill="#3fb950" font-size="10">📦 Region 2</text>
+
+      <rect x="300" y="265" width="115" height="28" rx="6" fill="#fbbf24" opacity="0.12" stroke="#fbbf24" stroke-width="1"/>
+      <text x="357" y="284" text-anchor="middle" fill="#fbbf24" font-size="10">📦 Region 3</text>
+
+      <rect x="425" y="265" width="115" height="28" rx="6" fill="#a78bfa" opacity="0.12" stroke="#a78bfa" stroke-width="1"/>
+      <text x="482" y="284" text-anchor="middle" fill="#a78bfa" font-size="10">📦 Region 4</text>
+
+      <rect x="550" y="265" width="115" height="28" rx="6" fill="#f87171" opacity="0.12" stroke="#f87171" stroke-width="1"/>
+      <text x="607" y="284" text-anchor="middle" fill="#f87171" font-size="10">📦 Region 5</text>
+
+      <rect x="675" y="265" width="75" height="28" rx="6" fill="#8b949e" opacity="0.3"/>
+      <text x="712" y="284" text-anchor="middle" fill="#8b949e" font-size="10">...</text>
+
+      <!-- Key concepts -->
+      <rect x="30" y="325" width="740" height="82" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="350" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">TiDB 核心概念（对标传统分片）</text>
+
+      <text x="50" y="375" fill="#22d3ee" font-size="11" font-weight="bold">Region</text>
+      <text x="100" y="375" fill="#94a3b8" font-size="11">= 自动管理的数据分片（默认 96MB），类似传统分片的\"片\"</text>
+      <text x="50" y="395" fill="#22d3ee" font-size="11" font-weight="bold">Raft</text>
+      <text x="100" y="395" fill="#94a3b8" font-size="11">= 每个 Region 自动维护 3 副本，保证强一致性</text>
+    </svg>
+    <div class="diagram-caption">图 6：TiDB 架构——计算存储分离，自动分片（Region）</div>
+  </div>
+
+  <h3>TiDB vs 传统分片方案</h3>
+  <table>
+    <tr><th>对比维度</th><th>传统分片（ShardingSphere）</th><th>TiDB（NewSQL）</th></tr>
+    <tr><td>分片方式</td><td>手动配置分片规则</td><td>自动分片（Region 分裂/合并）</td></tr>
+    <tr><td>SQL 兼容性</td><td>部分限制（不支持跨分片 JOIN）</td><td>几乎完整 MySQL 兼容</td></tr>
+    <tr><td>事务支持</td><td>分布式事务性能损耗</td><td>强 ACID 事务（Raft + Percolator）</td></tr>
+    <tr><td>扩缩容</td><td>需要大量数据迁移</td><td>自动 rebalance，对应用透明</td></tr>
+    <tr><td>适用场景</td><td>MySQL 生态，中等规模</td><td>超大规模，强一致性要求</td></tr>
+    <tr><td>运维复杂度</td><td>较低（熟悉 MySQL）</td><td>中等（需要单独运维 PD/TiKV）</td></tr>
+  </table>
+
+  <div class="feynman">
+    <p><span class="analogy">传统分片就像你自己用 Excel 手动切分数据——你要决定切几份、按什么规则切、切完怎么合起来。</span></p>
+    <p><span class="analogy">TiDB 就像智能仓储机器人——你把货往仓库一扔，它自动分好位置、自动调度、自动扩缩。你只管\"我要查什么\"，不用管\"数据在哪\"。</span></p>
+    <p>TiDB 的 Region（96MB 的数据块）就像<strong>乐高积木</strong>——数据多了自动分裂成两块，少了自动合并，PD 调度大脑负责把这些积木在 TiKV 节点间均衡分布。</p>
+  </div>
+
+  <div class="info-card">
+    <h4>🎯 TiDB 实战一句话</h4>
+    <p><strong>TiDB = MySQL 兼容 + 自动分片 + 强一致性 + 水平扩展</strong>。它让开发者享受分片的好处（无限扩展）而不承担分片的痛苦（手动配置、跨分片查询限制）。读者如果问\"你怎么看 NewSQL\"，提到 TiDB + CockroachDB 这两个代表，能展示你的技术视野。</p>
+  </div>
+</section>
+
+<!-- ====== 全局ID ====== -->
+<section class="section" id="id">
+  <h2>🔢 全局 ID 生成方案</h2>
+  <p>分片后，MySQL 自增 ID 失效了——每个分片各自 <code>AUTO_INCREMENT</code> 会生成重复 ID。我们需要<strong>全局唯一、有序（最好）、高可用</strong>的 ID 生成方案。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 440" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="440" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">四种全局 ID 生成方案对比</text>
+
+      <!-- UUID -->
+      <rect x="20" y="55" width="370" height="175" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="205" y="80" text-anchor="middle" fill="#f87171" font-size="13" font-weight="bold">🔑 UUID</text>
+      <text x="40" y="105" fill="#c9d1d9" font-size="11" font-family="monospace">550e8400-e29b-41d4-a716-446655440000</text>
+      <text x="40" y="128" fill="#94a3b8" font-size="11">• 128 位，36 字符字符串</text>
+      <text x="40" y="148" fill="#94a3b8" font-size="11">• 完全无序 → B+树页分裂严重（性能灾难）</text>
+      <text x="40" y="168" fill="#94a3b8" font-size="11">• 占用空间大 → 索引膨胀</text>
+      <text x="40" y="192" fill="#f87171" font-size="11">❌ 数据库字段不要用 UUID 做主键！</text>
+      <text x="40" y="215" fill="#3fb950" font-size="10">✅ 可用作业务标识（非主键）</text>
+
+      <!-- Snowflake -->
+      <rect x="410" y="55" width="370" height="175" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="595" y="80" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">❄️ Snowflake（雪花算法）</text>
+      <text x="430" y="105" fill="#c9d1d9" font-size="11" font-family="monospace">| 符号位 | 时间戳(41) | 机器ID(10) | 序列号(12) |</text>
+      <text x="430" y="125" fill="#c9d1d9" font-size="11" font-family="monospace">   1 bit     64位时间戳   1024台机器  4096/ms</text>
+      <text x="430" y="148" fill="#94a3b8" font-size="11">• 64 位 Long，有序递增</text>
+      <text x="430" y="168" fill="#94a3b8" font-size="11">• 不依赖 DB，内存生成，性能极高</text>
+      <text x="430" y="188" fill="#94a3b8" font-size="11">• 依赖机器时钟（时钟回拨 = ID 重复）</text>
+      <text x="430" y="212" fill="#3fb950" font-size="11">✅ 最广泛使用的方案</text>
+      <text x="430" y="230" fill="#f87171" font-size="10">❌ 需要解决时钟回拨问题</text>
+
+      <!-- Leaf / 号段 -->
+      <rect x="20" y="245" width="370" height="175" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="205" y="270" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">🌿 Leaf / 号段模式</text>
+      <text x="40" y="295" fill="#94a3b8" font-size="11">美团的 Leaf 号段模式：</text>
+      <text x="40" y="315" fill="#c9d1d9" font-size="11" font-family="monospace">DB 预分配号段：(1, 1000], (1001, 2000]...</text>
+      <text x="40" y="338" fill="#94a3b8" font-size="11">• 每次从 DB 取一个号段（如 1000 个 ID）</text>
+      <text x="40" y="358" fill="#94a3b8" font-size="11">• 内存生成，用完再取下一个号段</text>
+      <text x="40" y="378" fill="#94a3b8" font-size="11">• 有序递增，性能好</text>
+      <text x="40" y="400" fill="#3fb950" font-size="11">✅ 双 buffer 预取避免阻塞</text>
+      <text x="40" y="418" fill="#f87171" font-size="10">❌ 依赖 DB 可用性</text>
+
+      <!-- Comparison -->
+      <rect x="410" y="245" width="370" height="175" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="595" y="270" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">⚖️ 方案对比总结</text>
+
+      <rect x="430" y="285" width="330" height="120" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+
+      <text x="440" y="305" fill="#22d3ee" font-size="11" font-weight="bold">UUID</text>
+      <text x="480" y="305" fill="#f87171" font-size="11">❌ 无序 · 太长</text>
+
+      <text x="440" y="325" fill="#22d3ee" font-size="11" font-weight="bold">Snowflake</text>
+      <text x="480" y="325" fill="#3fb950" font-size="11">✅ 有序 · 高性能</text>
+      <text x="550" y="325" fill="#f87171" font-size="10">时钟回拨</text>
+
+      <text x="440" y="345" fill="#22d3ee" font-size="11" font-weight="bold">Leaf 号段</text>
+      <text x="480" y="345" fill="#3fb950" font-size="11">✅ 有序 · 高性能</text>
+      <text x="550" y="345" fill="#f87171" font-size="10">依赖 DB</text>
+
+      <text x="440" y="365" fill="#22d3ee" font-size="11" font-weight="bold">Leaf-Snowflake</text>
+      <text x="480" y="365" fill="#3fb950" font-size="11">✅ 结合两者优点</text>
+      <text x="550" y="365" fill="#f87171" font-size="10">较复杂</text>
+
+      <text x="440" y="390" fill="#8b949e" font-size="10">Redis INCR / Zookeeper 也可用但不推荐</text>
+    </svg>
+    <div class="diagram-caption">图 7：四种全局 ID 生成方案对比</div>
+  </div>
+
+  <h3>Snowflake 算法详解</h3>
+  <p>Snowflake 生成的 64 位 Long 型 ID 结构：</p>
+  <table>
+    <tr><th>位段</th><th>位数</th><th>说明</th></tr>
+    <tr><td>符号位</td><td>1</td><td>始终为 0（正数）</td></tr>
+    <tr><td>时间戳</td><td>41</td><td>毫秒级时间戳（可用 69 年）</td></tr>
+    <tr><td>机器 ID</td><td>10</td><td>支持最多 1024 台机器</td></tr>
+    <tr><td>序列号</td><td>12</td><td>同一毫秒内可生成 4096 个 ID</td></tr>
+  </table>
+  <p>理论上单台机器每秒可生成 <code>1000 × 4096 ≈ 409 万</code> 个 ID，完全够用。</p>
+
+  <pre><code>// Snowflake 核心代码（伪码）
+long id = (timestamp - epoch) << 22  // 时间戳左移
+         | (workerId << 12)          // 机器 ID 左移
+         | sequence;                 // 序列号
+
+// 时钟回拨处理策略
+if (timestamp < lastTimestamp) {
+    // 方案 1：等待时钟追上（简单但可能阻塞）
+    // 方案 2：用 ZooKeeper 记录上次时间戳
+    // 方案 3：备用机器 ID 方案
+    throw new ClockBackwardsException("clock moved backwards");
+}</code></pre>
+
+  <div class="feynman">
+    <p><span class="analogy">Snowflake 就像每家餐厅的订单号生成器：</span></p>
+    <p><strong>时间戳</strong> = 今天的日期（不同天的订单号自然递增）<br>
+    <strong>机器 ID</strong> = 你是第几号分店（避免不同店冲突）<br>
+    <strong>序列号</strong> = 本店今天接的第几个订单（同一毫秒内也能区分）</p>
+    <p>三家分店同一毫秒接单：<br>
+    店 1：20260521-001-0001<br>
+    店 2：20260521-002-0001<br>
+    店 3：20260521-003-0001<br>
+    有序 + 唯一 + 不依赖数据库！</p>
+  </div>
+
+  <div class="info-card">
+    <h4>💡 核心追问：Snowflake 的时钟回拨问题</h4>
+    <p><strong>问题</strong>：服务器 NTP 时间同步导致时钟回拨，可能生成重复 ID。</p>
+    <p><strong>常见解决方案</strong>：</p>
+    <ul>
+      <li><strong>等待策略</strong>：回拨小于阈值（如 5ms）时自旋等待时钟追上</li>
+      <li><strong>备用时间戳</strong>：记录上次生成 ID 的时间，回拨时用上次时间+递增序列</li>
+      <li><strong>双位序列号</strong>：序列号用 13 位，回拨时序列号继续递增直到用完</li>
+      <li><strong>美团的 Leaf-Snowflake</strong>：用 ZooKeeper 持久化上次时间戳，重启也能检测回拨</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== 实战问答 ====== -->
+<section class="section" id="qa">
+  <h2>❓ 实战问答（8 题）</h2>
+  <p>点击问题展开答案，先自己想想再看解析 👇</p>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q1：什么是数据库分片（Sharding）？为什么要分片？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">分片是将一个大数据库拆成多个独立的小数据库（分片），每个分片结构相同但数据不同。分片解决三个问题：</p>
+      <ol class="a">
+        <li><strong>存储瓶颈</strong>：单机磁盘容量有限，分片后可水平扩展</li>
+        <li><strong>性能瓶颈</strong>：单库 QPS 有上限，分片后将写入压力分散到多台机器</li>
+        <li><strong>查询瓶颈</strong>：大表索引膨胀导致 B+树深度增加，分片后每个分片数据量减少，查询更快</li>
+      </ol>
+      <p class="q">加分点：</p>
+      <p class="a">强调<span class="handwritten">分片是最后的手段</span>——先考虑索引优化、缓存、读写分离、分区表。还要提到分片后带来的新问题（跨节点查询、分布式事务、全局 ID）。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open'")>Q2：垂直拆分和水平拆分的区别是什么？各自适用什么场景？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>维度</th><th>垂直拆分</th><th>水平拆分</th></tr>
+        <tr><td>拆分方式</td><td>按列（字段）拆分</td><td>按行（数据）拆分</td></tr>
+        <tr><td>表结构</td><td>结构不同</td><td>结构完全相同</td></tr>
+        <tr><td>数据量</td><td>每张表行数不变</td><td>每个表行数减少</td></tr>
+        <tr><td>场景</td><td>微服务拆分、大字段分离</td><td>海量数据、高并发写入</td></tr>
+      </table>
+      <p class="a"><strong>垂直拆分</strong>通常按业务进行：把用户、订单、商品放到不同数据库。<strong>水平拆分</strong>通常按某个分片键进行：user_id % N 决定数据去哪个分片。</p>
+      <p class="q">加分点：</p>
+      <p class="a">实际项目中通常是<strong>先垂直再水平</strong>——先用垂直拆分按业务分库，再对数据量大的库做水平拆分。举例：订单库先垂直拆出来，再按 order_id 水平拆分。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q3：常见分片策略有哪些？Range 分片有什么优缺点？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">四大分片策略：</p>
+      <ol class="a">
+        <li><strong>Range（范围）</strong>：按 ID 或时间范围分片。优点：范围查询友好，实现简单。缺点：尾部热点（最新数据全在一个分片），扩容需大量迁移。</li>
+        <li><strong>Hash（取模）</strong>：hash(shard_key) % N。优点：数据均匀分布。缺点：扩容 N 变化需 rehash 全部数据。</li>
+        <li><strong>一致性 Hash</strong>：hash 环 + 虚拟节点。优点：扩容只影响少量数据。缺点：实现较复杂。</li>
+        <li><strong>时间分片</strong>：按年月日分表。优点：时序数据友好，数据生命周期容易管理。缺点：热点集中在最新时间。</li>
+      </ol>
+      <p class="q">加分点：</p>
+      <p class="a">Range 分片的尾部热点问题很具有代表性——互联网业务越新的数据访问越频繁，导致最后一个分片扛了大部分压力。解决办法：<strong>Range + 时间窗口</strong>（定期新建分片）+ 结合 Hash 做子分片。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q4：分片后怎么解决跨节点查询的问题？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">分片后跨节点查询的困难主要来自：</p>
+      <ul class="a">
+        <li><strong>排序 + 分页</strong>：<code>ORDER BY ... LIMIT ... OFFSET</code> 需要在各分片查大量数据后再归并排序</li>
+        <li><strong>聚合函数</strong>：<code>COUNT / SUM / AVG</code> 需要先在各分片执行再汇总</li>
+        <li><strong>跨分片 JOIN</strong>：传统分片中间件不支持跨库 JOIN</li>
+      </ul>
+      <p class="q">解决方案：</p>
+      <ul class="a">
+        <li><strong>用分片中间件</strong>（ShardingSphere）自动实现结果聚合和归并排序</li>
+        <li><strong>数据冗余</strong>：将需要 JOIN 的数据冗余到同一分片</li>
+        <li><strong>搜索引擎</strong>：ES 建立宽表索引，复杂查询走 ES，精确查询走 DB</li>
+        <li><strong>应用层聚合</strong>：并行查询各分片 → 应用层做归并排序 → 返回结果</li>
+        <li><strong>避免深度分页</strong>：用 <code>游标分页</code>（WHERE id &gt; last_id）代替 OFFSET</li>
+      </ul>
+      <p class="handwritten a">最佳实践是设计好分片键，让 90% 以上的查询精确命中一个分片。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q5：Snowflake 雪花算法是怎么工作的？如何解决时钟回拨？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">Snowflake 生成 64 位 Long 型 ID：<strong>1 位符号位 + 41 位时间戳 + 10 位机器 ID + 12 位序列号</strong>。单机每秒可生成约 409 万个 ID。</p>
+      <p class="a">时钟回拨（NTP 同步导致时间倒退）会导致 ID 重复，常见解决方案：</p>
+      <ul class="a">
+        <li><strong>等待策略</strong>：回拨小于一定阈值（如 10ms）时自旋等待时钟追上</li>
+        <li><strong>备用序列号</strong>：回拨时序列号继续递增（从上次结束处接着用）</li>
+        <li><strong>ZooKeeper 持久化</strong>：记录上次时间戳，重启时检测回拨</li>
+        <li><strong>美团的 Leaf-Snowflake</strong>：ZK 做 WorkerID 分配 + 时间戳持久化</li>
+      </ul>
+      <p class="q">加分点：</p>
+      <p class="a">对比 UUID（无序、太占空间）、号段模式（依赖 DB、有序）、Snowflake（高性能、时钟依赖），能展示对分布式 ID 设计在不同场景下的权衡理解。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q6：分片后如何保证分布式事务一致性？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">分片后本地事务无法跨库，需要用分布式事务方案：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>方案</th><th>一致性</th><th>性能</th><th>复杂度</th></tr>
+        <tr><td>XA（两阶段提交）</td><td>强一致性 ✅</td><td>差 ❌</td><td>中</td></tr>
+        <tr><td>TCC（Try-Confirm-Cancel）</td><td>最终一致性</td><td>中</td><td>高</td></tr>
+        <tr><td>Saga（补偿事务）</td><td>最终一致性</td><td>好 ✅</td><td>高</td></tr>
+        <tr><td>本地消息表</td><td>最终一致性</td><td>好 ✅</td><td>低</td></tr>
+        <tr><td>Seata AT 模式</td><td>最终一致性</td><td>中上</td><td>低 ✅</td></tr>
+      </table>
+      <p class="q">加分点：</p>
+      <p class="a">强调<span class="handwritten">业务设计比技术方案更重要</span>——很多场景可以通过拆分事务范围、修改业务逻辑来避免分布式事务。例如：先扣库存（本地事务）→ 发 MQ 消息 → 异步创建订单，通过消息队列保证最终一致性。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q7：分片键（Sharding Key）怎么选？选错了有什么后果？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">分片键的选择是分片设计中<strong>最关键的一步</strong>，直接影响性能和可用性。</p>
+      <p class="a"><strong>好分片键的特点</strong>：</p>
+      <ul class="a">
+        <li><strong>高频查询条件</strong>：90%+ 的查询都带这个字段</li>
+        <li><strong>高离散度</strong>：值分布均匀，避免数据倾斜</li>
+        <li><strong>稳定不变</strong>：一旦确定不轻易更改（改分片键 = 数据迁移）</li>
+        <li>常用选择：user_id、order_id、customer_id</li>
+      </ul>
+      <p class="a"><strong>选错的后果</strong>：</p>
+      <ul class="a">
+        <li><strong>数据倾斜</strong>：某些分片数据暴涨，其他分片闲置</li>
+        <li><strong>请求倾斜</strong>：热点用户导致某个分片 CPU/IO 打满</li>
+        <li><strong>大量跨分片查询</strong>：分片键没出现在 WHERE 条件中</li>
+        <li>改分片键 = 灾难级数据迁移操作</li>
+      </ul>
+      <p class="q">加分点：</p>
+      <p class="a">可以举实际例子：\"我们之前用 user_id 做分片键，但运营后台要按时间范围查所有用户——这个查询就很慢，不得不建 ES 索引做宽表补充。\"</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q8：分片方案和 NewSQL（如 TiDB）比有什么优劣势？什么场景应该选哪个？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>维度</th><th>传统分片（ShardingSphere）</th><th>NewSQL（TiDB）</th></tr>
+        <tr><td>学习成本</td><td>低（就是 MySQL）</td><td>中（新架构，新运维）</td></tr>
+        <tr><td>分片管理</td><td>手动配置规则</td><td>自动分片，对应用透明</td></tr>
+        <tr><td>SQL 限制</td><td>跨分片 JOIN 不支持</td><td>几乎全功能 SQL</td></tr>
+        <tr><td>一致性</td><td>最终一致性（通常）</td><td>强 ACID（Raft）</td></tr>
+        <tr><td>扩缩容</td><td>需迁移数据</td><td>自动 rebalance</td></tr>
+        <tr><td>成熟度</td><td>非常成熟</td><td>中等（生产可用）</td></tr>
+      </table>
+      <p class="a"><strong>选传统分片</strong>：MySQL 技术栈成熟、团队熟悉 MySQL、中等规模数据、对 SQL 兼容性要求不高。</p>
+      <p class="a"><strong>选 TiDB</strong>：超大规模数据需要水平扩展、需要强一致性和完整 SQL 支持、团队愿意学习新架构。</p>
+      <p class="q">加分点：</p>
+      <p class="a">可以提到<span class="handwritten">不要把分片方案和 NewSQL 对立</span>——实际上很多公司从 MySQL 单库 → 主从 → 分片 → TiDB 这样演进。TiDB 是解决分片痛点的方案之一，但不是唯一方案。</p>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>📌 核心要点</h4>
+    <p>读者问数据库分片时，最看重的是<strong>对分片利弊的平衡理解</strong>：</p>
+    <ul>
+      <li><strong>不要只说分片好</strong>——主动说出分片带来的问题（跨节点查询、分布式事务、扩缩容困难），显得有深度</li>
+      <li><strong>强调\"分片是最后的方案\"</strong>——先考虑缓存、索引优化、读写分离、分区表</li>
+      <li><strong>用费曼类比</strong>——能用简单的比喻解释清楚复杂概念（图书馆分馆、连锁餐厅），读者会觉得你真的懂了</li>
+      <li><strong>带出业界方案</strong>——提到 ShardingSphere、TiDB、Snowflake、Leaf、Seata，展示技术视野</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== 口播总结 ====== -->
+<section class="section" id="summary">
+  <h2>🎙️ 口播总结</h2>
+  <div class="voice-summary">
+    <p>好，我们快速捋一遍数据库分片的实战知识体系。</p>
+    <p><strong>第一，分片是什么？</strong>一个图书馆放不下了，就开几个分馆，每个分馆存一部分书——这就是分片。它解决<strong>存储不够、写入太慢、查询太卡</strong>三大问题。但记住，分片是最后的手段，先考虑缓存、读写分离、分区表。</p>
+    <p><strong>第二，垂直拆分 vs 水平拆分</strong>——垂直是按列切分（把用户表的大字段拆出去），水平是按行切分（每张表结构相同，只存一部分数据）。实际项目先垂直再水平。</p>
+    <p><strong>第三，四大分片策略</strong>——Range 分片范围查询友好但尾部热点；Hash 分片数据均匀但扩容要 rehash 全部；一致性 Hash 扩容影响小但实现复杂；时间分片适合日志但最新数据是热点。没有完美的策略，只有合适的。</p>
+    <p><strong>第四，分片后的三座大山</strong>：跨节点查询（ORDER BY + LIMIT 需要归并排序）、全局 ID（自增 ID 失效，用 Snowflake 或号段模式）、分布式事务（XA 太慢，优先用 TCC/Saga/消息队列）。</p>
+    <p><strong>第五，业界方案</strong>——<strong>ShardingSphere</strong> 是中间件方案，JDBC 模式嵌入应用使用；<strong>TiDB</strong> 是 NewSQL，自动分片 + 强一致性，让你回归\"写 SQL 不用管分片\"的体验。</p>
+    <p><strong>第六，全局 ID</strong>——千万不要用 UUID 做主键！Snowflake 是最通用的方案，64 位 Long 型，每秒 400 万 ID。注意时钟回拨问题。美团的 Leaf 提供了号段模式和 Snowflake 模式两种选择。</p>
+    <p>数据库分片内容很多，但抓住<strong>\"分片原因 → 拆分方式 → 策略选择 → 落地方案 → 挑战应对\"</strong>这条主线，你就能比较全面地掌握分片的实战知识体系。</p>
+    <p>下一篇我们聊聊 <strong>缓存策略（Redis 三兄弟：缓存穿透/击穿/雪崩）</strong>——看看缓存系统里最常见的坑和应对方案。敬请期待！🎯</p>
+  </div>
+</section>
+
+</main>
+
+</div><!-- .app -->
+
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

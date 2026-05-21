@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDIA · 数据密集型应用系统设计 · 费曼学习法</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">📖 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 全书总览</a>
+  <div class="nav-section">第一部分：数据系统基础</div>
+  <a class="nav-item" href="#ddia-ch1">Ch1 可靠性·可扩展性·可维护性</a>
+  <a class="nav-item" href="#ddia-ch2">Ch2 数据模型与查询语言</a>
+  <a class="nav-item" href="#ddia-ch3">Ch3 存储与检索</a>
+  <a class="nav-item" href="#ddia-ch4">Ch4 编码与演化</a>
+  <div class="nav-section">第二部分：分布式数据</div>
+  <a class="nav-item" href="#ddia-ch5">Ch5 复制</a>
+  <a class="nav-item" href="#ddia-ch6">Ch6 分区</a>
+  <a class="nav-item" href="#ddia-ch7">Ch7 事务</a>
+  <a class="nav-item" href="#ddia-ch8">Ch8 分布式系统的麻烦</a>
+  <a class="nav-item" href="#ddia-ch9">Ch9 一致性与共识</a>
+  <div class="nav-section">第三部分：衍生数据</div>
+  <a class="nav-item" href="#ddia-ch10">Ch10 批处理</a>
+  <a class="nav-item" href="#ddia-ch11">Ch11 流处理</a>
+  <a class="nav-item" href="#ddia-ch12">Ch12 数据系统的未来</a>
+  <div class="nav-section">总结</div>
+  <a class="nav-item" href="#ddia-qa">❓ 核心题</a>
+  <a class="nav-item" href="#ddia-socratic">💬 苏格拉底提问</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<!-- ═══════ Overview ═══════ -->
+<section id="overview" class="section">
+  <h2>📖 DDIA · 数据密集型应用系统设计</h2>
+  <div class="feynman">
+    <p><strong>一句话定位：</strong>DDIA 是分布式系统领域的"圣经"。它不是教你用某个工具，而是教你理解数据系统背后的<strong>原理和权衡</strong>——为什么这样设计、什么场景下选什么方案。</p>
+    <p>全书三大板块：<strong>单机基础 → 分布式 → 批流一体</strong>，从底层存储引擎一路讲到上层数据流水线。</p>
+  </div>
+
+  <h3>全书地图</h3>
+  <table>
+    <tr><th>部分</th><th>章节</th><th>核心问题</th><th>关键词</th></tr>
+    <tr><td><span class="badge badge-green">Part I</span></td><td>Ch1-4 数据系统基础</td><td>单机怎么做才靠谱？</td><td>SSTable / LSM-Tree / B-Tree / OLTP vs OLAP / Avro / Protobuf</td></tr>
+    <tr><td><span class="badge badge-orange">Part II</span></td><td>Ch5-9 分布式数据</td><td>多台机器怎么协同？</td><td>主从复制 / 分区 / 事务隔离 / 线性一致性 / 共识</td></tr>
+    <tr><td><span class="badge badge-purple">Part III</span></td><td>Ch10-12 衍生数据</td><td>怎么从数据中提取价值？</td><td>MapReduce / Spark / Kafka / 流表二象性 / 数据湖</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ PART I ═══════ -->
+
+<!-- Ch1 -->
+<section id="ddia-ch1" class="section">
+  <h2>Ch1 可靠性 · 可扩展性 · 可维护性</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏠 类比：</span>盖房子三个要求——不能塌（可靠）、人多也能住（可扩展）、水管坏了容易修（可维护）。DDIA 开篇就用这三个词定义了"好系统"的标准。</p>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4>🔒 可靠性 Reliability</h4>
+      <p>即使出现<strong>硬件故障、软件错误、人为失误</strong>，系统仍能正常工作。</p>
+      <ul><li>硬件故障：冗余（RAID、双电源）</li><li>软件错误：隔离、熔断、监控</li><li>人为失误：易用API、沙箱、回滚</li></ul>
+    </div>
+    <div>
+      <h4>📈 可扩展性 Scalability</h4>
+      <p>负载增长时，系统仍有合理的性能。</p>
+      <ul><li>描述负载：QPS、读写比、活跃用户</li><li>描述性能：p50/p95/p99 延迟</li><li>垂直扩展 vs 水平扩展</li></ul>
+    </div>
+  </div>
+
+  <h4>🔧 可维护性 Maintainability</h4>
+  <table>
+    <tr><th>维度</th><th>含义</th></tr>
+    <tr><td><strong>可运维性</strong></td><td>运维团队轻松：监控、部署、配置</td></tr>
+    <tr><td><strong>简单性</strong></td><td>新人也看得懂：消除意外复杂度</td></tr>
+    <tr><td><strong>可演化性</strong></td><td>需求变了容易改：敏捷 + TDD + 重构</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🎯 核心要点</h4>
+    <p>描述系统设计时从这三个维度切入：可靠性怎么保证（冗余/容错）、可扩展性怎么设计（分片/无状态）、可维护性怎么考虑（监控/CI/CD）。</p>
+  </div>
+</section>
+
+<!-- Ch2 -->
+<section id="ddia-ch2" class="section">
+  <h2>Ch2 数据模型与查询语言</h2>
+  <div class="feynman">
+    <p><span class="analogy">🗺️ 类比：</span>关系模型是 Excel 表格（行列整齐），文档模型是 JSON 文件（嵌套自由），图模型是地铁线路图（关系为王）。选模型就是选"怎么描述世界"。</p>
+  </div>
+
+  <h3>三大数据模型对比</h3>
+  <table>
+    <tr><th>模型</th><th>代表</th><th>适合场景</th><th>弱点</th></tr>
+    <tr><td><strong>关系模型</strong></td><td>MySQL / PostgreSQL</td><td>多对多、JOIN 查询</td><td>模式变更困难</td></tr>
+    <tr><td><strong>文档模型</strong></td><td>MongoDB / CouchDB</td><td>一对多、自包含数据</td><td>多对多弱、JOIN 需应用层做</td></tr>
+    <tr><td><strong>图模型</strong></td><td>Neo4j / Dgraph</td><td>多对多关系密集</td><td>学习曲线陡</td></tr>
+  </table>
+
+  <h4>关系模型 vs 文档模型的经典争论</h4>
+  <div class="compare">
+    <div>
+      <h4>文档模型优势</h4>
+      <ul><li>模式灵活（schemaless）</li><li>局部性更好（一次读整个文档）</li><li>和 OOP 数据结构对应</li></ul>
+    </div>
+    <div>
+      <h4>关系模型优势</h4>
+      <ul><li>JOIN 支持（多对多查询）</li><li>强 schema 约束保证数据质量</li><li>几十年的查询优化器积累</li></ul>
+    </div>
+  </div>
+
+  <h4>查询语言：声明式 vs 命令式</h4>
+  <pre><code><span class="cm">-- 声明式（SQL）：说"要什么"，不管"怎么做"</span>
+SELECT * FROM users WHERE age > 18 ORDER BY name;
+
+<span class="cm">-- 命令式（代码）：说"怎么做"</span>
+result = []
+<span class="kw">for</span> user <span class="kw">in</span> users:
+    <span class="kw">if</span> user.age > 18:
+        result.append(user)
+result.sort(key=<span class="kw">lambda</span> u: u.name)</code></pre>
+  <p><strong>声明式优势：</strong>优化器可以自由选择索引、并行化、重排顺序，不会被代码实现"锁死"。</p>
+</section>
+
+<!-- Ch3 -->
+<section id="ddia-ch3" class="section">
+  <h2>Ch3 存储与检索</h2>
+  <div class="feynman">
+    <p><span class="analogy">📚 类比：</span>哈希索引是"每本书放固定位置"（O(1) 查，但顺序扫全库），LSM-Tree 是"先记小本本，定期整理到大书架"（写快读慢），B-Tree 是"图书馆分类号"（读写平衡）。</p>
+  </div>
+
+  <h3>存储引擎两大流派</h3>
+  <table>
+    <tr><th></th><th>LSM-Tree</th><th>B-Tree</th></tr>
+    <tr><td><strong>代表</strong></td><td>LevelDB / RocksDB / Cassandra</td><td>MySQL InnoDB / PostgreSQL</td></tr>
+    <tr><td><strong>写性能</strong></td><td>✅ 极快（顺序写）</td><td>⚠️ 随机写（页分裂）</td></tr>
+    <tr><td><strong>读性能</strong></td><td>⚠️ 需查多个文件</td><td>✅ O(log N) 稳定</td></tr>
+    <tr><td><strong>空间放大</strong></td><td>可配置（压缩）</td><td>有碎片</td></tr>
+    <tr><td><strong>核心操作</strong></td><td>MemTable → SSTable → Compaction</td><td>页分裂 / WAL / 缓冲池</td></tr>
+  </table>
+
+  <h4>LSM-Tree 三级结构</h4>
+  <pre><code><span class="cm">写入路径：</span>
+写请求 → MemTable (内存有序树，如红黑树)
+     → 满了后冻结 → 刷到磁盘成 SSTable (不可变)
+     → 后台 Compaction 合并多个 SSTable (去重+删 tombstone)
+
+<span class="cm">读取路径：</span>
+先查 MemTable → 再查 Bloom Filter → 再查各级 SSTable</code></pre>
+
+  <h4>B-Tree 核心机制</h4>
+  <pre><code><span class="cm">B-Tree 写入：</span>
+找到叶子页 → 写入 → 页满了？→ <strong>页分裂</strong>（一分为二，父节点加指针）
+
+<span class="cm">崩溃恢复：</span>
+WAL (Write-Ahead Log)：先写日志，再改 B-Tree 页。崩溃后重放 WAL。
+
+<span class="cm">关键参数：</span>
+分支因子 ≈ 500（一个 4KB 页存 500 个指针）
+→ 4 层 B-Tree 可存 500⁴ ≈ 62.5 亿条记录</code></pre>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 280" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="aLSM" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#fbbf24"/></marker>
+      </defs>
+      <!-- LSM-Tree side -->
+      <rect x="10" y="8" width="395" height="262" rx="8" fill="rgba(251,191,36,0.04)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="207" y="32" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">📝 LSM-Tree 写优化</text>
+
+      <!-- Write arrow -->
+      <rect x="140" y="48" width="120" height="36" rx="6" fill="rgba(251,191,36,0.15)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="200" y="71" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">Write (顺序写)</text>
+
+      <line x1="200" y1="84" x2="200" y2="100" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#aLSM)"/>
+
+      <!-- MemTable -->
+      <rect x="130" y="104" width="140" height="30" rx="6" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="1.2"/>
+      <text x="200" y="124" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="10">MemTable (内存)</text>
+
+      <line x1="200" y1="134" x2="200" y2="150" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,2"/>
+
+      <!-- SSTable L0 -->
+      <rect x="60" y="154" width="130" height="24" rx="4" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="125" y="170" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="9">SSTable L0</text>
+
+      <rect x="210" y="154" width="130" height="24" rx="4" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="275" y="170" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="9">SSTable L0</text>
+
+      <!-- Compaction arrow -->
+      <text x="125" y="195" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">↓ compaction</text>
+      <text x="275" y="195" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">↓ compaction</text>
+
+      <rect x="60" y="200" width="280" height="24" rx="4" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="200" y="216" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9">SSTable L1 (合并压缩)</text>
+
+      <text x="200" y="260" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">✅ 写入快：顺序写 + 后台压缩</text>
+
+      <!-- B-Tree side -->
+      <rect x="415" y="8" width="395" height="262" rx="8" fill="rgba(59,130,246,0.04)" stroke="#3b82f6" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="612" y="32" text-anchor="middle" fill="#3b82f6" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">📖 B-Tree 读写平衡</text>
+
+      <!-- Root -->
+      <rect x="560" y="48" width="100" height="30" rx="6" fill="rgba(59,130,246,0.15)" stroke="#3b82f6" stroke-width="1.2"/>
+      <text x="610" y="68" text-anchor="middle" fill="#93c5fd" font-family="JetBrains Mono,monospace" font-size="9">Root 页</text>
+
+      <line x1="580" y1="78" x2="530" y2="108" stroke="#3b82f6" stroke-width="1"/>
+      <line x1="640" y1="78" x2="690" y2="108" stroke="#3b82f6" stroke-width="1"/>
+
+      <rect x="480" y="112" width="100" height="30" rx="6" fill="rgba(59,130,246,0.10)" stroke="#3b82f6" stroke-width="1"/>
+      <text x="530" y="132" text-anchor="middle" fill="#93c5fd" font-family="JetBrains Mono,monospace" font-size="9">内部节点</text>
+
+      <rect x="640" y="112" width="100" height="30" rx="6" fill="rgba(59,130,246,0.10)" stroke="#3b82f6" stroke-width="1"/>
+      <text x="690" y="132" text-anchor="middle" fill="#93c5fd" font-family="JetBrains Mono,monospace" font-size="9">内部节点</text>
+
+      <line x1="530" y1="142" x2="490" y2="170"/>
+      <line x1="530" y1="142" x2="560" y2="170"/>
+      <line x1="690" y1="142" x2="650" y2="170"/>
+      <line x1="690" y1="142" x2="720" y2="170"/>
+
+      <rect x="450" y="174" width="70" height="24" rx="4" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1"/>
+      <text x="485" y="190" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">叶子页</text>
+      <rect x="530" y="174" width="70" height="24" rx="4" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1"/>
+      <text x="565" y="190" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">叶子页</text>
+      <rect x="610" y="174" width="70" height="24" rx="4" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1"/>
+      <text x="645" y="190" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">叶子页</text>
+      <rect x="690" y="174" width="70" height="24" rx="4" fill="rgba(248,81,73,0.15)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="725" y="190" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="8">页分裂！</text>
+
+      <!-- WAL -->
+      <rect x="450" y="210" width="310" height="24" rx="4" fill="rgba(248,81,73,0.06)" stroke="#f87171" stroke-width="0.8" stroke-dasharray="3,2"/>
+      <text x="605" y="226" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="8">⚠️ 写入：找到页 → 可能页分裂 → WAL 先写日志 → 再改页 (随机写)</text>
+
+      <text x="610" y="260" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">✅ 读取稳定：O(log N)，范围查询快（叶子链表）</text>
+    </svg>
+    <div class="diagram-caption">LSM-Tree（左）写优化：MemTable → SSTable → Compaction | B-Tree（右）读写平衡：树形结构 + WAL + 页分裂</div>
+  </div>
+
+  <h4>OLTP vs OLAP</h4>
+  <div class="compare">
+    <div>
+      <h4>OLTP（在线事务处理）</h4>
+      <p>面向用户，少量读写</p>
+      <ul><li>行存（按行组织）</li><li>B-Tree / LSM-Tree</li><li>MySQL / PostgreSQL</li></ul>
+    </div>
+    <div>
+      <h4>OLAP（在线分析处理）</h4>
+      <p>面向分析，大量扫表</p>
+      <ul><li>列存（按列组织）</li><li>压缩 + 向量化</li><li>ClickHouse / Doris</li></ul>
+    </div>
+  </div>
+  <p><strong>列存为什么快？</strong>分析查询通常只涉及几列——列存只需读这几列的数据，比行存少读 90%+ 的磁盘 IO。再加上压缩（同列数据相似性高）、向量化执行，查询速度可以比行存快 100 倍。</p>
+</section>
+
+<!-- Ch4 -->
+<section id="ddia-ch4" class="section">
+  <h2>Ch4 编码与演化</h2>
+  <div class="feynman">
+    <p><span class="analogy">🌐 类比：</span>两个人通信——一个说中文，一个说英文，中间需要翻译。序列化格式就是数据在网络上的"语言"。好的格式能处理"语言演变"（加字段、改类型）而不破坏通信。</p>
+  </div>
+
+  <h3>编码格式演进</h3>
+  <table>
+    <tr><th>格式</th><th>可读性</th><th>Schema</th><th>兼容性</th><th>适用</th></tr>
+    <tr><td>JSON / XML</td><td>人类可读</td><td>无</td><td>弱（无 schema 约束）</td><td>REST API</td></tr>
+    <tr><td>Protobuf / Thrift</td><td>二进制</td><td>有（.proto）</td><td>强（向前+向后）</td><td>RPC / 微服务</td></tr>
+    <tr><td>Avro</td><td>二进制</td><td>有（动态）</td><td>强（writer+reader schema）</td><td>Hadoop / Kafka</td></tr>
+  </table>
+
+  <h4>向前兼容 vs 向后兼容</h4>
+  <div class="compare">
+    <div>
+      <h4>向后兼容 Backward</h4>
+      <p><strong>新代码读旧数据</strong></p>
+      <p>新版本能处理旧版本写的数据。方法是：新字段必须有默认值。</p>
+    </div>
+    <div>
+      <h4>向前兼容 Forward</h4>
+      <p><strong>旧代码读新数据</strong></p>
+      <p>旧版本能忽略新版本加的字段。Protobuf 天然支持（未知字段跳过）。</p>
+    </div>
+  </div>
+
+  <h4>Avro 的独特设计</h4>
+  <pre><code><span class="cm"># Avro 不存 schema 在数据里，而是分开传递</span>
+<span class="cm"># Writer Schema: 写入时用的 schema</span>
+<span class="cm"># Reader Schema: 读取时用的 schema</span>
+<span class="cm"># Avro 自动做"格式转换"（字段名匹配、类型转换、默认值填充）</span>
+
+<span class="cm">优点：schema 可以独立演化，数据本身不冗余</span></code></pre>
+</section>
+
+<!-- ═══════ PART II ═══════ -->
+
+<!-- Ch5 -->
+<section id="ddia-ch5" class="section">
+  <h2>Ch5 复制 —— 让多台机器拥有相同数据</h2>
+  <div class="feynman">
+    <p><span class="analogy">📋 类比：</span>公司公告栏——领导（Leader）写了通知，大家（Follower）抄到自己本子上。如果有人想改通知，只能通过领导。这就是主从复制。</p>
+  </div>
+
+  <h3>三种复制策略</h3>
+  <table>
+    <tr><th>策略</th><th>原理</th><th>优点</th><th>缺点</th><th>代表</th></tr>
+    <tr><td><strong>主从复制</strong></td><td>一个 Leader 写，多个 Follower 读</td><td>简单、读写分离</td><td>单点写入瓶颈</td><td>MySQL / MongoDB</td></tr>
+    <tr><td><strong>多主复制</strong></td><td>多个 Leader 都可写，互相同步</td><td>就近写入、容灾</td><td>写冲突处理复杂</td><td>CouchDB / GoldenGate</td></tr>
+    <tr><td><strong>无主复制</strong></td><td>所有人可写，Quorum 决定</td><td>高可用、无单点</td><td>一致性弱、冲突多</td><td>Cassandra / Dynamo</td></tr>
+  </table>
+
+  <h4>主从复制的三种同步方式</h4>
+  <pre><code><span class="cm">1. 同步复制：Leader 等所有 Follower 确认后才返回</span>
+   优点：强一致  缺点：一个 Follower 挂了整个系统阻塞
+
+<span class="cm">2. 异步复制：Leader 写完就返回，Follower 异步追</span>
+   优点：高性能  缺点：Leader 挂了可能丢数据
+
+<span class="cm">3. 半同步（推荐）：一个 Follower 同步，其余异步</span>
+   折中方案：至少有一个备份是同步的（保证持久化 + 可用性）</code></pre>
+
+  <h4>处理复制滞后：Read-After-Write 一致性</h4>
+  <p><strong>问题：</strong>用户写了一条数据，立刻去读——由于异步复制，从库可能还没收到这条数据，用户看到"旧数据"（感觉像数据丢了）。</p>
+  <p><strong>解法：</strong>读"用户自己修改的数据"时强制走主库；其他数据可以读从库。这叫 <strong>Read-After-Write 一致性</strong>。</p>
+</section>
+
+<!-- Ch6 -->
+<section id="ddia-ch6" class="section">
+  <h2>Ch6 分区 —— 数据太大，一台机器放不下</h2>
+  <div class="feynman">
+    <p><span class="analogy">📦 类比：</span>图书馆按字母分架——A-G 在一楼，H-N 在二楼，O-Z 在三楼。分区就是把数据按规则散到多台机器，每台只管自己那部分。</p>
+  </div>
+
+  <h3>分区策略</h3>
+  <table>
+    <tr><th>策略</th><th>原理</th><th>优点</th><th>致命缺陷</th></tr>
+    <tr><td><strong>范围分区</strong></td><td>按 key 范围切（A-C, D-F...）</td><td>范围查询快</td><td><strong>热点</strong>：时间戳分区，今天的数据全写一个节点</td></tr>
+    <tr><td><strong>哈希分区</strong></td><td>hash(key) % N</td><td>均匀分布</td><td>范围查询需扫所有分区</td></tr>
+    <tr><td><strong>一致性哈希</strong></td><td>哈希环 + 虚拟节点</td><td>增删节点只影响相邻</td><td>实现复杂</td></tr>
+  </table>
+
+  <h4>分区 + 复制 = 标配</h4>
+  <p>每个分区通常在 <strong>多个节点</strong> 上存副本。例如 Kafka 的每个 Partition 有 3 个 Replica（1 Leader + 2 Follower）。</p>
+
+  <h4>二级索引：本地 vs 全局</h4>
+  <div class="compare">
+    <div>
+      <h4>本地索引（文档分区）</h4>
+      <p>每个分区独立建索引</p>
+      <p>写快，但读需查所有分区（scatter/gather）</p>
+    </div>
+    <div>
+      <h4>全局索引（词条分区）</h4>
+      <p>索引本身也分区存储</p>
+      <p>读快（只查一个分区），但写需跨分区更新索引</p>
+    </div>
+  </div>
+</section>
+
+<!-- Ch7 -->
+<section id="ddia-ch7" class="section">
+  <h2>Ch7 事务 —— 要么全做，要么全不做</h2>
+  <div class="feynman">
+    <p><span class="analogy">💸 类比：</span>银行转账——从 A 扣 100，给 B 加 100。如果扣完 A 后系统崩溃了，B 没收到钱，钱去哪了？事务保证这两个操作绑在一起，要么全成功，要么全回滚。</p>
+  </div>
+
+  <h3>ACID 详解</h3>
+  <table>
+    <tr><th>字母</th><th>含义</th><th>通俗理解</th><th>实现</th></tr>
+    <tr><td><strong>A</strong>tomicity</td><td>原子性</td><td>一个事务要么全做，要么全不做</td><td>Undo Log 回滚</td></tr>
+    <tr><td><strong>C</strong>onsistency</td><td>一致性</td><td>事务前后数据满足所有约束</td><td>外键、CHECK、触发器</td></tr>
+    <tr><td><strong>I</strong>solation</td><td>隔离性</td><td>并发事务互不干扰</td><td>MVCC / 锁</td></tr>
+    <tr><td><strong>D</strong>urability</td><td>持久性</td><td>事务提交后不丢失</td><td>WAL + fsync</td></tr>
+  </table>
+
+  <h3>⚠️ 重点：事务隔离级别</h3>
+  <p>这是高频必考点。从弱到强：</p>
+  <table>
+    <tr><th>级别</th><th>脏读</th><th>不可重复读</th><th>幻读</th><th>性能</th></tr>
+    <tr><td><strong>读未提交</strong></td><td>❌ 可能</td><td>❌ 可能</td><td>❌ 可能</td><td>最快</td></tr>
+    <tr><td><strong>读已提交</strong></td><td>✅ 防止</td><td>❌ 可能</td><td>❌ 可能</td><td>快</td></tr>
+    <tr><td><strong>可重复读</strong></td><td>✅ 防止</td><td>✅ 防止</td><td>❌ 可能</td><td>中</td></tr>
+    <tr><td><strong>可串行化</strong></td><td>✅ 防止</td><td>✅ 防止</td><td>✅ 防止</td><td>最慢</td></tr>
+  </table>
+
+  <pre><code><span class="cm">脏读示例（Read Uncommitted 下可能发生）：</span>
+事务A：UPDATE account SET balance = 200 WHERE id = 1  <span class="cm">-- 还没提交</span>
+事务B：SELECT balance FROM account WHERE id = 1       → 200  <span class="cm">-- 读到未提交数据！</span>
+事务A：ROLLBACK                                        <span class="cm">-- A 回滚了</span>
+事务B 基于 200 做了决策...  <span class="cm">-- 基于"脏数据"的决策，系统状态错乱</span>
+
+<span class="cm">不可重复读示例（Read Committed 下可能发生）：</span>
+事务B：SELECT balance FROM account WHERE id = 1       → 100
+事务A：UPDATE account SET balance = 200 WHERE id = 1; COMMIT;
+事务B：SELECT balance FROM account WHERE id = 1       → 200  <span class="cm">-- 同一事务两次读到不同值！</span>
+
+<span class="cm">幻读示例（Repeatable Read 下可能发生）：</span>
+事务B：SELECT COUNT(*) FROM account WHERE balance > 100  → 5
+事务A：INSERT INTO account VALUES (6, 'new', 150); COMMIT;
+事务B：SELECT COUNT(*) FROM account WHERE balance > 100  → 6  <span class="cm">-- "多了一行"</span></code></pre>
+
+  <h4>MVCC：多版本并发控制</h4>
+  <div class="feynman">
+    <p><span class="analogy">📸 类比：</span>MVCC 就像 Git——每个事务看到的是数据库的"某个快照"，即使其他事务在修改，你看到的也不会变。每行数据都有<code>created_by</code> 和 <code>deleted_by</code> 两个版本号。</p>
+  </div>
+  <p><strong>核心机制：</strong>读不阻塞写，写不阻塞读。每次 UPDATE 不覆盖原数据，而是创建新版本，旧版本保留给正在读的事务。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 200" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="aMV" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker>
+      </defs>
+      <!-- Row: version chain -->
+      <text x="15" y="25" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">一行数据的版本链（Undo Log）→</text>
+
+      <!-- Current version -->
+      <rect x="15" y="40" width="140" height="70" rx="8" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="2"/>
+      <text x="85" y="62" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">V3 (当前)</text>
+      <text x="85" y="80" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">trx_id=103</text>
+      <text x="85" y="95" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">name="Bob"</text>
+
+      <line x1="155" y1="75" x2="185" y2="75" stroke="#22d3ee" stroke-width="1.2" marker-end="url(#aMV)"/>
+      <text x="170" y="68" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="7">roll_ptr</text>
+
+      <rect x="190" y="40" width="140" height="70" rx="8" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="260" y="62" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">V2 (历史)</text>
+      <text x="260" y="80" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="8">trx_id=102</text>
+      <text x="260" y="95" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="8">name="Alice"</text>
+
+      <line x1="330" y1="75" x2="360" y2="75" stroke="#22d3ee" stroke-width="1.2" marker-end="url(#aMV)"/>
+
+      <rect x="365" y="40" width="140" height="70" rx="8" fill="rgba(139,148,158,0.06)" stroke="#64748b" stroke-width="1.2" stroke-dasharray="4,2"/>
+      <text x="435" y="62" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono,monospace" font-size="11">V1 (旧版)</text>
+      <text x="435" y="80" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono,monospace" font-size="8">trx_id=101</text>
+      <text x="435" y="95" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono,monospace" font-size="8">name="Tom"</text>
+
+      <!-- Read View arrows -->
+      <line x1="15" y1="120" x2="800" y2="120" stroke="#475569" stroke-width="1"/>
+      <text x="15" y="138" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">时间线 →</text>
+
+      <!-- Tx A: Read View at V2 -->
+      <rect x="15" y="145" width="240" height="45" rx="6" fill="rgba(88,166,255,0.08)" stroke="#58a6ff" stroke-width="1"/>
+      <text x="135" y="163" text-anchor="middle" fill="#58a6ff" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">事务 A 的 Read View</text>
+      <text x="135" y="180" text-anchor="middle" fill="#93c5fd" font-family="JetBrains Mono,monospace" font-size="8">开始于 trx_id=102 提交后 → 看到 V2</text>
+      <line x1="135" y1="145" x2="260" y2="110" stroke="#58a6ff" stroke-width="1" stroke-dasharray="3,2"/>
+
+      <!-- Tx B: writes V3 -->
+      <rect x="280" y="145" width="240" height="45" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1"/>
+      <text x="400" y="163" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">事务 B 写 V3</text>
+      <text x="400" y="180" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="8">trx_id=103, 创建 V3，V2 保留</text>
+      <line x1="400" y1="145" x2="85" y2="110" stroke="#f87171" stroke-width="1" stroke-dasharray="3,2"/>
+
+      <!-- Key insight -->
+      <rect x="540" y="145" width="265" height="45" rx="6" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="672" y="165" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">✅ A 仍读 V2，B 写 V3</text>
+      <text x="672" y="182" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">写不阻塞读，读不阻塞写</text>
+    </svg>
+    <div class="diagram-caption">MVCC 版本链：每行多版本共存，Read View 决定事务看到哪个版本</div>
+  </div>
+
+  <div class="info-card" style="border-color:rgba(163,113,247,0.4);background:linear-gradient(135deg,rgba(163,113,247,0.06),rgba(88,166,255,0.03))">
+    <h4>🔗 MySQL 实战对照</h4>
+    <p>DDIA 讲的是事务的<strong>通用原理</strong>，MySQL 的 InnoDB 是这些原理的<strong>工业级实现</strong>。对照着看事半功倍：</p>
+    <table>
+      <tr><th>DDIA 概念</th><th>MySQL InnoDB 实现</th><th>详见</th></tr>
+      <tr><td>MVCC 多版本并发控制</td><td>每行隐藏字段 <code>DB_TRX_ID</code>（事务ID）+ <code>DB_ROLL_PTR</code>（回滚指针）→ 通过 Undo Log 构建版本链</td><td>📘 MySQL</td></tr>
+      <tr><td>Read View（快照读）</td><td>RR 级别下事务开始时创建 Read View，RC 级别下每条语句重新创建</td><td>📘 MySQL</td></tr>
+      <tr><td>可重复读（Repeatable Read）</td><td>InnoDB 默认级别，通过 MVCC + Next-Key Lock（Gap Lock）防止幻读</td><td>📘 MySQL</td></tr>
+      <tr><td>WAL 预写日志</td><td>InnoDB 的 <code>redo log</code>（崩溃恢复）+ <code>undo log</code>（事务回滚+MVCC）</td><td>📘 MySQL</td></tr>
+      <tr><td>隔离级别的并发问题</td><td>脏读/不可重复读/幻读的 MySQL 实战演示</td><td>📘 MySQL</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px">💡 建议读完本节后去看 <a href="/mysql.html" style="color:var(--accent)">📘 MySQL</a> 中事务与 MVCC 章节——DDIA 讲"为什么这样设计"，MySQL 讲"具体怎么实现"，两篇文章互补。</p>
+  </div>
+
+</section>
+
+<!-- Ch8 -->
+<section id="ddia-ch8" class="section">
+  <h2>Ch8 分布式系统的麻烦</h2>
+  <div class="feynman">
+    <p><span class="analogy">🌩️ 类比：</span>单机是独栋别墅（什么都可控），分布式是公寓楼——邻居可能半夜装修（网络延迟）、电梯可能坏（节点故障）、快递可能送错门（消息乱序）。DDIA 这章把分布式系统所有坑都列了一遍。</p>
+  </div>
+
+  <h3>八大分布式谬误</h3>
+  <table>
+    <tr><th>#</th><th>谬误</th><th>现实</th></tr>
+    <tr><td>1</td><td>网络是可靠的</td><td>丢包、延迟、分区（网络分区）</td></tr>
+    <tr><td>2</td><td>延迟为零</td><td>跨机房 RTT 100-300ms</td></tr>
+    <tr><td>3</td><td>带宽无限</td><td>拥塞、限流</td></tr>
+    <tr><td>4</td><td>网络是安全的</td><td>中间人、DDoS</td></tr>
+    <tr><td>5</td><td>拓扑不变</td><td>加节点、减节点</td></tr>
+    <tr><td>6</td><td>只有一个管理员</td><td>多团队、多配置源</td></tr>
+    <tr><td>7</td><td>传输成本为零</td><td>序列化、压缩有开销</td></tr>
+    <tr><td>8</td><td>网络是同质的</td><td>不同链路延迟差异大</td></tr>
+  </table>
+
+  <h4>时钟问题</h4>
+  <p>分布式系统中各节点的时钟不一定同步——NTP 可能有几个 ms 的偏差。所以<strong>不能用墙上时钟（Wall Clock）判断事件顺序</strong>，必须用<strong>逻辑时钟</strong>（如 Lamport 时间戳）。</p>
+
+  <h4>真相由多数派定义</h4>
+  <div class="feynman">
+    <p><strong>一句话：</strong>在分布式系统中，一个节点不能相信自己的判断——它可能已经"脑裂"了。真相由 Quorum（多数派）投票决定。</p>
+  </div>
+</section>
+
+<!-- Ch9 -->
+<section id="ddia-ch9" class="section">
+  <h2>Ch9 一致性与共识</h2>
+  <div class="feynman">
+    <p><span class="analogy">🗳️ 类比：</span>一致性是"大家看到的东西一样吗"，共识是"大家投票选出一个决定了吗"。线性一致性是最强的保证——让分布式系统"假装"只有一台机器。</p>
+  </div>
+
+  <h3>一致性模型谱系（从强到弱）</h3>
+  <table>
+    <tr><th>模型</th><th>保证</th><th>典型系统</th></tr>
+    <tr><td><strong>线性一致性</strong></td><td>所有操作看起来像原子操作一样瞬间完成，全局有序</td><td>etcd / ZooKeeper</td></tr>
+    <tr><td><strong>顺序一致性</strong></td><td>操作按某个全局顺序执行，但不保证实时</td><td>理论模型</td></tr>
+    <tr><td><strong>因果一致性</strong></td><td>有因果关系的操作按序，无关的可以乱序</td><td>无主数据库</td></tr>
+    <tr><td><strong>最终一致性</strong></td><td>只要没有新写，最终所有副本一致</td><td>DNS / Cassandra</td></tr>
+  </table>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 160" style="max-width:820px;width:100%">
+      <!-- Spectrum bar -->
+      <rect x="40" y="25" width="740" height="16" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <defs>
+        <linearGradient id="cGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#3fb950"/>
+          <stop offset="33%" stop-color="#fbbf24"/>
+          <stop offset="66%" stop-color="#fb923c"/>
+          <stop offset="100%" stop-color="#f87171"/>
+        </linearGradient>
+      </defs>
+      <rect x="40" y="25" width="740" height="16" rx="8" fill="url(#cGrad)" opacity="0.6"/>
+
+      <!-- Labels -->
+      <text x="100" y="18" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">强一致</text>
+      <text x="410" y="18" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">← 折中区 →</text>
+      <text x="680" y="18" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">最终一致</text>
+
+      <!-- Models placed on bar -->
+      <rect x="60" y="55" width="130" height="36" rx="6" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="125" y="78" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">线性一致性</text>
+
+      <rect x="230" y="55" width="110" height="36" rx="6" fill="rgba(251,191,36,0.10)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="285" y="78" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">因果一致性</text>
+
+      <rect x="390" y="55" width="110" height="36" rx="6" fill="rgba(249,115,22,0.10)" stroke="#fb923c" stroke-width="1.2"/>
+      <text x="445" y="78" text-anchor="middle" fill="#fb923c" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">顺序一致性</text>
+
+      <rect x="550" y="55" width="120" height="36" rx="6" fill="rgba(248,81,73,0.10)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="610" y="78" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">最终一致性</text>
+
+      <!-- System pointers -->
+      <text x="125" y="115" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">etcd / ZK</text>
+      <text x="285" y="115" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">Dynamo-style</text>
+      <text x="445" y="115" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">理论模型</text>
+      <text x="610" y="115" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">DNS / Cassandra</text>
+
+      <!-- Bottom insight -->
+      <text x="410" y="150" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">一致性 ≠ 全有或全无，而是一个连续谱 —— 越强越慢，越弱越快</text>
+    </svg>
+    <div class="diagram-caption">一致性模型谱系：强一致（左）→ 最终一致（右），CAP 的 C 并非二选一</div>
+  </div>
+
+  <h4>共识协议对比</h4>
+  <table>
+    <tr><th>协议</th><th>特点</th><th>性能</th><th>应用</th></tr>
+    <tr><td>Paxos</td><td>理论优雅，实现极难</td><td>2 RTT</td><td>Chubby</td></tr>
+    <tr><td>Raft</td><td>可理解性优先</td><td>1 RTT</td><td>etcd / TiKV</td></tr>
+    <tr><td>ZAB</td><td>为 ZooKeeper 定制</td><td>1 RTT</td><td>ZooKeeper</td></tr>
+  </table>
+  <p style="font-size:12px;color:var(--muted)">详见本站 <a href="/consensus.html" style="color:var(--accent)">分布式一致性协议</a> 专题。</p>
+</section>
+
+<!-- ═══════ PART III ═══════ -->
+
+<!-- Ch10 -->
+<section id="ddia-ch10" class="section">
+  <h2>Ch10 批处理 —— 离线处理海量数据</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏭 类比：</span>批处理 = 工厂夜班——白天收集订单，晚上统一处理一整天的数据。不在乎单条多快，在乎吞吐量（单位时间处理多少）。</p>
+  </div>
+
+  <h3>MapReduce 三部曲</h3>
+  <pre><code><span class="cm">Map:    将输入拆成 (key, value) 对 → 分到不同 Reducer</span>
+<span class="cm">Shuffle: 按 key 排序 + 分组（最耗时的阶段）</span>
+<span class="cm">Reduce:  对每个 key 的 values 做聚合</span>
+
+<span class="cm">示例：统计每个单词出现次数（Word Count）</span>
+<span class="kw">def</span> <span class="fn">map</span>(doc):
+    <span class="kw">for</span> word <span class="kw">in</span> doc.split():
+        emit(word, 1)         <span class="cm"># 输出 (word, 1)</span>
+
+<span class="kw">def</span> <span class="fn">reduce</span>(word, counts):
+    emit(word, sum(counts))   <span class="cm"># 求和</span></code></pre>
+
+  <h4>MapReduce → Spark 的进化</h4>
+  <p>MapReduce 的痛点：<strong>每步都写磁盘</strong>，中间结果巨大。Spark 的核心创新：<strong>RDD 放内存</strong>，DAG 调度，避免不必要的磁盘 IO。这就是为什么 Spark 比 MapReduce 快 10-100 倍。</p>
+
+  <h4>MapReduce Join 算法</h4>
+  <table>
+    <tr><th>算法</th><th>原理</th><th>适用</th></tr>
+    <tr><td><strong>Reduce-side Join</strong></td><td>Map 阶段打标签，Shuffle 按 join key 分组，Reduce 阶段做 join</td><td>通用、两表都大</td></tr>
+    <tr><td><strong>Map-side Join</strong></td><td>把小表加载到内存，Map 阶段直接 join，不走 Shuffle</td><td>一大一小（broadcast join）</td></tr>
+  </table>
+</section>
+
+<!-- Ch11 -->
+<section id="ddia-ch11" class="section">
+  <h2>Ch11 流处理 —— 实时处理，来了就做</h2>
+  <div class="feynman">
+    <p><span class="analogy">📡 类比：</span>批处理是"每天晚上算昨天的销售额"，流处理是"每卖出一单立刻更新仪表盘"。一个看历史，一个看现在。</p>
+  </div>
+
+  <h3>批处理 vs 流处理</h3>
+  <div class="compare">
+    <div>
+      <h4>批处理 Batch</h4>
+      <ul><li>数据：有界（固定大小文件）</li><li>延迟：分钟到小时级</li><li>代表：Spark / Hive</li></ul>
+    </div>
+    <div>
+      <h4>流处理 Stream</h4>
+      <ul><li>数据：无界（持续产生）</li><li>延迟：毫秒到秒级</li><li>代表：Flink / Kafka Streams</li></ul>
+    </div>
+  </div>
+
+  <h3>消息系统的两种模型</h3>
+  <table>
+    <tr><th></th><th>AMQP/JMS 模型</th><th>日志模型（Kafka）</th></tr>
+    <tr><td><strong>消费确认</strong></td><td>消费者 ack，broker 删除</td><td>消费者记 offset，消息保留</td></tr>
+    <tr><td><strong>重复消费</strong></td><td>难（消息已删）</td><td>易（重置 offset 重读）</td></tr>
+    <tr><td><strong>多消费者</strong></td><td>负载均衡（一条消息一人消费）</td><td>发布订阅（多组各自消费）</td></tr>
+  </table>
+
+  <h4>时间窗口</h4>
+  <pre><code><span class="cm">四种窗口类型：</span>
+1. <strong>Tumbling Window（滚动窗口）</strong>：不重叠，固定大小
+   例：每分钟统计一次 [10:00, 10:01), [10:01, 10:02)
+
+2. <strong>Hopping Window（滑动窗口）</strong>：固定大小，固定步长
+   例：每 30 秒统计过去 1 分钟
+
+3. <strong>Sliding Window（滑动窗口）</strong>：仅按时间滑动
+   例："过去 5 分钟内的数据"（不停更新）
+
+4. <strong>Session Window（会话窗口）</strong>：按活动间隔切分
+   例：用户一顿操作后 30 分钟没动静 = 一个 session</code></pre>
+
+  <h4>流表二象性</h4>
+  <div class="feynman">
+    <p><strong>DDIA 最深刻的思想之一：</strong>表和流是同一枚硬币的两面。</p>
+    <p><strong>流 → 表：</strong>把流（INSERT/UPDATE/DELETE 事件）累计起来就是表（当前最新状态）。</p>
+    <p><strong>表 → 流：</strong>把表的变更日志（CDC，Change Data Capture）发出去就是流。</p>
+    <p><strong>启示：</strong>数据库、消息队列、流处理器本质上在做同一件事——维护数据的物化视图。Kafka 可以当数据库用，数据库的 binlog 可以当消息队列用。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 200" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="aST" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker>
+        <marker id="aTS" markerWidth="7" markerHeight="5" refX="0" refY="2.5" orient="auto"><path d="M7,0 L0,2.5 L7,5 Z" fill="#fbbf24"/></marker>
+      </defs>
+
+      <!-- Stream side -->
+      <rect x="20" y="20" width="300" height="70" rx="10" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="170" y="45" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="14" font-weight="700">📡 流 (Stream)</text>
+      <text x="170" y="65" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">INSERT / UPDATE / DELETE 事件序列</text>
+      <text x="170" y="80" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">Kafka Topic, CDC Binlog</text>
+
+      <!-- Table side -->
+      <rect x="500" y="20" width="300" height="70" rx="10" fill="rgba(251,191,36,0.06)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="650" y="45" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="14" font-weight="700">📋 表 (Table)</text>
+      <text x="650" y="65" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="9">当前最新状态的快照</text>
+      <text x="650" y="80" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">MySQL, PostgreSQL, KV Store</text>
+
+      <!-- Stream → Table (accumulate) -->
+      <path d="M 170 95 Q 170 130 410 130 Q 650 130 650 95" fill="none" stroke="#22d3ee" stroke-width="2" marker-end="url(#aST)"/>
+      <text x="410" y="120" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">累积 (Aggregate) →</text>
+      <text x="410" y="135" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">KTable, 物化视图</text>
+
+      <!-- Table → Stream (CDC) -->
+      <path d="M 650 95 Q 650 165 410 165 Q 170 165 170 95" fill="none" stroke="#fbbf24" stroke-width="2" marker-end="url(#aTS)"/>
+      <text x="410" y="178" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">← 变更捕获 (CDC)</text>
+      <text x="410" y="193" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">Debezium, binlog, WAL</text>
+    </svg>
+    <div class="diagram-caption">流表二象性：流累积成表，表的变更日志成流——两者是同一数据的不同物化形式</div>
+  </div>
+
+</section>
+
+<!-- Ch12 -->
+<section id="ddia-ch12" class="section">
+  <h2>Ch12 数据系统的未来</h2>
+  <div class="feynman">
+    <p>DDIA 最后一章不是讲技术，而是讲 <strong>哲学</strong>——构建数据系统时应该坚持什么原则。</p>
+  </div>
+
+  <h3>核心洞察</h3>
+  <table>
+    <tr><th>原则</th><th>含义</th></tr>
+    <tr><td><strong>派生数据 > 分布式事务</strong></td><td>与其用 2PC 跨系统协调，不如用 CDC 把数据流向各个系统（松散耦合）</td></tr>
+    <tr><td><strong>不可变日志是金</strong></td><td>Kafka 式的 immutable log 是系统间数据交换的最佳抽象</td></tr>
+    <tr><td><strong>端到端原则</strong></td><td>不要把正确性全压在底层（如 TCP 重传不够，应用层也要校验）</td></tr>
+    <tr><td><strong>做得对 > 做得快</strong></td><td>系统的第一优先级是正确的语义，然后才是性能优化</td></tr>
+  </table>
+
+  <h4>Lambda 架构 → Kappa 架构</h4>
+  <pre><code><span class="cm">Lambda 架构（两套代码、两套系统）：</span>
+批处理层（Spark）→ 做历史全量分析
+     +
+流处理层（Storm）→ 做实时增量
+     ↓
+合并输出
+
+<span class="cm">Kappa 架构（一套代码、一套系统，现代推荐）：</span>
+Kafka（不可变日志）→ Flink/Kafka Streams（统一流处理）
+→ 想"重算历史"？重置 offset 重跑流即可
+→ 批处理 = 流处理的"回放"</code></pre>
+</section>
+
+<!-- ═══════ 核心题 ═══════ -->
+<section id="ddia-qa" class="section">
+  <h2>❓ DDIA 高频考题</h2>
+
+  <div class="qa"><div class="q">Q1: LSM-Tree 和 B-Tree 的区别？各适合什么场景？</div><div class="a"><strong>LSM-Tree：</strong>写优化（顺序写），读放大（需查多个 SSTable），适合写多读少（日志、时序数据）。<strong>B-Tree：</strong>读写平衡（O(log N)），写放大（页分裂），适合读多写少或读写均衡（OLTP）。代表：LSM-Tree → RocksDB/Cassandra，B-Tree → InnoDB/PostgreSQL。</div></div>
+
+  <div class="qa"><div class="q">Q2: 事务隔离级别有哪些？MySQL 默认是什么？</div><div class="a">读未提交 → 读已提交 → 可重复读 → 可串行化。<strong>MySQL InnoDB 默认是可重复读（Repeatable Read）</strong>，通过 MVCC + Next-Key Lock（Gap Lock）防幻读。PostgreSQL 默认是读已提交。</div></div>
+
+  <div class="qa"><div class="q">Q3: MVCC 的实现原理？</div><div class="a">每行数据有隐藏字段：<code>trx_id</code>（创建该版本的事务ID）和 <code>roll_pointer</code>（指向 undo log 旧版本）。SELECT 根据事务开始的 Read View 判断哪些版本可见。UPDATE 创建新版本而不是覆盖 → 写不阻塞读。</div></div>
+
+  <div class="qa"><div class="q">Q4: 什么是线性一致性？和最终一致性的区别？</div><div class="a"><strong>线性一致性</strong>：让分布式系统看起来像单机——写完后所有后续读都能看到新值，操作按全局实时顺序。etcd 提供。<strong>最终一致性</strong>：只要没有新写，最终所有副本一致——但中间可能读到旧值。Cassandra/DNS 提供。</div></div>
+
+  <div class="qa"><div class="q">Q5: 主从复制的延迟问题怎么解决？</div><div class="a">① Read-After-Write：用户自己刚写的数据走主库读；② 单调读：同一用户始终读同一个从库副本；③ 前缀一致性读：保证因果顺序。终极方案是<strong>用共识协议（Raft）替代主从</strong>。</div></div>
+
+  <div class="qa"><div class="q">Q6: 什么场景适合用列存？</div><div class="a">OLAP（分析查询），查询只涉及少数列、大量行。列存压缩率高（同列数据相似）、向量化执行快。典型：ClickHouse、Doris。不要用列存做 OLTP——单行写入代价极高。</div></div>
+
+  <div class="qa"><div class="q">Q7: 说一下流表二象性？</div><div class="a">表和流是等价的：流（变更事件）累积起来是表；表的 changelog（CDC）发出去是流。这意味着<strong>数据库和消息队列没有本质区别</strong>——只是数据的两种物化形式。这催生了 Kappa 架构（用流处理统一批和流）。</div></div>
+</section>
+
+<!-- ═══════ 苏格拉底提问 ═══════ -->
+<section id="ddia-socratic" class="section">
+  <h2>💬 苏格拉底式提问</h2>
+  <details class="socratic"><summary>为什么说"分布式事务（2PC）是反模式"？<span class="socratic-num">Q1</span></summary><div class="socratic-a"><span class="highlight">2PC 的致命缺陷：</span>① 阻塞协议——协调者挂了，参与者锁住资源死等（可能 forever）；② 性能差——两轮 RPC + 所有参与者的 fsync；③ 耦合紧——参与者必须在线。DDIA 推崇<span class="highlight">用 CDC + 补偿事务（Saga）替代</span>，通过不可变日志松散耦合各系统。</div></details>
+  <details class="socratic"><summary>B-Tree 用了几十年了，为什么 LSM-Tree 能在现代崛起？<span class="socratic-num">Q2</span></summary><div class="socratic-a"><span class="highlight">硬件变了。</span>B-Tree 诞生于磁盘时代（随机读写差距不大）。现代 SSD 的随机写仍然有写放大问题（最小写入单位是 page），而<span class="highlight">LSM-Tree 的顺序写完美匹配 SSD 的物理特性</span>。另外大数据时代的数据量暴增，B-Tree 的碎片化在大规模下成了灾难。</div></details>
+  <details class="socratic"><summary>如果让你从零设计一个数据库，你会选什么存储引擎？<span class="socratic-num">Q3</span></summary><div class="socratic-a">取决于场景。OLTP 不用想，直接 B-Tree（InnoDB）——它是 40 年锤炼过的方案。时序/日志/写密集场景，LSM-Tree（RocksDB）。列存场景 ClickHouse。关键是<span class="highlight">不要自己从零写——WAL + 页管理 + 崩溃恢复的坑深不见底</span>。DDIA 全书都在告诉我们：理解原理，但在工程上站在巨人肩膀上。</div></details>
+</section>
+
+</main>
+</div>
+
+<script src="/mobile.js"></script>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

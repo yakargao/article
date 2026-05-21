@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>计算机网络 · 协议栈到 HTTPS · 费曼学习法</title>
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; padding: 16px; } .compare { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🌐 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">协议栈</div>
+  <a class="nav-item" href="#osi-tcpip">🏗️ OSI vs TCP/IP</a>
+  <div class="nav-section">传输层</div>
+  <a class="nav-item" href="#tcp-udp">📦 TCP vs UDP</a>
+  <a class="nav-item" href="#tcp-handshake">🤝 TCP 三次握手四次挥手</a>
+  <a class="nav-item" href="#tcp-flow">🌊 流量控制 · 滑动窗口</a>
+  <a class="nav-item" href="#tcp-congestion">🚦 拥塞控制</a>
+  <div class="nav-section">应用层</div>
+  <a class="nav-item" href="#http">📡 HTTP 协议族</a>
+  <a class="nav-item" href="#https-tls">🔐 HTTPS & TLS</a>
+  <a class="nav-item" href="#dns">📇 DNS 解析</a>
+  <div class="nav-section">网络层</div>
+  <a class="nav-item" href="#ip">🌍 IP 协议与路由</a>
+  <div class="nav-section">总结</div>
+  <a class="nav-item" href="#net-qa">❓ 高频考题</a>
+  <a class="nav-item" href="#net-summary">🎙️ 口播总结</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>🌐 计算机网络 · 从协议栈到 HTTPS · 全景</h2>
+  <div class="feynman">
+    <p><strong>一句话定位：</strong>计算机网络是实战中"看似基础实则杀人"的领域——TCP 三次握手、HTTPS 握手流程、HTTP/2 多路复用、拥塞控制算法，每个点都能问出深度。这篇文章用 8 张配图把核心协议讲透。</p>
+  </div>
+  <table>
+    <tr><th>模块</th><th>核心内容</th><th>配图数</th></tr>
+    <tr><td><span class="badge badge-green">协议栈</span></td><td>OSI 7层 vs TCP/IP 4层，每层职责、协议、设备</td><td>1</td></tr>
+    <tr><td><span class="badge badge-orange">传输层</span></td><td>TCP/UDP 对比、三次握手四次挥手、滑动窗口、拥塞控制</td><td>4</td></tr>
+    <tr><td><span class="badge badge-purple">应用层</span></td><td>HTTP/1.1→2→3 演进、HTTPS/TLS 1.3、DNS 解析链路</td><td>2</td></tr>
+    <tr><td><span class="badge badge-red">网络层</span></td><td>IP 协议、路由协议、NAT、ARP</td><td>1</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ OSI vs TCP/IP ═══════ -->
+<section id="osi-tcpip" class="section">
+  <h2>🏗️ OSI 七层 vs TCP/IP 四层：协议栈的两种视角</h2>
+  <div class="feynman">
+    <p><span class="analogy">📦 类比：</span>发送网络数据就像寄快递——应用层是你在写收件人（HTTP），传输层是快递员贴运单号（TCP端口），网络层是分拣中心选路线（IP地址），链路层是货车司机运到下一站（MAC地址），物理层是公路（网线/光纤/WiFi）。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 420" style="max-width:820px;width:100%">
+      <!-- OSI 7 -->
+      <rect x="20" y="10" width="240" height="34" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="140" y="32" text-anchor="middle" fill="#f87171" font-size="12" font-weight="700">OSI 七层模型</text>
+      <rect x="20" y="48" width="240" height="38" rx="6" fill="rgba(88,166,255,0.06)" stroke="#58a6ff" stroke-width="1"/><text x="140" y="72" text-anchor="middle" fill="#58a6ff" font-size="11">7. 应用层 Application</text>
+      <rect x="20" y="90" width="240" height="38" rx="6" fill="rgba(88,166,255,0.06)" stroke="#58a6ff" stroke-width="1"/><text x="140" y="114" text-anchor="middle" fill="#58a6ff" font-size="11">6. 表示层 Presentation</text>
+      <rect x="20" y="132" width="240" height="38" rx="6" fill="rgba(88,166,255,0.06)" stroke="#58a6ff" stroke-width="1"/><text x="140" y="156" text-anchor="middle" fill="#58a6ff" font-size="11">5. 会话层 Session</text>
+      <rect x="20" y="174" width="240" height="38" rx="6" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/><text x="140" y="198" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">4. 传输层 Transport</text>
+      <rect x="20" y="216" width="240" height="38" rx="6" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1"/><text x="140" y="240" text-anchor="middle" fill="#fbbf24" font-size="11">3. 网络层 Network</text>
+      <rect x="20" y="258" width="240" height="38" rx="6" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1"/><text x="140" y="282" text-anchor="middle" fill="#a78bfa" font-size="11">2. 数据链路层 Data Link</text>
+      <rect x="20" y="300" width="240" height="38" rx="6" fill="rgba(139,148,158,0.08)" stroke="#8b949e" stroke-width="1"/><text x="140" y="324" text-anchor="middle" fill="#8b949e" font-size="11">1. 物理层 Physical</text>
+
+      <!-- Mapping arrows -->
+      <rect x="320" y="48" width="40" height="38" rx="4" fill="none" stroke="#58a6ff" stroke-width="1" stroke-dasharray="3,2"/>
+      <rect x="320" y="90" width="40" height="38" rx="4" fill="none" stroke="#58a6ff" stroke-width="1" stroke-dasharray="3,2"/>
+      <rect x="320" y="132" width="40" height="38" rx="4" fill="none" stroke="#58a6ff" stroke-width="1" stroke-dasharray="3,2"/>
+      <rect x="320" y="216" width="40" height="76" rx="4" fill="none" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2"/>
+      <rect x="320" y="258" width="40" height="38" rx="4" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,2"/>
+      <rect x="320" y="300" width="40" height="38" rx="4" fill="none" stroke="#8b949e" stroke-width="1" stroke-dasharray="3,2"/>
+
+      <!-- TCP/IP 4 -->
+      <rect x="380" y="10" width="260" height="34" rx="6" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="510" y="32" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="700">TCP/IP 四层模型</text>
+      <rect x="380" y="48" width="260" height="114" rx="8" fill="rgba(88,166,255,0.08)" stroke="#58a6ff" stroke-width="2"/>
+      <text x="510" y="85" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">应用层</text>
+      <text x="510" y="108" text-anchor="middle" fill="#93c5fd" font-size="10">HTTP DNS FTP SMTP WebSocket</text>
+      <text x="510" y="128" text-anchor="middle" fill="#93c5fd" font-size="9">数据单元：Message</text>
+
+      <rect x="380" y="174" width="260" height="70" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="2"/>
+      <text x="510" y="200" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">传输层</text>
+      <text x="510" y="220" text-anchor="middle" fill="#4ade80" font-size="10">TCP · UDP  |  端口号</text>
+      <text x="510" y="236" text-anchor="middle" fill="#4ade80" font-size="9">数据单元：Segment</text>
+
+      <rect x="380" y="258" width="260" height="70" rx="8" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="510" y="284" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="700">网络层</text>
+      <text x="510" y="304" text-anchor="middle" fill="#fcd34d" font-size="10">IP · ICMP · 路由协议</text>
+      <text x="510" y="320" text-anchor="middle" fill="#fcd34d" font-size="9">数据单元：Packet</text>
+
+      <rect x="380" y="342" width="260" height="70" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="510" y="368" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="700">网络接口层</text>
+      <text x="510" y="388" text-anchor="middle" fill="#c4b5fd" font-size="10">ARP · MAC · 以太网</text>
+      <text x="510" y="404" text-anchor="middle" fill="#c4b5fd" font-size="9">数据单元：Frame</text>
+
+      <!-- Right side: encapsulation -->
+      <rect x="670" y="48" width="130" height="360" rx="8" fill="rgba(139,148,158,0.04)" stroke="#475569" stroke-width="1"/>
+      <text x="735" y="72" text-anchor="middle" fill="#64748b" font-size="10" font-weight="600">封装过程</text>
+      <rect x="678" y="85" width="114" height="30" rx="4" fill="rgba(58,130,246,0.15)" stroke="#3b82f6" stroke-width="1"/><text x="735" y="105" text-anchor="middle" fill="#93c5fd" font-size="8">App Data</text>
+      <rect x="678" y="118" width="114" height="30" rx="4" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1"/><text x="735" y="138" text-anchor="middle" fill="#4ade80" font-size="8">TCP Header</text>
+      <rect x="678" y="151" width="114" height="30" rx="4" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1"/><text x="735" y="171" text-anchor="middle" fill="#fcd34d" font-size="8">IP Header</text>
+      <rect x="678" y="184" width="114" height="30" rx="4" fill="rgba(163,113,247,0.12)" stroke="#a78bfa" stroke-width="1"/><text x="735" y="204" text-anchor="middle" fill="#c4b5fd" font-size="8">Frame Header</text>
+      <text x="735" y="230" text-anchor="middle" fill="#64748b" font-size="8">↓ 发送时逐层加头</text>
+      <text x="735" y="248" text-anchor="middle" fill="#64748b" font-size="8">↑ 接收时逐层去头</text>
+    </svg>
+    <div class="diagram-caption">OSI 7层（理论模型）→ TCP/IP 4层（事实标准）+ 数据封装过程</div>
+  </div>
+
+  <h3>每层的核心协议和中间设备</h3>
+  <table>
+    <tr><th>层</th><th>核心协议</th><th>中间设备</th><th>核心关键词</th></tr>
+    <tr><td><strong>应用层</strong></td><td>HTTP/HTTPS, DNS, WebSocket, gRPC</td><td>L7 负载均衡 (Nginx/Envoy)</td><td>状态码、Cookie、跨域CORS</td></tr>
+    <tr><td><strong>传输层</strong></td><td>TCP, UDP</td><td>L4 负载均衡 (LVS/HAProxy)</td><td>三次握手、TIME_WAIT、拥塞控制</td></tr>
+    <tr><td><strong>网络层</strong></td><td>IP (v4/v6), ICMP, OSPF, BGP</td><td>路由器</td><td>子网掩码、NAT、路由表</td></tr>
+    <tr><td><strong>链路层</strong></td><td>ARP, Ethernet, VLAN</td><td>交换机、网桥</td><td>MAC 地址、ARP 欺骗</td></tr>
+    <tr><td><strong>物理层</strong></td><td>WiFi, 光纤, 双绞线</td><td>集线器、中继器</td><td>带宽、双工、信号编码</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ TCP vs UDP ═══════ -->
+<section id="tcp-udp" class="section">
+  <h2>📦 TCP vs UDP：可靠 vs 快速</h2>
+  <div class="feynman">
+    <p><span class="analogy">📞 类比：</span>TCP 是打电话——先拨号接通（三次握手），通话中确认对方听到（ACK），说完挂断（四次挥手）。UDP 是发短信——直接扔过去，对方收没收到不管。</p>
+  </div>
+  <div class="compare">
+    <div>
+      <h4>TCP（传输控制协议）</h4>
+      <ul><li>面向连接（三次握手建立连接）</li><li>可靠交付：确认+重传+校验</li><li>有序：序列号保证顺序</li><li>流量控制：滑动窗口</li><li>拥塞控制：慢启动/拥塞避免/快速重传</li><li>适用：HTTP、文件传输、数据库</li></ul>
+    </div>
+    <div>
+      <h4>UDP（用户数据报协议）</h4>
+      <ul><li>无连接（直接发）</li><li>不可靠：发出去就不管了</li><li>不保证顺序</li><li>没有流控和拥塞控制</li><li>头部只有 8 字节</li><li>适用：视频直播、DNS、游戏、QUIC</li></ul>
+    </div>
+  </div>
+  <table>
+    <tr><th>维度</th><th>TCP</th><th>UDP</th></tr>
+    <tr><td>头部大小</td><td>20-60 字节</td><td>8 字节</td></tr>
+    <tr><td>连接</td><td>面向连接（SYN→SYN-ACK→ACK）</td><td>无连接</td></tr>
+    <tr><td>可靠性</td><td>确认+重传+校验和</td><td>仅校验和</td></tr>
+    <tr><td>顺序</td><td>序列号保证</td><td>不保证</td></tr>
+    <tr><td>速度</td><td>慢（建立连接+确认开销）</td><td>快（无连接建立）</td></tr>
+    <tr><td>应用</td><td>HTTP/1-2、SSH、FTP、SMTP</td><td>DNS、QUIC(HTTP/3)、VoIP、游戏</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ TCP HANDSHAKE ═══════ -->
+<section id="tcp-handshake" class="section">
+  <h2>🤝 TCP 三次握手 & 四次挥手——高频必考</h2>
+  <div class="feynman">
+    <p><span class="analogy">🤝 类比：</span>三次握手是"你在吗？——在，你也在吗？——在，开始聊"。四次挥手是"我说完了——知道了——我也说完了——知道了——再见"。一方说完了不代表另一方也说完了，所以挥手比握手多一次。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 380" style="max-width:820px;width:100%">
+      <defs><marker id="atc" markerWidth="7" markerHeight="5" refX="7" refY="2.5"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker><marker id="ats" markerWidth="7" markerHeight="5" refX="7" refY="2.5"><path d="M0,0 L7,2.5 L0,5 Z" fill="#3fb950"/></marker><marker id="atr" markerWidth="7" markerHeight="5" refX="0" refY="2.5"><path d="M7,0 L0,2.5 L7,5 Z" fill="#f87171"/></marker></defs>
+      <!-- Three-way handshake -->
+      <rect x="10" y="8" width="390" height="175" rx="8" fill="rgba(63,185,80,0.04)" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="205" y="30" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">🤝 三次握手 (建立连接)</text>
+
+      <rect x="30" y="45" width="140" height="30" rx="6" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1"/><text x="100" y="65" text-anchor="middle" fill="#22d3ee" font-size="11">Client (主动方)</text>
+      <rect x="240" y="45" width="140" height="30" rx="6" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1"/><text x="310" y="65" text-anchor="middle" fill="#fbbf24" font-size="11">Server (被动方)</text>
+
+      <line x1="180" y1="88" x2="250" y2="88" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#atc)"/>
+      <text x="215" y="82" text-anchor="middle" fill="#22d3ee" font-size="9">① SYN, seq=x</text>
+      <text x="215" y="100" text-anchor="middle" fill="#64748b" font-size="8">CLIENT→SYN_SENT | SERVER→LISTEN</text>
+
+      <line x1="240" y1="118" x2="170" y2="118" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#ats)"/>
+      <text x="215" y="112" text-anchor="middle" fill="#fbbf24" font-size="9">② SYN+ACK, seq=y, ack=x+1</text>
+      <text x="215" y="130" text-anchor="middle" fill="#64748b" font-size="8">SERVER→SYN_RCVD</text>
+
+      <line x1="180" y1="148" x2="250" y2="148" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#atc)"/>
+      <text x="215" y="142" text-anchor="middle" fill="#22d3ee" font-size="9">③ ACK, seq=x+1, ack=y+1</text>
+      <text x="215" y="160" text-anchor="middle" fill="#64748b" font-size="8">双方→ESTABLISHED ✓</text>
+
+      <!-- Four-way wave -->
+      <rect x="420" y="8" width="390" height="175" rx="8" fill="rgba(248,81,73,0.04)" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="615" y="30" text-anchor="middle" fill="#f87171" font-size="14" font-weight="700">👋 四次挥手 (断开连接)</text>
+
+      <rect x="440" y="45" width="140" height="30" rx="6" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1"/><text x="510" y="65" text-anchor="middle" fill="#22d3ee" font-size="11">主动关闭方</text>
+      <rect x="650" y="45" width="140" height="30" rx="6" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1"/><text x="720" y="65" text-anchor="middle" fill="#fbbf24" font-size="11">被动关闭方</text>
+
+      <line x1="590" y1="88" x2="660" y2="88" stroke="#f87171" stroke-width="1.5" marker-end="url(#atr)"/>
+      <text x="625" y="82" text-anchor="middle" fill="#f87171" font-size="9">① FIN, seq=u</text>
+      <text x="625" y="96" text-anchor="middle" fill="#64748b" font-size="8">FIN_WAIT_1</text>
+
+      <line x1="650" y1="118" x2="580" y2="118" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#ats)"/>
+      <text x="625" y="112" text-anchor="middle" fill="#fbbf24" font-size="9">② ACK, seq=v, ack=u+1</text>
+      <text x="625" y="126" text-anchor="middle" fill="#64748b" font-size="8">CLOSE_WAIT</text>
+
+      <line x1="650" y1="148" x2="580" y2="148" stroke="#f87171" stroke-width="1.5" marker-end="url(#atr)"/>
+      <text x="625" y="142" text-anchor="middle" fill="#f87171" font-size="9">③ FIN, seq=w, ack=u+1</text>
+
+      <line x1="590" y1="168" x2="660" y2="168" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#ats)"/>
+      <text x="625" y="162" text-anchor="middle" fill="#fbbf24" font-size="9">④ ACK, seq=u+1, ack=w+1</text>
+      <text x="625" y="178" text-anchor="middle" fill="#64748b" font-size="8">TIME_WAIT(2MSL)→CLOSED</text>
+
+      <!-- Bottom: key points -->
+      <rect x="10" y="200" width="800" height="170" rx="8" fill="rgba(88,166,255,0.03)" stroke="#58a6ff" stroke-width="0.8"/>
+      <text x="410" y="225" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="700">🔑 高频必问关键点</text>
+      <text x="410" y="250" text-anchor="middle" fill="#94a3b8" font-size="10"><strong>为什么三次握手不是两次？</strong>防止已失效的连接请求到达服务端。如果只有两次，服务端收到旧SYN建立连接浪费资源。</text>
+      <text x="410" y="275" text-anchor="middle" fill="#94a3b8" font-size="10"><strong>SYN 泛洪攻击：</strong>攻击者伪造IP发大量SYN，服务端回复SYN-ACK后等待ACK→半连接队列满→拒绝正常请求。防御：SYN Cookie、tcp_syncookies。</text>
+      <text x="410" y="300" text-anchor="middle" fill="#94a3b8" font-size="10"><strong>TIME_WAIT 为什么 2MSL？</strong>① 保证最后ACK能到达对方（丢了对方会重发FIN）② 让旧连接的所有报文在网络中消失，不干扰新连接。</text>
+      <text x="410" y="325" text-anchor="middle" fill="#94a3b8" font-size="10"><strong>TIME_WAIT 过多怎么办？</strong>tcp_tw_reuse（复用）、调整MSL、长连接代替短连接。大量TIME_WAIT表明短连接过多。</text>
+      <text x="410" y="350" text-anchor="middle" fill="#94a3b8" font-size="10"><strong>CLOSE_WAIT 过多？</strong>服务端收到FIN后没调用 close() → 应用层bug，连接泄漏。</text>
+    </svg>
+    <div class="diagram-caption">三次握手（建立连接）+ 四次挥手（断开连接）+ 关键点</div>
+  </div>
+</section>
+
+<!-- ═══════ TCP FLOW CONTROL ═══════ -->
+<section id="tcp-flow" class="section">
+  <h2>🌊 流量控制：滑动窗口——不要让接收方溢出</h2>
+  <div class="feynman">
+    <p><span class="analogy">📬 类比：</span>滑动窗口是快递站的"收件箱"——接收方告诉发送方"我还能收 5 个包裹"，发送方就只发 5 个，等收到确认说"收了 2 个，还能收 3 个"再继续发。窗口大小由接收方决定（rwnd）。</p>
+  </div>
+
+  <h3>TCP 头部中的 Window 字段</h3>
+  <pre><code><span class="cm">TCP Header 结构：</span>
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|          Source Port          |       Destination Port        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                        Sequence Number                        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                    Acknowledgment Number                      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  Data  |       |C|E|U|A|P|R|S|F|                             |
+| Offset | Resv  |W|C|E|U|R|G|S|Y|I|        <strong>Window</strong>            |  ← 16位，最大65535
+|        |       |R|E|G|K|H|T|N|N|                             |     (窗口缩放选项可达1GB)
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|           Checksum            |         Urgent Pointer        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</code></pre>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 200" style="max-width:820px;width:100%">
+      <text x="15" y="25" fill="#94a3b8" font-size="12" font-weight="600">发送窗口（滑动窗口示例）</text>
+      <rect x="15" y="38" width="780" height="24" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <rect x="30" y="38" width="120" height="24" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/><text x="90" y="55" text-anchor="middle" fill="#3fb950" font-size="9">已确认</text>
+      <rect x="150" y="38" width="200" height="24" rx="4" fill="rgba(34,211,238,0.15)" stroke="#22d3ee" stroke-width="1.5"/><text x="250" y="55" text-anchor="middle" fill="#22d3ee" font-size="9" font-weight="600">已发送未确认</text>
+      <rect x="350" y="38" width="180" height="24" rx="4" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="4,2"/><text x="440" y="55" text-anchor="middle" fill="#fbbf24" font-size="9">可发送(窗口内)</text>
+      <rect x="530" y="38" width="250" height="24" rx="4" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1"/><text x="655" y="55" text-anchor="middle" fill="#fca5a5" font-size="9">窗口外(不可发送)</text>
+
+      <text x="150" y="80" text-anchor="middle" fill="#22d3ee" font-size="9">← SND.UNA</text>
+      <text x="350" y="80" text-anchor="middle" fill="#22d3ee" font-size="9">← SND.NXT</text>
+      <text x="530" y="80" text-anchor="middle" fill="#fbbf24" font-size="9">← SND.UNA + rwnd</text>
+
+      <rect x="15" y="100" width="780" height="85" rx="8" fill="rgba(163,113,247,0.03)" stroke="#a78bfa" stroke-width="0.8"/>
+      <text x="410" y="120" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">关键机制</text>
+      <text x="410" y="140" text-anchor="middle" fill="#94a3b8" font-size="10"><strong>rwnd (接收窗口)：</strong>接收方在 ACK 中通告剩余缓冲区大小→发送方据此限制发送量，防止接收方溢出。</text>
+      <text x="410" y="160" text-anchor="middle" fill="#94a3b8" font-size="10"><strong>零窗口探测：</strong>接收方窗口=0→发送方停止发送→定期发ZeroWindowProbe探测→窗口打开后继续。</text>
+      <text x="410" y="178" text-anchor="middle" fill="#64748b" font-size="9"><strong>糊涂窗口综合征：</strong>接收方每次只释放一点点窗口→发送方每次只发一点点→效率极低。解决：Nagle算法 + Clark方案。</text>
+    </svg>
+    <div class="diagram-caption">TCP 滑动窗口：已确认 → 已发送未确认 → 可发送(窗口内) → 不可发送(窗口外)</div>
+  </div>
+</section>
+
+<!-- ═══════ CONGESTION CONTROL ═══════ -->
+<section id="tcp-congestion" class="section">
+  <h2>🚦 拥塞控制：不要让网络溢出</h2>
+  <div class="feynman">
+    <p><span class="analogy">🚗 类比：</span>流量控制是"对方停车场满了没"（接收方能力），拥塞控制是"路上堵不堵"（网络能力）。TCP 的拥塞控制就像自适应巡航——路况好就加速（窗口倍增），开始堵了就减速（线性增），撞车了就猛刹（窗口减半再慢启动）。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" style="max-width:820px;width:100%">
+      <rect x="20" y="20" width="780" height="270" rx="8" fill="none" stroke="#475569" stroke-width="1"/>
+      <text x="410" y="290" text-anchor="middle" fill="#64748b" font-size="9">时间 (RTT 轮次) →</text>
+      <text x="8" y="160" fill="#64748b" font-size="9" transform="rotate(-90,8,160)">cwnd (拥塞窗口)</text>
+
+      <!-- Slow start phase -->
+      <polyline points="40,250 60,245 70,235 80,215 90,180 100,130 110,100 120,80 130,70 140,65 150,62" fill="none" stroke="#22d3ee" stroke-width="2"/>
+      <rect x="60" y="30" width="120" height="20" rx="4" fill="rgba(34,211,238,0.12)"/><text x="120" y="44" text-anchor="middle" fill="#22d3ee" font-size="9">慢启动(指数增长)</text>
+
+      <!-- ssthresh crossing + congestion avoidance -->
+      <polyline points="150,62 200,66 250,70 300,74 350,78 400,82 420,84" fill="none" stroke="#3fb950" stroke-width="2"/>
+      <rect x="350" y="30" width="120" height="20" rx="4" fill="rgba(63,185,80,0.12)"/><text x="410" y="44" text-anchor="middle" fill="#3fb950" font-size="9">拥塞避免(线性增长)</text>
+
+      <!-- ssthresh line -->
+      <line x1="20" y1="62" x2="800" y2="62" stroke="#fbbf24" stroke-width="1" stroke-dasharray="6,3"/>
+      <text x="770" y="58" fill="#fbbf24" font-size="9">ssthresh</text>
+
+      <!-- Timeout → reset -->
+      <line x1="420" y1="84" x2="420" y2="250" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="435" y="170" fill="#f87171" font-size="9">超时！</text>
+      <line x1="420" y1="250" x2="440" y2="250" stroke="#f87171" stroke-width="1"/>
+      <polyline points="440,250 460,245 470,235 480,215 490,180 500,130 510,100 520,80 530,70 540,65 550,62" fill="none" stroke="#22d3ee" stroke-width="2"/>
+      <text x="500" y="98" text-anchor="middle" fill="#22d3ee" font-size="9">重新慢启动</text>
+
+      <!-- 3 dup ACK → fast retransmit -->
+      <line x1="550" y1="62" x2="580" y2="62" stroke="#3fb950" stroke-width="2"/>
+      <line x1="580" y1="62" x2="580" y2="95" stroke="#f87171" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="595" y="75" fill="#f87171" font-size="8">3 dup ACK</text>
+      <line x1="580" y1="95" x2="610" y2="95" stroke="#f87171" stroke-width="1"/>
+      <text x="625" y="93" fill="#f87171" font-size="9">ssthresh/=2, cwnd=ssthresh→快速恢复</text>
+
+      <!-- Algorithm table -->
+      <rect x="380" y="200" width="420" height="82" rx="6" fill="rgba(63,185,80,0.04)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="590" y="218" text-anchor="middle" fill="#3fb950" font-size="10" font-weight="600">四种算法速查</text>
+      <text x="590" y="236" text-anchor="middle" fill="#94a3b8" font-size="9">慢启动：cwnd指数增长(cwnd*=2每RTT) · ssthresh以下</text>
+      <text x="590" y="252" text-anchor="middle" fill="#94a3b8" font-size="9">拥塞避免：cwnd线性增长(cwnd+=1每RTT) · ssthresh以上</text>
+      <text x="590" y="268" text-anchor="middle" fill="#94a3b8" font-size="9">快速重传：收到3个dup ACK→直接重传 · 不等超时</text>
+      <text x="590" y="284" text-anchor="middle" fill="#94a3b8" font-size="9">快速恢复：3 dup ACK→ssthresh/=2, cwnd=ssthresh→进入拥塞避免</text>
+    </svg>
+    <div class="diagram-caption">TCP 拥塞控制状态机：慢启动(指数)→拥塞避免(线性)→超时(重置)/3 dup ACK(快速恢复)</div>
+  </div>
+
+  <h4>BBR vs CUBIC：现代拥塞控制</h4>
+  <table>
+    <tr><th>算法</th><th>机制</th><th>优点</th><th>应用</th></tr>
+    <tr><td><strong>CUBIC</strong></td><td>基于丢包的窗口调节（Linux 默认）</td><td>公平性好、广泛部署</td><td>大多数 Linux 服务器</td></tr>
+    <tr><td><strong>BBR</strong></td><td>基于带宽+RTT 的模型（不依赖丢包）</td><td>高吞吐低延迟、弱网表现好</td><td>Google/YouTube、跨国传输</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ HTTP ═══════ -->
+<section id="http" class="section">
+  <h2>📡 HTTP 协议族：从 1.1 到 3 的进化</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏢 类比：</span>HTTP/1.1 是"一人一窗口"的银行（一个连接一次只能处理一个请求，队头阻塞）。HTTP/2 是"所有窗口随时服务"（多路复用）。HTTP/3 直接换了地基——不用 TCP，用基于 UDP 的 QUIC，连握手都不用等。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 320" style="max-width:820px;width:100%">
+      <!-- HTTP/1.1 -->
+      <rect x="15" y="10" width="250" height="300" rx="8" fill="rgba(248,81,73,0.04)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="140" y="35" text-anchor="middle" fill="#f87171" font-size="14" font-weight="700">HTTP/1.1 (1997)</text>
+      <text x="140" y="55" text-anchor="middle" fill="#fca5a5" font-size="9">基于 TCP · 文本协议</text>
+      <rect x="25" y="65" width="230" height="25" rx="4" fill="rgba(63,185,80,0.08)"/><text x="140" y="82" text-anchor="middle" fill="#3fb950" font-size="9">GET / → wait → response → GET /a →</text>
+      <rect x="40" y="95" width="100" height="20" rx="3" fill="rgba(34,211,238,0.12)"/><text x="90" y="109" text-anchor="middle" fill="#22d3ee" font-size="8">请求1</text>
+      <rect x="170" y="95" width="100" height="20" rx="3" fill="rgba(248,81,73,0.12)"/><text x="220" y="109" text-anchor="middle" fill="#f87171" font-size="8">等待中...</text>
+      <text x="140" y="145" text-anchor="middle" fill="#64748b" font-size="9">⚠️ 队头阻塞(HOL Blocking)</text>
+      <text x="140" y="162" text-anchor="middle" fill="#64748b" font-size="9">一个请求慢→后面全等</text>
+      <text x="140" y="185" text-anchor="middle" fill="#94a3b8" font-size="8">✅ 持久连接(Keep-Alive)</text>
+      <text x="140" y="202" text-anchor="middle" fill="#94a3b8" font-size="8">✅ 管道化(Pipelining)</text>
+      <text x="140" y="225" text-anchor="middle" fill="#94a3b8" font-size="8">❌ 6连接/域名限制</text>
+      <text x="140" y="242" text-anchor="middle" fill="#94a3b8" font-size="8">❌ Header 重复传输</text>
+
+      <!-- HTTP/2 -->
+      <rect x="285" y="10" width="250" height="300" rx="8" fill="rgba(34,211,238,0.04)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="410" y="35" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="700">HTTP/2 (2015)</text>
+      <text x="410" y="55" text-anchor="middle" fill="#67e8f9" font-size="9">基于 TCP · 二进制分帧</text>
+      <rect x="295" y="65" width="230" height="50" rx="4" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1"/>
+      <text x="410" y="82" text-anchor="middle" fill="#3fb950" font-size="9">Stream1(GET /) | Stream3(GET /a)</text>
+      <text x="410" y="100" text-anchor="middle" fill="#3fb950" font-size="9">Stream5(GET /b) | Stream7(GET /c)</text>
+      <text x="410" y="140" text-anchor="middle" fill="#64748b" font-size="9">✅ 多路复用(Multiplexing)</text>
+      <text x="410" y="157" text-anchor="middle" fill="#64748b" font-size="9">✅ Server Push</text>
+      <text x="410" y="174" text-anchor="middle" fill="#94a3b8" font-size="8">✅ Header 压缩(HPACK)</text>
+      <text x="410" y="191" text-anchor="middle" fill="#94a3b8" font-size="8">✅ Stream 优先级</text>
+      <text x="410" y="214" text-anchor="middle" fill="#94a3b8" font-size="8">⚠️ TCP 层面队头阻塞</text>
+      <text x="410" y="235" text-anchor="middle" fill="#94a3b8" font-size="8">(丢一个包所有stream等)</text>
+
+      <!-- HTTP/3 -->
+      <rect x="555" y="10" width="250" height="300" rx="8" fill="rgba(163,113,247,0.04)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="680" y="35" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="700">HTTP/3 (2022)</text>
+      <text x="680" y="55" text-anchor="middle" fill="#c4b5fd" font-size="9">基于 QUIC(UDP) · 0-RTT</text>
+      <rect x="565" y="65" width="230" height="50" rx="4" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="680" y="82" text-anchor="middle" fill="#c4b5fd" font-size="9">Stream1 | Stream3 | Stream5</text>
+      <text x="680" y="100" text-anchor="middle" fill="#c4b5fd" font-size="9">各Stream独立·丢包不影响</text>
+      <text x="680" y="140" text-anchor="middle" fill="#64748b" font-size="9">✅ 彻底解决队头阻塞</text>
+      <text x="680" y="157" text-anchor="middle" fill="#64748b" font-size="9">✅ 0-RTT 握手(恢复连接)</text>
+      <text x="680" y="174" text-anchor="middle" fill="#94a3b8" font-size="8">✅ 连接迁移(IP切换不断)</text>
+      <text x="680" y="191" text-anchor="middle" fill="#94a3b8" font-size="8">✅ Header压缩(QPACK)</text>
+      <text x="680" y="214" text-anchor="middle" fill="#94a3b8" font-size="8">⚠️ UDP 可能被 QoS 限速</text>
+      <text x="680" y="235" text-anchor="middle" fill="#94a3b8" font-size="8">⚠️ 部署复杂(cpu开销)</text>
+    </svg>
+    <div class="diagram-caption">HTTP 三代进化：1.1(队头阻塞) → 2(多路复用) → 3(QUIC彻底消除TCP队头阻塞)</div>
+  </div>
+
+  <h3>HTTP 状态码速查</h3>
+  <table>
+    <tr><th>类别</th><th>常见码</th><th>含义</th></tr>
+    <tr><td><strong>1xx</strong></td><td>101 Switching Protocols</td><td>WebSocket 升级</td></tr>
+    <tr><td><strong>2xx</strong></td><td>200 OK, 201 Created, 204 No Content</td><td>成功</td></tr>
+    <tr><td><strong>3xx</strong></td><td>301 永久, 302 临时, 304 Not Modified</td><td>重定向/缓存</td></tr>
+    <tr><td><strong>4xx</strong></td><td>400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found</td><td>客户端错误</td></tr>
+    <tr><td><strong>5xx</strong></td><td>500 Internal, 502 Bad Gateway, 503 Unavailable, 504 Timeout</td><td>服务端错误</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ HTTPS & TLS ═══════ -->
+<section id="https-tls" class="section">
+  <h2>🔐 HTTPS & TLS：互联网的安全基石</h2>
+  <div class="feynman">
+    <p><span class="analogy">🔑 类比：</span>HTTPS = HTTP + TLS 加密通道。TLS 握手像特工接头——先确认身份（证书验证），再用非对称加密交换一把临时钥匙（Session Key），之后全程用这把钥匙对称加密通信。TLS 1.3 把两轮握手压到一轮，快了一倍。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 380" style="max-width:820px;width:100%">
+      <defs><marker id="aht" markerWidth="7" markerHeight="5" refX="7" refY="2.5"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker><marker id="ahtb" markerWidth="7" markerHeight="5" refX="0" refY="2.5"><path d="M7,0 L0,2.5 L7,5 Z" fill="#fbbf24"/></marker></defs>
+      <rect x="10" y="5" width="390" height="365" rx="8" fill="rgba(63,185,80,0.03)" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="205" y="28" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">🔐 TLS 1.3 握手（1-RTT）</text>
+
+      <rect x="30" y="45" width="140" height="28" rx="6" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1"/><text x="100" y="64" text-anchor="middle" fill="#22d3ee" font-size="11">Client</text>
+      <rect x="240" y="45" width="140" height="28" rx="6" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1"/><text x="310" y="64" text-anchor="middle" fill="#fbbf24" font-size="11">Server</text>
+
+      <line x1="180" y1="82" x2="250" y2="82" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aht)"/>
+      <text x="215" y="76" text-anchor="middle" fill="#22d3ee" font-size="9">① ClientHello</text>
+      <text x="215" y="93" text-anchor="middle" fill="#64748b" font-size="8">支持的密码套件+TLS版本+key_share</text>
+
+      <line x1="240" y1="115" x2="170" y2="115" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#ahtb)"/>
+      <text x="215" y="108" text-anchor="middle" fill="#fbbf24" font-size="9">② ServerHello + {Certificate} + {Finished}</text>
+      <text x="215" y="128" text-anchor="middle" fill="#64748b" font-size="8">选定密码套件+key_share+证书(加密)+Finished(加密)</text>
+      <text x="215" y="142" text-anchor="middle" fill="#64748b" font-size="7">TLS1.3服务器在②就计算好了shared secret→立刻发送加密数据</text>
+
+      <line x1="180" y1="160" x2="250" y2="160" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aht)"/>
+      <text x="215" y="154" text-anchor="middle" fill="#22d3ee" font-size="9">③ {Finished}</text>
+      <text x="215" y="172" text-anchor="middle" fill="#64748b" font-size="8">双方均已计算出Session Key</text>
+
+      <rect x="180" y="185" width="60" height="22" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.5"/><text x="210" y="201" text-anchor="middle" fill="#3fb950" font-size="10" font-weight="700">✓ Done</text>
+      <text x="215" y="220" text-anchor="middle" fill="#64748b" font-size="8">应用数据(对称加密·AES-GCM/ChaCha20)</text>
+
+      <!-- Comparison box -->
+      <rect x="430" y="5" width="375" height="170" rx="8" fill="rgba(248,81,73,0.04)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="617" y="28" text-anchor="middle" fill="#f87171" font-size="13" font-weight="700">📜 TLS 1.2（2-RTT 旧版对比）</text>
+      <text x="617" y="52" text-anchor="middle" fill="#94a3b8" font-size="10">① ClientHello →</text>
+      <text x="617" y="70" text-anchor="middle" fill="#94a3b8" font-size="10">② ← ServerHello + Certificate + ServerKeyExchange + ServerHelloDone</text>
+      <text x="617" y="88" text-anchor="middle" fill="#94a3b8" font-size="10">③ ClientKeyExchange + ChangeCipherSpec + Finished →</text>
+      <text x="617" y="106" text-anchor="middle" fill="#94a3b8" font-size="10">④ ← ChangeCipherSpec + Finished</text>
+      <text x="617" y="128" text-anchor="middle" fill="#fca5a5" font-size="10">TLS 1.2 = 2 RTT | TLS 1.3 = 1 RTT (快一倍!)</text>
+      <text x="617" y="148" text-anchor="middle" fill="#64748b" font-size="9">TLS 1.3还移除了不安全算法(RSA密钥交换/3DES/RC4/SHA1)</text>
+      <text x="617" y="164" text-anchor="middle" fill="#64748b" font-size="9">0-RTT模式：之前连接过的客户端可直接发数据</text>
+
+      <!-- Key concepts -->
+      <rect x="430" y="190" width="375" height="180" rx="8" fill="rgba(251,191,36,0.04)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="617" y="213" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="700">🔑 加密体系三件套</text>
+      <text x="617" y="238" text-anchor="middle" fill="#94a3b8" font-size="10"><strong>非对称加密：</strong>公钥加密→私钥解密(RSA/ECDHE)。握手时用，交换对称密钥。</text>
+      <text x="617" y="260" text-anchor="middle" fill="#94a3b8" font-size="10"><strong>对称加密：</strong>同一个密钥加解密(AES-GCM/ChaCha20)。握手后数据通信用，性能高。</text>
+      <text x="617" y="282" text-anchor="middle" fill="#94a3b8" font-size="10"><strong>数字证书：</strong>CA签发→证明"这个公钥确实属于这个域名"。证书链验证Root CA→中间CA→网站证书。</text>
+      <text x="617" y="304" text-anchor="middle" fill="#94a3b8" font-size="10"><strong>ECDHE 密钥交换：</strong>椭圆曲线Diffie-Hellman，双方各自生成临时密钥对，通过交换公钥算出<strong>相同的共享密钥</strong>而不传输密钥本身。</text>
+      <text x="617" y="330" text-anchor="middle" fill="#64748b" font-size="10">核心金句：HTTPS = HTTP over TLS。TLS握手=验证证书+密钥交换。ECDHE提供前向安全性(Forward Secrecy)。</text>
+    </svg>
+    <div class="diagram-caption">TLS 1.3 握手（1-RTT）+ TLS 1.2 对比 + 加密体系三件套</div>
+  </div>
+</section>
+
+<!-- ═══════ DNS ═══════ -->
+<section id="dns" class="section">
+  <h2>📇 DNS：从域名到 IP 的寻址之路</h2>
+  <div class="feynman">
+    <p><span class="analogy">📞 类比：</span>DNS 是互联网的电话簿——你输入名字（域名），它帮你查出号码（IP）。查过的号码会记在本地（缓存），不用每次翻电话簿。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 240" style="max-width:820px;width:100%">
+      <rect x="15" y="15" width="160" height="40" rx="8" fill="rgba(34,211,238,0.1)" stroke="#22d3ee" stroke-width="1.5"/><text x="95" y="40" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="600">👤 用户: baidu.com</text>
+      <line x1="175" y1="35" x2="225" y2="35" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ad1)"/>
+      <rect x="230" y="15" width="140" height="40" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/><text x="300" y="38" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">📂 浏览器缓存</text>
+      <text x="300" y="52" text-anchor="middle" fill="#64748b" font-size="7">(chrome://net-internals)</text>
+      <line x1="370" y1="35" x2="420" y2="35" stroke="#3fb950" stroke-width="1.5" marker-end="url(#ad1)"/>
+      <rect x="425" y="15" width="120" height="40" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.5"/><text x="485" y="38" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">💻 OS缓存</text>
+      <text x="485" y="52" text-anchor="middle" fill="#64748b" font-size="7">(/etc/hosts)</text>
+      <line x1="545" y1="35" x2="595" y2="35" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#ad1)"/>
+      <rect x="600" y="15" width="140" height="40" rx="8" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" stroke-width="1.5"/><text x="670" y="38" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="600">📡 本地DNS服务器</text>
+      <text x="670" y="52" text-anchor="middle" fill="#64748b" font-size="7">(ISP / 8.8.8.8)</text>
+      <line x1="670" y1="55" x2="670" y2="80" stroke="#fbbf24" stroke-width="1.5"/>
+
+      <!-- DNS hierarchy -->
+      <text x="120" y="95" fill="#f87171" font-size="10" font-weight="600">如果没有缓存→递归查询</text>
+      <rect x="50" y="105" width="120" height="30" rx="6" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="1.2"/><text x="110" y="125" text-anchor="middle" fill="#f87171" font-size="10">Root DNS</text>
+      <line x1="170" y1="120" x2="220" y2="120" stroke="#475569" stroke-width="1" marker-end="url(#ad1)"/>
+      <rect x="225" y="105" width="120" height="30" rx="6" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" stroke-width="1.2"/><text x="285" y="125" text-anchor="middle" fill="#fbbf24" font-size="10">.com TLD</text>
+      <line x1="345" y1="120" x2="395" y2="120" stroke="#475569" stroke-width="1" marker-end="url(#ad1)"/>
+      <rect x="400" y="105" width="140" height="30" rx="6" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="1.5"/><text x="470" y="125" text-anchor="middle" fill="#3fb950" font-size="10">baidu.com 权威DNS</text>
+      <line x1="540" y1="120" x2="590" y2="120" stroke="#475569" stroke-width="1" marker-end="url(#ad1)"/>
+      <rect x="595" y="105" width="150" height="30" rx="6" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="2"/><text x="670" y="125" text-anchor="middle" fill="#22d3ee" font-size="10" font-weight="700">返回: 110.242.68.66</text>
+
+      <defs><marker id="ad1" markerWidth="6" markerHeight="4" refX="6" refY="2"><path d="M0,0 L6,2 L0,4 Z" fill="#475569"/></marker></defs>
+      <rect x="50" y="155" width="720" height="70" rx="8" fill="rgba(63,185,80,0.03)" stroke="#3fb950" stroke-width="0.8"/>
+      <text x="410" y="178" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">🔑 DNS 核心要点</text>
+      <text x="410" y="198" text-anchor="middle" fill="#94a3b8" font-size="9">递归查询(本地DNS帮你问到底) vs 迭代查询(本地DNS一步步问) · A记录(IPv4)/AAAA(IPv6)/CNAME(别名)/MX(邮件)</text>
+      <text x="410" y="216" text-anchor="middle" fill="#94a3b8" font-size="9">DNS污染/劫持：运营商篡改DNS响应→用DoH(HTTPS)或DoT(TLS)防 · CDN原理：智能DNS根据IP归属返回最近节点</text>
+    </svg>
+    <div class="diagram-caption">DNS解析链路：缓存链(浏览器→OS→本地DNS) → 递归查询(Root→TLD→权威DNS)</div>
+  </div>
+</section>
+
+<!-- ═══════ IP ═══════ -->
+<section id="ip" class="section">
+  <h2>🌍 IP 协议与路由：数据包如何跨越山海</h2>
+  <div class="feynman">
+    <p><span class="analogy">🚚 类比：</span>IP 协议是"快递公司的分拣系统"——每个包裹（数据包）贴上收件地址（目标IP）和发件地址（源IP），每到一个分拣中心（路由器）查路由表决定下一站，直到送达。</p>
+  </div>
+
+  <table>
+    <tr><th>概念</th><th>说明</th><th>核心要点</th></tr>
+    <tr><td><strong>IP 地址</strong></td><td>网络层标识。IPv4 32位(4.3B地址)→NAT续命。IPv6 128位(几乎无限)</td><td>公网IP vs 内网IP、CIDR</td></tr>
+    <tr><td><strong>NAT</strong></td><td>网络地址转换：内网多设备共享一个公网IP</td><td>SNAT/DNAT、NAT穿透(STUN/TURN)</td></tr>
+    <tr><td><strong>ARP</strong></td><td>地址解析协议：IP→MAC。广播"谁是192.168.1.1?"</td><td>ARP缓存、ARP欺骗攻击</td></tr>
+    <tr><td><strong>ICMP</strong></td><td>网络诊断：ping(echo request/reply)、traceroute(TTL超时)</td><td>TTL、MTU Path Discovery</td></tr>
+    <tr><td><strong>路由协议</strong></td><td>OSPF(内部网关)、BGP(外部网关，AS之间)</td><td>距离矢量vs链路状态、自治系统AS</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ QA ═══════ -->
+<section id="net-qa" class="section">
+  <h2>❓ 高频考题</h2>
+  <div class="qa"><div class="q">Q1: 浏览器输入 URL 后发生了什么？（终极核心题）</div><div class="a">① DNS解析域名→IP ② TCP三次握手(80/443端口) ③ 如果是HTTPS→TLS握手 ④ 发送HTTP请求 ⑤ 服务端处理→返回响应 ⑥ 浏览器解析HTML→构建DOM→CSSOM→Render Tree→Layout→Paint ⑦ 四次挥手断开连接。</div></div>
+  <div class="qa"><div class="q">Q2: TCP 为什么是四次挥手而不是三次？</div><div class="a">因为TCP是全双工——一方说"我说完了"(FIN)不代表另一方也说完了。被动方先ACK（表示收到你的FIN），等自己数据发完再发FIN。所以是 FIN→ACK+FIN→ACK 四步。</div></div>
+  <div class="qa"><div class="q">Q3: HTTP/2 的多路复用解决了什么问题？怎么解决的？</div><div class="a">解决了HTTP/1.1的<strong>队头阻塞</strong>——一个请求慢后面全等。HTTP/2 用二进制分帧，一个TCP连接上同时跑多个Stream，帧交错传输。但TCP层面的队头阻塞（丢包）仍未解决→HTTP/3用QUIC(UDP)彻底解决。</div></div>
+  <div class="qa"><div class="q">Q4: HTTPS 如何保证安全？中间人攻击怎么防？</div><div class="a">三步：① 证书链验证身份（CA签发，信任链）② 非对称加密交换会话密钥（ECDHE）③ 对称加密传输数据（AES-GCM）。中间人攻击通过<strong>证书验证</strong>防御——攻击者无法伪造CA签名的证书。</div></div>
+  <div class="qa"><div class="q">Q5: TCP 的拥塞控制和流量控制有什么区别？</div><div class="a"><strong>流量控制</strong>是端到端的——接收方告诉发送方"我还能收多少"（rwnd），防止接收方溢出。拥塞控制是全局的——发送方探测网络是否拥堵（cwnd/ssthresh），防止网络过载。前者看对方能力，后者看网络状态。</div></div>
+  <div class="qa"><div class="q">Q6: TIME_WAIT 状态的作用？为什么是 2MSL？</div><div class="a">两个作用：① 确保最后的 ACK 能到达对方（丢了对方会重发 FIN）② 让旧连接的延迟报文在网络中消失，不会干扰同端口的新连接。2MSL = 报文最大存活时间的2倍——一来一回刚好清空。</div></div>
+</section>
+
+<section id="net-summary" class="section">
+  <h2>🎙️ 口播总结</h2>
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(248,81,73,0.04));border-color:rgba(251,191,36,0.3)">
+    <p style="font-size:15px;line-height:2"><strong>这篇文章把计算机网络所有核心协议从原理到细节讲透了。</strong></p>
+    <p>从 OSI 七层和 TCP/IP 四层的协议栈开始，到 TCP 的三次握手四次挥手（为什么三次、为什么四次、TIME_WAIT 为什么 2MSL），TCP 的流量控制（滑动窗口 rwnd）和拥塞控制（慢启动→拥塞避免→快速重传→快速恢复四个算法），HTTP 协议从 1.1 到 2 到 3 的进化（队头阻塞如何一步步被解决），HTTPS/TLS 1.3 握手（从 2-RTT 到 1-RTT 的优化），DNS 从缓存到递归查询的完整链路。</p>
+    <p><strong>最高频的是"浏览器输入 URL 后发生了什么"——六大步骤从 DNS 到 TCP 到 TLS 到 HTTP 到渲染，这道题考察的是网络栈的全局理解。</strong></p>
+  </div>
+</section>
+
+</main>
+</div>
+<script src="/mobile.js"></script>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

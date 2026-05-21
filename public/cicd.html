@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CI/CD 与 GitOps 实战 · 从零到一理解自动化交付 · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .voice-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .voice-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 420px; }
+  }
+
+  /* CICD custom styles */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) { .diagram svg { min-width: 420px; } }
+  .qa-q { cursor: pointer; user-select: none; }
+  .qa-q::after { content: ' ▾'; opacity: 0.5; }
+  .qa-q.open::after { content: ' ▴'; }
+  .qa-a { display: none; }
+  .qa-a.open { display: block; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">CI/CD基础</div>
+  <a class="nav-item" href="#why">🏭 为什么CI/CD</a>
+  <a class="nav-item" href="#ci">🔨 CI持续集成</a>
+  <a class="nav-item" href="#cd">🚀 CD持续部署</a>
+  <a class="nav-item" href="#tools">🛠️ 工具实战</a>
+  <a class="nav-item" href="#gitops">🔄 GitOps</a>
+  <a class="nav-item" href="#strategies">📋 发布策略对比</a>
+  <div class="nav-section">实战</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ====== 总览 ====== -->
+<section class="section" id="overview">
+  <h2>📋 总览：CI/CD 是什么</h2>
+  <p><strong>CI/CD</strong>（持续集成/持续交付）是现代软件开发中最核心的<strong>自动化实践</strong>。简单说，它是一套<strong>从代码提交到生产上线的自动化流水线</strong>——让你每次点一下"提交代码"，剩下的（构建、测试、部署）全自动完成。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">想象你开了一家快餐店：你写了一个新菜谱（代码），交给后厨（CI/CD 流水线）。</span></p>
+    <p><strong>没有 CI/CD</strong>：大厨手动看菜谱 → 自己切菜 → 自己炒 → 自己尝味道 → 自己端给客人。每次新菜式都要亲自从头忙到尾，累了容易忘加盐（bug），客人催菜就手忙脚乱（部署事故）。</p>
+    <p><strong>有了 CI/CD</strong>：你把菜谱写进<strong>配方系统</strong>（Git仓库），系统自动完成：<span class="analogy">洗菜机洗菜（代码检查）→ 切菜机切块（单元测试）→ 自动炒锅烹饪（构建）→ 装盘机打包（镜像打包）→ 传送带送到餐桌（部署）。</span></p>
+    <p>你只需要关注<strong>菜谱好不好吃</strong>（业务逻辑），剩下的流水线自动完成——这就是 CI/CD 的核心价值！</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="380" fill="#0f172a" rx="8"/>
+      <text x="400" y="36" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">CI/CD 流水线全貌：从代码到部署</text>
+
+      <!-- Stage boxes in a pipeline -->
+      <rect x="30" y="70" width="120" height="70" rx="10" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="90" y="97" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">✏️ 代码提交</text>
+      <text x="90" y="120" text-anchor="middle" fill="#94a3b8" font-size="10">git push</text>
+
+      <text x="158" y="110" fill="#8b949e" font-size="20">→</text>
+
+      <rect x="175" y="70" width="120" height="70" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="235" y="97" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">🔍 CI 检查</text>
+      <text x="235" y="120" text-anchor="middle" fill="#94a3b8" font-size="10">lint, test, build</text>
+
+      <text x="303" y="110" fill="#8b949e" font-size="20">→</text>
+
+      <rect x="320" y="70" width="120" height="70" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="380" y="97" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">📦 镜像构建</text>
+      <text x="380" y="120" text-anchor="middle" fill="#94a3b8" font-size="10">docker build</text>
+
+      <text x="448" y="110" fill="#8b949e" font-size="20">→</text>
+
+      <rect x="465" y="70" width="120" height="70" rx="10" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="525" y="97" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="bold">📤 镜像推送</text>
+      <text x="525" y="120" text-anchor="middle" fill="#94a3b8" font-size="10">push to registry</text>
+
+      <text x="593" y="110" fill="#8b949e" font-size="20">→</text>
+
+      <rect x="610" y="70" width="160" height="70" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="690" y="97" text-anchor="middle" fill="#f87171" font-size="12" font-weight="bold">🚀 CD 部署</text>
+      <text x="690" y="120" text-anchor="middle" fill="#94a3b8" font-size="10">滚动/蓝绿/金丝雀</text>
+
+      <!-- CI vs CD divider -->
+      <line x1="400" y1="165" x2="400" y2="210" stroke="#334155" stroke-width="2"/>
+      <rect x="250" y="180" width="300" height="36" rx="18" fill="#1e293b" stroke="#22d3ee" stroke-width="1"/>
+      <text x="400" y="204" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">⚡ CI（左半段） + CD（右半段） = 完整流水线</text>
+
+      <!-- Key benefits -->
+      <rect x="30" y="235" width="240" height="55" rx="8" fill="#3fb950" opacity="0.08" stroke="#3fb950" stroke-width="1"/>
+      <text x="150" y="258" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">✅ CI 帮你</text>
+      <text x="150" y="278" text-anchor="middle" fill="#94a3b8" font-size="11">早发现 bug，避免"在我机器上能跑"</text>
+
+      <rect x="290" y="235" width="240" height="55" rx="8" fill="#fbbf24" opacity="0.08" stroke="#fbbf24" stroke-width="1"/>
+      <text x="410" y="258" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">✅ CD 帮你</text>
+      <text x="410" y="278" text-anchor="middle" fill="#94a3b8" font-size="11">自动化部署，减少人为失误</text>
+
+      <rect x="550" y="235" width="220" height="55" rx="8" fill="#a78bfa" opacity="0.08" stroke="#a78bfa" stroke-width="1"/>
+      <text x="660" y="258" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="bold">✅ GitOps 帮你</text>
+      <text x="660" y="278" text-anchor="middle" fill="#94a3b8" font-size="11">Git 作为单一事实来源</text>
+
+      <!-- Bottom checklist -->
+      <text x="400" y="325" text-anchor="middle" fill="#8b949e" font-size="11">核心原则：<tspan fill="#3fb950">快速反馈</tspan> | <tspan fill="#22d3ee">自动化</tspan> | <tspan fill="#a78bfa">可重复</tspan> | <tspan fill="#fbbf24">可追溯</tspan></text>
+      <text x="400" y="348" text-anchor="middle" fill="#8b949e" font-size="11">每次提交都触发完整流水线 —— 从 lint 到生产，全自动 ⚙️</text>
+    </svg>
+    <div class="diagram-caption">图 1：CI/CD 流水线全貌——从代码提交到生产部署的自动化链路</div>
+  </div>
+</section>
+
+<!-- ====== 为什么 CI/CD ====== -->
+<section class="section" id="why">
+  <h2>🏭 为什么需要 CI/CD</h2>
+  <p>没有 CI/CD 的团队日常就像一场<a href=\"#\">"公交车游戏"</a>：代码在本地能跑 → 合并到主分支就炸 → 上线靠手工拷贝 → 出了问题只能回滚——每次上线都心惊胆战。</p>
+
+  <div class="compare">
+    <div>
+      <h4>🐌 没有 CI/CD（崩溃模式）</h4>
+      <ul>
+        <li>本地开发 3 天 → 合并时冲突花 1 天解决</li>
+        <li>上线前手动跑测试——漏跑了</li>
+        <li>"在我机器上能跑啊"成为口头禅</li>
+        <li>手工部署：SCP 文件 → SSH 重启服务</li>
+        <li>出问题只能"回滚"——实际是手动恢复备份</li>
+        <li>每周上线一次，每次 2 小时停服维护</li>
+      </ul>
+    </div>
+    <div>
+      <h4>🚀 有 CI/CD（丝滑模式）</h4>
+      <ul>
+        <li>PR merge 自动触发 CI → 5 分钟内出结果</li>
+        <li>每次提交自动跑 lint + 单元测试 + 集成测试</li>
+        <li>"标准环境构建，环境差异不存在"</li>
+        <li>CI 自动构建镜像 → CD 自动部署到环境</li>
+        <li>金丝雀发布：只让 5% 流量尝鲜，有问题立即切回</li>
+        <li>一天上线 10 次，零停机</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="feynman">
+    <p><span class="analogy">没有 CI/CD 就像没有流水线的传统厨房：一个厨师从洗菜、切菜、炒菜到装盘全包，出菜慢、品质不稳定、新菜式培训成本高。</span></p>
+    <p>有了 CI/CD 就像现代化的<strong>中央厨房流水线</strong>——<strong>洗菜机（Lint）</strong>保证菜的品质 → <strong>切菜机（单元测试）</strong>确保每一刀都标准 → <strong>自动炒锅（构建）</strong>按精确配方烹饪 → <strong>传送带（部署）</strong>自动送到分店。</p>
+    <p>你（开发者）只需要写好<strong>菜谱（代码）</strong>，剩下的交给流水线自动化完成。</p>
+  </div>
+
+  <div class="info-card">
+    <h4>🎯 CI/CD 的核心价值（三个"快"）</h4>
+    <p><strong>快反馈</strong>：提交代码 5 分钟内知道有没有问题 — 不用等到第二天 Code Review。</p>
+    <p><strong>快交付</strong>：从代码到生产，全自动化，一天能上线几十次。</p>
+    <p><strong>快恢复</strong>：出问题了，一键回滚到上一个版本，或者直接切回旧版本流量。</p>
+  </div>
+</section>
+
+<!-- ====== CI 持续集成 ====== -->
+<section class="section" id="ci">
+  <h2>🔨 CI 持续集成：每次提交都验证</h2>
+  <p>CI（Continuous Integration，持续集成）的核心思想是：<strong>每次代码提交到共享仓库时，自动触发构建和测试流程</strong>，尽早发现集成问题。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="400" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">CI 持续集成流程详解</text>
+
+      <!-- Developer -->
+      <rect x="30" y="60" width="110" height="42" rx="10" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="85" y="86" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">🧑‍💻 开发者</text>
+
+      <text x="148" y="88" fill="#8b949e" font-size="18">→</text>
+
+      <!-- Git push -->
+      <rect x="165" y="60" width="110" height="42" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="220" y="86" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">📤 git push</text>
+
+      <text x="283" y="88" fill="#8b949e" font-size="18">→</text>
+
+      <!-- CI Server -->
+      <rect x="300" y="55" width="120" height="52" rx="10" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="360" y="76" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="bold">🔄 CI Runner</text>
+      <text x="360" y="96" text-anchor="middle" fill="#8b949e" font-size="10">触发流水线</text>
+
+      <!-- Steps flow down -->
+      <text x="360" y="125" fill="#8b949e" font-size="16">⬇</text>
+
+      <!-- Step 1: Lint -->
+      <rect x="50" y="140" width="160" height="48" rx="8" fill="#fbbf24" opacity="0.1" stroke="#fbbf24" stroke-width="1"/>
+      <text x="130" y="162" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">1️⃣ 代码检查（Lint）</text>
+      <text x="130" y="180" text-anchor="middle" fill="#94a3b8" font-size="10">ESLint / Prettier / Ruff</text>
+
+      <text x="245" y="170" fill="#8b949e" font-size="16">→</text>
+
+      <!-- Step 2: Test -->
+      <rect x="270" y="140" width="160" height="48" rx="8" fill="#3fb950" opacity="0.1" stroke="#3fb950" stroke-width="1"/>
+      <text x="350" y="162" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">2️⃣ 单元测试</text>
+      <text x="350" y="180" text-anchor="middle" fill="#94a3b8" font-size="10">Jest / pytest / JUnit</text>
+
+      <text x="465" y="170" fill="#8b949e" font-size="16">→</text>
+
+      <!-- Step 3: Build -->
+      <rect x="490" y="140" width="160" height="48" rx="8" fill="#22d3ee" opacity="0.1" stroke="#22d3ee" stroke-width="1"/>
+      <text x="570" y="162" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">3️⃣ 编译构建</text>
+      <text x="570" y="180" text-anchor="middle" fill="#94a3b8" font-size="10">npm build / go build / mvn</text>
+
+      <text x="685" y="170" fill="#8b949e" font-size="16">→</text>
+
+      <!-- Step 4: Image -->
+      <rect x="710" y="140" width="70" height="48" rx="8" fill="#f87171" opacity="0.1" stroke="#f87171" stroke-width="1"/>
+      <text x="745" y="158" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold">4️⃣ 镜像</text>
+      <text x="745" y="178" text-anchor="middle" fill="#94a3b8" font-size="10">docker</text>
+
+      <!-- Results -->
+      <rect x="50" y="220" width="730" height="60" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="243" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">✅ CI 通过的产物</text>
+      <text x="400" y="265" text-anchor="middle" fill="#94a3b8" font-size="11">编译好的二进制 / Docker 镜像（含标签: commit-sha）→ 推送到制品库 / Container Registry</text>
+
+      <!-- Failure handling -->
+      <rect x="50" y="300" width="730" height="38" rx="8" fill="#f87171" opacity="0.08" stroke="#f87171" stroke-width="1"/>
+      <text x="400" y="324" text-anchor="middle" fill="#f87171" font-size="12">❌ 任何一个步骤失败 → 流水线终止 → 通知开发者 → 修复后重新提交</text>
+
+      <!-- Feedback -->
+      <text x="400" y="375" text-anchor="middle" fill="#8b949e" font-size="11">目标：<tspan fill="#3fb950">每次提交都在 5-10 分钟内得到反馈</tspan>，快速修复，避免"积压问题到上线前"</text>
+    </svg>
+    <div class="diagram-caption">图 2：CI 持续集成流程——每次代码提交自动执行 Lint → 测试 → 构建 → 打包</div>
+  </div>
+
+  <h3>CI 的四大支柱</h3>
+  <table>
+    <tr><th>环节</th><th>做什么</th><th>工具示例</th><th>为什么重要</th></tr>
+    <tr><td><span class="badge badge-orange">1. 代码检查</span></td><td>检查代码风格、潜在错误、安全漏洞</td><td>ESLint, Ruff, SonarQube</td><td>在 bug 变成 bug 之前就发现它</td></tr>
+    <tr><td><span class="badge badge-green">2. 单元测试</span></td><td>验证每个函数的逻辑正确性</td><td>Jest, pytest, JUnit</td><td>确保改一处不破坏十处</td></tr>
+    <tr><td><span class="badge badge-cyan">3. 编译构建</span></td><td>编译源码为可执行文件/静态资源</td><td>Webpack, Maven, Go build</td><td>确保代码能成功编译</td></tr>
+    <tr><td><span class="badge badge-purple">4. 镜像打包</span></td><td>构建 Docker 镜像并推送</td><td>Docker, Kaniko, Buildah</td><td>标准化运行环境</td></tr>
+  </table>
+
+  <div class="feynman">
+    <p><span class="analogy">想象你在写一本小说（项目代码），你每写完一章就交给编辑（CI 系统）。编辑自动检查：</span></p>
+    <p><strong>Lint（文字校对）</strong>→ 把"的地得"用错了？标红。<br>
+    <strong>单元测试（逻辑验证）</strong>→ 上一章的伏笔在这一章对上了吗？<br>
+    <strong>构建（排版印刷）</strong>→ 这章能排进书里吗？章节编号对吗？<br>
+    <strong>镜像打包（装订成册）</strong>→ 把这一章打包成标准的"书页格式"。</p>
+    <p>如果任何一步出问题，编辑直接打回来让你重写——不会等到整本书都写完了才发现第三章排不进去。</p>
+  </div>
+
+  <div class="info-card">
+    <h4>💡 记住这个原则</h4>
+    <p><strong>主分支应该是"随时可发布"的状态。</strong>每次合并到 main/master 分支的代码都应该经过 CI 流水线的完整验证。如果 CI 没过，就不能合并——这是团队的底线纪律。</p>
+  </div>
+</section>
+
+<!-- ====== CD 持续部署 ====== -->
+<section class="section" id="cd">
+  <h2>🚀 CD 持续部署：安全地把代码送到用户手上</h2>
+  <p>CD（Continuous Deployment / Continuous Delivery）是 CI 的下一步——<strong>把通过 CI 验证的产物自动部署到目标环境</strong>。核心挑战不是"能不能自动部署"，而是<strong>如何安全地部署</strong>。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="480" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">四种部署策略对比</text>
+
+      <!-- 1. Rolling Update -->
+      <rect x="30" y="55" width="350" height="170" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="205" y="80" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">🔄 滚动更新（Rolling Update）</text>
+      <rect x="50" y="95" width="50" height="28" rx="5" fill="#22d3ee" opacity="0.2"/>
+      <rect x="110" y="95" width="50" height="28" rx="5" fill="#22d3ee" opacity="0.2"/>
+      <rect x="170" y="95" width="50" height="28" rx="5" fill="#3fb950" opacity="0.4"/>
+      <rect x="230" y="95" width="50" height="28" rx="5" fill="#22d3ee" opacity="0.2"/>
+      <rect x="290" y="95" width="50" height="28" rx="5" fill="#22d3ee" opacity="0.2"/>
+      <text x="205" y="148" text-anchor="middle" fill="#94a3b8" font-size="11">逐个替换 Pod，逐步用新版本替换旧版本</text>
+      <text x="205" y="168" text-anchor="middle" fill="#3fb950" font-size="11">✅ 零停机 | 逐步替换</text>
+      <text x="205" y="186" text-anchor="middle" fill="#f87171" font-size="11">❌ 回滚慢 | 问题影响范围逐渐扩大</text>
+      <text x="205" y="206" text-anchor="middle" fill="#8b949e" font-size="10">适用：<tspan fill="#fbbf24">默认策略、大部分 Web 服务</tspan></text>
+
+      <!-- 2. Blue/Green -->
+      <rect x="420" y="55" width="350" height="170" rx="10" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="595" y="80" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">🔵🟢 蓝绿部署（Blue/Green）</text>
+      <rect x="450" y="95" width="100" height="28" rx="5" fill="#22d3ee" opacity="0.3"/>
+      <text x="500" y="114" text-anchor="middle" fill="#22d3ee" font-size="10">Blue（旧）</text>
+      <rect x="570" y="95" width="100" height="28" rx="5" fill="#3fb950" opacity="0.3"/>
+      <text x="620" y="114" text-anchor="middle" fill="#3fb950" font-size="10">Green（新）</text>
+      <text x="595" y="148" text-anchor="middle" fill="#94a3b8" font-size="11">同时运行两套环境，切换负载均衡器</text>
+      <text x="595" y="168" text-anchor="middle" fill="#3fb950" font-size="11">✅ 秒级回滚 | 完全隔离</text>
+      <text x="595" y="186" text-anchor="middle" fill="#f87171" font-size="11">❌ 资源翻倍 | 成本高</text>
+      <text x="595" y="206" text-anchor="middle" fill="#8b949e" font-size="10">适用：<tspan fill="#fbbf24">关键业务、数据库迁移</tspan></text>
+
+      <!-- 3. Canary -->
+      <rect x="30" y="245" width="350" height="170" rx="10" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="205" y="270" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">🐤 金丝雀发布（Canary）</text>
+      <rect x="50" y="285" width="290" height="28" rx="5" fill="#22d3ee" opacity="0.15"/>
+      <rect x="290" y="285" width="50" height="28" rx="5" fill="#3fb950" opacity="0.4"/>
+      <text x="205" y="336" text-anchor="middle" fill="#94a3b8" font-size="11">先让 5%-10% 流量走新版本，没问题逐步扩大到 100%</text>
+      <text x="205" y="358" text-anchor="middle" fill="#3fb950" font-size="11">✅ 风险最低 | 真实流量验证</text>
+      <text x="205" y="378" text-anchor="middle" fill="#f87171" font-size="11">❌ 发布周期长 | 监控要求高</text>
+      <text x="205" y="398" text-anchor="middle" fill="#8b949e" font-size="10">适用：<tspan fill="#fbbf24">高流量产品、重大更新</tspan></text>
+
+      <!-- 4. A/B + Gray -->
+      <rect x="420" y="245" width="350" height="170" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="595" y="270" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">🎯 灰度发布（Gray Release / A/B）</text>
+      <rect x="440" y="285" width="60" height="28" rx="5" fill="#22d3ee" opacity="0.15"/>
+      <text x="470" y="304" text-anchor="middle" fill="#22d3ee" font-size="9">全体</text>
+      <text x="518" y="304" fill="#8b949e" font-size="14">→</text>
+      <rect x="535" y="285" width="60" height="28" rx="5" fill="#fbbf24" opacity="0.2"/>
+      <text x="565" y="304" text-anchor="middle" fill="#fbbf24" font-size="9">VIP</text>
+      <rect x="605" y="285" width="60" height="28" rx="5" fill="#3fb950" opacity="0.2"/>
+      <text x="635" y="304" text-anchor="middle" fill="#3fb950" font-size="9">新版本</text>
+      <text x="595" y="336" text-anchor="middle" fill="#94a3b8" font-size="11">按用户组/地域/标签逐步放量，精细控制</text>
+      <text x="595" y="358" text-anchor="middle" fill="#3fb950" font-size="11">✅ 精准控制 | 可配合 A/B 测试</text>
+      <text x="595" y="378" text-anchor="middle" fill="#f87171" font-size="11">❌ 实现复杂 | 需要路由能力</text>
+      <text x="595" y="398" text-anchor="middle" fill="#8b949e" font-size="10">适用：<tspan fill="#fbbf24">精细化运营、功能灰度</tspan></text>
+
+      <text x="400" y="460" text-anchor="middle" fill="#8b949e" font-size="12">部署策略选型 = 风险承受力 × 资源预算 × 发布频率 ÷ 业务重要性</text>
+    </svg>
+    <div class="diagram-caption">图 3：四种部署策略对比——滚动更新、蓝绿部署、金丝雀发布、灰度发布</div>
+  </div>
+
+  <h3>部署策略详解</h3>
+  <table>
+    <tr><th>策略</th><th>原理</th><th>回滚时间</th><th>成本</th><th>适合场景</th></tr>
+    <tr><td><strong>滚动更新</strong></td><td>逐个替换旧 Pod</td><td>⏳ 需要逐个替换回来</td><td>低（无需额外资源）</td><td>大部分无状态服务</td></tr>
+    <tr><td><strong>蓝绿部署</strong></td><td>两套环境，切换流量</td><td>⚡ 秒级（切回 LB）</td><td>高（双倍资源）</td><td>关键业务、数据库 Schema 变更</td></tr>
+    <tr><td><strong>金丝雀</strong></td><td>小比例流量测试新版本</td><td>⚡ 秒级（调整权重）</td><td>中（少量额外 Pod）</td><td>高流量产品、重大功能更新</td></tr>
+    <tr><td><strong>灰度</strong></td><td>按条件分批放量</td><td>⚡ 秒级</td><td>中低</td><td>精细化运营、A/B 测试</td></tr>
+  </table>
+
+  <div class="feynman">
+    <p><span class="analogy">四种部署策略就像四种上菜方式：</span></p>
+    <p><strong>滚动更新</strong> = 自助餐厅换菜：把旧的宫保鸡丁一盘一盘撤下，换上新的水煮鱼——总有一盘菜供应。</p>
+    <p><strong>蓝绿部署</strong> = 一家餐厅同时开两个厨房：旧厨房继续做菜，新厨房做好全部菜后，服务员统一改去新厨房端菜——切换瞬间完成。</p>
+    <p><strong>金丝雀</strong> = 新菜推出前先让 5% 的客人尝鲜并反馈——没问题再全面推广。名字来源于"煤矿里的金丝雀"——金丝雀对瓦斯敏感，先死先预警。</p>
+    <p><strong>灰度</strong> = 分地区推广新品：先在华东地区试点 → 再华北 → 最后全国。每个阶段收集反馈，随时停止放量。</p>
+  </div>
+</section>
+
+<!-- ====== 工具实战 ====== -->
+<section class="section" id="tools">
+  <h2>🛠️ 工具实战：配置文件示例</h2>
+  <p>以下是主流的 CI/CD 工具及其配置文件详解。看完后能直接拿去改改就能用。</p>
+
+  <h3>1️⃣ GitHub Actions（.github/workflows/ci.yml）</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="240" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">GitHub Actions 工作流结构</text>
+
+      <!-- Event -->
+      <rect x="30" y="55" width="100" height="40" rx="8" fill="#fbbf24" opacity="0.12" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="80" y="80" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">🔔 push / PR</text>
+
+      <text x="140" y="82" fill="#8b949e" font-size="16">→</text>
+
+      <!-- Job 1: Lint -->
+      <rect x="160" y="50" width="130" height="50" rx="8" fill="#22d3ee" opacity="0.1" stroke="#22d3ee" stroke-width="1"/>
+      <text x="225" y="70" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="bold">Job 1: lint</text>
+      <text x="225" y="90" text-anchor="middle" fill="#94a3b8" font-size="10">代码检查</text>
+
+      <text x="300" y="82" fill="#8b949e" font-size="16">→</text>
+
+      <!-- Job 2: Test -->
+      <rect x="320" y="50" width="130" height="50" rx="8" fill="#3fb950" opacity="0.1" stroke="#3fb950" stroke-width="1"/>
+      <text x="385" y="70" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">Job 2: test</text>
+      <text x="385" y="90" text-anchor="middle" fill="#94a3b8" font-size="10">单元测试</text>
+
+      <text x="460" y="82" fill="#8b949e" font-size="16">→</text>
+
+      <!-- Job 3: Build -->
+      <rect x="480" y="50" width="130" height="50" rx="8" fill="#a78bfa" opacity="0.1" stroke="#a78bfa" stroke-width="1"/>
+      <text x="545" y="70" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="bold">Job 3: build</text>
+      <text x="545" y="90" text-anchor="middle" fill="#94a3b8" font-size="10">构建打包</text>
+
+      <text x="620" y="82" fill="#8b949e" font-size="16">→</text>
+
+      <!-- Job 4: Deploy -->
+      <rect x="640" y="50" width="130" height="50" rx="8" fill="#f87171" opacity="0.1" stroke="#f87171" stroke-width="1"/>
+      <text x="705" y="70" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold">Job 4: deploy</text>
+      <text x="705" y="90" text-anchor="middle" fill="#94a3b8" font-size="10">部署（需手动审核）</text>
+
+      <!-- Parallel jobs -->
+      <text x="400" y="125" text-anchor="middle" fill="#8b949e" font-size="11">lint 和 test 可并行执行，build 依赖 lint+test 通过，deploy 需 manual approval</text>
+
+      <!-- Matrix -->
+      <rect x="100" y="140" width="600" height="38" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="165" text-anchor="middle" fill="#fbbf24" font-size="11">支持 Matrix 策略：node: [16, 18, 20] × os: [ubuntu, windows] — 多种环境并行测试</text>
+
+      <text x="400" y="215" text-anchor="middle" fill="#8b949e" font-size="11">GitHub Actions 优势：<tspan fill="#3fb950">GitHub 原生集成</tspan> | <tspan fill="#22d3ee">丰富的 Marketplace Action 生态</tspan> | <tspan fill="#a78bfa">免费额度（公开仓库免费）</tspan></text>
+    </svg>
+    <div class="diagram-caption">图 4：GitHub Actions 工作流结构——事件触发 → Jobs 并行/串行执行</div>
+  </div>
+
+  <pre><code># .github/workflows/ci-cd.yml — GitHub Actions 完整示例
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run lint  # ESLint 检查
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint           # 依赖 lint 通过
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm test     # Jest 单元测试
+      - run: npm run test:e2e  # 端到端测试
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: [lint, test]   # 依赖 lint 和 test 都通过
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: production  # 需要手动审核
+    steps:
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/my-app \
+            my-app=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}</code></pre>
+
+  <h3>2️⃣ GitLab CI（.gitlab-ci.yml）</h3>
+  <pre><code># .gitlab-ci.yml — GitLab CI 完整示例
+stages:
+  - lint
+  - test
+  - build
+  - deploy
+
+variables:
+  REGISTRY: $CI_REGISTRY
+  IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - node_modules/
+
+lint:
+  stage: lint
+  image: node:20
+  script:
+    - npm ci
+    - npm run lint
+
+test:
+  stage: test
+  image: node:20
+  script:
+    - npm ci
+    - npm test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+
+build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t $REGISTRY/$CI_PROJECT_PATH:$IMAGE_TAG .
+    - docker push $REGISTRY/$CI_PROJECT_PATH:$IMAGE_TAG
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl set image deployment/my-app \
+        my-app=$REGISTRY/$CI_PROJECT_PATH:$IMAGE_TAG
+  environment:
+    name: production
+    url: https://myapp.com
+  only:
+    - main
+  when: manual  # 手动触发</code></pre>
+
+  <h3>3️⃣ Jenkins Pipeline（声明式）</h3>
+  <pre><code>// Jenkinsfile — 声明式 Pipeline
+pipeline {
+    agent any
+
+    environment {
+        REGISTRY = 'docker.io/myorg'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                sh 'npm ci'
+                sh 'npm run lint'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'npm test'
+            }
+            post {
+                always {
+                    junit 'reports/*.xml' // 收集测试报告
+                }
+            }
+        }
+
+        stage('Build & Push') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh """
+                    docker build -t ${REGISTRY}/my-app:${IMAGE_TAG} .
+                    docker push ${REGISTRY}/my-app:${IMAGE_TAG}
+                """
+            }
+        }
+
+        stage('Deploy to Staging') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh 'kubectl apply -f k8s/staging/'
+            }
+        }
+
+        stage('Deploy to Production') {
+            when {
+                branch 'main'
+            }
+            input {
+                message "确认部署到生产环境？"
+                ok "是的，部署！"
+            }
+            steps {
+                sh 'kubectl apply -f k8s/production/'
+            }
+        }
+    }
+
+    post {
+        failure {
+            // 失败时发通知
+            emailext(
+                subject: "构建失败: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                to: 'team@company.com',
+                body: "请检查 Jenkins 构建日志..."
+            )
+        }
+    }
+}</code></pre>
+
+  <div class="compare">
+    <div>
+      <h4>📜 声明式 Pipeline</h4>
+      <ul>
+        <li>更结构化，pipeline { } 块</li>
+        <li>agent, stages, post 顶层语法</li>
+        <li>易读易写，适合大多数团队</li>
+        <li>自动生成可视化流水线</li>
+      </ul>
+    </div>
+    <div>
+      <h4>⚙️ 脚本式 Pipeline</h4>
+      <ul>
+        <li>Groovy 脚本，node { } 包裹</li>
+        <li>更灵活，可写复杂条件逻辑</li>
+        <li>适合高级用户和复杂场景</li>
+        <li>需要更多 Groovy 知识</li>
+      </ul>
+    </div>
+  </div>
+
+  <pre><code>// Jenkinsfile — 脚本式 Pipeline（简写）
+node {
+    stage('Checkout') { checkout scm }
+    stage('Build') {
+        sh 'docker build -t myapp:${BUILD_NUMBER} .'
+    }
+    stage('Test') {
+        sh 'docker run myapp:${BUILD_NUMBER} npm test'
+    }
+    stage('Deploy') {
+        input 'Deploy to prod?'
+        sh 'kubectl set image deployment/my-app my-app=myapp:${BUILD_NUMBER}'
+    }
+}</code></pre>
+
+  <div class="info-card">
+    <h4>💡 选择建议</h4>
+    <p><strong>GitHub Actions</strong>：如果你的项目在 GitHub 上，首选。原生集成，生态丰富。</p>
+    <p><strong>GitLab CI</strong>：如果你的项目在自建 GitLab 上，或需要更细粒度的权限控制。内置 Registry。</p>
+    <p><strong>Jenkins</strong>：大型组织、有复杂 Pipeline 需求的场景。插件生态极其丰富（1800+ 插件）。</p>
+    <p><strong>还有...</strong>：CircleCI、Travis CI、Drone CI、Tekton（云原生）等，各有千秋。</p>
+  </div>
+</section>
+
+<!-- ====== GitOps ====== -->
+<section class="section" id="gitops">
+  <h2>🔄 GitOps：集群的"Git 遥控器"</h2>
+  <p><strong>GitOps</strong> 是云原生时代的一种运维模式，核心思想：<strong>用 Git 仓库作为集群状态的"单一事实来源"</strong>。一切变更（部署、配置、回滚）都通过修改 Git 仓库中的声明式配置文件来完成。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="420" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">GitOps 工作流（以 ArgoCD 为例）</text>
+
+      <!-- Git Repo -->
+      <rect x="50" y="60" width="200" height="100" rx="10" fill="#1e293b" stroke="#fbbf24" stroke-width="2"/>
+      <text x="150" y="88" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="bold">📂 Git Repo</text>
+      <text x="70" y="112" fill="#94a3b8" font-size="11">├── k8s/base/</text>
+      <text x="70" y="130" fill="#94a3b8" font-size="11">├── k8s/overlays/</text>
+      <text x="70" y="148" fill="#94a3b8" font-size="11">└── k8s/production/</text>
+
+      <!-- Arrow from Git to ArgoCD -->
+      <text x="275" y="120" fill="#8b949e" font-size="20">→</text>
+
+      <!-- ArgoCD -->
+      <rect x="300" y="55" width="200" height="110" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="2"/>
+      <text x="400" y="82" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">🔄 ArgoCD</text>
+      <text x="400" y="105" text-anchor="middle" fill="#3fb950" font-size="11">✅ 持续同步中</text>
+      <text x="400" y="125" text-anchor="middle" fill="#94a3b8" font-size="10">每 3 分钟拉取 Git</text>
+      <text x="400" y="145" text-anchor="middle" fill="#94a3b8" font-size="10">检测到差异 → 自动修复</text>
+
+      <!-- Arrow from ArgoCD to Cluster -->
+      <text x="525" y="120" fill="#8b949e" font-size="20">→</text>
+
+      <!-- K8s Cluster -->
+      <rect x="550" y="50" width="220" height="120" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="2"/>
+      <text x="660" y="78" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">☸️ K8s Cluster</text>
+      <rect x="570" y="90" width="180" height="28" rx="6" fill="#22d3ee" opacity="0.12"/>
+      <text x="660" y="109" text-anchor="middle" fill="#22d3ee" font-size="11">📦 实际运行状态</text>
+      <rect x="570" y="125" width="180" height="28" rx="6" fill="#3fb950" opacity="0.12"/>
+      <text x="660" y="144" text-anchor="middle" fill="#3fb950" font-size="11">💚 期望状态 = 实际状态</text>
+
+      <!-- Developer trigger -->
+      <rect x="50" y="195" width="120" height="38" rx="10" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="110" y="219" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="bold">🧑‍💻 git push</text>
+
+      <text x="180" y="220" fill="#8b949e" font-size="16">→</text>
+
+      <!-- PR / Merge -->
+      <rect x="200" y="190" width="150" height="48" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1"/>
+      <text x="275" y="212" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold">PR Review → Merge</text>
+      <text x="275" y="230" text-anchor="middle" fill="#94a3b8" font-size="10">Code Review + Auto CI</text>
+
+      <text x="363" y="220" fill="#8b949e" font-size="16">→</text>
+
+      <!-- Auto sync -->
+      <rect x="385" y="190" width="150" height="48" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1"/>
+      <text x="460" y="212" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">ArgoCD 检测变更</text>
+      <text x="460" y="230" text-anchor="middle" fill="#94a3b8" font-size="10">自动同步到集群</text>
+
+      <text x="548" y="220" fill="#8b949e" font-size="16">→</text>
+
+      <!-- Deployed -->
+      <rect x="570" y="190" width="200" height="48" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="1"/>
+      <text x="670" y="212" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="bold">🎉 新版本运行中</text>
+      <text x="670" y="230" text-anchor="middle" fill="#94a3b8" font-size="10">Git 永远是最新状态</text>
+
+      <!-- Key principles -->
+      <rect x="50" y="265" width="700" height="140" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="290" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">GitOps 四大原则</text>
+
+      <rect x="65" y="305" width="310" height="42" rx="6" fill="#22d3ee" opacity="0.06" stroke="#22d3ee" stroke-width="0.5"/>
+      <text x="80" y="324" fill="#22d3ee" font-size="11" font-weight="bold">1️⃣ 声明式</text>
+      <text x="160" y="324" fill="#94a3b8" font-size="11">集群状态用声明式配置定义（YAML）</text>
+      <text x="80" y="340" fill="#22d3ee" font-size="11" font-weight="bold">2️⃣ Git 是唯一事实来源</text>
+      <text x="200" y="340" fill="#94a3b8" font-size="11">所有变更必须通过 Git</text>
+
+      <rect x="415" y="305" width="320" height="42" rx="6" fill="#3fb950" opacity="0.06" stroke="#3fb950" stroke-width="0.5"/>
+      <text x="430" y="324" fill="#3fb950" font-size="11" font-weight="bold">3️⃣ 自动同步</text>
+      <text x="510" y="324" fill="#94a3b8" font-size="11">Operator 自动将 Git 状态同步到集群</text>
+      <text x="430" y="340" fill="#3fb950" font-size="11" font-weight="bold">4️⃣ 自愈</text>
+      <text x="480" y="340" fill="#94a3b8" font-size="11">集群被手动改了？自动恢复回 Git 定义的状态</text>
+
+      <!-- Bottom -->
+      <text x="400" y="400" text-anchor="middle" fill="#8b949e" font-size="11">GitOps ≈ <tspan fill="#22d3ee">Git 是遥控器</tspan>，集群是电视——你按的每个键（commit）都会改变电视画面（集群状态）</text>
+    </svg>
+    <div class="diagram-caption">图 5：GitOps 工作流——开发者修改 Git，ArgoCD 自动同步到 K8s 集群</div>
+  </div>
+
+  <h3>GitOps vs 传统 CI/CD</h3>
+  <table>
+    <tr><th>维度</th><th>传统 CI/CD</th><th>GitOps</th></tr>
+    <tr><td>触发方式</td><td>Jenkins/CI 服务器 push 到集群</td><td>Operator（ArgoCD）从 Git 拉取</td></tr>
+    <tr><td>安全模型</td><td>CI 需要有集群凭证（不安全）</td><td>Operator 拥有凭证，CI 无凭证（更安全）</td></tr>
+    <tr><td>状态一致性</td><td>推了就不管了，集群可能被手动改</td><td>持续对比 Git vs 集群，自动修复偏差</td></tr>
+    <tr><td>回滚</td><td>回退 CI 流水线或手动操作</td><td>git revert → 自动同步回滚</td></tr>
+    <tr><td>审计</td><td>查看 CI 日志</td><td>查看 Git 提交历史（天然审计日志）</td></tr>
+  </table>
+
+  <h3>ArgoCD 实战配置</h3>
+  <pre><code># argocd-application.yaml — ArgoCD Application 定义
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/myorg/my-app-config.git
+    targetRevision: HEAD     # Git 分支
+    path: k8s/overlays/prod  # 配置目录
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
+  syncPolicy:
+    automated:               # 自动同步
+      prune: true            # 自动清理多余资源
+      selfHeal: true         # 自动修复偏差
+    syncOptions:
+      - CreateNamespace=true</code></pre>
+
+  <div class="feynman">
+    <p><span class="analogy">GitOps 就像把集群的\"遥控器\"放在 Git 仓库里：</span></p>
+    <p><strong>传统方式</strong>（push 模式）= 你每次换台都亲自跑到电视前按按钮（SSH 到服务器执行命令）。人不在时电视没法自己换台（自动化）。</p>
+    <p><strong>GitOps</strong>（pull 模式）= 你把想看的频道写在纸条上（Git），电视自己每 3 分钟检查一次纸条，发现纸条变了就自动换台（ArgoCD 同步）。</p>
+    <p>如果有人偷偷手动按了电视按钮（手动改了集群），下次纸条检查发现不一致，电视自动切回纸条上写的频道（<strong>自愈</strong>）。</p>
+  </div>
+
+  <div class="info-card">
+    <h4>🎯 主流的 GitOps 工具</h4>
+    <p><strong>ArgoCD</strong>（最流行）：CNCF 毕业项目，功能最全，Web UI 强大。支持多集群、多环境。</p>
+    <p><strong>Flux CD</strong>：CNCF 毕业项目，更轻量，原生支持 Helm、Kustomize、OCI artifacts。</p>
+    <p>两者都是优秀的 GitOps Operator，选择取决于团队偏好和生态适配。</p>
+  </div>
+</section>
+
+<!-- ====== 发布策略对比 ====== -->
+<section class="section" id="strategies">
+  <h2>📋 发布策略综合对比表</h2>
+  <p>选择发布策略时，你需要权衡<strong>风险、成本、速度</strong>三个维度。下面是完整的对比：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="340" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">发布策略选型决策树</text>
+
+      <!-- Decision root -->
+      <rect x="300" y="55" width="200" height="36" rx="18" fill="#1e293b" stroke="#22d3ee" stroke-width="2"/>
+      <text x="400" y="79" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">🤔 选哪种部署策略？</text>
+
+      <!-- Branch 1: Low Risk -->
+      <text x="100" y="115" fill="#8b949e" font-size="16">⬋</text>
+      <text x="680" y="115" fill="#8b949e" font-size="16">⬊</text>
+
+      <rect x="20" y="125" width="160" height="36" rx="8" fill="#3fb950" opacity="0.12" stroke="#3fb950" stroke-width="1"/>
+      <text x="100" y="147" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">风险可接受</text>
+
+      <rect x="620" y="125" width="160" height="36" rx="8" fill="#f87171" opacity="0.12" stroke="#f87171" stroke-width="1"/>
+      <text x="700" y="147" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold">必须零风险</text>
+
+      <!-- Leaf: Rolling -->
+      <rect x="20" y="185" width="280" height="55" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="1"/>
+      <text x="160" y="207" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">🔄 滚动更新</text>
+      <text x="160" y="228" text-anchor="middle" fill="#94a3b8" font-size="11">K8s 默认策略，低资源开销</text>
+
+      <!-- Leaf: Blue/Green -->
+      <rect x="20" y="255" width="280" height="55" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1"/>
+      <text x="160" y="277" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">🔵🟢 蓝绿部署</text>
+      <text x="160" y="298" text-anchor="middle" fill="#94a3b8" font-size="11">秒级回滚，双倍资源</text>
+
+      <!-- Leaf: Canary -->
+      <rect x="620" y="185" width="160" height="55" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1"/>
+      <text x="700" y="207" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">🐤 金丝雀</text>
+      <text x="700" y="228" text-anchor="middle" fill="#94a3b8" font-size="11">5% 尝鲜逐步放量</text>
+
+      <!-- Leaf: Gray -->
+      <rect x="620" y="255" width="160" height="55" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1"/>
+      <text x="700" y="277" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">🎯 灰度发布</text>
+      <text x="700" y="298" text-anchor="middle" fill="#94a3b8" font-size="11">按用户标签精准放量</text>
+
+      <!-- Or text -->
+      <text x="380" y="240" fill="#8b949e" font-size="14">OR</text>
+    </svg>
+    <div class="diagram-caption">图 6：发布策略选型决策树——根据风险承受力选择</div>
+  </div>
+
+  <h3>完整对比表</h3>
+  <table>
+    <tr><th>维度</th><th>滚动更新</th><th>蓝绿部署</th><th>金丝雀发布</th><th>灰度发布</th></tr>
+    <tr><td>停机时间</td><td>零停机</td><td>零停机</td><td>零停机</td><td>零停机</td></tr>
+    <tr><td>回滚速度</td><td>慢（逐个替换）</td><td>⚡ 秒级</td><td>⚡ 秒级</td><td>⚡ 秒级</td></tr>
+    <tr><td>额外资源消耗</td><td>无</td><td>100% 额外</td><td>10-20%</td><td>10-30%</td></tr>
+    <tr><td>流量控制粒度</td><td>无</td><td>全部/无</td><td>百分比</td><td>用户/地域标签</td></tr>
+    <tr><td>实现复杂度</td><td>低</td><td>中</td><td>中高</td><td>高</td></tr>
+    <tr><td>适合场景</td><td>大部分 Web 服务</td><td>关键业务、DB 变更</td><td>高流量产品</td><td>精细化运营</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🎯 一句话决策</h4>
+    <p><strong>新项目初期</strong> → 滚动更新就够了。</p>
+    <p><strong>核心业务上线</strong> → 蓝绿部署（钱能解决的问题都不是问题）。</p>
+    <p><strong>月活千万的产品</strong> → 金丝雀发布（宁可慢不能出事）。</p>
+    <p><strong>精细化运营</strong> → 灰度发布（谁先看到新功能由你决定）。</p>
+  </div>
+</section>
+
+<!-- ====== 实战问答 ====== -->
+<section class="section" id="qa">
+  <h2>❓ 实战问答（8 题）</h2>
+  <p>点击问题展开答案，先自己想想再看解析 👇</p>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q1：CI/CD 是什么？为什么现代项目必须要有 CI/CD？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>CI（持续集成）</strong>：每次代码提交到共享仓库时，自动触发代码检查、测试、构建，尽早发现集成问题。</p>
+      <p class="a"><strong>CD（持续交付/持续部署）</strong>：通过 CI 验证的产物自动部署到目标环境（交付：部署到类生产环境；部署：直接部署到生产）。</p>
+      <p class="q">为什么必须要有：</p>
+      <ul class="a">
+        <li><strong>速度</strong>：手工部署一次 2 小时，CI/CD 2 分钟</li>
+        <li><strong>质量</strong>：每次提交都自动跑测试，bug 在合入之前就被发现</li>
+        <li><strong>可重复</strong>：自动化流程消除"在我机器上能跑"的差异</li>
+        <li><strong>可追溯</strong>：每次发布对应哪个 commit，一键回滚</li>
+      </ul>
+      <p class="a"><span class="handwritten">一句话：CI/CD 把"上线像上刑场"变成"上线像点外卖"——确定、快速、可追踪。</span></p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q2：蓝绿部署和金丝雀发布有什么区别？各自适合什么场景？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>蓝绿部署</strong>：同时运行两套完整环境（Blue 旧版、Green 新版），通过切换负载均衡器瞬间切换流量。回滚也是瞬间切回。</p>
+      <p class="a"><strong>金丝雀发布</strong>：只在现有环境中部署少量新版本实例，让 5%-10% 流量走新版本，逐步扩大到 100%。</p>
+      <p class="q">核心区别：</p>
+      <ul class="a">
+        <li>蓝绿 = 环境隔离，双倍资源，秒级切换</li>
+        <li>金丝雀 = 流量比例控制，少量额外资源，逐步放量</li>
+      </ul>
+      <p class="q">场景选择：</p>
+      <p class="a">蓝绿适合<strong>数据库 Schema 变更</strong>、<strong>关键业务</strong>（支付、用户中心）——需要完全隔离测试后再切换。</p>
+      <p class="a">金丝雀适合<strong>高流量产品</strong>、<strong>重大 UI/UX 改版</strong>——需要真实流量验证，逐步放量降低风险。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')\">Q3：GitHub Actions 的 workflow 结构是怎样的？jobs 之间如何依赖？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">GitHub Actions Workflow 的核心结构：</p>
+      <ul class="a">
+        <li><strong>on</strong>：触发事件（push、pull_request、schedule 等）</li>
+        <li><strong>jobs</strong>：定义多个 job，每个 job 在独立的 runner 中运行</li>
+        <li><strong>steps</strong>：job 内的执行步骤</li>
+        <li><strong>needs</strong>：定义 job 之间的依赖关系</li>
+      </ul>
+      <p class="q">依赖示例：</p>
+      <pre><code>jobs:
+  lint:
+    runs-on: ubuntu-latest
+  test:
+    needs: lint     # test 等 lint 完成后执行
+    runs-on: ubuntu-latest
+  deploy:
+    needs: [lint, test]  # 等 lint 和 test 都通过
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest</code></pre>
+      <p class="a"><strong>加分点</strong>：提到 Matrix 策略（多版本并行测试）、environment 保护（手动审核）、Actions Marketplace 可复用社区 Action。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q4：Jenkins 声明式 Pipeline 和脚本式 Pipeline 的区别是什么？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>特性</th><th>声明式 Pipeline</th><th>脚本式 Pipeline</th></tr>
+        <tr><td>语法</td><td>结构化（pipeline { }）</td><td>自由 Groovy 脚本（node { }）</td></tr>
+        <tr><td>学习曲线</td><td>低，易读易写</td><td>高，需要 Groovy 基础</td></tr>
+        <tr><td>灵活性</td><td>有限（但有 script 块注入）</td><td>极高（可写任意逻辑）</td></tr>
+        <tr><td>可视化</td><td>自动生成流水线视图</td><td>需手动配置</td></tr>
+        <tr><td>错误处理</td><td>内置 post 块</td><td>try/catch 自己写</td></tr>
+        <tr><td>推荐使用</td><td>大部分场景</td><td>复杂条件逻辑</td></tr>
+      </table>
+      <p class="a"><strong>加分点</strong>：声明式是"what to do"，脚本式是"how to do"。团队应采用声明式为主，复杂场景用 script 块嵌入脚本式逻辑。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q5：什么是 GitOps？它的核心理念是什么？和传统 CI/CD 的主要区别？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>GitOps</strong> 是用 Git 仓库作为基础设施和应用的<strong>单一事实来源</strong>的运维模式。</p>
+      <p class="q">四大原则：</p>
+      <ol class="a">
+        <li><strong>声明式</strong>：系统状态用声明式配置定义（YAML）</li>
+        <li><strong>Git 是唯一事实来源</strong>：所有变更必须通过 Git</li>
+        <li><strong>自动同步</strong>：Operator（如 ArgoCD）自动将 Git 状态同步到集群</li>
+        <li><strong>自愈</strong>：集群被手动修改后自动恢复为 Git 定义的状态</li>
+      </ol>
+      <p class="q">与传统 CI/CD 的区别：</p>
+      <ul class="a">
+        <li>传统：CI 服务器 push（推）到集群 → CI 需要有集群凭证（安全风险）</li>
+        <li>GitOps：Operator pull（拉）从 Git → 凭证在集群内（更安全）</li>
+        <li>传统：推完就不管了 → 集群可能和 Git 不一致</li>
+        <li>GitOps：持续对比 Git vs 集群 → 自动修复偏差</li>
+      </ul>
+      <p class="a"><span class="handwritten">GitOps = 用 Git 遥控集群，每次 commit 就是一次"换台"。</span></p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q6：ArgoCD 的工作原理是什么？如何实现"自愈"？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>ArgoCD 工作原理</strong>：</p>
+      <ol class="a">
+        <li>连接 Git 仓库（指定 repoURL、path、targetRevision）</li>
+        <li>持续监控 Git 仓库中的声明式 YAML 配置</li>
+        <li>将 Git 中的"期望状态"和 K8s 集群的"实际状态"对比</li>
+        <li>发现差异 → 自动同步（或手动确认后同步）</li>
+      </ol>
+      <p class="q"><strong>自愈实现</strong>：</p>
+      <p class="a"><code>syncPolicy.automated.selfHeal: true</code>——如果有人 kubectl delete pod 或手动修改了 Deployment 的副本数，ArgoCD 检测到 Git 中的配置与集群状态不一致，自动将集群恢复为 Git 定义的状态。</p>
+      <p class="a"><strong>加分点</strong>：ArgoCD 支持多集群管理、SSO 集成、Web UI 可视化、RBAC 权限控制、同步 Hook（pre-sync/post-sync 执行脚本）。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q7：Docker 镜像在 CI/CD 流水线中扮演什么角色？如何保证镜像安全？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>镜像的角色：CI/CD 的交付物</strong></p>
+      <ul class="a">
+        <li>CI 阶段：代码 → 编译 → 构建 Docker 镜像 → push 到 Registry</li>
+        <li>CD 阶段：从 Registry pull 镜像 → 部署到 K8s</li>
+        <li>镜像 = 不可变的、可重现的运行单元（包含代码 + 运行时 + 配置）</li>
+      </ul>
+      <p class="q">镜像安全最佳实践：</p>
+      <ul class="a">
+        <li><strong>基础镜像扫描</strong>：用 Trivy / Clair / Snyk 扫描 CVE 漏洞</li>
+        <li><strong>最小化镜像</strong>：用 distroless / alpine 减少攻击面</li>
+        <li><strong>镜像签名</strong>：用 Cosign 给镜像签名，确保不被篡改</li>
+        <li><strong>固定标签</strong>：用 commit-sha 而非 latest 作为镜像标签</li>
+        <li><strong>最小权限</strong>：不在镜像中运行 root 用户</li>
+      </ul>
+      <p class="a"><span class="handwritten">镜像就是 CI/CD 流水线"装进集装箱的货物"——封装好、不可变、随时可部署。</span></p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q8：设计一套 CI/CD 流水线，需要考虑哪些关键环节？从零开始你会怎么做？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路（考察系统设计能力）：</p>
+      <p class="a"><strong>第一步：版本控制</strong></p>
+      <ul class="a">
+        <li>Git 分支策略（Git Flow / Trunk Based / GitHub Flow）</li>
+        <li>PR/MR 流程 + Code Review 规范</li>
+      </ul>
+      <p class="a"><strong>第二步：CI 阶段</strong></p>
+      <ul class="a">
+        <li>代码检查（Lint）→ 单元测试 → 集成测试 → 构建 → 镜像打包</li>
+        <li>缓存依赖加速构建（cache node_modules / maven repo）</li>
+        <li>并行化：lint 和 test 可以并行跑</li>
+      </ul>
+      <p class="a"><strong>第三步：制品管理</strong></p>
+      <ul class="a">
+        <li>镜像推送到 Container Registry（Docker Hub / Harbor / ECR）</li>
+        <li>为镜像打标签：commit-sha（唯一可追溯）+ semver（可读）</li>
+      </ul>
+      <p class="a"><strong>第四步：CD 阶段</strong></p>
+      <ul class="a">
+        <li>部署到 Dev/Staging 环境（自动）</li>
+        <li>部署到 Production（需手动审批）</li>
+        <li>选择部署策略（滚动 / 蓝绿 / 金丝雀）</li>
+      </ul>
+      <p class="a"><strong>第五步：可观测性</strong></p>
+      <ul class="a">
+        <li>部署后的 Health Check / Smoke Test</li>
+        <li>监控指标（请求错误率升高 → 自动回滚）</li>
+        <li>通知（Slack/钉钉/邮件）</li>
+      </ul>
+      <p class="a"><strong>加分点</strong>：提到 Deployment Freeze 策略、Feature Flag 配合发布、数据库变更（migration）与部署的协调、GitOps 最终态。</p>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>📌 核心要点</h4>
+    <p>读者问 CI/CD 时，他们真正想看的是你<strong>对自动化交付全链路的理解</strong>：</p>
+    <ul>
+      <li><strong>不只是工具</strong>：GitHub Actions 谁都会配，但理解<strong>为什么需要</strong>金丝雀发布才是关键</li>
+      <li><strong>安全思维</strong>：提到 Secrets 管理、镜像签名、最小权限原则</li>
+      <li><strong>实战经验</strong>：提到具体踩过的坑（比如"构建缓存失效导致构建变慢"、"镜像用 latest 标签导致回滚困难"）</li>
+      <li><strong>成本意识</strong>：蓝绿部署虽然安全但资源翻倍，不是所有场景都适合</li>
+      <li><strong>对 GitOps 的理解</strong>：这个在 2024-2025 年几乎是必问的加分项</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== 口播总结 ====== -->
+<section class="section" id="summary">
+  <h2>🎙️ 口播总结</h2>
+  <div class="voice-summary">
+    <p>好，我们来快速捋一遍 CI/CD 与 GitOps 的实战知识体系。</p>
+    <p><strong>第一，CI/CD 是"从代码到生产的自动化流水线"。</strong>我们用<strong>厨房流水线</strong>的类比来理解：没有 CI/CD 就像厨师一个人包揽洗菜、切菜、炒菜、装盘——慢、容易出错、品质不稳定。有了 CI/CD，每次你写好菜谱（代码），自动化流水线帮你完成所有工序，你只需要关注菜谱好不好吃。</p>
+    <p><strong>第二，CI 持续集成</strong>的四大支柱：<strong>代码检查（Lint）→ 单元测试 → 编译构建 → 镜像打包</strong>。每次提交都触发，5-10 分钟内有反馈。核心目标：<strong>早发现、早修复</strong>。</p>
+    <p><strong>第三，CD 持续部署</strong>的关键不是"能不能自动部署"，而是<strong>如何安全地部署</strong>。四种主流部署策略：<strong>滚动更新</strong>（逐个替换，零成本）、<strong>蓝绿部署</strong>（环境隔离，秒级回滚）、<strong>金丝雀发布</strong>（5% 流量尝鲜，风险最低）、<strong>灰度发布</strong>（按用户标签精准放量）。选型要看风险承受力 × 资源预算。</p>
+    <p><strong>第四，工具实战</strong>：<strong>GitHub Actions</strong>（GitHub 原生，生态最丰富）、<strong>GitLab CI</strong>（自建 GitLab 首选）、<strong>Jenkins</strong>（老牌王者，体量大，插件多）。声明式 Pipeline 更推荐团队使用——结构清晰，自动生成流水线视图。</p>
+    <p><strong>第五，GitOps</strong> 是云原生时代的运维模式革命——<strong>Git 是你的"集群遥控器"</strong>。ArgoCD 作为 Operator 持续对比 Git 和集群的状态，一旦发现偏差就自动修复（自愈）。相比传统 CI/CD 的 push 模式，GitOps 的 pull 模式更安全、更可控、审计更完善。</p>
+    <p>实战时记住一个核心框架：<strong>"为什么→是什么→怎么做→选型考量→踩坑经验"</strong>——展示你的系统性思考，而不是背配置语法。</p>
+    <p>好，这就是 CI/CD 与 GitOps 的实战知识体系。下一篇我们聊聊 <strong>Kubernetes 排障实战与性能优化</strong>——当线上出问题时，怎么快速定位和解决。敬请期待！🎯</p>
+  </div>
+</section>
+
+</main>
+
+</div><!-- .app -->
+
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

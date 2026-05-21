@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔍 二分查找 · LeetCode 解法模式 · 费曼学习法</title>
+<style>  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 40px 20px 80px; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .back { color: var(--muted); font-size: 13px; text-decoration: none; display: inline-block; margin-bottom: 24px; }
+  .back:hover { color: var(--accent); }
+  h1 { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 32px; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; overflow-x: auto; margin: 10px 0; font-size: 12px; line-height: 1.5; }
+  pre code { background: none; color: var(--text); padding: 0; }
+
+  .desc-box { background: linear-gradient(135deg,rgba(88,166,255,0.06),rgba(163,113,247,0.04)); border:1px solid rgba(88,166,255,0.2); border-radius:12px; padding:20px 24px; margin-bottom:32px; position:relative; }
+  .desc-box::before { content:'💡 核心思想'; position:absolute; top:-11px; left:20px; background:var(--bg); padding:2px 12px; border-radius:10px; font-size:12px; font-weight:600; color:var(--accent); }
+  .desc-box .tip { color:var(--green); font-size:13px; margin-top:8px; }
+
+  .diagram { background:#0a0c13; border:1px solid var(--border); border-radius:12px; padding:12px; margin:24px 0; text-align:center; overflow-x:auto; }
+  .diagram-caption { font-size:12px; color:var(--muted); margin-top:8px; }
+
+  .prob-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; margin-top:24px; }
+  .prob-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 18px; cursor:pointer; transition:all .15s; position:relative; }
+  .prob-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .prob-id { font-size:11px; color:var(--muted); font-weight:600; }
+  .prob-title { font-size:15px; font-weight:600; color:#fff; margin:4px 0 8px; }
+  .prob-idea { font-size:12px; color:var(--muted); line-height:1.6; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .prob-meta { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .prob-diff { font-size:10px; padding:2px 8px; border-radius:8px; font-weight:600; }
+  .diff-Easy { background:rgba(63,185,80,0.12); color:var(--green); }
+  .diff-Medium { background:rgba(210,153,34,0.12); color:var(--orange); }
+  .diff-Hard { background:rgba(248,81,73,0.12); color:var(--red); }
+  .card-tag { font-size:10px; padding:2px 7px; border-radius:8px; font-weight:600; background:rgba(163,113,247,0.10); color:var(--purple); }
+
+  /* Modal */
+  .modal { display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.7); align-items:center; justify-content:center; }
+  .modal.active { display:flex; }
+  .modal-content { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:28px 32px; max-width:700px; width:92%; max-height:85vh; overflow-y:auto; }
+  .modal-close { float:right; background:none; border:none; color:var(--muted); font-size:22px; cursor:pointer; }
+  .modal h3 { font-size:20px; color:#fff; margin-bottom:12px; }
+  .modal h4 { font-size:14px; color:var(--accent); margin:16px 0 8px; }
+  .idea-box { background:rgba(88,166,255,0.06); border-left:3px solid var(--accent); padding:10px 14px; border-radius:0 8px 8px 0; margin:10px 0; font-size:13px; }
+  .key { color:var(--green); font-weight:600; }
+  .code-toggle { background:var(--card); border:1px solid var(--border); color:var(--accent); padding:6px 14px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; margin:8px 0; }
+  .code-block { display:none; }
+  .code-block.show { display:block; }
+  @media (max-width:768px) { body{padding:20px 12px 80px;} .prob-grid{grid-template-columns:1fr;} .modal-content{padding:18px;} }</style>
+</head>
+<body>
+<div class="container">
+<a href="/leetcode-patterns.html" class="back">← 所有模式</a>
+<h1>🔍 二分查找</h1>
+<p class="subtitle">8 道题 · LeetCode Top 100 解法模式</p>
+<div class="desc-box">
+<p>每次砍掉一半搜索空间，O(log N)。不只是有序数组找数——旋转数组搜索、找边界、二维矩阵搜索，本质都是"缩减搜索区间"。</p>
+<p class="tip">💡 核心技巧：小心 mid 计算和边界条件</p>
+</div>
+<div class="diagram">
+<svg viewBox="0 0 700 150" style="max-width:700px;width:100%"><rect x="30" y="30" width="640" height="30" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1"/><text x="60" y="50" fill="#64748b" font-size="9">[1,3,5,7,9,11,15,20]</text><circle cx="370" cy="45" r="18" fill="rgba(251,191,36,0.2)" stroke="#fbbf24" stroke-width="2"/><text x="370" y="49" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="700">mid</text><rect x="120" y="80" width="200" height="40" rx="8" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,2"/><text x="220" y="105" text-anchor="middle" fill="#fca5a5" font-size="10">❌ 目标 < 中间值 → 砍掉右半</text><rect x="380" y="80" width="200" height="40" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/><text x="480" y="105" text-anchor="middle" fill="#4ade80" font-size="10">✅ 目标 > 中间值 → 砍掉左半</text><text x="350" y="140" text-anchor="middle" fill="#94a3b8" font-size="10">每次砍一半 → O(log N)</text></svg>
+<div class="diagram-caption">二分查找 模式图解</div>
+</div>
+<h3 style="margin-top:32px">📝 题目列表（8 题）</h3>
+<div class="prob-grid">
+<div class="prob-card" onclick="showProblem(33)">
+<div class="prob-id">#33 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Search in Rotated Sorted Array</div>
+<div class="prob-idea">二分判断mid在左侧有序段还是右侧有序段。</div>
+<div class="prob-meta"><span class="card-tag">二分</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(34)">
+<div class="prob-id">#34 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Find First and Last Position</div>
+<div class="prob-idea">两次二分。左边界：>=target时right=mid；右边界：<=target时left=mid+1。</div>
+<div class="prob-meta"><span class="card-tag">二分</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(74)">
+<div class="prob-id">#74 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Search a 2D Matrix</div>
+<div class="prob-idea">二维→一维。下标映射matrix[mid/cols][mid%cols]。</div>
+<div class="prob-meta"><span class="card-tag">二分</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(153)">
+<div class="prob-id">#153 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Find Minimum in Rotated Sorted Array</div>
+<div class="prob-idea">二分比较nums[mid]和nums[right]。mid>right→在右侧。</div>
+<div class="prob-meta"><span class="card-tag">二分</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(240)">
+<div class="prob-id">#240 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Search a 2D Matrix II</div>
+<div class="prob-idea">Z字形搜索。从右上角开始：>target下移；<target左移。</div>
+<div class="prob-meta"><span class="card-tag">二分</span><span class="card-tag">矩阵</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(287)">
+<div class="prob-id">#287 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Find the Duplicate Number</div>
+<div class="prob-idea">快慢指针看成链表找环入口。</div>
+<div class="prob-meta"><span class="card-tag">二分</span><span class="card-tag">快慢指针</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(300)">
+<div class="prob-id">#300 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Longest Increasing Subsequence</div>
+<div class="prob-idea">DP O(N²)。贪心+二分O(N log N)：tails数组存各长度最小结尾。</div>
+<div class="prob-meta"><span class="card-tag">DP</span><span class="card-tag">二分</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(4)">
+<div class="prob-id">#4 <span class="prob-diff diff-Hard">Hard</span></div>
+<div class="prob-title">Median of Two Sorted Arrays</div>
+<div class="prob-idea">二分较短数组，确定分割点i，另一数组j=(m+n+1)/2-i。交叉≤条件满足后取中位数。</div>
+<div class="prob-meta"><span class="card-tag">二分</span></div>
+</div>
+</div>
+</div>
+
+<div class="modal" id="modal"><div class="modal-content"><button class="modal-close" onclick="closeModal()">✕</button><div id="modalBody"></div></div></div>
+
+<script src="/leetcode-data.js"></script>
+<script>
+let currentId=null;
+function showProblem(id){currentId=id;const p=PROBLEMS[id];if(!p)return;
+let h='<h3>#'+p.id+' '+p.title+' <span class="prob-diff diff-'+p.diff+'" style="display:inline-block;vertical-align:middle">'+p.diff+'</span></h3>';
+h+='<p style="color:var(--text);line-height:1.9">'+p.desc+'</p>';
+h+='<h4>输入</h4><pre><code>'+p.inp+'</code></pre><h4>输出</h4><pre><code>'+p.out+'</code></pre>';
+h+='<div class="idea-box"><span class="key">💡 解题思路：</span>'+p.idea+'</div>';
+if(p.code){h+='<button class="code-toggle" onclick="this.nextElementSibling.classList.toggle('show')">查看代码</button>';
+h+='<div class="code-block"><pre><code>'+p.code.replace(/</g,'&lt;')+'</code></pre></div>';}
+if(p.tags){h+='<div class="modal-tags" style="margin-top:12px">';p.tags.forEach(t=>{h+='<span class="card-tag">'+t+'</span>';});h+='</div>';}
+document.getElementById('modalBody').innerHTML=h;document.getElementById('modal').classList.add('active');document.body.style.overflow='hidden';}
+function closeModal(){document.getElementById('modal').classList.remove('active');document.body.style.overflow='';currentId=null;}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&currentId)closeModal();});
+</script>
+</body>
+</html>

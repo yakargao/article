@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏗️ 设计 & 综合 · LeetCode 解法模式 · 费曼学习法</title>
+<style>  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; padding: 40px 20px 80px; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .back { color: var(--muted); font-size: 13px; text-decoration: none; display: inline-block; margin-bottom: 24px; }
+  .back:hover { color: var(--accent); }
+  h1 { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 32px; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; overflow-x: auto; margin: 10px 0; font-size: 12px; line-height: 1.5; }
+  pre code { background: none; color: var(--text); padding: 0; }
+
+  .desc-box { background: linear-gradient(135deg,rgba(88,166,255,0.06),rgba(163,113,247,0.04)); border:1px solid rgba(88,166,255,0.2); border-radius:12px; padding:20px 24px; margin-bottom:32px; position:relative; }
+  .desc-box::before { content:'💡 核心思想'; position:absolute; top:-11px; left:20px; background:var(--bg); padding:2px 12px; border-radius:10px; font-size:12px; font-weight:600; color:var(--accent); }
+  .desc-box .tip { color:var(--green); font-size:13px; margin-top:8px; }
+
+  .diagram { background:#0a0c13; border:1px solid var(--border); border-radius:12px; padding:12px; margin:24px 0; text-align:center; overflow-x:auto; }
+  .diagram-caption { font-size:12px; color:var(--muted); margin-top:8px; }
+
+  .prob-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; margin-top:24px; }
+  .prob-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 18px; cursor:pointer; transition:all .15s; position:relative; }
+  .prob-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .prob-id { font-size:11px; color:var(--muted); font-weight:600; }
+  .prob-title { font-size:15px; font-weight:600; color:#fff; margin:4px 0 8px; }
+  .prob-idea { font-size:12px; color:var(--muted); line-height:1.6; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .prob-meta { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .prob-diff { font-size:10px; padding:2px 8px; border-radius:8px; font-weight:600; }
+  .diff-Easy { background:rgba(63,185,80,0.12); color:var(--green); }
+  .diff-Medium { background:rgba(210,153,34,0.12); color:var(--orange); }
+  .diff-Hard { background:rgba(248,81,73,0.12); color:var(--red); }
+  .card-tag { font-size:10px; padding:2px 7px; border-radius:8px; font-weight:600; background:rgba(163,113,247,0.10); color:var(--purple); }
+
+  /* Modal */
+  .modal { display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.7); align-items:center; justify-content:center; }
+  .modal.active { display:flex; }
+  .modal-content { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:28px 32px; max-width:700px; width:92%; max-height:85vh; overflow-y:auto; }
+  .modal-close { float:right; background:none; border:none; color:var(--muted); font-size:22px; cursor:pointer; }
+  .modal h3 { font-size:20px; color:#fff; margin-bottom:12px; }
+  .modal h4 { font-size:14px; color:var(--accent); margin:16px 0 8px; }
+  .idea-box { background:rgba(88,166,255,0.06); border-left:3px solid var(--accent); padding:10px 14px; border-radius:0 8px 8px 0; margin:10px 0; font-size:13px; }
+  .key { color:var(--green); font-weight:600; }
+  .code-toggle { background:var(--card); border:1px solid var(--border); color:var(--accent); padding:6px 14px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; margin:8px 0; }
+  .code-block { display:none; }
+  .code-block.show { display:block; }
+  @media (max-width:768px) { body{padding:20px 12px 80px;} .prob-grid{grid-template-columns:1fr;} .modal-content{padding:18px;} }</style>
+</head>
+<body>
+<div class="container">
+<a href="/leetcode-patterns.html" class="back">← 所有模式</a>
+<h1>🏗️ 设计 & 综合</h1>
+<p class="subtitle">13 道题 · LeetCode Top 100 解法模式</p>
+<div class="desc-box">
+<p>LRU Cache、实现 Trie、并查集、螺旋矩阵——这些不归入固定模式，但考察数据结构的综合运用能力。需要理解每种结构的内部原理。</p>
+<p class="tip">💡 核心技巧：LRU = HashMap + 双向链表</p>
+</div>
+<div class="diagram">
+<svg viewBox="0 0 700 150" style="max-width:700px;width:100%"><rect x="20" y="20" width="200" height="55" rx="8" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1.5"/><text x="120" y="42" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="600">LRU Cache</text><text x="120" y="62" text-anchor="middle" fill="#64748b" font-size="9">HashMap + 双向链表</text><rect x="250" y="20" width="200" height="55" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.5"/><text x="350" y="42" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">Trie (前缀树)</text><text x="350" y="62" text-anchor="middle" fill="#64748b" font-size="9">字符串前缀搜索</text><rect x="480" y="20" width="200" height="55" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/><text x="580" y="42" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">并查集 Union Find</text><text x="580" y="62" text-anchor="middle" fill="#64748b" font-size="9">连通性 / 岛屿问题</text><rect x="20" y="90" width="660" height="40" rx="8" fill="rgba(251,191,36,0.05)" stroke="#fbbf24" stroke-width="1.2"/><text x="350" y="110" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="600">这些数据结构没有固定"模式"，需要理解其内部原理 + 灵活运用</text><text x="350" y="130" text-anchor="middle" fill="#64748b" font-size="9">矩阵操作 · 原地哈希 · 前缀树 · 单调队列 · 前缀和</text></svg>
+<div class="diagram-caption">设计 & 综合 模式图解</div>
+</div>
+<h3 style="margin-top:32px">📝 题目列表（13 题）</h3>
+<div class="prob-grid">
+<div class="prob-card" onclick="showProblem(448)">
+<div class="prob-id">#448 <span class="prob-diff diff-Easy">Easy</span></div>
+<div class="prob-title">Find All Numbers Disappeared</div>
+<div class="prob-idea">出现的数字作下标，标记为负。扫描正数位置i+1即缺失。</div>
+<div class="prob-meta"><span class="card-tag">原地哈希</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(48)">
+<div class="prob-id">#48 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Rotate Image</div>
+<div class="prob-idea">转置+水平翻转=顺时针90°。</div>
+<div class="prob-meta"><span class="card-tag">矩阵</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(54)">
+<div class="prob-id">#54 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Spiral Matrix</div>
+<div class="prob-idea">四边界top/bottom/left/right，每走完一边收缩。</div>
+<div class="prob-meta"><span class="card-tag">矩阵</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(73)">
+<div class="prob-id">#73 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Set Matrix Zeroes</div>
+<div class="prob-idea">用第一行和第一列做标记。</div>
+<div class="prob-meta"><span class="card-tag">矩阵</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(200)">
+<div class="prob-id">#200 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Number of Islands</div>
+<div class="prob-idea">DFS淹没法。遇'1'→计数+1→DFS把相连陆地全改'0'。</div>
+<div class="prob-meta"><span class="card-tag">DFS</span><span class="card-tag">BFS</span><span class="card-tag">并查集</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(208)">
+<div class="prob-id">#208 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Implement Trie</div>
+<div class="prob-idea">每个节点存children[26]+isEnd。逐字符走树。</div>
+<div class="prob-meta"><span class="card-tag">Trie</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(238)">
+<div class="prob-id">#238 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Product of Array Except Self</div>
+<div class="prob-idea">前缀积×后缀积。两遍扫描。</div>
+<div class="prob-meta"><span class="card-tag">前缀</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(240)">
+<div class="prob-id">#240 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Search a 2D Matrix II</div>
+<div class="prob-idea">Z字形搜索。从右上角开始：>target下移；<target左移。</div>
+<div class="prob-meta"><span class="card-tag">二分</span><span class="card-tag">矩阵</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(399)">
+<div class="prob-id">#399 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Evaluate Division</div>
+<div class="prob-idea">带权并查集。节点存到父节点的权重。</div>
+<div class="prob-meta"><span class="card-tag">并查集</span><span class="card-tag">图</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(437)">
+<div class="prob-id">#437 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Path Sum III</div>
+<div class="prob-idea">前缀和+DFS。维护路径前缀和HashMap。查curSum-target。</div>
+<div class="prob-meta"><span class="card-tag">树</span><span class="card-tag">前缀和</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(560)">
+<div class="prob-id">#560 <span class="prob-diff diff-Medium">Medium</span></div>
+<div class="prob-title">Subarray Sum Equals K</div>
+<div class="prob-idea">前缀和+HashMap。遍历查preSum-k出现的次数。</div>
+<div class="prob-meta"><span class="card-tag">哈希表</span><span class="card-tag">前缀和</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(41)">
+<div class="prob-id">#41 <span class="prob-diff diff-Hard">Hard</span></div>
+<div class="prob-title">First Missing Positive</div>
+<div class="prob-idea">原地哈希。把值x放到下标x-1处。扫描找到第一个下标不对的位置。</div>
+<div class="prob-meta"><span class="card-tag">原地哈希</span></div>
+</div>
+<div class="prob-card" onclick="showProblem(239)">
+<div class="prob-id">#239 <span class="prob-diff diff-Hard">Hard</span></div>
+<div class="prob-title">Sliding Window Maximum</div>
+<div class="prob-idea">单调递减队列存下标。新元素从队尾弹出≤它的。队首过期弹出。</div>
+<div class="prob-meta"><span class="card-tag">单调队列</span></div>
+</div>
+</div>
+</div>
+
+<div class="modal" id="modal"><div class="modal-content"><button class="modal-close" onclick="closeModal()">✕</button><div id="modalBody"></div></div></div>
+
+<script src="/leetcode-data.js"></script>
+<script>
+let currentId=null;
+function showProblem(id){currentId=id;const p=PROBLEMS[id];if(!p)return;
+let h='<h3>#'+p.id+' '+p.title+' <span class="prob-diff diff-'+p.diff+'" style="display:inline-block;vertical-align:middle">'+p.diff+'</span></h3>';
+h+='<p style="color:var(--text);line-height:1.9">'+p.desc+'</p>';
+h+='<h4>输入</h4><pre><code>'+p.inp+'</code></pre><h4>输出</h4><pre><code>'+p.out+'</code></pre>';
+h+='<div class="idea-box"><span class="key">💡 解题思路：</span>'+p.idea+'</div>';
+if(p.code){h+='<button class="code-toggle" onclick="this.nextElementSibling.classList.toggle('show')">查看代码</button>';
+h+='<div class="code-block"><pre><code>'+p.code.replace(/</g,'&lt;')+'</code></pre></div>';}
+if(p.tags){h+='<div class="modal-tags" style="margin-top:12px">';p.tags.forEach(t=>{h+='<span class="card-tag">'+t+'</span>';});h+='</div>';}
+document.getElementById('modalBody').innerHTML=h;document.getElementById('modal').classList.add('active');document.body.style.overflow='hidden';}
+function closeModal(){document.getElementById('modal').classList.remove('active');document.body.style.overflow='';currentId=null;}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&currentId)closeModal();});
+</script>
+</body>
+</html>

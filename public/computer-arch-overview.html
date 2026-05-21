@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>计算机组成原理 · 计算机系统概述 · 冯·诺依曼结构/层次/性能 · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .voice-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .voice-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 420px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">计算机基础</div>
+  <a class="nav-item" href="#von-neumann">🏛️ 冯·诺依曼结构</a>
+  <a class="nav-item" href="#hierarchy">📊 计算机层次</a>
+  <a class="nav-item" href="#performance">📈 性能指标</a>
+  <a class="nav-item" href="#modern-cpu">⚡ 现代CPU</a>
+  <div class="nav-section">练习</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ================================================================== -->
+<!-- 总览 -->
+<!-- ================================================================== -->
+<section id="overview" class="section">
+  <h2>🏛️ 计算机系统概述</h2>
+
+  <div class="feynman">
+    <p><strong>一句话：</strong>计算机系统是 <span class="handwritten">冯·诺依曼结构</span> 的工程实践——它把"计算"这件事拆解成 <strong>输入→存储→运算→输出</strong> 的流水线，再用多层抽象（从晶体管到浏览器）让程序员不用管底层电子怎么流动。本文从骨架到血肉，把计算机组成原理的核心脉络一次理清。</p>
+  </div>
+
+  <table>
+    <tr><th>章节</th><th>核心问题</th><th>一句话回答</th></tr>
+    <tr><td><span class="badge badge-cyan">① 冯·诺依曼</span></td><td>计算机是怎么"工作"的？</td><td>运算器+控制器+存储器+输入+输出五大部分，程序和数据统一编址</td></tr>
+    <tr><td><span class="badge badge-orange">② 层次结构</span></td><td>从晶体管到Python经历了什么？</td><td>微架构→ISA→OS→汇编→高级语言，每层隐藏下层细节</td></tr>
+    <tr><td><span class="badge badge-green">③ 性能指标</span></td><td>怎么客观衡量计算机快慢？</td><td>CPI×指令数=时间；MIPS/FLOPS看吞吐；Amdahl定加速上限</td></tr>
+    <tr><td><span class="badge badge-purple">④ 现代CPU</span></td><td>为什么CPU越来越"聪明"？</td><td>多核并行+超线程+NUMA+乱序执行，硬件帮你"偷跑"指令</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================== -->
+<!-- 冯·诺依曼结构 -->
+<!-- ================================================================== -->
+<section id="von-neumann" class="section">
+  <h2>🏛️ 冯·诺依曼结构——计算机的骨架</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏭 类比：订单工厂生产线</span></p>
+    <p>想象一家定制蛋糕工厂：<strong>输入设备</strong> = 前台接单员（收订单）；<strong>存储器</strong> = 原料仓库+配方本；<strong>运算器</strong> = 烘焙师（搅拌、烤制、装饰）；<strong>控制器</strong> = 车间主任（读配方、指挥烘焙师、调度顺序）；<strong>输出设备</strong> = 送货员（把蛋糕送到客户手里）。</p>
+    <p>冯·诺依曼的核心洞见就两条：<strong>① 这五部分缺一不可；② 配方(程序)和原料(数据)放在同一个仓库(存储器)</strong>——这就是"存储程序"思想，至今所有通用计算机都没跳出这个框架。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 480" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="vn-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+        <marker id="vn-arr" markerWidth="8" markerHeight="6" refX="8" refY="3">
+          <path d="M0,0 L8,3 L0,6Z" fill="#58a6ff"/>
+        </marker>
+        <marker id="vn-arr-g" markerWidth="8" markerHeight="6" refX="8" refY="3">
+          <path d="M0,0 L8,3 L0,6Z" fill="#3fb950"/>
+        </marker>
+        <marker id="vn-arr-p" markerWidth="8" markerHeight="6" refX="8" refY="3">
+          <path d="M0,0 L8,3 L0,6Z" fill="#a78bfa"/>
+        </marker>
+        <marker id="vn-arr-o" markerWidth="8" markerHeight="6" refX="8" refY="3">
+          <path d="M0,0 L8,3 L0,6Z" fill="#fbbf24"/>
+        </marker>
+      </defs>
+      <rect x="10" y="5" width="780" height="470" rx="10" fill="url(#vn-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">冯·诺依曼结构五大部件</text>
+
+      <!-- 运算器 ALU -->
+      <rect x="300" y="100" width="200" height="90" rx="10" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="400" y="130" text-anchor="middle" fill="#22d3ee" font-size="16" font-weight="700" font-family="sans-serif">🧮 运算器 (ALU)</text>
+      <text x="400" y="150" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">算术运算 + 逻辑运算</text>
+      <text x="400" y="168" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">加法器 · 乘法器 · 移位器 · 比较器</text>
+      <text x="400" y="182" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">ACC 累加器 · MQ 乘商寄存器</text>
+
+      <!-- 控制器 CU -->
+      <rect x="300" y="210" width="200" height="90" rx="10" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="2"/>
+      <text x="400" y="240" text-anchor="middle" fill="#f87171" font-size="16" font-weight="700" font-family="sans-serif">⚙️ 控制器 (CU)</text>
+      <text x="400" y="260" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">取指令 → 译码 → 执行 → 写回</text>
+      <text x="400" y="278" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">PC 程序计数器 · IR 指令寄存器</text>
+      <text x="400" y="292" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">微程序控制 / 硬连线控制</text>
+
+      <!-- 数据流箭头 CU ↔ ALU -->
+      <line x1="400" y1="190" x2="400" y2="210" stroke="#f87171" stroke-width="2" marker-end="url(#vn-arr)"/>
+      <text x="420" y="202" fill="#64748b" font-size="9" font-family="sans-serif">控制信号</text>
+
+      <!-- 三角形标注：左-控制总线 -->
+      <rect x="90" y="130" width="130" height="50" rx="6" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="155" y="150" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600" font-family="sans-serif">控制总线 CB</text>
+      <text x="155" y="168" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">命令 · 时序 · 中断</text>
+      <line x1="220" y1="155" x2="300" y2="155" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#vn-arr-p)"/>
+
+      <!-- 存储器 Memory -->
+      <rect x="300" y="320" width="200" height="80" rx="10" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="2"/>
+      <text x="400" y="348" text-anchor="middle" fill="#3fb950" font-size="16" font-weight="700" font-family="sans-serif">📦 存储器</text>
+      <text x="400" y="368" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">程序(指令) + 数据 统一编址</text>
+      <text x="400" y="386" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">主存(RAM) · Cache · 外存(磁盘)</text>
+
+      <!-- Memory ↔ CU 连线 -->
+      <line x1="400" y1="300" x2="400" y2="320" stroke="#3fb950" stroke-width="2" marker-end="url(#vn-arr-g)"/>
+      <text x="420" y="312" fill="#64748b" font-size="9" font-family="sans-serif">取指/访存</text>
+
+      <!-- 输入设备 -->
+      <rect x="120" y="330" width="100" height="60" rx="10" fill="rgba(210,153,34,0.08)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="170" y="355" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="700" font-family="sans-serif">⌨️ 输入</text>
+      <text x="170" y="375" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">键盘 · 鼠标 · 磁盘</text>
+      <line x1="220" y1="360" x2="300" y2="360" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#vn-arr-o)"/>
+
+      <!-- 输出设备 -->
+      <rect x="580" y="330" width="100" height="60" rx="10" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="630" y="355" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="700" font-family="sans-serif">🖥️ 输出</text>
+      <text x="630" y="375" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">显示器 · 打印机 · 磁盘</text>
+      <line x1="500" y1="360" x2="580" y2="360" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#vn-arr-p)"/>
+
+      <!-- 底部数据总线 -->
+      <rect x="90" y="418" width="640" height="30" rx="6" fill="rgba(88,166,255,0.06)" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="410" y="438" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600" font-family="sans-serif">数据总线 DB  ·  地址总线 AB  ·  控制总线 CB</text>
+
+      <!-- 关键说明 -->
+      <rect x="50" y="50" width="700" height="36" rx="6" fill="rgba(30,41,59,0.6)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="64" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">核心思想：</text>
+      <text x="400" y="79" text-anchor="middle" fill="#22d3ee" font-size="11" font-family="'Ma Shan Zheng',cursive,sans-serif">存储程序 —— 指令和数据放在同一存储器，按地址访问，由控制器自动逐条执行</text>
+    </svg>
+    <div class="diagram-caption">图1：冯·诺依曼结构五大部件及总线连接关系 —— 控制器从存储器取指令、控制运算器计算、输入输出设备通过总线与存储器交换数据</div>
+  </div>
+
+  <h3>冯·诺依曼 vs 哈佛结构</h3>
+  <table>
+    <tr><th>对比项</th><th>冯·诺依曼结构</th><th>哈佛结构</th></tr>
+    <tr><td><strong>指令/数据存储</strong></td><td>同一存储器、同一总线</td><td>分开的指令存储器和数据存储器</td></tr>
+    <tr><td><strong>瓶颈</strong></td><td>冯·诺依曼瓶颈（总线争用）</td><td>可同时取指+取数</td></tr>
+    <tr><td><strong>典型应用</strong></td><td>通用计算机（x86, ARM）</td><td>嵌入式/DSP（单片机、ARM Cortex-M）</td></tr>
+    <tr><td><strong>修改程序</strong></td><td>容易（自修改代码）</td><td>困难</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🔍 冯·诺依曼瓶颈是什么？</h4>
+    <p>CPU 速度 > 内存速度，且指令和数据共用一条总线，导致 CPU 经常"等数据"。这就是著名的 <strong>内存墙</strong> 问题。现代 CPU 用 <strong>Cache（缓存）</strong> 来缓解——把常用数据放在 CPU 旁边的快速 SRAM 中。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 计算机层次结构 -->
+<!-- ================================================================== -->
+<section id="hierarchy" class="section">
+  <h2>📊 计算机层次结构——从电子到应用</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏗️ 类比：建房子的分工</span></p>
+    <p>盖房子要经过：<strong>打地基（微架构）→ 搭骨架（ISA）→ 装水电（OS）→ 铺地板贴墙纸（汇编）→ 装修入住（高级语言）</strong>。下层为上层提供接口，上层不需要知道下层的细节。计算机也是这个道理：<strong>每一层都是对下层的抽象</strong>——你写 Python 时不需要管晶体管怎么开关。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 500" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="hi-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+        <marker id="hi-arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5">
+          <path d="M0,0 L7,2.5 L0,5Z" fill="#64748b"/>
+        </marker>
+      </defs>
+      <rect x="10" y="5" width="780" height="490" rx="10" fill="url(#hi-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">计算机系统的层次结构</text>
+
+      <!-- Layer 6: 高级语言 -->
+      <rect x="100" y="50" width="600" height="55" rx="8" fill="rgba(57,197,207,0.12)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="400" y="73" text-anchor="middle" fill="#22d3ee" font-size="15" font-weight="700" font-family="sans-serif">⑥ 高级语言层</text>
+      <text x="400" y="93" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">Python · Java · C++ · Go · Rust</text>
+      <text x="400" y="103" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">对程序员最友好，完全屏蔽硬件细节</text>
+
+      <!-- Arrows -->
+      <line x1="400" y1="105" x2="400" y2="118" stroke="#64748b" stroke-width="1.2" marker-end="url(#hi-arr)"/>
+      <text x="425" y="114" fill="#64748b" font-size="8" font-family="sans-serif">编译器/解释器</text>
+
+      <!-- Layer 5: 汇编 -->
+      <rect x="100" y="125" width="600" height="55" rx="8" fill="rgba(163,113,247,0.12)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="400" y="148" text-anchor="middle" fill="#a78bfa" font-size="15" font-weight="700" font-family="sans-serif">⑤ 汇编语言层</text>
+      <text x="400" y="168" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">x86-64: mov · add · jmp · call · ret</text>
+      <text x="400" y="178" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">符号化指令，1:1 对应机器码</text>
+
+      <line x1="400" y1="180" x2="400" y2="193" stroke="#64748b" stroke-width="1.2" marker-end="url(#hi-arr)"/>
+      <text x="425" y="189" fill="#64748b" font-size="8" font-family="sans-serif">汇编器</text>
+
+      <!-- Layer 4: OS -->
+      <rect x="100" y="200" width="600" height="55" rx="8" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="2"/>
+      <text x="400" y="223" text-anchor="middle" fill="#3fb950" font-size="15" font-weight="700" font-family="sans-serif">④ 操作系统层</text>
+      <text x="400" y="243" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">进程管理 · 内存管理 · 文件系统 · 设备驱动</text>
+      <text x="400" y="253" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">系统调用 (syscall) 是 OS 对外的 API</text>
+
+      <line x1="400" y1="255" x2="400" y2="268" stroke="#64748b" stroke-width="1.2" marker-end="url(#hi-arr)"/>
+      <text x="425" y="264" fill="#64748b" font-size="8" font-family="sans-serif">系统调用接口</text>
+
+      <!-- Layer 3: ISA -->
+      <rect x="100" y="275" width="600" height="55" rx="8" fill="rgba(210,153,34,0.12)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="400" y="298" text-anchor="middle" fill="#fbbf24" font-size="15" font-weight="700" font-family="sans-serif">③ 指令集架构层 (ISA)</text>
+      <text x="400" y="318" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">x86 · ARM · RISC-V · MIPS</text>
+      <text x="400" y="328" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">指令格式 · 寻址模式 · 寄存器定义 · 机器可见的接口</text>
+
+      <line x1="400" y1="330" x2="400" y2="343" stroke="#64748b" stroke-width="1.2" marker-end="url(#hi-arr)"/>
+      <text x="425" y="339" fill="#64748b" font-size="8" font-family="sans-serif">微架构实现</text>
+
+      <!-- Layer 2: 微架构 -->
+      <rect x="100" y="350" width="600" height="55" rx="8" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="2"/>
+      <text x="400" y="373" text-anchor="middle" fill="#f87171" font-size="15" font-weight="700" font-family="sans-serif">② 微架构层</text>
+      <text x="400" y="393" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">流水线 · 乱序执行 · 分支预测 · Cache</text>
+      <text x="400" y="403" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">微操作 (μop) · 保留站 · 重排序缓冲 (ROB)</text>
+
+      <line x1="400" y1="405" x2="400" y2="418" stroke="#64748b" stroke-width="1.2" marker-end="url(#hi-arr)"/>
+      <text x="425" y="414" fill="#64748b" font-size="8" font-family="sans-serif">数字逻辑实现</text>
+
+      <!-- Layer 1: 数字逻辑 -->
+      <rect x="100" y="425" width="600" height="50" rx="8" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="400" y="447" text-anchor="middle" fill="#22d3ee" font-size="15" font-weight="700" font-family="sans-serif">① 数字逻辑层 / 器件层</text>
+      <text x="400" y="465" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">晶体管 · 逻辑门 · 触发器 · 寄存器 · 组合逻辑 · 时序逻辑</text>
+    </svg>
+    <div class="diagram-caption">图2：计算机系统六层抽象结构 —— 从最底层的晶体管物理器件到最高层的高级编程语言，每层都是对下层的封装和抽象</div>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4>📤 向下：越来越接近硬件</h4>
+      <ul>
+        <li>高级语言需要<strong>编译/解释</strong>才能运行</li>
+        <li>汇编器把 <code>mov eax, 1</code> 转为二进制机器码</li>
+        <li>OS 通过<strong>系统调用</strong>操作硬件资源</li>
+        <li>ISA 定义了 CPU 能理解的<strong>完整指令集</strong></li>
+        <li>微架构在同一 ISA 下可以有<strong>不同实现</strong>（如 Zen4 vs Raptor Cove）</li>
+      </ul>
+    </div>
+    <div>
+      <h4>📥 向上：越来越接近人</h4>
+      <ul>
+        <li>Python 一行 <code>print("hello")</code>，底层可能执行 <strong>几十条</strong> 机器指令</li>
+        <li>抽象层越多，开发效率越高，但性能<strong>可能</strong>会降低</li>
+        <li>C/Rust 是"系统级语言"，抽象层<strong>较少</strong>，适合底层开发</li>
+        <li>虚拟机 / WASM 在 OS 之上再加一层<strong>运行时抽象</strong></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 性能指标 -->
+<!-- ================================================================== -->
+<section id="performance" class="section">
+  <h2>📈 性能指标——如何量化计算机的"快"？</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🚗 类比：汽车的"快"怎么衡量？</span></p>
+    <p>一辆车的"快"可以有多种指标：<strong>最高时速</strong>（时钟频率）、<strong>百公里加速</strong>（单条指令延迟）、<strong>载客量×时速</strong>（吞吐量）、<strong>满载时还能爬多陡的坡</strong>（多核扩展性）。计算机性能也是多维度的——<strong>没有完美的单一指标</strong>，不同场景关注不同度量。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="perf-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+        <marker id="arr-pf" markerWidth="7" markerHeight="5" refX="7" refY="2.5">
+          <path d="M0,0 L7,2.5 L0,5Z" fill="#58a6ff"/>
+        </marker>
+      </defs>
+      <rect x="10" y="5" width="780" height="410" rx="10" fill="url(#perf-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">计算机性能指标全景图</text>
+
+      <!-- CPI Box -->
+      <rect x="30" y="55" width="230" height="75" rx="8" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="145" y="78" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="700" font-family="sans-serif">⏱ CPI (Cycle Per Instruction)</text>
+      <text x="145" y="98" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">平均每条指令所需时钟周期数</text>
+      <text x="145" y="116" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">现代 CPU ≈ 0.5 ~ 2.0（超标量并行）</text>
+      <text x="145" y="127" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">流水线越深、乱序执行越强 → CPI 越低</text>
+
+      <!-- CPU Time formula -->
+      <rect x="30" y="145" width="230" height="75" rx="8" fill="rgba(210,153,34,0.08)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="145" y="168" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="700" font-family="sans-serif">⏲ CPU 执行时间</text>
+      <text x="145" y="190" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="600" font-family="sans-serif">CPU_time = IC × CPI × T</text>
+      <text x="145" y="210" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">IC = 指令数 · CPI = 每指令周期数</text>
+      <text x="145" y="220" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">T = 时钟周期 (= 1/f)</text>
+
+      <!-- MIPS Box -->
+      <rect x="285" y="55" width="230" height="75" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="400" y="78" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700" font-family="sans-serif">📊 MIPS</text>
+      <text x="400" y="98" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">每秒百万条指令</text>
+      <text x="400" y="116" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">MIPS = f / (CPI × 10⁶)</text>
+      <text x="400" y="127" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">⚠️ 不同ISA之间不可比！</text>
+
+      <!-- FLOPS Box -->
+      <rect x="540" y="55" width="230" height="75" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="655" y="78" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="700" font-family="sans-serif">🎯 FLOPS</text>
+      <text x="655" y="98" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">每秒浮点运算次数</text>
+      <text x="655" y="116" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">TFLOPS = 万亿次/秒</text>
+      <text x="655" y="127" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">科学计算 / AI 训练核心指标</text>
+
+      <!-- Amdahl Law Box -->
+      <rect x="285" y="145" width="230" height="75" rx="8" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="400" y="168" text-anchor="middle" fill="#f87171" font-size="14" font-weight="700" font-family="sans-serif">📐 Amdahl 定律</text>
+      <text x="400" y="190" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="600" font-family="sans-serif">S = 1 / ((1-P) + P/N)</text>
+      <text x="400" y="210" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">P = 可并行部分比例</text>
+      <text x="400" y="220" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">N = 处理器核心数</text>
+
+      <!-- 底部大公式图 -->
+      <rect x="30" y="245" width="740" height="65" rx="8" fill="rgba(30,41,59,0.5)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="268" text-anchor="middle" fill="#e2e8f0" font-size="13" font-weight="600" font-family="sans-serif">Amdahl 定律详解</text>
+      <text x="400" y="288" text-anchor="middle" fill="#f87171" font-size="11" font-family="sans-serif">加速比 S = T_原 / T_新 = 1 / [(1-P) + P/N]</text>
+      <text x="400" y="303" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">当 N→∞，S_max = 1/(1-P) —— 串行部分决定了加速极限</text>
+
+      <!-- 例子 -->
+      <rect x="30" y="325" width="740" height="70" rx="8" fill="rgba(30,41,59,0.4)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="345" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="600" font-family="sans-serif">💡 例子：如果程序90%可并行（P=0.9）</text>
+      <text x="100" y="365" fill="#94a3b8" font-size="11" font-family="sans-serif">N=2核 → S=1/(0.1+0.9/2)=1/(0.55)≈1.82x</text>
+      <text x="430" y="365" fill="#94a3b8" font-size="11" font-family="sans-serif">N=8核 → S=1/(0.1+0.9/8)=1/(0.2125)≈4.71x</text>
+      <text x="100" y="385" fill="#94a3b8" font-size="11" font-family="sans-serif">N=∞ → S_max = 1/0.1 = 10x（串行10%是天花板）</text>
+    </svg>
+    <div class="diagram-caption">图3：CPU时间 = IC × CPI × T（基本性能公式），MIPS/FLOPS 衡量吞吐，Amdahl定律说明并行加速的上限</div>
+  </div>
+
+  <h3>三种基准测试类别</h3>
+  <table>
+    <tr><th>类型</th><th>代表</th><th>测什么</th><th>举例</th></tr>
+    <tr><td><strong>真实程序</strong></td><td>SPEC CPU 2017</td><td>实际应用场景的完整运行时间</td><td>gcc编译、Xalan XML解析、lbm流体模拟</td></tr>
+    <tr><td><strong>核心基准</strong></td><td>Linpack</td><td>特定算法（如矩阵乘法）的性能上限</td><td>Top500 超级计算机排名用 Linpack</td></tr>
+    <tr><td><strong>微基准</strong></td><td>LMBench</td><td>硬件原语延迟/吞吐（Cache、TLB、上下文切换）</td><td>L1 延迟 ~1ns · L2 ~4ns · 主存 ~100ns</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================== -->
+<!-- 现代CPU架构 -->
+<!-- ================================================================== -->
+<section id="modern-cpu" class="section">
+  <h2>⚡ 现代CPU架构——多核·超线程·NUMA</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🍕 类比：比萨店如何提高出餐效率</span></p>
+    <p>一家比萨店想提高出餐效率：<strong>① 多招厨师</strong> = 多核；<strong>② 每个厨师一次做两个比萨</strong> = 超线程（SMT）；<strong>③ 把厨房分成热菜区和冷菜区，每个区有独立冰箱和烤炉</strong> = NUMA 架构。但要注意：<strong>多个厨师同时用同一个烤箱</strong> 就会竞争（共享资源瓶颈）。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 480" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="cpu-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+        <marker id="cp-arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5">
+          <path d="M0,0 L7,2.5 L0,5Z" fill="#58a6ff"/>
+        </marker>
+      </defs>
+      <rect x="10" y="5" width="780" height="470" rx="10" fill="url(#cpu-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">现代多核 CPU 架构（NUMA 系统）</text>
+
+      <!-- NUMA Node 0 -->
+      <rect x="30" y="50" width="360" height="200" rx="8" fill="rgba(30,41,59,0.5)" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="210" y="72" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700" font-family="sans-serif">NUMA Node 0</text>
+
+      <!-- Core 0 -->
+      <rect x="45" y="85" width="150" height="70" rx="6" fill="rgba(57,197,207,0.1)" stroke="#22d3ee" stroke-width="1.2"/>
+      <text x="120" y="105" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="700" font-family="sans-serif">Core 0</text>
+      <text x="120" y="120" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">L1d: 32KB · L1i: 32KB</text>
+      <text x="120" y="133" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">L2: 512KB (私有)</text>
+      <text x="120" y="145" text-anchor="middle" fill="#fbbf24" font-size="9" font-family="'Ma Shan Zheng',cursive,sans-serif">线程0 | 线程1 (SMT)</text>
+
+      <!-- Core 1 -->
+      <rect x="225" y="85" width="150" height="70" rx="6" fill="rgba(57,197,207,0.1)" stroke="#22d3ee" stroke-width="1.2"/>
+      <text x="300" y="105" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="700" font-family="sans-serif">Core 1</text>
+      <text x="300" y="120" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">L1d: 32KB · L1i: 32KB</text>
+      <text x="300" y="133" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">L2: 512KB (私有)</text>
+      <text x="300" y="145" text-anchor="middle" fill="#fbbf24" font-size="9" font-family="'Ma Shan Zheng',cursive,sans-serif">线程2 | 线程3 (SMT)</text>
+
+      <!-- L3 Cache (shared) -->
+      <rect x="45" y="170" width="330" height="35" rx="6" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="210" y="190" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="700" font-family="sans-serif">L3 Cache (共享)  ·  16 ~ 32 MB</text>
+      <text x="210" y="202" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">所有核心共享，片内互联</text>
+
+      <!-- Memory Controller -->
+      <rect x="45" y="215" width="330" height="28" rx="6" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="210" y="234" text-anchor="middle" fill="#a78bfa" font-size="11" font-family="sans-serif">内存控制器 (IMC)  ·  DDR5 通道</text>
+
+      <!-- NUMA Node 1 -->
+      <rect x="410" y="50" width="360" height="200" rx="8" fill="rgba(30,41,59,0.5)" stroke="#f87171" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="590" y="72" text-anchor="middle" fill="#f87171" font-size="12" font-weight="700" font-family="sans-serif">NUMA Node 1</text>
+
+      <!-- Core 2 -->
+      <rect x="425" y="85" width="150" height="70" rx="6" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="500" y="105" text-anchor="middle" fill="#f87171" font-size="13" font-weight="700" font-family="sans-serif">Core 2</text>
+      <text x="500" y="120" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">L1d: 32KB · L1i: 32KB</text>
+      <text x="500" y="133" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">L2: 512KB (私有)</text>
+      <text x="500" y="145" text-anchor="middle" fill="#fbbf24" font-size="9" font-family="'Ma Shan Zheng',cursive,sans-serif">线程4 | 线程5 (SMT)</text>
+
+      <!-- Core 3 -->
+      <rect x="605" y="85" width="150" height="70" rx="6" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="680" y="105" text-anchor="middle" fill="#f87171" font-size="13" font-weight="700" font-family="sans-serif">Core 3</text>
+      <text x="680" y="120" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">L1d: 32KB · L1i: 32KB</text>
+      <text x="680" y="133" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">L2: 512KB (私有)</text>
+      <text x="680" y="145" text-anchor="middle" fill="#fbbf24" font-size="9" font-family="'Ma Shan Zheng',cursive,sans-serif">线程6 | 线程7 (SMT)</text>
+
+      <!-- L3 Cache Node 1 -->
+      <rect x="425" y="170" width="330" height="35" rx="6" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="590" y="190" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="700" font-family="sans-serif">L3 Cache (共享)  ·  16 ~ 32 MB</text>
+      <text x="590" y="202" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">所有核心共享，片内互联</text>
+
+      <!-- Memory Controller 1 -->
+      <rect x="425" y="215" width="330" height="28" rx="6" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="590" y="234" text-anchor="middle" fill="#a78bfa" font-size="11" font-family="sans-serif">内存控制器 (IMC)  ·  DDR5 通道</text>
+
+      <!-- Local Memory -->
+      <rect x="45" y="255" width="155" height="24" rx="4" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1"/>
+      <text x="122" y="272" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">本地内存 (DDR5)</text>
+      <rect x="220" y="255" width="155" height="24" rx="4" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="1"/>
+      <text x="297" y="272" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">远程内存 (访问慢)</text>
+
+      <rect x="425" y="255" width="155" height="24" rx="4" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1"/>
+      <text x="502" y="272" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">本地内存 (DDR5)</text>
+      <rect x="600" y="255" width="155" height="24" rx="4" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="1"/>
+      <text x="677" y="272" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">远程内存 (访问慢)</text>
+
+      <!-- 互联 -->
+      <rect x="30" y="295" width="740" height="70" rx="8" fill="rgba(30,41,59,0.4)" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="400" y="318" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="700" font-family="sans-serif">片间互联 Infinity Fabric / UPI (Intel Ultra Path Interconnect)</text>
+      <text x="400" y="338" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">NUMA Node 间通过高速互联通道通信 · 延迟 ~100-200ns（本地访问 ~70ns）</text>
+      <text x="400" y="356" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">每个 Node 访问自己的内存最快（本地访问），访问其他 Node 内存更慢（远程访问）</text>
+
+      <!-- 寄存器/流水线说明 -->
+      <rect x="30" y="380" width="740" height="75" rx="8" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="400" text-anchor="middle" fill="#e2e8f0" font-size="13" font-weight="700" font-family="sans-serif">⛓️ 现代 CPU 核心内部流水线（每个 Core）</text>
+      <rect x="50" y="412" width="110" height="30" rx="5" fill="rgba(57,197,207,0.12)" stroke="#22d3ee" stroke-width="1"/><text x="105" y="432" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="sans-serif">取指 Fetch</text>
+      <rect x="175" y="412" width="110" height="30" rx="5" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1"/><text x="230" y="432" text-anchor="middle" fill="#3fb950" font-size="10" font-family="sans-serif">译码 Decode</text>
+      <rect x="300" y="412" width="110" height="30" rx="5" fill="rgba(210,153,34,0.12)" stroke="#fbbf24" stroke-width="1"/><text x="355" y="432" text-anchor="middle" fill="#fbbf24" font-size="10" font-family="sans-serif">乱序执行</text>
+      <rect x="425" y="412" width="110" height="30" rx="5" fill="rgba(163,113,247,0.12)" stroke="#a78bfa" stroke-width="1"/><text x="480" y="432" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="sans-serif">访存 Mem</text>
+      <rect x="550" y="412" width="110" height="30" rx="5" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1"/><text x="605" y="432" text-anchor="middle" fill="#f87171" font-size="10" font-family="sans-serif">写回 Write</text>
+      <text x="715" y="432" fill="#64748b" font-size="9" font-family="sans-serif">→ 顺序提交</text>
+    </svg>
+    <div class="diagram-caption">图4：NUMA 双路服务器架构 —— 每个 Node 有自己的核心、L3 Cache 和本地内存，跨 Node 访问需要经过片间互联</div>
+  </div>
+
+  <h3>关键概念解读</h3>
+  <table>
+    <tr><th>概念</th><th>是什么</th><th>好处</th><th>代价</th></tr>
+    <tr><td><strong>多核 (Multi-Core)</strong></td><td>一个芯片封装多个 CPU 核心</td><td>并行处理 true 并行</td><td>核间通信、缓存一致性开销</td></tr>
+    <tr><td><strong>超线程 (SMT/HT)</strong></td><td>一个核心同时跑两个线程</td><td>利用执行单元空闲，提升~30%吞吐</td><td>线程竞争资源，单个线程可能变慢</td></tr>
+    <tr><td><strong>NUMA</strong></td><td>非均匀内存访问架构</td><td>消除内存控制器瓶颈，可扩展性强</td><td>远程访问延迟 ~1.5x~2x 本地</td></tr>
+    <tr><td><strong>乱序执行</strong></td><td>指令不按程序顺序执行</td><td>隐藏延迟、提高 ALU 利用率</td><td>硬件复杂度剧增，功耗大</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🔬 超线程(SMT)到底怎么工作的？</h4>
+    <p>现代 CPU 的指令执行单元远比解码单元多。典型乱序执行 CPU 有：<strong>4-6 个解码器</strong>，但可能有 <strong>6-10 个执行端口</strong>（ALU、AGU、FPU、Load/Store 等）。单一线程的解码带宽喂不饱这么多执行单元。</p>
+    <p><strong>超线程的原理：</strong>一个核心提供两套 <strong>架构状态（寄存器、PC、页表等）</strong>，共享一套执行单元。当线程 A 在等 Cache 数据时，线程 B 可以插入使用空闲的执行单元。这就像 <strong>餐厅一个厨师有两份订单本</strong>——等烤炉的时候可以切菜。</p>
+    <p><strong>实际增益：</strong>典型整数负载 ~15-30% 吞吐提升。但如果两个线程都用同一个执行单元（如浮点运算），增益就很小甚至下降。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 实战问答 -->
+<!-- ================================================================== -->
+<section id="qa" class="section">
+  <h2>❓ 实战问答</h2>
+
+  <div class="qa-box">
+    <h4>Q1</h4>
+    <p class="q">冯·诺依曼结构 vs 哈佛结构，实战常问的差异是什么？</p>
+    <p class="a">最核心的区别：<strong>指令和数据的存储方式</strong>。冯·诺依曼用同一个存储器（同一总线），哈佛分开。这意味着：哈佛可以同时取指令和取数据（效率高），但程序不能自修改；冯·诺依曼灵活但存在"瓶颈"（指令和数据争用总线）。现代 CPU 实际上是<strong>修改版哈佛</strong>——L1 Cache 分指令和数据两部分（L1i/L1d），但更上层（L2/L3/主存）统一编址，兼顾了两者优点。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q2</h4>
+    <p class="q">什么是"存储程序"思想？为什么它如此重要？</p>
+    <p class="a">存储程序（Stored-Program Concept）是冯·诺依曼结构的核心：<strong>把程序（指令序列）也当作数据存储在内存中</strong>。这颠覆了早期计算机"硬连线"的方式——以前要换个程序就得重新布线，现在只要<strong>加载不同程序到内存</strong>就能让计算机做不同的事。这就是通用计算机的根源：<strong>一个硬件，无穷多的"能力"（软件）</strong>。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q3</h4>
+    <p class="q">请解释 MIPS 指标有什么缺陷？</p>
+    <p class="a">MIPS（每秒百万条指令）有三个主要缺陷：<br>
+    ① <strong>跨ISA不可比</strong>——RISC-V 一条指令做的事和 x86 CISC 一条指令做的事完全不同，直接比 MIPS 没有意义。<br>
+    ② <strong>指令组合差异</strong>——同一个程序在不同架构上的指令数（IC）差异很大。<br>
+    ③ <strong>MIPS 可能被"优化"欺骗</strong>——编译器可以用更多简单指令替代复杂指令，MIPS 变高但实际运行时间可能变长。<br>
+    因此业界更倾向于用 <strong>SPEC 等真实程序基准</strong> 而不是 MIPS。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q4</h4>
+    <p class="q">Amdahl 定律的实际含义是什么？请举例。</p>
+    <p class="a">Amdahl 定律说：<strong>系统的加速比受限于不可并行的串行部分</strong>。公式：S = 1/[(1-P) + P/N]。<br>
+    举例：如果程序 95% 可并行（P=0.95）：<br>
+    • 4核加速 = 1/(0.05+0.95/4) = 1/(0.2875) ≈ 3.48x<br>
+    • 16核加速 = 1/(0.05+0.95/16) = 1/(0.1094) ≈ 9.14x<br>
+    • 无限核心 = 1/0.05 = 20x —— 那 5% 的串行是天花板。<br>
+    <strong>工程启示：</strong>与其无限加核，不如优化那 5% 的串行代码——把串行部分降到 1%，极限加速就能到 100x。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q5</h4>
+    <p class="q">什么是 NUMA？为什么现代服务器都用 NUMA？</p>
+    <p class="a">NUMA（Non-Uniform Memory Access，非统一内存访问架构）是指：<strong>不同 CPU 核心访问不同内存地址的延迟不一样</strong>。<br>
+    每个 CPU 插槽有<strong>本地内存</strong>（直接连到这个 CPU 的内存控制器，访问快 ~70ns）和<strong>远程内存</strong>（需要跨片间互联到另一个 CPU 的内存，访问慢 ~100-200ns）。<br>
+    为什么不用 UMA（统一内存访问）？因为随着核心数增长，<strong>单一内存控制器成为瓶颈</strong>。NUMA 通过把内存控制器分散到每个 CPU 上，实现了<strong>可扩展性</strong>——核心越多，总内存带宽反而越大。<br>
+    对程序员的影响：<strong>NUMA-aware 编程</strong>——尽量让线程访问本地的内存和数据（bind memory to local node），避免跨 NUMA 访问。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q6</h4>
+    <p class="q">CPU 缓存（Cache）的层级结构和工作原理？</p>
+    <p class="a">现代 CPU 的 Cache 一般是三级结构：<br>
+    <strong>L1 Cache</strong>：分指令(L1i)和数据(L1d)，每核 32KB+32KB ≈ 64KB。延迟 ~1ns（~4 周期）。使用 SRAM，速度接近 CPU 频率。<br>
+    <strong>L2 Cache</strong>：每核私有，512KB ~ 2MB。延迟 ~3-4ns（~12 周期）。<br>
+    <strong>L3 Cache</strong>：多核共享，8 ~ 64MB。延迟 ~10-15ns（~40 周期）。<br>
+    <strong>主存 (DRAM)</strong>：全局共享，延迟 ~70-100ns（~300 周期）。<br>
+    核心原理：<strong>时间局部性</strong>（刚访问的地址不久会再访问）+ <strong>空间局部性</strong>（附近的地址也会被访问）。Cache line 通常 64 字节——一次取一整块，所以遍历数组的顺序访问天然友好。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 口播总结 -->
+<!-- ================================================================== -->
+<section class="section">
+  <div class="voice-summary">
+    <p><strong>朋友，我们来总结一下今天的知识。</strong></p>
+    <p>计算机系统概述，核心就是三句话：</p>
+    <p>第一，<strong>冯·诺依曼结构</strong> 是所有计算机的骨架。运算器、控制器、存储器、输入、输出——五大部分，缺一不可。存储程序思想让计算机有了"通用性"：把程序存在内存里，换程序就是换能力。</p>
+    <p>第二，<strong>计算机从晶体管到 Python，经历了六层抽象</strong>。每层都为上层提供接口，隐藏下层的复杂性。你在键盘上敲键盘，底层是几亿个晶体管在开关，但因为有了这些抽象层，你不需要懂这些。</p>
+    <p>第三，<strong>性能不是单一的"快"字</strong>。CPI 衡量指令效率，MIPS/FLOPS 看吞吐，Amdahl 定律告诉你加了再多核心也要受串行部分限制。现代 CPU 用<strong>多核 + 超线程 + NUMA</strong> 来突破性能墙，但每个技术都有代价——做工程就是在这些 trade-off 中找最优解。</p>
+    <p>这是计算机组成原理的第一篇，下一篇我们会深入 <strong>指令集架构与流水线</strong>——看 CPU 怎么把一条条指令变成一连串原子操作，敬请期待！🎯</p>
+  </div>
+</section>
+
+</main>
+
+</div><!-- .app -->
+
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>可观测性实战 · 费曼学习法</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascada Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .toggle-btn { display: block; margin: 16px 20px; padding: 6px 0; width: calc(100% - 40px); background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 13px; cursor: pointer; }
+  .toggle-btn:hover { background: rgba(88,166,255,0.06); color: var(--accent); }
+
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+  .pillar-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin: 16px 0; }
+  .pillar-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; text-align: center; }
+  .pillar-card .icon { font-size: 32px; margin-bottom: 8px; }
+  .pillar-card h4 { margin: 0 0 6px; }
+  .pillar-card p { font-size: 12px; color: var(--muted); margin: 0; }
+
+  .flow-diagram { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 20px 0; flex-wrap: wrap; }
+  .flow-node { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 13px; font-weight: 600; text-align: center; min-width: 100px; }
+  .flow-node.accent { border-color: var(--accent); color: var(--accent); }
+  .flow-node.green { border-color: var(--green); color: var(--green); }
+  .flow-node.purple { border-color: var(--purple); color: var(--purple); }
+  .flow-node.orange { border-color: var(--orange); color: var(--orange); }
+  .flow-node.cyan { border-color: var(--cyan); color: var(--cyan); }
+  .flow-arrow { color: var(--muted); font-size: 16px; }
+
+  .timeline { list-style: none; margin: 16px 0; padding: 0; }
+  .timeline li { position: relative; padding: 0 0 20px 28px; border-left: 2px solid var(--border); margin-left: 8px; }
+  .timeline li:last-child { border-color: transparent; padding-bottom: 0; }
+  .timeline li::before { content: ''; position: absolute; left: -6px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); }
+  .timeline li .time-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+
+  /* 苏格拉底提问 */
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .compare { grid-template-columns: 1fr; }
+    .pillar-cards { grid-template-columns: 1fr; }
+    .flow-diagram { flex-direction: column; }
+    .flow-arrow { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══════ 侧边栏 ═══════ -->
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">核心概念</div>
+  <a class="nav-item" href="#why">📊 为什么可观测性</a>
+  <a class="nav-item" href="#pillars">🏛️ 三大支柱</a>
+  <a class="nav-item" href="#metrics">📈 Metrics/Prometheus</a>
+  <a class="nav-item" href="#logging">📝 Logging/ELK-Loki</a>
+  <a class="nav-item" href="#tracing">🔗 Tracing/Jaeger</a>
+  <a class="nav-item" href="#otel">🔌 OpenTelemetry</a>
+  <a class="nav-item" href="#slo">🎯 SLO/SLI/Error Budget</a>
+  <div class="nav-section">实战</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<!-- ═══════ 主区域 ═══════ -->
+<main class="main">
+
+<!-- ═══════ 总览 ═══════ -->
+<section id="overview" class="section">
+  <h2>📋 可观测性（Observability）实战</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>可观测性 = Metrics（指标）+ Logging（日志）+ Tracing（链路追踪），让你在微服务架构中<strong>知道系统为什么挂了</strong>。</p>
+    <p>本质区别：传统监控是"我知道这个指标异常了"，可观测性是"我知道为什么异常，影响谁，从哪里开始"。</p>
+  </div>
+
+  <h3>知识地图</h3>
+  <div class="flow-diagram">
+    <div class="flow-node accent">应用/服务</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node green">OpenTelemetry<br><span style="font-size:11px;color:var(--muted)">统一采集</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node purple">Metrics<br><span style="font-size:11px;color:var(--muted)">Prometheus</span></div>
+    <div class="flow-node orange">Logging<br><span style="font-size:11px;color:var(--muted)">Loki/ELK</span></div>
+    <div class="flow-node cyan">Tracing<br><span style="font-size:11px;color:var(--muted)">Jaeger</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node accent">Grafana<br><span style="font-size:11px;color:var(--muted)">统一可视化</span></div>
+  </div>
+  <div class="diagram-caption">图：现代可观测性技术栈核心管线</div>
+
+  <div class="info-card">
+    <h4>学习路线</h4>
+    <ul>
+      <li><strong>第一步：</strong>理解为什么需要可观测性（汽车仪表盘比喻）</li>
+      <li><strong>第二步：</strong>掌握三大支柱的区别与联系</li>
+      <li><strong>第三步：</strong>上手 Prometheus + Grafana（指标监控）</li>
+      <li><strong>第四步：</strong>学习日志体系（ELK / Loki）</li>
+      <li><strong>第五步：</strong>理解链路追踪（Jaeger / Zipkin）</li>
+      <li><strong>第六步：</strong>掌握 OpenTelemetry 统一标准</li>
+      <li><strong>第七步：</strong>理解 SLO / SLI / Error Budget</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════ 1. 为什么可观测性 ═══════ -->
+<section id="why" class="section">
+  <h2>📊 为什么可观测性？—— 汽车仪表盘</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🚗 类比：汽车仪表盘</span></p>
+    <p>开车时，你需要知道：</p>
+    <ul>
+      <li><strong>速度多少？</strong> → Metrics（指标）—— 当前 CPU 使用率、QPS</li>
+      <li><strong>发动机有没有异响？</strong> → Logging（日志）—— 错误堆栈、业务日志</li>
+      <li><strong>油路一路经过哪里？</strong> → Tracing（链路追踪）—— 请求从 A → B → C 的完整路径</li>
+    </ul>
+    <p>没有可观测性 = 蒙眼睛开车。系统出问题了你只能靠猜。</p>
+  </div>
+
+  <h3>传统监控 vs 可观测性</h3>
+  <table>
+    <tr><th>维度</th><th>传统监控</th><th>可观测性</th></tr>
+    <tr><td>关注点</td><td>我知道哪个指标异常</td><td>我知道<strong>为什么</strong>异常</td></tr>
+    <tr><td>数据</td><td>预定义指标（CPU、内存）</td><td>指标 + 日志 + 链路全量数据</td></tr>
+    <tr><td>架构</td><td>单体，已知问题模式</td><td>微服务，未知问题排查</td></tr>
+    <tr><td>问题定位</td><td>"CPU 高了"</td><td>"用户下单慢 → 订单服务某接口 p99 延迟 3s → 数据库连接池耗尽"</td></tr>
+  </table>
+
+  <h3>可观测性的核心价值</h3>
+  <ul>
+    <li><strong>MTTR 降低：</strong>Mean Time To Repair（平均修复时间）从小时级降至分钟级</li>
+    <li><strong>未知问题发现：</strong>不需要预先定义所有报警规则（你不知道你不知道什么）</li>
+    <li><strong>跨团队协作：</strong>统一的数据口径，开发/运维/SRE 用同一种语言沟通</li>
+  </ul>
+
+  <div class="info-card" style="border-left:3px solid var(--orange)">
+    <h4>📌 核心追问</h4>
+    <p><strong>问：</strong>监控（Monitoring）和可观测性（Observability）是一回事吗？</p>
+    <p><strong>答：</strong>不是。监控是<strong>已知问题</strong>的告警和可视化的集合（你提前设好了 CPU > 90% 报警）。可观测性是通过系统<strong>对外暴露的三种数据</strong>（指标、日志、链路），让你能回答<strong>任何没预想过的问题</strong>。监控是基于假设的，可观测性是基于探索的。</p>
+  </div>
+</section>
+
+<!-- ═══════ 2. 三大支柱 ═══════ -->
+<section id="pillars" class="section">
+  <h2>🏛️ 三大支柱（Metrics / Logging / Tracing）</h2>
+
+  <div class="pillar-cards">
+    <div class="pillar-card">
+      <div class="icon">📈</div>
+      <h4 style="color:var(--accent)">Metrics</h4>
+      <p>指标 —— 数值化、可聚合、可统计</p>
+      <p style="margin-top:6px;font-size:11px;color:var(--muted)">"每秒请求数是多少？"</p>
+    </div>
+    <div class="pillar-card">
+      <div class="icon">📝</div>
+      <h4 style="color:var(--green)">Logging</h4>
+      <p>日志 —— 离散的、带时间戳的事件记录</p>
+      <p style="margin-top:6px;font-size:11px;color:var(--muted)">"这个请求的报错信息是什么？"</p>
+    </div>
+    <div class="pillar-card">
+      <div class="icon">🔗</div>
+      <h4 style="color:var(--purple)">Tracing</h4>
+      <p>链路追踪 —— 跨服务的请求全貌</p>
+      <p style="margin-top:6px;font-size:11px;color:var(--muted)">"这个慢请求经过哪些服务？"</p>
+    </div>
+  </div>
+
+  <h3>三者对比</h3>
+  <table>
+    <tr><th>维度</th><th>Metrics</th><th>Logging</th><th>Tracing</th></tr>
+    <tr><td>数据形态</td><td>时序数值</td><td>结构化/非结构化文本</td><td>Span 树（Trace ID → Span ID）</td></tr>
+    <tr><td>存储</td><td>时序数据库 TSDB</td><td>全文搜索引擎</td><td>专用存储（Cassandra/ES）</td></tr>
+    <tr><td>代表工具</td><td>Prometheus, Graphite</td><td>ELK, Loki, Splunk</td><td>Jaeger, Zipkin, SkyWalking</td></tr>
+    <tr><td>查询方式</td><td>PromQL, Graphite 函数</td><td>全文搜索（KQL, Lucene）</td><td>TraceID 搜索 + 服务依赖图</td></tr>
+    <tr><td>典型用途</td><td>告警、仪表盘、容量规划</td><td>排障、审计、合规</td><td>延迟分析、依赖拓扑、瓶颈定位</td></tr>
+    <tr><td>数据量级</td><td>小（按时间聚合）</td><td>大（每条请求一条/多条）</td><td>中（按采样比例）</td></tr>
+  </table>
+
+  <div class="feynman">
+    <p><span class="analogy">💡 为什么是三根支柱？</span></p>
+    <p>任何一个都不够：只有指标，你知道 CPU 飙高但不知道哪个接口引起的；只有日志，你看到报错报但不知道影响范围和路径；只有链路，你知道请求经过哪些服务但没有性能统计。三根支柱互相补充 = 系统的<strong>全息视图</strong>。</p>
+  </div>
+</section>
+
+<!-- ═══════ 3. Metrics / Prometheus + Grafana ═══════ -->
+<section id="metrics" class="section">
+  <h2>📈 Metrics 指标 — Prometheus + Grafana</h2>
+
+  <h3>什么是 Prometheus？</h3>
+  <p>Prometheus 是<strong>开源的系统监控和告警工具</strong>，2016 年 CNCF 毕业项目（第二个毕业项目，仅次于 Kubernetes）。核心特性：</p>
+  <ul>
+    <li><strong>Pull 模型：</strong>Prometheus Server 定期从目标服务"拉取"指标（HTTP /metrics 端点）</li>
+    <li><strong>时间序列数据库：</strong>所有数据带时间戳 + 标签（Label）</li>
+    <li><strong>PromQL：</strong>强大的查询语言</li>
+  </ul>
+
+  <div class="flow-diagram">
+    <div class="flow-node green">Service A<br><span style="font-size:11px">/metrics</span></div>
+    <span class="flow-arrow">← pull</span>
+    <div class="flow-node accent">Prometheus<br><span style="font-size:11px">Server</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node purple">Grafana<br><span style="font-size:11px">可视化</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node orange">告警<br><span style="font-size:11px">Alertmanager</span></div>
+  </div>
+
+  <h3>四种核心指标类型</h3>
+  <table>
+    <tr><th>类型</th><th>说明</th><th>例子</th></tr>
+    <tr><td><strong>Counter</strong></td><td>只增不减的计数器</td><td><code>http_requests_total{method="GET",status="200"}</code></td></tr>
+    <tr><td><strong>Gauge</strong></td><td>可增可减的瞬时值</td><td><code>memory_usage_bytes</code>, <code>goroutines</code></td></tr>
+    <tr><td><strong>Histogram</strong></td><td>分桶统计分布</td><td><code>http_request_duration_seconds_bucket{le="0.5"}</code></td></tr>
+    <tr><td><strong>Summary</strong></td><td>预计算的分位数（Quantile）</td><td><code>http_request_duration_seconds{quantile="0.99"}</code></td></tr>
+  </table>
+
+  <h3>PromQL 速查</h3>
+  <pre><code># 每秒请求速率（rate）
+rate(http_requests_total[5m])
+
+# P99 延迟
+histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))
+
+# 按路径分组
+topk(5, sum by(path) (rate(http_requests_total{status=~"5.."}[5m])))
+
+# 机器 CPU 使用率
+100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)</code></pre>
+
+  <h3>Grafana 可视化</h3>
+  <p>Grafana 是<strong>数据可视化平台</strong>——不仅显示 Prometheus 数据，还支持 Loki（日志）、Jaeger（链路）、MySQL、Elasticsearch、CloudWatch 等 40+ 数据源。</p>
+  <div class="info-card">
+    <h4>Grafana 核心概念</h4>
+    <ul>
+      <li><strong>Dashboard：</strong>一个仪表盘包含多个 Panel（图表）</li>
+      <li><strong>Panel：</strong>单个图表（时间序列图、表格、统计数字、热力图）</li>
+      <li><strong>Variables：</strong>变量（如 $env, $service）实现动态切换</li>
+      <li><strong>Explore：</strong>即席查询模式——临时查指标/日志/链路</li>
+      <li><strong>Annotations：</strong>在图表上标注事件（如发版、报警）</li>
+    </ul>
+  </div>
+
+  <div class="feynman">
+    <p><span class="analogy">⚙️ 实战建议</span></p>
+    <ul>
+      <li><strong>RED 方法论：</strong>Rate（每秒请求）+ Errors（错误数）+ Duration（延迟）—— 每个服务必备的三个黄金指标</li>
+      <li><strong>USE 方法论：</strong>Utilization（利用率）+ Saturation（饱和度）+ Errors（错误数）—— 基础设施监控</li>
+      <li><strong>告警不要太多：</strong>每个团队维护 5-10 个核心告警规则，多了就是告警疲劳</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════ 4. Logging / ELK - Loki ═══════ -->
+<section id="logging" class="section">
+  <h2>📝 Logging 日志 — ELK / Loki</h2>
+
+  <h3>为什么日志很重要？</h3>
+  <p>指标告诉你"系统慢了"，链路告诉你"哪个环节慢了"，<strong>只有日志告诉你为什么会慢</strong>——比如数据库慢查询的 SQL 是什么、请求参数是什么、调用栈在哪里。</p>
+
+  <div class="compare">
+    <div>
+      <h4>🏗️ ELK 架构（传统方案）</h4>
+      <div class="flow-diagram" style="margin:10px 0">
+        <div class="flow-node" style="font-size:12px">Filebeat</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node green" style="font-size:12px">Elasticsearch</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node accent" style="font-size:12px">Kibana</div>
+      </div>
+      <p style="font-size:12px">Filebeat/Logstash 采集 → Elasticsearch 存储+搜索 → Kibana 可视化</p>
+      <p><span class="badge badge-red">缺点</span> <span style="font-size:12px">存储成本高、运维复杂</span></p>
+    </div>
+    <div>
+      <h4>🚀 Loki 架构（轻量替代）</h4>
+      <div class="flow-diagram" style="margin:10px 0">
+        <div class="flow-node" style="font-size:12px">Promtail</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node cyan" style="font-size:12px">Loki</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node accent" style="font-size:12px">Grafana</div>
+      </div>
+      <p style="font-size:12px">Promtail 采集 → Loki 只索引标签字段，日志内容压缩存储 → Grafana 查询</p>
+      <p><span class="badge badge-green">优势</span> <span style="font-size:12px">存储成本低、与 Grafana 集成</span></p>
+    </div>
+  </div>
+
+  <h3>结构化日志最佳实践</h3>
+  <pre><code>// ❌ 非结构化
+log.Info("用户 123 下单成功，金额 99.9")
+
+// ✅ 结构化（JSON）
+{
+  "@timestamp": "2024-06-01T10:30:00Z",
+  "level": "info",
+  "trace_id": "abc123def456",
+  "service": "order-service",
+  "user_id": 123,
+  "action": "order_create",
+  "amount": 99.9,
+  "duration_ms": 45,
+  "message": "订单创建成功"
+}</code></pre>
+
+  <div class="info-card" style="border-left:3px solid var(--green)">
+    <h4>📌 日志四原则</h4>
+    <ol>
+      <li><strong>结构化：</strong>JSON 格式，不要纯文本拼接（方便搜索）</li>
+      <li><strong>带 TraceID：</strong>每条日志关联 TraceID，跨服务关联</li>
+      <li><strong>级别准确：</strong>ERROR = 需要人工关注，WARN = 可容忍异常，INFO = 业务关键事件，DEBUG = 开发调试</li>
+      <li><strong>不打印敏感信息：</strong>密码、身份证、信用卡号脱敏</li>
+    </ol>
+  </div>
+
+  <h3>LogQL（Loki 查询语言）</h3>
+  <pre><code># 查询所有错误日志
+{app="order-service"} |= "error"
+
+# 多条件过滤
+{app="order-service", env="prod"} |= "timeout" != "context deadline exceeded"
+
+# 解析 JSON 字段再筛选
+{app="order-service"} | json | user_id = "123"
+
+# 计算错误率
+sum by(service) (rate({app="order-service"} |= "error" [5m]))</code></pre>
+</section>
+
+<!-- ═══════ 5. Tracing / Jaeger ═══════ -->
+<section id="tracing" class="section">
+  <h2>🔗 Tracing 链路追踪 — Jaeger</h2>
+
+  <h3>为什么需要链路追踪？</h3>
+  <p>在微服务架构中，一个用户请求可能经过 5-10 个服务：<br>
+  <code>API Gateway → Auth Service → Order Service → Payment Service → Notification Service</code><br>
+  当请求变慢时——哪个服务是瓶颈？传统的单机日志根本看不出来。链路追踪让每个请求有一个 <strong>TraceID</strong>，串联所有经过的服务。</p>
+
+  <h3>核心概念</h3>
+  <table>
+    <tr><th>概念</th><th>说明</th><th>类比</th></tr>
+    <tr><td><strong>Trace</strong></td><td>一次请求的完整路径，由一串 Span 组成</td><td>一次旅行的完整行程</td></tr>
+    <tr><td><strong>Span</strong></td><td>Trace 中的一个步骤（被一个服务处理的一段逻辑）</td><td>一个景点</td></tr>
+    <tr><td><strong>Span Context</strong></td><td>携带 TraceID、SpanID、Baggage 等元数据的上下文</td><td>行李牌</td></tr>
+    <tr><td><strong>Parent-Child</strong></td><td>Span 之间的父子关系</td><td>大景点包含小景点</td></tr>
+  </table>
+
+  <h3>Jaeger 架构</h3>
+  <div class="flow-diagram">
+    <div class="flow-node green">应用<br><span style="font-size:11px">SDK 埋点</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node accent">Jaeger Agent<br><span style="font-size:11px">UDP 接收</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node purple">Jaeger Collector</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node orange">Storage<br><span style="font-size:11px">ES/Cassandra</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node cyan">Jaeger UI<br><span style="font-size:11px">查询+拓扑</span></div>
+  </div>
+
+  <h3>代码示例：Go 中接入 OpenTelemetry Tracing</h3>
+  <pre><code>import (
+    "go.opentelemetry.io/otel"
+    "go.opentelemetry.io/otel/trace"
+)
+
+// 创建 Tracer
+tracer := otel.Tracer("order-service")
+
+// 创建 Span
+ctx, span := tracer.Start(ctx, "processOrder")
+defer span.End()
+
+// Span 中设置属性
+span.SetAttributes(
+    attribute.String("order_id", orderID),
+    attribute.Int64("amount", amount),
+)
+
+// 记录事件
+span.AddEvent("payment_completed", trace.WithAttributes(
+    attribute.String("payment_id", paymentID),
+))
+
+// 从 context 中取 TraceID（日志用）
+traceID := trace.SpanFromContext(ctx).SpanContext().TraceID().String()</code></pre>
+
+  <div class="feynman">
+    <p><span class="analogy">💡 采样策略</span></p>
+    <p>全量链路追踪可能产生巨大数据量（每秒上万条 Span）。常见策略：</p>
+    <ul>
+      <li><strong>概率采样：</strong>随机采样 1%-10%（适合低流量服务）</li>
+      <li><strong>自适应采样：</strong>低流量全量，高流量降采样</li>
+      <li><strong>头部采样：</strong>根据请求头部决定是否采样（慢请求才采样）</li>
+      <li><strong>尾采样：</strong>事后根据规则决定是否保留（推荐——确保错误和慢请求被保留）</li>
+    </ul>
+    <p><strong>黄金法则：</strong>错误链路必须全量保留，正常业务按需采样。</p>
+  </div>
+</section>
+
+<!-- ═══════ 6. OpenTelemetry ═══════ -->
+<section id="otel" class="section">
+  <h2>🔌 OpenTelemetry — 统一的可观测性标准</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🎯 一句话：</span>OpenTelemetry（简称 OTel）是<strong>CNCF 毕业项目</strong>，提供统一的 API、SDK、Collector，解决三大支柱的工具碎片化问题。让你<strong>一套代码同时输出 Metrics + Logging + Tracing</strong>。</p>
+  </div>
+
+  <h3>为什么需要 OTel？</h3>
+  <p>没有 OTel 之前的选择题：</p>
+  <ul>
+    <li>Tracing 选 Jaeger SDK 还是 Zipkin SDK 还是 SkyWalking SDK？</li>
+    <li>Metrics 用 Prometheus 的 SDK 还是 StatsD？</li>
+    <li>三根支柱三套 SDK，埋点代码三份，换后端全部重写。</li>
+  </ul>
+  <p><strong>OTel 的承诺：</strong>用<strong>同一套 API</strong>埋点，通过配置选择输出到哪个后端。</p>
+
+  <h3>OTel 架构</h3>
+  <div class="flow-diagram">
+    <div class="flow-node green">应用<br><span style="font-size:11px">OTel SDK</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node accent">OTel Collector<br><span style="font-size:11px">Receiver/Processor/Exporter</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node" style="font-size:11px">Prometheus</div>
+    <div class="flow-node" style="font-size:11px">Jaeger</div>
+    <div class="flow-node" style="font-size:11px">Loki</div>
+    <div class="flow-node" style="font-size:11px">OTLP</div>
+  </div>
+
+  <div class="info-card">
+    <h4>OTel Collector 三大组件</h4>
+    <table>
+      <tr><th>组件</th><th>作用</th><th>例子</th></tr>
+      <tr><td><strong>Receiver</strong></td><td>接收数据（OTLP/gRPC/HTTP/Prometheus/Jaeger）</td><td><code>otlp:</code>, <code>prometheus:</code></td></tr>
+      <tr><td><strong>Processor</strong></td><td>处理和转换（过滤、采样、批处理、添加属性）</td><td><code>batch:</code>, <code>filter:</code>, <code>attributes:</code></td></tr>
+      <tr><td><strong>Exporter</strong></td><td>输出到后端系统</td><td><code>prometheus:</code>, <code>loki:</code>, <code>jaeger:</code></td></tr>
+    </table>
+  </div>
+
+  <h3>OTel Collector 配置示例</h3>
+  <pre><code>receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+  otlp:
+    endpoint: jaeger-collector:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:   [otlp, batch, otlp]
+    metrics:  [otlp, batch, prometheus]</code></pre>
+
+  <div class="feynman">
+    <p><span class="analogy">💡 实战建议：从改造一个服务开始</span></p>
+    <p>全量迁移 OTel 很重。推荐策略：</p>
+    <ol>
+      <li>先在一个<strong>核心服务</strong>接入 OTel SDK（替换旧的 Metrics/Tracing 库）</li>
+      <li>部署 OTel Collector 作为代理</li>
+      <li>验证数据正确性（对比旧系统的指标）</li>
+      <li>逐步推广到所有服务</li>
+    </ol>
+    <p>OTel 是<strong>行业趋势</strong>——Docker、Kubernetes、AWS、Google Cloud 都在用。</p>
+  </div>
+</section>
+
+<!-- ═══════ 7. SLO / SLI / Error Budget ═══════ -->
+<section id="slo" class="section">
+  <h2>🎯 SLO / SLI / Error Budget</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏢 类比：公司指标</span></p>
+    <p>SLI = 你实际测得的数据（利润率 12%）<br>
+    SLO = 老板定的目标（利润率 ≥ 15%）<br>
+    Error Budget = 允许失误的空间（你有 -3% 的缓冲）</p>
+  </div>
+
+  <h3>三个概念</h3>
+  <table>
+    <tr><th>概念</th><th>全称</th><th>定义</th><th>例子</th></tr>
+    <tr><td><strong>SLI</strong></td><td>Service Level Indicator</td><td>服务质量的<strong>实际测量值</strong></td><td>99.9% 的请求在 500ms 内完成</td></tr>
+    <tr><td><strong>SLO</strong></td><td>Service Level Objective</td><td>服务质量的<strong>目标值</strong>（团队承诺的边界）</td><td>目标：99.95% 请求 ≤ 500ms</td></tr>
+    <tr><td><strong>Error Budget</strong></td><td>错误预算</td><td>SLO 允许的<strong>容错空间</strong> = 1 − SLO</td><td>一个月允许 0.05% 的慢请求（≈ 21.6 分钟）</td></tr>
+  </table>
+
+  <h3>如何定义 SLI？</h3>
+  <p>好的 SLI 要满足：<strong>用户能感知到</strong>的指标。常见 SLI：</p>
+  <ul>
+    <li><strong>可用性：</strong>成功请求 / 总请求（排除预期内的错误）</li>
+    <li><strong>延迟：</strong>X% 的请求在 Y 毫秒内完成（如 P99 ≤ 500ms）</li>
+    <li><strong>吞吐量：</strong>每秒成功处理的请求数</li>
+    <li><strong>正确性：</strong>数据一致、无脏数据写入</li>
+  </ul>
+
+  <h3>Error Budget 怎么用？</h3>
+  <div class="info-card" style="border-left:3px solid var(--orange)">
+    <p><strong>黄金法则：Error Budget 花完了就停止发版。</strong></p>
+    <ul>
+      <li>本月 Error Budget 用完（已慢于 SLO 允许的时间）→ <strong>冻结</strong>所有非紧急上线</li>
+      <li>Error Budget 剩余很多 → <strong>允许</strong>快速迭代、更多发版</li>
+      <li>本质是用<strong>数据驱动</strong>的决策代替"拍脑袋"：系统稳定与否由数据说了算</li>
+    </ul>
+  </div>
+
+  <h3>SLO 必须是一个数字吗？</h3>
+  <div class="compare">
+    <div>
+      <h4 style="color:var(--red)">❌ 坏的 SLO</h4>
+      <ul style="font-size:13px">
+        <li>"尽可能不宕机"（不可度量）</li>
+        <li>"我们希望 QPS 高点"（没有边界值）</li>
+        <li>"SLA 是 99.99%"（SLA ≠ SLO，SLA 给客户的，SLO 是自己定的）</li>
+      </ul>
+    </div>
+    <div>
+      <h4 style="color:var(--green)">✅ 好的 SLO</h4>
+      <ul style="font-size:13px">
+        <li>"99.9% 的请求在 30 天内返回 200"</li>
+        <li>"95% 的请求 P95 延迟 ≤ 200ms"</li>
+        <li>"99% 的订单在 60 秒内完成支付流程"</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="feynman">
+    <p><span class="analogy">💡 实战建议：从"三个九"开始</span></p>
+    <p>新手团队不要一上来定 99.99%（四个九）。99.9%（三个九）是大多数内部业务系统的最佳起点——全年允许 8.7 小时故障，够用了。逐步提高到 99.95%、99.99%。</p>
+  </div>
+</section>
+
+<!-- ═══════ 8. 实战问答 ═══════ -->
+<section id="qa" class="section">
+  <h2>❓ 实战问答</h2>
+
+  <div class="qa"><div class="q">Q1: Metrics、Logging、Tracing 有什么区别？各自解决什么问题？</div><div class="a">
+    <strong>Metrics：</strong>数值化的聚合数据——回答"系统正在发生什么"（大盘、趋势、告警）。<br>
+    <strong>Logging：</strong>离散的事件记录——回答"为什么发生了"（排查根因）。<br>
+    <strong>Tracing：</strong>跨服务的请求全貌——回答"哪个环节出了问题"（依赖分析、瓶颈定位）。<br>
+    <strong>关键：</strong>三者不是替代关系，是<strong>互补关系</strong>。最佳实践是做"指标驱动、日志深挖、链路定位"。
+  </div></div>
+
+  <div class="qa"><div class="q">Q2: Prometheus 的 Pull 模型和 Push 模型各有什么优缺点？</div><div class="a">
+    <strong>Pull（Prometheus 标准）：</strong>Server 主动抓取目标指标。<br>
+    优点：容易发现目标挂没挂（抓不到就是挂了）；可控制抓取频率；天然避免指标风暴。<br>
+    缺点：需要目标在网络可达范围内；服务发现配置复杂。<br>
+    <strong>Push（Prometheus Pushgateway / StatsD）：</strong>目标主动推送。<br>
+    优点：适合短生命周期任务（批处理、CronJob）；防火墙友好。<br>
+    缺点：无法检测目标是否存活；容易推爆 Server。<br>
+    <strong>实战加分：</strong>实际上两者可以混合使用——长驻进程 Pull，短任务 Push 到 Pushgateway，Prometheus 再去拉 Pushgateway。
+  </div></div>
+
+  <div class="qa"><div class="q">Q3: 如果你的微服务响应变慢，你如何通过可观测性定位问题？</div><div class="a">
+    <strong>第一步：看大盘（Metrics）</strong>——Grafana 看 QPS、延迟、错误率变化。确认是全局问题还是某个接口/服务。<br>
+    <strong>第二步：看链路（Tracing）</strong>——找到慢请求的 Trace，看哪个 Span 耗时最长（哪个服务/方法在拖后腿）。<br>
+    <strong>第三步：看日志（Logging）</strong>——对应 TraceID 搜日志，看报错信息或超时细节。<br>
+    <strong>第四步：关联基础设施</strong>——CPU、内存、磁盘、网络指标是否异常。<br>
+    <strong>实战亮点：</strong>"先用 RED 指标缩小范围，再用 Tracing 定位服务，最后用 Logging 深挖根因"。
+  </div></div>
+
+  <div class="qa"><div class="q">Q4: OpenTelemetry 如何解决可观测性碎片化问题？</div><div class="a">
+    <strong>统一 API：</strong>一套 SDK 同时产生 Metrics、Logs、Traces，不再需要对接三个不同 SDK。<br>
+    <strong>统一传输格式（OTLP）：</strong>所有数据都走 gRPC/HTTP 的 OTLP 协议，后端随意切换。<br>
+    <strong>统一 Collector：</strong>OTel Collector 作为代理/网关，接收 OTLP 后可以路由到任意后端（Prometheus、Jaeger、Loki、Datadog 等）。<br>
+    <strong>厂商无关：</strong>今天用 Jaeger，明天换 Datadog——你的代码不需要改。<br>
+    <strong>注意：</strong>OTel 是标准/框架，不是可观测性后端。你还需要 Prometheus/Jaeger/Loki 来存储和展示。
+  </div></div>
+
+  <div class="qa"><div class="q">Q5: 什么是 SLO？百万美金级别的 Error Budget 怎么算？</div><div class="a">
+    <strong>SLO：</strong>团队承诺的服务质量目标，如"99.9% 的请求在 500ms 内返回"。<br>
+    <strong>Error Budget：</strong>1 − SLO = 允许失败的时间。99.9% → 每月约 43 分钟、99.99% → 每月约 4.3 分钟。<br>
+    <strong>百万美元级别的计算：</strong>假设一个电商平台月收入 1000 万美元，99.9% 可用意味着最多 43 分钟的不可用/慢体验。如果这 43 分钟导致收入损失 ≈ 1000万 × (43 / 43200) ≈ 9950 美元。<br>
+    <strong>但是：</strong>如果 SLO 越紧（99.99%），Error Budget 越少（4.3 分钟），意味着团队需要投入更多成本去维持稳定性——这就是<strong>稳定性投资回报率</strong>的权衡。
+  </div></div>
+
+  <div class="qa"><div class="q">Q6: 线上突然发现某接口 P99 延迟从 200ms 飙升到 5s，怎么排查？</div><div class="a">
+    <strong>排障步骤：</strong><br>
+    ① <strong>确认影响面：</strong>所有接口还是单个接口？某台机器还是所有机器？<br>
+    ② <strong>查 Metrics：</strong>看该接口的 QPS 是否波动（流量突增？）→ 如果是，扩容；查看上游依赖延迟（数据库、缓存、下游服务）<br>
+    ③ <strong>查 Tracing：</strong>找一个慢的 Trace，看哪个 Span 耗时最长（数据库慢查询？Redis 打满？HTTP 调用超时？）<br>
+    ④ <strong>查 Logging：</strong>对应 TraceID 搜日志，看是否有错误堆栈或超时信息<br>
+    ⑤ <strong>根据根因处理：</strong>DB 慢查询 → 加索引/改写 SQL；依赖超时 → 调超时参数/降级；GC 问题 → 调 JVM/Go GC 参数<br>
+    <strong>实战加分：</strong>"我还会看这个延迟飙升是否伴随了 Error Budget 的快速消耗，判断是否需要回滚或熔断"。
+  </div></div>
+
+  <div class="qa"><div class="q">Q7: 你们公司怎么落地可观测性的？从零怎么开始？</div><div class="a">
+    <strong>从零开始的四步走：</strong><br>
+    <strong>第一阶段：基础设施可观测（第 1 周）</strong><br>部署 Prometheus + Node Exporter + Grafana，监控所有机器的 CPU、内存、磁盘、网络。<br>
+    <strong>第二阶段：应用 Metrics（第 2-3 周）</strong><br>在每个服务中接入 Prometheus SDK，暴露 /metrics 端点，添加 RED 指标（Rate/Errors/Duration）。<br>
+    <strong>第三阶段：集中日志（第 3-4 周）</strong><br>部署 Loki + Promtail，所有服务统一输出结构化 JSON 日志，接入 Grafana Explore。<br>
+    <strong>第四阶段：链路追踪 + OTel（第 5-6 周）</strong><br>接入 OpenTelemetry SDK、部署 Jaeger、部署 OTel Collector。<br>
+    <strong>推荐：</strong>用 Docker Compose 一键部署全套架构，在开发环境先跑通。
+  </div></div>
+</section>
+
+<!-- ═══════ 口播总结 ═══════ -->
+<section id="summary" class="section" style="margin-top:40px">
+  <h2>🎙️ 口播总结</h2>
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(248,81,73,0.04));border-color:rgba(251,191,36,0.3)">
+    <p style="font-size:15px;line-height:2"><strong>这篇文章帮你建立可观测性知识的完整地图。</strong></p>
+    <p>可观测性 = Metrics + Logging + Tracing 三大支柱。监控是知道什么指标异常，可观测性是知道为什么异常。</p>
+    <p>Prometheus 用 Pull 模型拉取指标，四种核心类型：Counter、Gauge、Histogram、Summary。Grafana 统一可视化，支持 40+ 数据源。ELK 是传统日志方案但成本高，Loki 轻量只索引标签，内容压缩存储。</p>
+    <p>链路追踪 Jaeger 通过 TraceID 串联跨服务的请求路径，Span 树完美展示调用关系。OpenTelemetry 是行业统一标准，一套 API 同时输出三大支柱，通过 OTel Collector 路由到任意后端。</p>
+    <p>SLO 是服务目标，SLI 是实际测量，Error Budget 是容错空间——用数据决定能不能发版。99.9% 是新团队的合理起点。</p>
+    <p><strong>如果只能记住一件事：</strong>先用 Prometheus + Grafana 监控 RED 指标，再逐步加上日志和链路。小步快跑，不要试图一步到位。</p>
+  </div>
+</section>
+
+<!-- ═══════ 苏格拉底式提问 ═══════ -->
+<section id="socratic" class="section">
+  <h2>💬 苏格拉底式提问 —— 检验真理解</h2>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:20px">以下问题用来逼你追问本质。先自己想 30 秒，再点开验证。</p>
+  <details class="socratic"><summary>Prometheus 为什么选择 Pull 而不是 Push？什么场景 Push 更适合？<span class="socratic-num">Q1</span></summary><div class="socratic-a"><span class="highlight">核心原因：</span>Pull 模型能检测目标存活状态。如果 Prometheus 拉不到数据，说明服务挂了（或网络不通）。Push 模型里，服务挂了就没人推数据——你根本不知道它是正常没数据还是挂了。<br><span class="highlight">Push 更适合的场景：</span>① 短生命周期任务（CronJob、批处理）——任务结束后就没有进程让 Prometheus 来拉了。② 防火墙后的服务（外网 Prometheus 不能直接访问）。③ 上传指标到 Pushgateway 统一暴露给 Prometheus。</div></details>
+  <details class="socratic"><summary>为什么需要把 Metrics、Logging、Tracing 关联起来？怎么实现？<span class="socratic-num">Q2</span></summary><div class="socratic-a"><span class="highlight">因为单一数据源不够。</span>比如你看到 Metrics 显示某个接口 P99 延迟飙高——你知道慢了但不知道为什么慢。你需要找到具体 Trace 看哪个 Span 耗时最长。看到慢 Span 后，你还要看对应日志里的具体 SQL/参数/错误信息。<br><span class="highlight">关联方式：</span>Logging 中携带 <span class="highlight">TraceID</span>（从 Tracing Context 中提取），在日志查询时直接按 TraceID 搜索到该请求的所有日志。Grafana 已经支持在 Metrics 和 Logs 之间按 Label/TraceID 跳转。<br><span class="highlight">一句话：</span>Metrics 做第一层预警，Tracing 做第二层定位，Logging 做第三层根因分析。</div></details>
+  <details class="socratic"><summary>99.9% 可用性 = 一年允许宕机 8.76 小时——这个数字可靠吗？什么情况下会误导？<span class="socratic-num">Q3</span></summary><div class="socratic-a"><span class="highlight">可靠但不全面。</span>99.9% 指"请求成功率"，不等于"所有请求 99.9% 都正常"。它对流量模型敏感：<br>① <strong>低流量服务：</strong>一天 1000 个请求，99.9% 意味着一年允许 8760 次失败——但 8760/365 ≈ 24 次/天。对于一个日请求 1000 的服务，一天失败 24 次 = 97.6% 成功率，远超 99.9% 的上限！<br>② <strong>请求不等于用户：</strong>一个失败的请求可能导致所有重试也失败——统计上 1 次失败被放大为 N 次。<br>③ <strong>分片可用性：</strong>99.9% 整体可用 ≠ 每个分片 99.9%。比如 100 个 Redis 分片，每个 99.9% → 整体可用性 = 0.999^100 ≈ 90.4%。<br><span class="highlight">所以：</span>SLO 要定义清楚（"99.9% 的用户 - 请求成功"），并且要关注分片和流量分布的差异性。</div></details>
+  <details class="socratic"><summary>TraceID 是怎么在服务之间传递的？如果用的是 gRPC，怎么自动传播？<span class="socratic-num">Q4</span></summary><div class="socratic-a"><span class="highlight">传递方式：</span>TraceID/SpanID 在 HTTP 请求中通过 Header 传递（<code>traceparent</code> / <code>tracestate</code>），在 gRPC 中通过 Metadata 传递。<br><span class="highlight">核心机制：</span>每次服务 A 调用服务 B 时，A 的 SDK 把当前的 SpanContext 序列化到请求的 Metadata 中。B 的 SDK 在收到请求时反序列化 SpanContext，创建新的 Child Span 挂到同一个 Trace 下。<br><span class="highlight">gRPC 自动传播：</span>OpenTelemetry 提供了 gRPC Interceptor（拦截器），对代码零侵入——注册一个 ClientInterceptor 和一个 ServerInterceptor 就自动处理了 TraceID 的注入和提取。<br><span class="highlight">HTTP 同理：</span>通过 HTTP middleware/Filter 自动注入 <code>traceparent</code> header（W3C Trace Context 标准）。</div></details>
+  <details class="socratic"><summary>如果公司没钱买昂贵的 APM 工具，怎么用开源方案搭建一套可观测性体系？<span class="socratic-num">Q5</span></summary><div class="socratic-a"><span class="highlight">完全可行！</span>推荐技术栈：<br>• <span class="highlight">Metrics：</span>Prometheus（开源）+ Grafana（开源社区版）<br>• <span class="highlight">Logging：</span>Loki（Grafana 出品，开源）+ Promtail<br>• <span class="highlight">Tracing：</span>Jaeger（CNCF 毕业项目，开源）或 Tempo（Grafana 出品，更轻量）<br>• <span class="highlight">统一标准：</span>OpenTelemetry Collector（开源）<br><span class="highlight">部署方式：</span>全部可以跑在 Docker Compose 或 Kubernetes 上。一台 4C8G 的机器就能跑通全家桶。<br><span class="highlight">对比 SaaS APM：</span>功能上不如 Datadog / New Relic 丰富（缺少 RUM、自动发现等），但核心排障能力完全够用。成本上一年省几十万美金。</div></details>
+</section>
+
+<p style="text-align:center;color:var(--muted);margin-top:60px;padding-bottom:40px;font-size:12px">
+  🔭 可观测性复习完成 · Metrics + Logging + Tracing = 全息视图<br>
+  <a href="/" style="color:var(--accent)">← 返回首页</a>
+</p>
+
+</main>
+</div>
+
+<script src="/mobile.js"></script>
+<script src="/ebbinghaus.js"></script>
+
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'OBSERVABILITY';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

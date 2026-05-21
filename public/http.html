@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTTP 协议 · 费曼学习法</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  .kw { color: #ff7b72; }
+  .str { color: #a5d6ff; }
+  .num { color: #79c0ff; }
+  .cm, .comment { color: #8b949e; font-style: italic; }
+  .fn { color: #d2a8ff; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .sidebar-logo-link { text-decoration: none; }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; text-decoration: none; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+
+  @media (max-width: 768px) {
+    .sidebar { width: 200px; }
+    .main { margin-left: 200px; padding: 20px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+<script src="mobile.js" defer></script>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" class="sidebar-logo-link"><div class="sidebar-logo">📡 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">第一章：协议基础</div>
+  <a class="nav-item" href="#http-anatomy">🔬 请求 &amp; 响应解剖</a>
+  <a class="nav-item" href="#http-methods">📬 HTTP 方法</a>
+  <a class="nav-item" href="#http-status">🚦 状态码深度解析</a>
+  <div class="nav-section">第二章：请求头</div>
+  <a class="nav-item" href="#http-headers">📋 关键 Header</a>
+  <a class="nav-item" href="#http-content">📦 内容协商 &amp; 编码</a>
+  <div class="nav-section">第三章：状态 &amp; 认证</div>
+  <a class="nav-item" href="#http-cookie">🍪 Cookie · Session · Token</a>
+  <a class="nav-item" href="#http-cors">🌐 CORS 跨域</a>
+  <div class="nav-section">第四章：性能</div>
+  <a class="nav-item" href="#http-cache">⚡ HTTP 缓存体系</a>
+  <a class="nav-item" href="#http-connection">🔗 连接管理</a>
+  <div class="nav-section">第五章：协议进化</div>
+  <a class="nav-item" href="#http-evolution">🚀 HTTP 进化史</a>
+  <a class="nav-item" href="#http2">⚡ HTTP/2 详解</a>
+  <a class="nav-item" href="#http3">🌩️ HTTP/3 &amp; QUIC</a>
+  <div class="nav-section">第六章：工程实践</div>
+  <a class="nav-item" href="#http-rest">🏗️ RESTful 设计</a>
+  <a class="nav-item" href="#http-qa">❓ 核心题</a>
+  <a class="nav-item" href="#http-socratic">💬 苏格拉底提问</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>📡 HTTP 协议</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>HTTP 是 Web 的"普通话"——浏览器和服务器之间的通信语言。它无状态、基于请求-响应模型，从 1991 年的 0.9 版本进化到今天的 HTTP/3，每一步都在解决"更快、更安全、更高效"的问题。</p>
+    <p>这篇文章不讲 TCP 握手（看 <a href="/networking.html" style="color:var(--accent)">计算机网络</a>），不讲 TLS 细节（同看网络篇），只聚焦 <strong>HTTP 协议本身</strong>——实战中 80% 的 HTTP 考点都在这里。</p>
+  </div>
+</section>
+
+<!-- ═══════ 1. 请求与响应解剖 ═══════ -->
+<section id="http-anatomy" class="section">
+  <h2>🔬 请求 & 响应解剖：HTTP 报文的"骨架"</h2>
+  <div class="feynman">
+    <p><span class="analogy">✉️ 类比：</span>HTTP 报文 = 快递包裹。起始行 = 快递单（发件人/收件人/物品），Header = 包裹标签（易碎/冷链/加急），空行 = 标签和物品之间的分隔线，Body = 包裹里的东西。</p>
+  </div>
+
+  <h3>请求报文结构</h3>
+  <pre><code><span class="cm">┌─ 起始行（Request Line）─────────────────────┐</span>
+<span class="kw">POST</span> /api/users <span class="str">HTTP/1.1</span>
+<span class="cm">┌─ 请求头（Headers）──────────────────────────┐</span>
+Host: api.example.com
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOi...
+Accept: application/json
+Accept-Encoding: gzip, br
+User-Agent: Mozilla/5.0
+<span class="cm">┌─ 空行（CRLF）── 头部和Body的隔离符 ─────────┐</span>
+
+<span class="cm">┌─ 请求体（Body）── 可选，GET 请求通常没有 ───┐</span>
+{"username": "zhangsan", "email": "zhang@example.com"}</code></pre>
+
+  <h3>响应报文结构</h3>
+  <pre><code><span class="cm">┌─ 状态行（Status Line）──────────────────────┐</span>
+HTTP/1.1 <span class="num">200</span> OK
+<span class="cm">┌─ 响应头（Headers）──────────────────────────┐</span>
+Content-Type: application/json; charset=utf-8
+Content-Length: 156
+Cache-Control: max-age=3600
+Set-Cookie: session_id=abc123; HttpOnly; Secure
+<span class="cm">┌─ 空行（CRLF）───────────────────────────────┐</span>
+
+<span class="cm">┌─ 响应体（Body）────────────────────────────┐</span>
+{"id": 42, "username": "zhangsan", "created_at": "2025-01-01"}</code></pre>
+
+  <div class="info-card">
+    <h4>🔑 核心约束</h4>
+    <p><strong>① 起始行和每个 Header 以 CRLF（\r\n）结尾。② 头部结束后必须有一个空行（CRLF+CRLF）。③ Content-Length 告诉接收方 Body 有多少字节——没有它，接收方不知道读到哪算完。</strong> HTTP/1.1 的 <code>Transfer-Encoding: chunked</code> 是这个问题的另一种解法：分块传输，每块前标注长度，最后一块长度为 0。</p>
+  </div>
+</section>
+
+<!-- ═══════ 2. HTTP 方法 ═══════ -->
+<section id="http-methods" class="section">
+  <h2>📬 HTTP 方法：不是每个方法都只是"读"和"写"</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏦 类比：</span>GET = 查看存折余额（不改变状态）。POST = 填写转账单提交（创建新资源）。PUT = 拿着房产证去登记处"整个替换"信息。PATCH = 去登记处说"只改电话号码这一项"。DELETE = 注销账户。</p>
+  </div>
+
+  <h3>8 种方法全解</h3>
+  <table>
+    <tr><th style="width:12%">方法</th><th style="width:18%">语义</th><th>特点</th><th>核心考点</th></tr>
+    <tr>
+      <td><span class="badge-green">GET</span></td><td>获取资源</td><td>幂等、安全（不改变服务器状态）、可缓存、参数在 URL</td>
+      <td>GET 请求可以带 Body 吗？<span style="color:var(--orange)">RFC 不禁止，但绝大多数服务器忽略。</span></td>
+    </tr>
+    <tr>
+      <td><span class="badge-purple">POST</span></td><td>创建资源 / 提交数据</td><td>不幂等、不安全、不可缓存（除非显式设置）、参数在 Body</td>
+      <td>POST 和 PUT 的区别？<span style="color:var(--orange)">POST 非幂等（多次=多个资源），PUT 幂等。</span></td>
+    </tr>
+    <tr>
+      <td><span class="badge-cyan">PUT</span></td><td>完整替换资源</td><td>幂等（多次请求结果一致）、不安全</td>
+      <td>PUT 要求提供完整资源表示，缺少字段会设为默认值/null。</td>
+    </tr>
+    <tr>
+      <td><span class="badge-orange">PATCH</span></td><td>部分更新资源</td><td>不保证幂等、不安全</td>
+      <td>PATCH vs PUT？<span style="color:var(--orange)">PATCH 是增量修改，PUT 是全量替换。</span></td>
+    </tr>
+    <tr>
+      <td><span class="badge-red">DELETE</span></td><td>删除资源</td><td>幂等（删两次结果一样——资源不存在）、不安全</td>
+      <td>第一次返回 204，第二次返回 404——这叫<span style="color:var(--orange)">幂等</span>。</td>
+    </tr>
+    <tr>
+      <td><span style="color:var(--muted)">HEAD</span></td><td>只获取响应头</td><td>和 GET 一样但不返回 Body。用于检查资源是否存在、获取 Content-Length</td>
+      <td>文件下载前先用 HEAD 拿文件大小，决定是否要断点续传。</td>
+    </tr>
+    <tr>
+      <td><span style="color:var(--muted)">OPTIONS</span></td><td>查询支持的方法</td><td>CORS 预检请求的核心。浏览器在跨域 POST 前自动发 OPTIONS。</td>
+      <td>响应头 <code>Allow: GET, POST, PUT</code> 告诉客户端支持哪些方法。</td>
+    </tr>
+    <tr>
+      <td><span style="color:var(--muted)">TRACE</span></td><td>回显请求（调试）</td><td>用于查看中间代理对请求做了什么修改。生产环境通常禁用（安全风险）。</td>
+      <td>可能泄露认证头 → XST 攻击 → <span style="color:var(--red)">生产禁用。</span></td>
+    </tr>
+  </table>
+
+  <h3>幂等性 —— 最爱考的概念</h3>
+  <div class="info-card">
+    <h4>幂等 = 执行 1 次和执行 N 次，结果一样</h4>
+    <p><strong>幂等方法：</strong>GET、HEAD、PUT、DELETE（因为删两次结果都是"不存在"）</p>
+    <p><strong>非幂等方法：</strong>POST（创建两次=两个资源）、PATCH（取决于具体实现）</p>
+    <p><strong>为什么重要？</strong>网络不可靠——超时重试时，幂等方法可以安全重试，POST 可能造成重复创建。这就是为什么支付接口通常要求客户端生成唯一 <code>Idempotency-Key</code>。</p>
+  </div>
+</section>
+
+<!-- ═══════ 3. 状态码 ═══════ -->
+<section id="http-status" class="section">
+  <h2>🚦 状态码深度解析：别只背 200/404/500</h2>
+  <div class="feynman">
+    <p><span class="analogy">🍽️ 类比：</span>状态码 = 餐厅服务员回复。1xx = "收到，正在下单"，2xx = "菜好了请慢用"，3xx = "我们换地址了，新店在那边"，4xx = "你点的菜我们菜单上没有（你的问题）"，5xx = "厨房着火了（我们的问题）"。</p>
+  </div>
+
+  <table>
+    <tr><th style="width:10%">范围</th><th style="width:18%">关键码</th><th>含义</th><th>你用在哪</th></tr>
+    <tr>
+      <td><strong>1xx</strong></td>
+      <td>100 Continue<br>101 Switching</td>
+      <td>服务器收到请求头，客户端可以继续发 Body<br>协议升级（HTTP→WebSocket）</td>
+      <td>大文件上传前先发 Expect: 100-continue<br>WebSocket 握手</td>
+    </tr>
+    <tr>
+      <td><strong>2xx</strong></td>
+      <td>200 OK<br>201 Created<br>204 No Content<br>206 Partial</td>
+      <td>请求成功<br>资源已创建（POST 返回）<br>成功但无响应体（DELETE 常用）<br>部分内容（断点续传/分页）</td>
+      <td>RESTful POST 应返回 201 + Location<br>Range 请求 + 206 = 断点续传</td>
+    </tr>
+    <tr>
+      <td><strong>3xx</strong></td>
+      <td>301 Moved<br>302 Found<br>304 Not Modified<br>307/308</td>
+      <td><strong>永久</strong>重定向（浏览器缓存，SEO 权重转移）<br><strong>临时</strong>重定向<br>缓存未过期，用本地缓存<br>严格不改变方法的重定向</td>
+      <td>HTTP→HTTPS 用 301<br>登录后跳回用 302<br>304 配合 ETag/Last-Modified<br>POST→GET 被改？用 307</td>
+    </tr>
+    <tr>
+      <td><strong>4xx</strong></td>
+      <td>400 Bad<br>401 Unauthorized<br>403 Forbidden<br>404 Not Found<br>405 Not Allowed<br>429 Too Many</td>
+      <td>请求格式错误<br>未认证（没登录/Token 过期）<br>已认证但没权限<br>资源不存在<br>方法不支持<br>触发限流</td>
+      <td>表单校验失败用 400<br>401 必须带 WWW-Authenticate<br>403 = "我知道你是谁但你不能进"<br>限流中间件返回 429 + Retry-After</td>
+    </tr>
+    <tr>
+      <td><strong>5xx</strong></td>
+      <td>500 Internal<br>502 Bad Gateway<br>503 Unavailable<br>504 Gateway Timeout</td>
+      <td>服务器内部错误<br>网关/代理收到上游无效响应<br>服务暂时不可用（维护/过载）<br>网关/代理等上游超时</td>
+      <td>500 不要暴露堆栈给客户端<br>502 = Nginx 连不上后端<br>503 + Retry-After = 优雅降级<br>504 = 后端处理太慢/死循环</td>
+    </tr>
+  </table>
+
+  <h4>301 vs 302 —— 高频必问</h4>
+  <div class="compare">
+    <div>
+      <h4><span class="badge-green">301 永久重定向</span></h4>
+      <p>浏览器<strong>会缓存</strong>这个重定向。下次访问旧 URL，浏览器直接用缓存的地址跳转，不发请求。</p>
+      <p style="color:var(--orange)">POST → GET 可能被改（浏览器行为）</p>
+      <p>SEO：权重从旧 URL 转移到新 URL</p>
+    </div>
+    <div>
+      <h4><span class="badge-orange">302 临时重定向</span></h4>
+      <p>浏览器<strong>不缓存</strong>。每次访问旧 URL 都会请求服务器。</p>
+      <p style="color:var(--orange)">POST → GET 可能被改（浏览器行为）</p>
+      <p>SEO：权重保留在旧 URL</p>
+    </div>
+  </div>
+  <p>💡 <strong>307/308 是来解决"方法被改"问题的：</strong>301/302 在历史上被浏览器错误实现（POST 变成 GET），307 = 临时 + 不改变方法，308 = 永久 + 不改变方法。</p>
+</section>
+
+<!-- ═══════ 4. 关键 Header ═══════ -->
+<section id="http-headers" class="section">
+  <h2>📋 关键 Header：控制 HTTP 行为的"指令集"</h2>
+
+  <h3>通用 Header（请求和响应都可能出现）</h3>
+  <table>
+    <tr><th>Header</th><th>作用</th><th>示例</th></tr>
+    <tr><td><code>Content-Type</code></td><td>Body 的 MIME 类型</td><td><code>application/json; charset=utf-8</code></td></tr>
+    <tr><td><code>Content-Length</code></td><td>Body 字节数</td><td><code>156</code></td></tr>
+    <tr><td><code>Content-Encoding</code></td><td>Body 压缩算法</td><td><code>gzip</code>, <code>br</code> (Brotli)</td></tr>
+    <tr><td><code>Cache-Control</code></td><td>缓存策略（最重要的性能头）</td><td><code>max-age=3600, public</code></td></tr>
+    <tr><td><code>Transfer-Encoding</code></td><td>传输编码</td><td><code>chunked</code>（分块传输，代替 Content-Length）</td></tr>
+    <tr><td><code>Connection</code></td><td>连接管理</td><td><code>keep-alive</code> / <code>close</code></td></tr>
+  </table>
+
+  <h3>请求专有 Header</h3>
+  <table>
+    <tr><th>Header</th><th>作用</th></tr>
+    <tr><td><code>Host</code></td><td>目标主机（HTTP/1.1 唯一必需头——一台服务器多个站点靠它区分）</td></tr>
+    <tr><td><code>Accept</code> / <code>Accept-Encoding</code> / <code>Accept-Language</code></td><td>客户端能处理的格式/压缩/语言</td></tr>
+    <tr><td><code>Authorization</code></td><td>认证凭据：<code>Bearer &lt;token&gt;</code> 或 <code>Basic base64(user:pass)</code></td></tr>
+    <tr><td><code>User-Agent</code></td><td>客户端标识（浏览器/版本/操作系统——可用于统计但不能用于安全判断）</td></tr>
+    <tr><td><code>Referer</code></td><td>当前请求的来源页面 URL（拼写错误已写入RFC——就是少了个r）</td></tr>
+    <tr><td><code>Range</code></td><td>断点续传：<code>bytes=0-1023</code>，服务器返回 <code>206 Partial Content</code></td></tr>
+    <tr><td><code>If-None-Match</code> / <code>If-Modified-Since</code></td><td>协商缓存：条件请求，配合 ETag / Last-Modified</td></tr>
+  </table>
+
+  <h3>响应专有 Header</h3>
+  <table>
+    <tr><th>Header</th><th>作用</th></tr>
+    <tr><td><code>Set-Cookie</code></td><td>服务器要求浏览器存储 Cookie</td></tr>
+    <tr><td><code>ETag</code></td><td>资源的"指纹"（通常是哈希），用于协商缓存</td></tr>
+    <tr><td><code>Last-Modified</code></td><td>资源最后修改时间</td></tr>
+    <tr><td><code>Location</code></td><td>重定向目标 URL（配合 3xx 或 201）</td></tr>
+    <tr><td><code>Access-Control-Allow-Origin</code></td><td>CORS：允许哪些域名跨域访问</td></tr>
+    <tr><td><code>Allow</code></td><td>资源支持的方法列表（如 OPTIONS 响应中）</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 5. 内容协商 ═══════ -->
+<section id="http-content" class="section">
+  <h2>📦 内容协商 & 编码：客户端和服务器"商量着来"</h2>
+  <div class="feynman">
+    <p><span class="analogy">🗣️ 类比：</span>内容协商 = 你去外国餐厅点菜。你说"我要中文菜单"，服务员说"有中日英三种"（Accept-Language 协商）。你说"给我压缩版少占地方"，服务员说"gzip 和 brotli 都行"（Accept-Encoding 协商）。</p>
+  </div>
+
+  <h4>服务端驱动协商（最常用）</h4>
+  <p>客户端在请求头里声明自己能接受什么，服务器选一个最合适的返回。三个关键头：</p>
+  <ul>
+    <li><strong>Accept：</strong><code>text/html, application/json;q=0.9, */*;q=0.8</code>——q 值代表优先级（0-1）</li>
+    <li><strong>Accept-Encoding：</strong><code>gzip, deflate, br</code>——优先 Brotli（压缩率更高）</li>
+    <li><strong>Accept-Language：</strong><code>zh-CN, zh;q=0.9, en;q=0.5</code></li>
+  </ul>
+  <p>服务器响应时在 <code>Content-Type</code> / <code>Content-Encoding</code> / <code>Content-Language</code> / <code>Vary</code> 中声明它实际选了什么。<strong>Vary 头是关键</strong>——它告诉 CDN/缓存"我这个响应会因为 XX 头不同而不同"，CDN 会根据 Vary 指定的头做缓存分片。</p>
+</section>
+
+<!-- ═══════ 6. Cookie/Session/Token ═══════ -->
+<section id="http-cookie" class="section">
+  <h2>🍪 Cookie · Session · Token：HTTP 的"记忆"机制</h2>
+  <div class="feynman">
+    <p><span class="analogy">🎫 类比：</span>HTTP 是无状态的——服务器像金鱼，转身就忘。Cookie = 游乐园的纸质手环（每次进门出示）。Session = 手环上只有编号，信息存在游乐园的电脑里。JWT Token = 电子门票（自带加密信息，不用查电脑）。</p>
+  </div>
+
+  <h3>Cookie 的属性 —— 每一项都是安全考量</h3>
+  <table>
+    <tr><th>属性</th><th>作用</th><th>不设置的风险</th></tr>
+    <tr><td><code>HttpOnly</code></td><td>禁止 JavaScript 读取（<code>document.cookie</code> 拿不到）</td><td>XSS 攻击可偷走 Token</td></tr>
+    <tr><td><code>Secure</code></td><td>只在 HTTPS 连接中传输</td><td>中间人攻击（MITM）可截获 Cookie</td></tr>
+    <tr><td><code>SameSite</code></td><td>控制跨站请求是否带 Cookie：Strict/Lax/None</td><td>CSRF 攻击（SameSite=Lax 基本防住）</td></tr>
+    <tr><td><code>Domain</code></td><td>Cookie 的作用域名（包括子域）</td><td>不设则只对当前域有效</td></tr>
+    <tr><td><code>Path</code></td><td>Cookie 的作用路径</td><td>不设则对所有路径有效</td></tr>
+    <tr><td><code>Expires / Max-Age</code></td><td>过期时间</td><td>不设 = 浏览器关闭即失效（会话 Cookie）</td></tr>
+  </table>
+
+  <h3>Cookie vs Session vs Token vs JWT</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 260" style="max-width:820px; width:100%">
+      <!-- Cookie -->
+      <rect x="10" y="10" width="190" height="240" rx="8" fill="rgba(88,166,255,0.05)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="105" y="35" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">Cookie</text>
+      <text x="105" y="55" text-anchor="middle" fill="#94a3b8" font-size="9">浏览器侧存储</text>
+      <line x1="30" y1="65" x2="180" y2="65" stroke="#334155" stroke-width="0.5"/>
+      <text x="25" y="85" fill="#94a3b8" font-size="9">✅ 自动附带</text>
+      <text x="25" y="105" fill="#94a3b8" font-size="9">✅ 域名隔离</text>
+      <text x="25" y="125" fill="#94a3b8" font-size="9">❌ 4KB 上限</text>
+      <text x="25" y="145" fill="#94a3b8" font-size="9">❌ CSRF 风险</text>
+      <text x="25" y="165" fill="#94a3b8" font-size="9">❌ 跨域不发送</text>
+      <text x="25" y="190" fill="#64748b" font-size="8">场景：服务端渲染</text>
+      <text x="25" y="206" fill="#64748b" font-size="8">的 Web 应用</text>
+
+      <!-- Session -->
+      <rect x="215" y="10" width="190" height="240" rx="8" fill="rgba(63,185,80,0.05)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="310" y="35" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">Session</text>
+      <text x="310" y="55" text-anchor="middle" fill="#94a3b8" font-size="9">服务端侧存储</text>
+      <line x1="235" y1="65" x2="385" y2="65" stroke="#334155" stroke-width="0.5"/>
+      <text x="230" y="85" fill="#94a3b8" font-size="9">✅ 数据安全</text>
+      <text x="230" y="105" fill="#94a3b8" font-size="9">✅ 可强制失效</text>
+      <text x="230" y="125" fill="#94a3b8" font-size="9">❌ 服务端占内存</text>
+      <text x="230" y="145" fill="#94a3b8" font-size="9">❌ 分布式需共享</text>
+      <text x="230" y="165" fill="#94a3b8" font-size="9">❌ 扩展性差</text>
+      <text x="230" y="190" fill="#64748b" font-size="8">场景：传统 Web</text>
+      <text x="230" y="206" fill="#64748b" font-size="8">（用 Cookie 传 SessionID）</text>
+
+      <!-- Token -->
+      <rect x="420" y="10" width="190" height="240" rx="8" fill="rgba(210,153,34,0.05)" stroke="#d29922" stroke-width="1.5"/>
+      <text x="515" y="35" text-anchor="middle" fill="#d29922" font-size="13" font-weight="700">Token</text>
+      <text x="515" y="55" text-anchor="middle" fill="#94a3b8" font-size="9">客户端侧存储</text>
+      <line x1="440" y1="65" x2="590" y2="65" stroke="#334155" stroke-width="0.5"/>
+      <text x="435" y="85" fill="#94a3b8" font-size="9">✅ 无状态</text>
+      <text x="435" y="105" fill="#94a3b8" font-size="9">✅ 跨域友好</text>
+      <text x="435" y="125" fill="#94a3b8" font-size="9">✅ 移动端适用</text>
+      <text x="435" y="145" fill="#94a3b8" font-size="9">❌ 需手动管理</text>
+      <text x="435" y="165" fill="#94a3b8" font-size="9">❌ XSS 可窃取</text>
+      <text x="435" y="190" fill="#64748b" font-size="8">场景：SPA + API</text>
+
+      <!-- JWT -->
+      <rect x="625" y="10" width="185" height="240" rx="8" fill="rgba(163,113,247,0.05)" stroke="#a371f7" stroke-width="1.5"/>
+      <text x="717" y="35" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="700">JWT</text>
+      <text x="717" y="55" text-anchor="middle" fill="#94a3b8" font-size="9">自包含 Token</text>
+      <line x1="645" y1="65" x2="790" y2="65" stroke="#334155" stroke-width="0.5"/>
+      <text x="640" y="85" fill="#94a3b8" font-size="9">✅ 自带信息</text>
+      <text x="640" y="105" fill="#94a3b8" font-size="9">✅ 无需查DB</text>
+      <text x="640" y="125" fill="#94a3b8" font-size="9">✅ 微服务友好</text>
+      <text x="640" y="145" fill="#94a3b8" font-size="9">❌ 无法撤销</text>
+      <text x="640" y="165" fill="#94a3b8" font-size="9">❌ Payload 明文</text>
+      <text x="640" y="190" fill="#64748b" font-size="8">场景：微服务</text>
+      <text x="640" y="206" fill="#64748b" font-size="8">OAuth2 / SSO</text>
+    </svg>
+    <div class="diagram-caption">四种状态管理方案对比：没有银弹，只有场景适配</div>
+  </div>
+
+  <div class="info-card">
+    <h4>🎯 选型决策</h4>
+    <p><strong>服务端渲染的传统 Web → Cookie + Session。</strong> SPA + REST API → <strong>Bearer Token（存 localStorage/memory）</strong>。微服务 + 无状态要求 → <strong>JWT</strong>（但要接受无法主动撤销的代价，用短期 Access Token + Refresh Token 缓解）。</p>
+  </div>
+</section>
+
+<!-- ═══════ 7. CORS ═══════ -->
+<section id="http-cors" class="section">
+  <h2>🌐 CORS 跨域：浏览器的"门禁系统"</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏢 类比：</span>CORS = 办公楼门禁。同一栋楼的员工（同源）随便走动。外楼的人（跨域）来访需要前台（OPTIONS 预检）确认"这人能进吗？"。简单的事情（穿制服的外卖员 = 简单请求）不用预检直接放行。</p>
+  </div>
+
+  <h4>什么是同源？</h4>
+  <p>协议 + 域名 + 端口，三者完全相同才算同源。<code>https://a.com:443</code> 和 <code>http://a.com:80</code> ——不同源！</p>
+
+  <h4>简单请求 vs 预检请求</h4>
+  <table>
+    <tr><th style="width:20%">类型</th><th>条件</th><th>流程</th></tr>
+    <tr>
+      <td><strong>简单请求</strong></td>
+      <td>方法为 GET/HEAD/POST，且 Content-Type 为 <code>text/plain</code> / <code>multipart/form-data</code> / <code>application/x-www-form-urlencoded</code>，且无自定义头</td>
+      <td>浏览器直接发请求，检查响应头里的 <code>Access-Control-Allow-Origin</code></td>
+    </tr>
+    <tr>
+      <td><strong>预检请求</strong></td>
+      <td>任何不满足简单请求条件的：PUT/DELETE、<code>application/json</code>、自定义头（如 Authorization）</td>
+      <td>浏览器先发 <strong>OPTIONS</strong> 请求（预检），服务器回复允许的方法和头，然后才发实际请求</td>
+    </tr>
+  </table>
+
+  <h4>关键响应头</h4>
+  <table>
+    <tr><th>Header</th><th>示例</th><th>含义</th></tr>
+    <tr><td><code>Access-Control-Allow-Origin</code></td><td><code>https://example.com</code> 或 <code>*</code></td><td>允许的源（带凭据时不能是 *）</td></tr>
+    <tr><td><code>Access-Control-Allow-Methods</code></td><td><code>GET, POST, PUT, DELETE</code></td><td>允许的方法</td></tr>
+    <tr><td><code>Access-Control-Allow-Headers</code></td><td><code>Content-Type, Authorization</code></td><td>允许的请求头</td></tr>
+    <tr><td><code>Access-Control-Allow-Credentials</code></td><td><code>true</code></td><td>允许携带 Cookie/Authorization</td></tr>
+    <tr><td><code>Access-Control-Max-Age</code></td><td><code>86400</code>（秒）</td><td>预检结果缓存时间——避免每次请求都 OPTIONS</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>⚠️ 常见踩坑</h4>
+    <p>① 带 <code>Authorization</code> 头的请求一定触发预检。② 设置了 <code>Credentials: true</code> 时，<code>Allow-Origin</code> 不能是 <code>*</code>，必须是具体域名。③ 预检请求不携带认证信息。④ CDN/反向代理的 CORS 配置通常是故障重灾区。</p>
+  </div>
+</section>
+
+<!-- ═══════ 8. 缓存 ═══════ -->
+<section id="http-cache" class="section">
+  <h2>⚡ HTTP 缓存体系：最快的请求是不发请求</h2>
+  <div class="feynman">
+    <p><span class="analogy">📚 类比：</span>强缓存 = 图书馆说"这本书至少一个月不会更新，你直接看复印本就行"——压根不问图书馆。协商缓存 = "你每次看之前问一下我这本书有没有新版，没有就看复印本"——发请求但不传 Body。</p>
+  </div>
+
+  <h3>强缓存（不发请求）</h3>
+  <table>
+    <tr><th>Header</th><th>示例</th><th>行为</th></tr>
+    <tr><td><code>Cache-Control: max-age</code></td><td><code>max-age=3600</code></td><td>1 小时内直接用缓存，不发请求。优先级最高。</td></tr>
+    <tr><td><code>Cache-Control: no-cache</code></td><td>—</td><td>可以用缓存，但每次必须验证（走协商缓存）</td></tr>
+    <tr><td><code>Cache-Control: no-store</code></td><td>—</td><td>完全不缓存。银行交易/敏感数据用这个。</td></tr>
+    <tr><td><code>Cache-Control: public</code></td><td>—</td><td>允许 CDN/代理缓存</td></tr>
+    <tr><td><code>Cache-Control: private</code></td><td>—</td><td>只允许浏览器缓存（CDN 不缓存）</td></tr>
+    <tr><td><code>Expires</code></td><td><code>Thu, 01 Dec 2025 16:00:00 GMT</code></td><td>HTTP/1.0 的绝对时间，<strong>被 max-age 覆盖</strong></td></tr>
+  </table>
+
+  <h3>协商缓存（发请求但不传 Body）</h3>
+  <table>
+    <tr><th style="width:12%">机制</th><th>请求头</th><th>响应头</th><th>行为</th></tr>
+    <tr>
+      <td><strong>ETag/If-None-Match</strong></td>
+      <td><code>If-None-Match: "abc123"</code></td>
+      <td><code>ETag: "abc123"</code></td>
+      <td>服务器比较 ETag，相同返回 <strong>304</strong>，不同返回 200+新内容+新ETag</td>
+    </tr>
+    <tr>
+      <td><strong>Last-Modified/If-Modified-Since</strong></td>
+      <td><code>If-Modified-Since: Wed, 21 Oct 2025</code></td>
+      <td><code>Last-Modified: Wed, 21 Oct 2025</code></td>
+      <td>比 ETag 精度低（秒级），且文件内容没变但修改时间变了也会失效</td>
+    </tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🎯 缓存决策树（参考解析）</h4>
+    <p>① Cache-Control 检查 → 没过期？直接用（200 from disk cache）</p>
+    <p>② 过期了但有 ETag？→ 发 If-None-Match → 304 用缓存 / 200 更新</p>
+    <p>③ 没有 ETag 但有 Last-Modified？→ 发 If-Modified-Since → 同上</p>
+    <p>④ 什么都没有 → 重新请求全部内容</p>
+  </div>
+
+  <h4>实战：静态资源的缓存策略</h4>
+  <pre><code><span class="cm"># 带哈希的静态资源：永远缓存</span>
+/index-<span class="str">a1b2c3</span>.js  → Cache-Control: max-age=<span class="num">31536000</span>, immutable
+
+<span class="cm"># HTML 入口文件：每次都验证</span>
+/index.html       → Cache-Control: no-cache  <span class="cm"># 走协商缓存</span>
+
+<span class="cm"># 用户数据接口：不缓存</span>
+/api/user         → Cache-Control: no-store</code></pre>
+</section>
+
+<!-- ═══════ 9. 连接管理 ═══════ -->
+<section id="http-connection" class="section">
+  <h2>🔗 连接管理：从短连接到多路复用</h2>
+  <div class="feynman">
+    <p><span class="analogy">🚕 类比：</span>短连接 = 每次出门打一辆出租车，到了就结账走人（一次 TCP 握手+挥手）。长连接 = 包车一整天，司机会等（Keep-Alive）。HTTP/2 多路复用 = 大巴车，所有人都坐一辆车同时出发（一个 TCP 连接承载所有请求）。</p>
+  </div>
+
+  <table>
+    <tr><th style="width:15%">模式</th><th>HTTP 版本</th><th>行为</th><th>缺点</th></tr>
+    <tr>
+      <td><strong>短连接</strong></td><td>HTTP/0.9, 1.0</td>
+      <td>每请求 → TCP握手 → 响应 → TCP挥手</td>
+      <td>大量握手开销，慢启动拖慢每个请求</td>
+    </tr>
+    <tr>
+      <td><strong>持久连接</strong></td><td>HTTP/1.1（默认）</td>
+      <td>TCP 连接复用，请求串行：req1→res1→req2→res2</td>
+      <td>队头阻塞（一个慢全等）</td>
+    </tr>
+    <tr>
+      <td><strong>并发连接</strong></td><td>HTTP/1.1 技巧</td>
+      <td>同时开 6-8 个 TCP 连接（域名分片）</td>
+      <td>连接数爆炸，每个都要握手+慢启动</td>
+    </tr>
+    <tr>
+      <td><strong>多路复用</strong></td><td>HTTP/2</td>
+      <td>1 个 TCP 连接承载多个并发 Stream</td>
+      <td>TCP 层面仍有队头阻塞</td>
+    </tr>
+    <tr>
+      <td><strong>QUIC</strong></td><td>HTTP/3</td>
+      <td>基于 UDP，每个 Stream 独立，无队头阻塞</td>
+      <td>CPU 开销较高，部分网络 QoS 限制 UDP</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ═══════ 10. HTTP 进化史 ═══════ -->
+<section id="http-evolution" class="section">
+  <h2>🚀 HTTP 进化史：三十年三次革命</h2>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 280" style="max-width:820px; width:100%">
+      <defs>
+        <marker id="arrEv" markerWidth="8" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#475569"/></marker>
+      </defs>
+      <!-- Timeline -->
+      <line x1="15" y1="40" x2="805" y2="40" stroke="#334155" stroke-width="2"/>
+      <!-- HTTP/0.9 -->
+      <circle cx="60" cy="40" r="8" fill="#475569" stroke="#64748b" stroke-width="2"/>
+      <text x="60" y="22" text-anchor="middle" fill="#64748b" font-size="10">1991</text>
+      <text x="60" y="70" text-anchor="middle" fill="#94a3b8" font-size="12" font-weight="700">HTTP/0.9</text>
+      <text x="60" y="88" text-anchor="middle" fill="#64748b" font-size="9">只有 GET</text>
+      <text x="60" y="104" text-anchor="middle" fill="#64748b" font-size="9">无 Header</text>
+      <text x="60" y="120" text-anchor="middle" fill="#64748b" font-size="9">响应即 HTML</text>
+      <!-- Arrow 0.9→1.0 -->
+      <line x1="68" y1="40" x2="182" y2="40" stroke="#475569" stroke-width="1.5" marker-end="url(#arrEv)"/>
+      <text x="125" y="32" text-anchor="middle" fill="#64748b" font-size="8">5年</text>
+      <!-- HTTP/1.0 -->
+      <circle cx="210" cy="40" r="8" fill="#f87171" stroke="#f87171" stroke-width="2"/>
+      <text x="210" y="22" text-anchor="middle" fill="#f87171" font-size="10">1996</text>
+      <text x="210" y="70" text-anchor="middle" fill="#fca5a5" font-size="12" font-weight="700">HTTP/1.0</text>
+      <text x="210" y="88" text-anchor="middle" fill="#64748b" font-size="9">Header 引入</text>
+      <text x="210" y="104" text-anchor="middle" fill="#64748b" font-size="9">状态码</text>
+      <text x="210" y="120" text-anchor="middle" fill="#64748b" font-size="9">Content-Type</text>
+      <!-- Arrow 1.0→1.1 -->
+      <line x1="218" y1="40" x2="352" y2="40" stroke="#475569" stroke-width="1.5" marker-end="url(#arrEv)"/>
+      <text x="285" y="32" text-anchor="middle" fill="#64748b" font-size="8">1年</text>
+      <!-- HTTP/1.1 -->
+      <circle cx="380" cy="40" r="10" fill="#fbbf24" stroke="#fbbf24" stroke-width="2.5"/>
+      <text x="380" y="20" text-anchor="middle" fill="#fbbf24" font-size="10">1997</text>
+      <text x="380" y="72" text-anchor="middle" fill="#fcd34d" font-size="13" font-weight="700">HTTP/1.1 ⭐</text>
+      <text x="380" y="92" text-anchor="middle" fill="#64748b" font-size="9">Keep-Alive（默认）</text>
+      <text x="380" y="108" text-anchor="middle" fill="#64748b" font-size="9">管道化</text>
+      <text x="380" y="124" text-anchor="middle" fill="#64748b" font-size="9">分块传输</text>
+      <text x="380" y="140" text-anchor="middle" fill="#64748b" font-size="9">Host 头（虚拟主机）</text>
+      <rect x="300" y="155" width="160" height="18" rx="4" fill="rgba(251,191,36,0.1)"/>
+      <text x="380" y="168" text-anchor="middle" fill="#fbbf24" font-size="8">至今仍是最广泛使用的版本</text>
+      <!-- Arrow 1.1→2 -->
+      <line x1="390" y1="40" x2="542" y2="40" stroke="#475569" stroke-width="1.5" marker-end="url(#arrEv)"/>
+      <text x="466" y="32" text-anchor="middle" fill="#64748b" font-size="8">18年</text>
+      <!-- HTTP/2 -->
+      <circle cx="570" cy="40" r="10" fill="#22d3ee" stroke="#22d3ee" stroke-width="2.5"/>
+      <text x="570" y="20" text-anchor="middle" fill="#22d3ee" font-size="10">2015</text>
+      <text x="570" y="72" text-anchor="middle" fill="#67e8f9" font-size="13" font-weight="700">HTTP/2</text>
+      <text x="570" y="92" text-anchor="middle" fill="#64748b" font-size="9">二进制分帧</text>
+      <text x="570" y="108" text-anchor="middle" fill="#64748b" font-size="9">多路复用</text>
+      <text x="570" y="124" text-anchor="middle" fill="#64748b" font-size="9">HPACK 压缩</text>
+      <text x="570" y="140" text-anchor="middle" fill="#64748b" font-size="9">Server Push</text>
+      <!-- Arrow 2→3 -->
+      <line x1="580" y1="40" x2="722" y2="40" stroke="#475569" stroke-width="1.5" marker-end="url(#arrEv)"/>
+      <text x="651" y="32" text-anchor="middle" fill="#64748b" font-size="8">7年</text>
+      <!-- HTTP/3 -->
+      <circle cx="750" cy="40" r="10" fill="#a78bfa" stroke="#a78bfa" stroke-width="2.5"/>
+      <text x="750" y="20" text-anchor="middle" fill="#a78bfa" font-size="10">2022</text>
+      <text x="750" y="72" text-anchor="middle" fill="#c4b5fd" font-size="13" font-weight="700">HTTP/3</text>
+      <text x="750" y="92" text-anchor="middle" fill="#64748b" font-size="9">基于 QUIC</text>
+      <text x="750" y="108" text-anchor="middle" fill="#64748b" font-size="9">0-RTT</text>
+      <text x="750" y="124" text-anchor="middle" fill="#64748b" font-size="9">连接迁移</text>
+      <text x="750" y="140" text-anchor="middle" fill="#64748b" font-size="9">无队头阻塞</text>
+
+      <!-- What each version solved -->
+      <rect x="15" y="195" width="790" height="70" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="30" y="220" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">每一代解决了什么问题？</text>
+      <text x="30" y="242" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">0.9→1.0：引入 Header，支持 Content-Type 传输多媒体。1.0→1.1：Keep-Alive 复用连接 + Host 头支持虚拟主机 + 分块传输。</text>
+      <text x="30" y="256" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">1.1→2：解决 HTTP 层面的队头阻塞（多路复用）+ 二进制协议提速 + HPACK 压缩重复 Header。2→3：解决 TCP 层面的队头阻塞（QUIC）+ 0-RTT 快速恢复连接。</text>
+    </svg>
+    <div class="diagram-caption">HTTP 三十年进化：从"纯文本传 HTML"到"UDP 多路复用"</div>
+  </div>
+</section>
+
+<!-- ═══════ 11. HTTP/2 详解 ═══════ -->
+<section id="http2" class="section">
+  <h2>⚡ HTTP/2 详解：二进制分帧 + 多路复用</h2>
+  <div class="feynman">
+    <p><span class="analogy">📦 类比：</span>HTTP/1.1 = 一个个独立寄快递，每个快递等上一个签收才能寄下一个。HTTP/2 = 把所有东西装进一个集装箱，里面分小格子（Frame），每个格子上贴标签（Stream ID），到了目的地按标签分别取出来。</p>
+  </div>
+
+  <h4>四个核心特性</h4>
+  <table>
+    <tr><th style="width:18%">特性</th><th>原理</th><th>解决什么问题</th></tr>
+    <tr>
+      <td><strong>二进制分帧</strong></td>
+      <td>HTTP/2 不再用文本协议，而是将请求/响应拆成 HEADERS frame 和 DATA frame，二进制编码</td>
+      <td>解析更快，错误更少，不再需要复杂的文本解析器</td>
+    </tr>
+    <tr>
+      <td><strong>多路复用</strong></td>
+      <td>一个 TCP 连接上同时跑多个 Stream（每个 Stream 有唯一 ID），Frame 可以交错传输</td>
+      <td><strong>解决 HTTP/1.1 的队头阻塞</strong>（HTTP 层面）</td>
+    </tr>
+    <tr>
+      <td><strong>头部压缩 (HPACK)</strong></td>
+      <td>客户端和服务端各维护一张"字典表"，重复的 Header（如 Cookie、User-Agent）只发索引</td>
+      <td>减少 85%+ 的 Header 传输量（HTTP/1.1 每次都发完整 Header）</td>
+    </tr>
+    <tr>
+      <td><strong>Server Push</strong></td>
+      <td>服务器可以主动推送资源（如 HTML 里引用的 CSS），无需客户端再请求</td>
+      <td>减少一次往返（但实际使用中容易推送已缓存的资源，Chrome 已移除支持）</td>
+    </tr>
+  </table>
+
+  <h4>HTTP/2 的遗留问题：TCP 队头阻塞</h4>
+  <div class="feynman">
+    <p><span class="analogy">🚛 类比：</span>HTTP/2 的多路复用像把所有货物装一辆卡车。但卡车本身如果在高速公路上爆胎了（TCP 丢包），车上的所有货物（所有 Stream）都得等轮胎换好——这就是 <strong>TCP 层面的队头阻塞</strong>。</p>
+  </div>
+  <p>因为 HTTP/2 只用<strong>一个 TCP 连接</strong>承载所有 Stream，TCP 的可靠传输特性意味着：丢一个包 → TCP 重传 → <strong>所有 Stream 阻塞等待</strong>。这在弱网环境下比 HTTP/1.1（6 个连接分担风险）更差。HTTP/3 正是为了解决这个问题而生的。</p>
+</section>
+
+<!-- ═══════ 12. HTTP/3 & QUIC ═══════ -->
+<section id="http3" class="section">
+  <h2>🌩️ HTTP/3 & QUIC：换掉 TCP 这条"地基"</h2>
+  <div class="feynman">
+    <p><span class="analogy">✈️ 类比：</span>HTTP/1.1→2 = 把马路修得更宽（优化 TCP 上的协议）。HTTP/3 = 不用马路了，直接开飞机（基于 UDP 的 QUIC）。每个 Stream 就像独立航班，一架延误不影响其他航班。</p>
+  </div>
+
+  <h4>QUIC 的三大杀手特性</h4>
+  <table>
+    <tr><th style="width:18%">特性</th><th>原理</th><th>对比 TCP</th></tr>
+    <tr>
+      <td><strong>0-RTT 握手</strong></td>
+      <td>曾经连过的服务器，客户端直接用缓存的密钥加密数据发送，跳过握手</td>
+      <td>TLS 1.3 需要 1-RTT，传统 TLS 1.2 需要 2-RTT</td>
+    </tr>
+    <tr>
+      <td><strong>无队头阻塞</strong></td>
+      <td>QUIC 在 UDP 上实现可靠传输，每个 Stream 独立——Stream1 丢包只阻塞 Stream1</td>
+      <td>TCP 丢包阻塞整个连接的所有 Stream</td>
+    </tr>
+    <tr>
+      <td><strong>连接迁移</strong></td>
+      <td>连接标识是 Connection ID 而不是 IP+端口。WiFi→4G 切换时，连接不中断</td>
+      <td>TCP 用四元组标识连接，IP 一变连接就断</td>
+    </tr>
+  </table>
+
+  <h4>QUIC 握手时序</h4>
+  <pre><code><span class="cm">// 首次连接（1-RTT）</span>
+Client → Server:  ClientHello (QUIC 密钥交换)
+Server → Client:  ServerHello + 加密的 Finished
+<span class="cm">// 之后的数据都在加密通道中传输</span>
+
+<span class="cm">// 恢复连接（0-RTT）</span>
+Client → Server:  <span class="str">0-RTT</span> ClientHello + <span class="str">加密的应用数据 🔥</span>
+<span class="cm">// 服务器直接处理应用数据，不需要等握手完成！</span></code></pre>
+
+  <div class="info-card">
+    <h4>⚠️ HTTP/3 的现状</h4>
+    <p>① 主流浏览器和 CDN 已广泛支持。② 企业网络/防火墙可能限制 UDP → 需要 fallback 到 HTTP/2。③ QUIC 在用户态实现，CPU 开销比内核态 TCP 高（但随着优化差距在缩小）。④ gRPC 已支持 HTTP/3 transport。</p>
+  </div>
+</section>
+
+<!-- ═══════ 13. RESTful ═══════ -->
+<section id="http-rest" class="section">
+  <h2>🏗️ RESTful 设计：把 HTTP 用对</h2>
+  <div class="feynman">
+    <p><span class="analogy">📐 类比：</span>REST 不是协议，是设计风格——就像"装修风格"，你可以装成北欧风、日式风。RESTful = 以资源为中心，用 HTTP 方法的语义（GET/POST/PUT/DELETE）操作资源，用状态码和 Header 传递元信息。</p>
+  </div>
+
+  <h4>RESTful 6 条核心约束</h4>
+  <ol>
+    <li><strong>客户端-服务器分离：</strong>前端和后端独立演进。客户端不关心数据怎么存的，服务器不关心 UI。</li>
+    <li><strong>无状态：</strong>每个请求包含所有必要信息。服务器不保存客户端会话状态——这是 REST 最核心的约束。</li>
+    <li><strong>可缓存：</strong>响应必须标记是否可缓存（Cache-Control）。</li>
+    <li><strong>统一接口：</strong>用 URL 标识资源，用 HTTP 方法操作资源，用状态码表示结果。</li>
+    <li><strong>分层系统：</strong>客户端不知道自己是和真实服务器还是代理/CDN 通信。</li>
+    <li><strong>按需代码（可选）：</strong>服务器可以发送可执行代码（如 JavaScript）给客户端。</li>
+  </ol>
+
+  <h4>URL 设计原则</h4>
+  <pre><code><span class="cm">// ✅ 好的设计：资源用名词复数，嵌套表示层级</span>
+<span class="kw">GET</span>    /api/users              <span class="cm"># 用户列表</span>
+<span class="kw">POST</span>   /api/users              <span class="cm"># 创建用户 → 返回 201 + Location: /api/users/42</span>
+<span class="kw">GET</span>    /api/users/<span class="num">42</span>          <span class="cm"># 单个用户</span>
+<span class="kw">PUT</span>    /api/users/<span class="num">42</span>          <span class="cm"># 完整替换</span>
+<span class="kw">PATCH</span>  /api/users/<span class="num">42</span>          <span class="cm"># 部分更新</span>
+<span class="kw">DELETE</span> /api/users/<span class="num">42</span>          <span class="cm"># 删除</span>
+<span class="kw">GET</span>    /api/users/<span class="num">42</span>/orders  <span class="cm"># 用户的订单（嵌套资源）</span>
+
+<span class="cm">// ❌ 坏的设计：URL 里带动词</span>
+<span class="kw">POST</span> /api/createUser        <span class="cm"># 动词应该用 HTTP 方法表达</span>
+<span class="kw">GET</span>  /api/getUserById?id=<span class="num">42</span> <span class="cm"># 资源标识应该用路径而不是查询参数</span></code></pre>
+
+  <h4>REST 成熟度模型（Richardson Maturity Model）</h4>
+  <table>
+    <tr><th>级别</th><th>描述</th><th>例子</th></tr>
+    <tr><td><span class="badge-red">Level 0</span></td><td>一个 URI，一个方法（通常是 POST），类似 RPC</td><td><code>POST /api</code>，Body 里写操作类型</td></tr>
+    <tr><td><span class="badge-orange">Level 1</span></td><td>多个 URI，每个资源有独立端点</td><td><code>/users</code>, <code>/orders</code></td></tr>
+    <tr><td><span class="badge-cyan">Level 2</span></td><td>用 HTTP 方法 + 状态码（大多数 API 的目标）</td><td>GET/POST/PUT/DELETE + 200/201/404</td></tr>
+    <tr><td><span class="badge-green">Level 3</span></td><td>HATEOAS：响应中包含下一步操作的链接</td><td>返回 <code>{"links": {"next": "/users?page=2"}}</code></td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 14. 核心题 ═══════ -->
+<section id="http-qa" class="section">
+  <h2>❓ 高频考题</h2>
+
+  <div class="qa"><div class="q">Q1: 浏览器输入 URL 到页面展示的完整过程</div><div class="a">
+    ① URL 解析 → ② DNS 查询（缓存→hosts→递归查询）→ ③ TCP 三次握手 → ④ TLS 握手（HTTPS）→ ⑤ 发送 HTTP 请求 → ⑥ 服务器处理 → ⑦ 返回 HTTP 响应 → ⑧ 浏览器解析 HTML → ⑨ 构建 DOM 树 + CSSOM 树 → ⑩ 布局 + 绘制 → ⑪ 执行 JS → ⑫ 加载子资源（CSS/JS/图片）按第⑤步循环。这是最经典的"一条线"题，考察从网络到渲染的全链路理解。
+  </div></div>
+
+  <div class="qa"><div class="q">Q2: POST 和 PUT 的真正区别</div><div class="a">
+    <strong>核心区别是幂等性。</strong>PUT 多次请求结果相同（完整的资源替换），POST 多次请求创建多个资源。<br>
+    PUT 需要客户端提供<strong>完整</strong>资源表示（缺少字段会被重置），PATCH 只需要提供<strong>要修改的字段</strong>。<br>
+    PUT 的 URI 是具体的（/users/42），POST 的 URI 通常是集合（/users）。
+  </div></div>
+
+  <div class="qa"><div class="q">Q3: 301 vs 302 vs 307 vs 308 的精确区别</div><div class="a">
+    301 永久 + POST→GET 可能被改。<br>302 临时 + POST→GET 可能被改（浏览器历史实现问题）。<br><strong>307 临时严格不改变方法。</strong><br><strong>308 永久严格不改变方法。</strong><br>
+    用 307/308 代替 302/301 当需要保留 POST 请求时。但实践中大多数场景 302 就够用了。
+  </div></div>
+
+  <div class="qa"><div class="q">Q4: HTTP/2 多路复用为什么还有队头阻塞？</div><div class="a">
+    HTTP/2 解决的是<strong>HTTP 层面</strong>的队头阻塞（一个请求不阻塞另一个）。但 HTTP/2 底层只用<strong>一个 TCP 连接</strong>，TCP 的可靠传输机制要求数据按序到达——如果某个 TCP 包丢了，<strong>所有 Stream</strong>都要等这个包重传。这在弱网下比 HTTP/1.1 的 6 个连接表现更差。HTTP/3 用 QUIC（UDP）彻底解决：每个 Stream 独立的可靠传输，一个丢包只影响它自己。
+  </div></div>
+
+  <div class="qa"><div class="q">Q5: Cookie 怎么防 XSS 和 CSRF？</div><div class="a">
+    <strong>防 XSS：</strong>HttpOnly（禁止 JS 读取）+ Secure（仅 HTTPS 传输）。<br>
+    <strong>防 CSRF：</strong>SameSite=Lax/Strict（跨站请求不带 Cookie）+ 验证 Referer/Origin + CSRF Token（表单中的隐藏字段） + 关键操作二次确认。<br>
+    <strong>SameSite 三种模式：</strong>Strict（最严，任何跨站都不带）→ Lax（允许 GET 导航带，表单 POST 不带）→ None（必须配合 Secure）。
+  </div></div>
+</section>
+
+<!-- ═══════ 15. 苏格拉底提问 ═══════ -->
+<section id="http-socratic" class="section">
+  <h2>💬 苏格拉底式提问 —— 检验真理解</h2>
+
+  <details class="socratic">
+    <summary>为什么 HTTP 设计成无状态的？这是一种设计缺陷还是有意为之？<span class="socratic-num">Q1</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">是有意为之的架构选择，不是缺陷。</span>无状态意味着每个请求都是独立的，服务器不需要记住"上次这个客户端干了什么"。<br><br>
+      好处：① <strong>扩展性</strong>——任何服务器实例都能处理任何请求，负载均衡不需要"粘性会话"；② <strong>可靠性</strong>——服务器挂了不丢失会话状态；③ <strong>简单性</strong>——协议本身极简。<br><br>
+      代价：无法直接表示"登录状态""购物车"等需要跨请求保持的信息——所以有了 Cookie/Session/Token 这些"补丁"。<br><br>
+      对比：IM 协议（如 XMPP）就是有状态的——长连接+心跳，设计目标完全不同。HTTP 的无状态是 Web 能扩展到今天的核心原因之一。
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>如果让你重新设计 HTTP，你会保留什么？改掉什么？<span class="socratic-num">Q2</span></summary>
+    <div class="socratic-a">
+      从 HTTP 的进化史就能看出设计者对这个问题的回答：<br>
+      <span class="highlight">保留的：</span>请求-响应模型、资源标识（URI）、MIME 类型、状态码体系、无状态核心。<br>
+      <span class="highlight">改掉的：</span>文本协议→二进制（HTTP/2）、单一请求→多路复用（HTTP/2）、TCP 队头阻塞→QUIC（HTTP/3）、明文传输→TLS 加密（HTTPS 成为事实标准）。<br><br>
+      HTTP 的成功恰恰在于它的<strong>向后兼容</strong>——HTTP/1.1 的服务器仍然能和 HTTP/2 客户端通信（通过 ALPN 协商降级），URL 格式 30 年没变。这是协议设计的最高境界：演进而不断裂。
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>缓存是 HTTP 性能优化的核心。Cache-Control、ETag、CDN 三者是什么关系？<span class="socratic-num">Q3</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">这是一个从"单机"到"全网"的缓存层级：</span><br><br>
+      ① <strong>Cache-Control（强缓存）</strong>——浏览器本地缓存，不发请求，最快但最"笨"（不看内容是否真的变了）。<br>
+      ② <strong>ETag/Last-Modified（协商缓存）</strong>——浏览器有缓存但需要问服务器"还能用吗？"，精确但多一次网络往返。<br>
+      ③ <strong>CDN</strong>——把缓存推到离用户最近的边缘节点，减少物理距离带来的延迟。CDN 依赖 Cache-Control 的 public/private 和 max-age 来决定缓存策略。<br><br>
+      实战中是三者配合：HTML 用协商缓存保证实时性，带哈希的 CSS/JS 用强缓存永不过期，CDN 做一层中间缓存。考官想听的是你对<strong>缓存层级</strong>的理解，不是孤立的知识点。
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>HTTP/3 把地基从 TCP 换成了 QUIC(UDP)，这是一个激进的决定。你觉得值得吗？<span class="socratic-num">Q4</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">值得。但代价不小。</span><br><br>
+      <strong>为什么必须换：</strong>TCP 在操作系统内核实现，升级 TCP 协议栈需要所有操作系统配合——这几乎不可能。QUIC 在用户态实现，可以随应用快速迭代。<br><br>
+      <strong>得了什么：</strong>① 彻底解决队头阻塞；② 0-RTT 握手减少延迟（尤其对移动端弱网）；③ 连接迁移（WiFi↔4G 不断线）。<br><br>
+      <strong>代价：</strong>① UDP 被某些网络 QoS 限制或阻止；② 用户态实现 CPU 开销更高；③ 生态迁移成本（CDN、LB、防火墙都要支持）。<br><br>
+      Google 的数据显示，YouTube 的重新缓冲率下降了 18%，搜索延迟下降了 8%——在亿级规模下，这个决定已经被验证是正确的。
+    </div>
+  </details>
+</section>
+
+</main>
+</div>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

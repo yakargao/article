@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka · 费曼学习法</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">📨 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">第一章：架构</div>
+  <a class="nav-item" href="#kf-arch">🏗️ 整体架构</a>
+  <a class="nav-item" href="#kf-model">📊 消息模型</a>
+  <div class="nav-section">第二章：生产者</div>
+  <a class="nav-item" href="#kf-producer">✍️ 生产者：发消息的门道</a>
+  <a class="nav-item" href="#kf-acks">🛡️ acks 与可靠性</a>
+  <div class="nav-section">第三章：存储</div>
+  <a class="nav-item" href="#kf-storage">💾 日志存储：顺序写的秘密</a>
+  <a class="nav-item" href="#kf-isr">📡 ISR：同步副本集</a>
+  <div class="nav-section">第四章：消费者</div>
+  <a class="nav-item" href="#kf-consumer">👥 消费者组与再均衡</a>
+  <a class="nav-item" href="#kf-offset">📍 Offset 管理</a>
+  <div class="nav-section">第五章：进阶</div>
+  <a class="nav-item" href="#kf-exactly">🎯 精确一次语义</a>
+  <a class="nav-item" href="#kf-vs">⚔️ Kafka vs 其他 MQ</a>
+  <a class="nav-item" href="#kf-qa">❓ 高频考题</a>
+  <a class="nav-item" href="#kf-socratic">💬 苏格拉底提问</a>
+  <a class="nav-item" href="#kf-summary">🎙️ 口播总结</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>📨 Kafka</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>Kafka = 高性能的分布式消息引擎。核心三板斧：<strong>顺序写磁盘 + Page Cache + 零拷贝</strong>。</p>
+    <p>和传统 MQ（RabbitMQ）的本质区别：Kafka 是<strong>日志系统</strong>，不是"消息队列"。消息不删除、可回放——像 Git 的 commit log。</p>
+  </div>
+</section>
+
+<!-- ═══════ 1. 架构 ═══════ -->
+<section id="kf-arch" class="section">
+  <h2>🏗️ 整体架构：一个分布式的 commit log</h2>
+  <div class="feynman">
+    <p><span class="analogy">📝 类比：</span>Kafka 像一个超大规模的公告栏系统——</p>
+    <p>① <strong>Producer（公告张贴者）</strong>：往公告栏贴消息。</p>
+    <p>② <strong>Broker（公告栏管理员）</strong>：管理公告栏，负责接收、存储、分发消息。</p>
+    <p>③ <strong>Consumer（公告阅读者）</strong>：来公告栏读消息。读完不会把公告撕掉，下一个人还能读。</p>
+    <p>④ <strong>ZooKeeper / KRaft（协调中心）</strong>：告诉张贴者和阅读者"哪个公告栏是可用的"。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 280" style="max-width:820px; width:100%">
+      <defs><marker id="kArr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker><marker id="kArrG" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#3fb950"/></marker><marker id="kArrZ" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#a78bfa"/></marker></defs>
+      <!-- Producers -->
+      <rect x="15" y="40" width="140" height="40" rx="8" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="85" y="65" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">✍️ Producer 1</text>
+      <rect x="15" y="95" width="140" height="40" rx="8" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="85" y="120" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">✍️ Producer 2</text>
+
+      <!-- Arrows to Broker -->
+      <line x1="155" y1="60" x2="215" y2="60" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#kArr)"/>
+      <line x1="155" y1="115" x2="215" y2="115" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#kArr)"/>
+
+      <!-- Broker Cluster -->
+      <rect x="220" y="15" width="360" height="150" rx="10" fill="rgba(63,185,80,0.03)" stroke="#3fb950" stroke-width="2" stroke-dasharray="6,3"/>
+      <text x="400" y="35" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">🖥️ Broker 集群</text>
+
+      <rect x="235" y="50" width="100" height="50" rx="6" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="285" y="72" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">Broker 1</text>
+      <text x="285" y="90" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="7">Partition 0 (L)</text>
+
+      <rect x="350" y="50" width="100" height="50" rx="6" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="400" y="72" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">Broker 2</text>
+      <text x="400" y="90" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="7">Partition 0 (F)</text>
+
+      <rect x="465" y="50" width="100" height="50" rx="6" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="515" y="72" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">Broker 3</text>
+      <text x="515" y="90" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="7">Partition 0 (F)</text>
+
+      <!-- ZK -->
+      <rect x="220" y="115" width="360" height="35" rx="6" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="400" y="137" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9">⚡ ZooKeeper / KRaft — 控制器选举 + 集群元数据</text>
+
+      <!-- Arrows to Consumer -->
+      <line x1="580" y1="75" x2="640" y2="75" stroke="#3fb950" stroke-width="1.5" marker-end="url(#kArrG)"/>
+
+      <!-- Consumers -->
+      <rect x="645" y="20" width="165" height="40" rx="8" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="727" y="45" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">👥 Consumer Group</text>
+
+      <rect x="660" y="75" width="135" height="40" rx="6" fill="rgba(251,191,36,0.06)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="727" y="95" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="9">C1 → Partition 0</text>
+      <text x="727" y="108" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="7">同一分区内有序消费</text>
+
+      <!-- Bottom key -->
+      <rect x="15" y="215" width="790" height="55" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="30" y="237" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">三条铁律</text>
+      <text x="30" y="258" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">① 一个 Partition 只能被 Consumer Group 中的一个 Consumer 消费 ② 一个 Consumer 可以消费多个 Partition ③ 分区数 ≥ 消费者数才能充分利用</text>
+    </svg>
+    <div class="diagram-caption">Kafka 架构全景：Producer → Broker 集群（Partition + Replica）→ Consumer Group</div>
+  </div>
+</section>
+
+<!-- ═══════ 2. 消息模型 ═══════ -->
+<section id="kf-model" class="section">
+  <h2>📊 消息模型：Topic → Partition → Segment</h2>
+  <div class="feynman">
+    <p><span class="analogy">📚 类比：</span>Topic = 一本书。Partition = 书的章节（并行读写）。Segment = 每章拆成若干小节（物理文件，方便清理）。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 220" style="max-width:820px; width:100%">
+      <defs><marker id="kmArr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
+      <!-- Topic -->
+      <rect x="15" y="10" width="100" height="35" rx="6" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="65" y="33" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">Topic</text>
+      <line x1="115" y1="27" x2="155" y2="27" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#kmArr)"/>
+
+      <!-- Partitions -->
+      <rect x="160" y="10" width="200" height="35" rx="6" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="260" y="33" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">Partition 0</text>
+
+      <rect x="160" y="55" width="200" height="35" rx="6" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="260" y="78" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">Partition 1</text>
+
+      <rect x="160" y="100" width="200" height="35" rx="6" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="260" y="123" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">Partition 2</text>
+
+      <line x1="360" y1="27" x2="400" y2="27" stroke="#3fb950" stroke-width="1.5" marker-end="url(#kmArr)"/>
+      <line x1="360" y1="72" x2="400" y2="72" stroke="#3fb950" stroke-width="1.5" marker-end="url(#kmArr)"/>
+      <line x1="360" y1="117" x2="400" y2="117" stroke="#3fb950" stroke-width="1.5" marker-end="url(#kmArr)"/>
+
+      <!-- Segments -->
+      <rect x="405" y="10" width="390" height="195" rx="10" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="600" y="32" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">Partition 0 的物理存储</text>
+
+      <rect x="420" y="45" width="110" height="30" rx="4" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="475" y="65" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="8">0000.log (1GB)</text>
+
+      <rect x="545" y="45" width="110" height="30" rx="4" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="600" y="65" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="8">0001.log (1GB)</text>
+
+      <rect x="670" y="45" width="110" height="30" rx="4" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="725" y="65" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="8" font-weight="600">0002.log (ACTIVE)</text>
+
+      <text x="420" y="100" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">• 每个 Segment = 一个 .log 文件 + 两个索引文件 (.index / .timeindex)</text>
+      <text x="420" y="118" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">• 索引是稀疏的：不是每条消息都有索引项，每 log.index.interval.bytes (默认4KB) 建一条</text>
+      <text x="420" y="136" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">• 二分查找索引 → 定位到最近的偏移量 → 顺序扫描几十条 → 找到目标消息</text>
+      <text x="420" y="158" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="7">• 分区内保证消息顺序（offset 递增） • 不同分区之间无顺序保证</text>
+    </svg>
+    <div class="diagram-caption">Topic → Partition → Segment：三层嵌套的物理存储模型</div>
+  </div>
+
+  <h4>Partition 数量怎么定？</h4>
+  <div class="info-card">
+    <p><strong>太多：</strong>① 文件句柄爆炸（每个 Segment 约 3 个文件）；② Leader 选举时间长；③ 端到端延迟增加。</p>
+    <p><strong>太少：</strong>① 并行度不够，Consumer 浪费；② 单 Partition 吞吐上限 ~ 几十 MB/s（受 Leader 单点限制）。</p>
+    <p><strong>经验公式：</strong>max(目标吞吐量 / 单分区吞吐量, 消费者数) × 1.5（留 buffer）。单 Broker 总分区数建议 < 4000。</p>
+  </div>
+</section>
+
+<!-- ═══════ 3. 生产者 ═══════ -->
+<section id="kf-producer" class="section">
+  <h2>✍️ 生产者：怎么把消息发对、发快、发不丢</h2>
+  <div class="feynman">
+    <p><span class="analogy">📮 类比：</span>发快递——① <strong>分区策略</strong> = 按什么规则决定发哪个仓库（默认 key 的 hash）；② <strong>批量发送</strong> = 攒一批包裹一起发，省运费（batch.size + linger.ms）；③ <strong>压缩</strong> = 包裹塞紧再装箱（gzip/snappy/lz4/zstd）。</p>
+  </div>
+
+  <h3>分区策略——消息落到哪个 Partition？</h3>
+  <table>
+    <tr><th>方式</th><th>怎么做</th><th>效果</th></tr>
+    <tr><td>指定 key</td><td><code>hash(key) % 分区数</code></td><td>相同 key 的消息去同一分区 → <strong>局部有序</strong></td></tr>
+    <tr><td>不指定 key</td><td>Round-Robin（2.4 前）/ Sticky（2.4+ 粘性分区）</td><td>均匀分布，但同一 key 可能散到不同分区</td></tr>
+    <tr><td>自定义 Partitioner</td><td>实现 Partitioner 接口</td><td>完全按业务逻辑分配</td></tr>
+  </table>
+
+  <h3>发送流程——攒批 + 异步</h3>
+  <pre><code><span class="cm">// Producer 关键参数</span>
+batch.size = 16384          <span class="cm">// 一个 batch 的字节数上限（16KB 默认）</span>
+linger.ms = 0               <span class="cm">// batch 未满时的等待时间。0=立即发送，>0=攒满或超时再发</span>
+buffer.memory = 33554432    <span class="cm">// Producer 总缓冲区（32MB）。满了会 block max.block.ms</span>
+max.in.flight.requests.per.connection = 5  <span class="cm">// 同时能发几个未确认的请求</span>
+compression.type = lz4      <span class="cm">// 压缩算法：lz4 > snappy > gzip（速度快 → 压缩率高）</span></code></pre>
+</section>
+
+<!-- ═══════ 4. acks ═══════ -->
+<section id="kf-acks" class="section">
+  <h2>🛡️ acks 参数——三种可靠性级别</h2>
+  <table>
+    <tr><th>acks</th><th>含义</th><th>丢消息？</th><th>延迟</th><th>场景</th></tr>
+    <tr><td><strong>0</strong></td><td>Producer 不等待确认，发完就走</td><td>✅ 可能丢</td><td>最低</td><td>日志、监控（丢几条无所谓）</td></tr>
+    <tr><td><strong>1</strong></td><td>Leader 写入成功即确认</td><td>⚠️ Leader 宕机且 Follower 未同步 → 丢</td><td>中等</td><td>默认值，一般业务</td></tr>
+    <tr><td><strong>all / -1</strong></td><td>所有 ISR 副本都写入成功才确认</td><td>❌ 不丢（配合 min.insync.replicas ≥ 2）</td><td>最高</td><td>金融、订单等不能丢的场景</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>⚠️ acks=all 也不一定 100% 不丢</h4>
+    <p>需要同时设置 <code>min.insync.replicas ≥ 2</code>。如果 ISR 里只剩 Leader 自己（其他副本挂了），acks=all 会退化成 acks=1。设置 min.insync.replicas=2 → ISR 不足 2 时 Producer 直接报错，宁可不可用也不丢消息。</p>
+  </div>
+</section>
+
+<!-- ═══════ 5. 存储 ═══════ -->
+<section id="kf-storage" class="section">
+  <h2>💾 日志存储：顺序写为什么能百万 QPS？</h2>
+  <div class="feynman">
+    <p><span class="analogy">📝 类比：</span>Kafka 写消息 = 往笔记本后面追加一行。和随机写（翻到第 53 页改一个字、翻到第 207 页再改一个字）相比，顺序写是机械磁盘的物理优势——磁头不需要来回寻道。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 200" style="max-width:820px; width:100%">
+      <!-- App -->
+      <rect x="15" y="20" width="110" height="40" rx="6" fill="rgba(34,211,238,0.10)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="70" y="45" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">Kafka App</text>
+      <line x1="125" y1="40" x2="165" y2="40" stroke="#22d3ee" stroke-width="1.5"/>
+
+      <!-- Page Cache -->
+      <rect x="170" y="10" width="180" height="60" rx="8" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="2"/>
+      <text x="260" y="33" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">📄 Page Cache</text>
+      <text x="260" y="55" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="9">OS 管理，写/读都先到这</text>
+      <line x1="350" y1="40" x2="390" y2="40" stroke="#3fb950" stroke-width="1.5"/>
+
+      <!-- sendfile -->
+      <rect x="395" y="10" width="140" height="60" rx="8" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="465" y="30" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">⚡ sendfile()</text>
+      <text x="465" y="50" text-anchor="middle" fill="#ddd6fe" font-family="JetBrains Mono,monospace" font-size="8">Page Cache → 网卡</text>
+      <text x="465" y="62" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="7">0 次 CPU 拷贝</text>
+      <line x1="535" y1="40" x2="575" y2="40" stroke="#a78bfa" stroke-width="1.5"/>
+
+      <!-- NIC -->
+      <rect x="580" y="20" width="140" height="40" rx="6" fill="rgba(248,113,73,0.08)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="650" y="45" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">🖧 网卡 → Consumer</text>
+
+      <!-- Bottom: comparison -->
+      <rect x="15" y="100" width="790" height="88" rx="10" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="30" y="122" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">⚡ Kafka 高性能三件套</text>
+      <text x="30" y="145" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="9">① <tspan font-weight="700">顺序写磁盘：</tspan>机械磁盘顺序写可达 600MB/s，远超随机写的 100KB/s。Kafka 追加写 = 天然的磁盘友好。</text>
+      <text x="30" y="163" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="9">② <tspan font-weight="700">Page Cache 读：</tspan>消费者读热数据时命中 OS 的 Page Cache → 纯内存操作，不读磁盘。</text>
+      <text x="30" y="181" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="9">③ <tspan font-weight="700">sendfile() 零拷贝：</tspan>数据从 Page Cache 直接 DMA 到网卡。传统路径 4 次拷贝 → Kafka 仅 2 次 DMA。</text>
+    </svg>
+    <div class="diagram-caption">Kafka 高性能的秘密：Page Cache + sendfile + 顺序写</div>
+  </div>
+</section>
+
+<!-- ═══════ 6. ISR ═══════ -->
+<section id="kf-isr" class="section">
+  <h2>📡 ISR：什么叫"跟上了"？</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏃 类比：</span>马拉松比赛——Leader = 领跑者。ISR（In-Sync Replicas）= 跟得上领跑者的选手（落后不超过一圈）。跟不上的被踢出 ISR，追上来的加回来。min.insync.replicas = 最少要有几个人跟得上才继续跑。</p>
+  </div>
+
+  <h4>ISR 的动态维护</h4>
+  <table>
+    <tr><th>参数</th><th>含义</th><th>默认</th></tr>
+    <tr><td><code>replica.lag.time.max.ms</code></td><td>Follower 多久没同步算"掉队"</td><td>30s</td></tr>
+    <tr><td><code>min.insync.replicas</code></td><td>最少同步副本数，低于此值 Producer 写入报错</td><td>1</td></tr>
+    <tr><td><code>unclean.leader.election.enable</code></td><td>是否允许 ISR 外的副本当 Leader</td><td>false（生产切勿改 true）</td></tr>
+  </table>
+  <p>如果 <code>unclean.leader.election.enable=true</code> → ISR 全挂时选个落后的副本当 Leader → 必然丢消息。宁可不可用，也不丢数据。</p>
+</section>
+
+<!-- ═══════ 7. 消费者 ═══════ -->
+<section id="kf-consumer" class="section">
+  <h2>👥 消费者组与再均衡</h2>
+  <div class="feynman">
+    <p><span class="analogy">🍽️ 类比：</span>消费者组 = 一桌人吃火锅。每人负责夹几种菜（Partition），有人离席（Consumer 挂了）→ 剩下的重新分菜（Rebalance）。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 180" style="max-width:820px; width:100%">
+      <!-- Consumer Group -->
+      <rect x="15" y="15" width="220" height="145" rx="10" fill="rgba(251,191,36,0.04)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="125" y="38" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">Consumer Group</text>
+      <text x="125" y="55" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="8">group.id = "order-group"</text>
+      <rect x="30" y="65" width="190" height="22" rx="4" fill="rgba(251,191,36,0.10)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="125" y="80" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="9">C1 → Partition 0, 1</text>
+      <rect x="30" y="92" width="190" height="22" rx="4" fill="rgba(251,191,36,0.10)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="125" y="107" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="9">C2 → Partition 2</text>
+      <rect x="30" y="119" width="190" height="22" rx="4" fill="rgba(251,191,36,0.10)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="125" y="134" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="9">C3 → Partition 3</text>
+
+      <line x1="235" y1="80" x2="275" y2="55" stroke="#fbbf24" stroke-width="1"/>
+      <line x1="235" y1="107" x2="275" y2="95" stroke="#fbbf24" stroke-width="1"/>
+      <line x1="235" y1="134" x2="275" y2="145" stroke="#fbbf24" stroke-width="1"/>
+
+      <!-- Partitions -->
+      <rect x="280" y="15" width="130" height="145" rx="8" fill="rgba(63,185,80,0.04)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="345" y="38" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">Topic Partitions</text>
+      <rect x="295" y="48" width="100" height="22" rx="4" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1"/>
+      <text x="345" y="63" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">P0</text>
+      <rect x="295" y="75" width="100" height="22" rx="4" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1"/>
+      <text x="345" y="90" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">P1</text>
+      <rect x="295" y="102" width="100" height="22" rx="4" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1"/>
+      <text x="345" y="117" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">P2</text>
+      <rect x="295" y="129" width="100" height="22" rx="4" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="1"/>
+      <text x="345" y="144" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">P3</text>
+
+      <!-- Rules box -->
+      <rect x="430" y="15" width="380" height="145" rx="10" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="620" y="38" text-anchor="middle" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">⚖️ Rebalance 触发条件</text>
+      <text x="445" y="62" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="9">① Consumer 加入或退出 Group</text>
+      <text x="445" y="82" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="9">② Partition 数量变化（增加了新分区）</text>
+      <text x="445" y="102" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="9">③ 订阅的 Topic 变化（正则匹配新建 Topic）</text>
+      <text x="445" y="122" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">三种策略：Range / RoundRobin / Sticky / Cooperative Sticky</text>
+      <text x="445" y="142" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="8">Cooperative Sticky（增量再均衡）→ 不动已分配的，只移动"多余"的。避免 Stop-The-World</text>
+    </svg>
+    <div class="diagram-caption">Consumer Group 与 Rebalance：分区的分配与再分配</div>
+  </div>
+</section>
+
+<!-- ═══════ 8. Offset ═══════ -->
+<section id="kf-offset" class="section">
+  <h2>📍 Offset 管理：读到哪了？</h2>
+  <table>
+    <tr><th>存储位置</th><th>版本</th><th>特点</th></tr>
+    <tr><td>ZooKeeper</td><td>&lt; 0.9</td><td>老版本，ZK 压力大，已弃用</td></tr>
+    <tr><td><strong>__consumer_offsets Topic</strong></td><td>≥ 0.9</td><td>Kafka 内部 Topic（默认 50 分区），Consumer 自动提交偏移量</td></tr>
+  </table>
+
+  <h4>自动提交 vs 手动提交</h4>
+  <pre><code><span class="cm">// 自动提交（容易丢消息）</span>
+enable.auto.commit = true
+auto.commit.interval.ms = 5000  <span class="cm">// 每 5 秒提交一次</span>
+<span class="cm">// 风险：poll 后 3 秒处理完，但还没到 5 秒提交点 → 挂了 → 重启后重复消费</span>
+
+<span class="cm">// 手动提交（推荐）</span>
+enable.auto.commit = false
+<span class="cm">// 处理完消息后手动 commitSync()（同步）或 commitAsync()（异步）</span></code></pre>
+</section>
+
+<!-- ═══════ 9. 精确一次 ═══════ -->
+<section id="kf-exactly" class="section">
+  <h2>🎯 精确一次语义 Exactly-Once</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏧 类比：</span>ATM 取钱——你按了取 100 元，机器出钞了但断网了。银行<strong>绝对不能</strong>重复扣你两次 100 元。Exactly-Once = 要么成功一次，要么失败，不会出现"成功了但你以为失败了又做一次"。</p>
+  </div>
+
+  <h4>三种语义对比</h4>
+  <table>
+    <tr><th>语义</th><th>含义</th><th>Kafka 默认？</th></tr>
+    <tr><td><strong>At most once</strong></td><td>最多一次——可能丢，但绝不重复</td><td>acks=0 时</td></tr>
+    <tr><td><strong>At least once</strong></td><td>至少一次——绝不丢，但可能重复</td><td><strong>默认</strong>（acks=1 + 重试）</td></tr>
+    <tr><td><strong>Exactly once</strong></td><td>精确一次——不丢不重</td><td>需要幂等 Producer + 事务</td></tr>
+  </table>
+
+  <h4>实现 Exactly-Once 的三板斧</h4>
+  <div class="info-card">
+    <p><strong>① 幂等 Producer：</strong><code>enable.idempotence=true</code>。Broker 为每个 Producer 分配 PID，Producer 给每条消息打上 <PID, 分区, SeqNum>。Broker 按 SeqNum 去重——SeqNum 比上次大 1 才写入。</p>
+    <p><strong>② 事务 Producer：</strong>跨分区、跨 Topic 的原子写入。<code>initTransactions() → beginTransaction() → send() → commitTransaction()</code>。Consumer 设置 <code>isolation.level=read_committed</code> 只读已提交事务的消息。</p>
+    <p><strong>③ 消费者端去重：</strong>手动维护已处理的消息 ID 集合（Redis/DB）。消费前查重 → 消费后记 ID。或者利用业务主键幂等（INSERT ... ON DUPLICATE KEY UPDATE）。</p>
+  </div>
+
+  <h4>事务的代价</h4>
+  <p>事务 Producer 比普通 Producer 吞吐下降约 <strong>30-50%</strong>。因为需要额外的网络往返（AddPartitionsToTxn、EndTxn 等）。不要一上来就事务——先评估是否真的需要 Exactly-Once，大部分场景 At-least-once + 业务幂等就够了。</p>
+</section>
+
+<!-- ═══════ 10. Kafka vs 其他 ═══════ -->
+<section id="kf-vs" class="section">
+  <h2>⚔️ Kafka vs 其他 MQ：选型指南</h2>
+  <table>
+    <tr><th>维度</th><th>Kafka</th><th>RabbitMQ</th><th>RocketMQ</th><th>Pulsar</th></tr>
+    <tr><td>吞吐</td><td>⭐⭐⭐⭐⭐ 百万 QPS</td><td>⭐⭐⭐ 万级</td><td>⭐⭐⭐⭐⭐ 十万~百万</td><td>⭐⭐⭐⭐⭐ 百万</td></tr>
+    <tr><td>延迟</td><td>⭐⭐⭐ 毫秒级</td><td>⭐⭐⭐⭐ 微秒级</td><td>⭐⭐⭐⭐ 毫秒级</td><td>⭐⭐⭐ 毫秒级</td></tr>
+    <tr><td>消息回溯</td><td>✅ 按时间/offset</td><td>❌ 不支持</td><td>✅ 按时间/offset</td><td>✅ 按时间/cursor</td></tr>
+    <tr><td>事务消息</td><td>✅ 幂等+事务</td><td>✅ 确认机制</td><td>✅ 半消息</td><td>✅ 事务</td></tr>
+    <tr><td>存算分离</td><td>❌ Broker 即存储</td><td>❌</td><td>❌</td><td>✅ BookKeeper 分层</td></tr>
+    <tr><td>运维复杂度</td><td>⭐⭐⭐ Kafka+Raft 中等</td><td>⭐⭐ 低</td><td>⭐⭐⭐ 中等（阿里系）</td><td>⭐⭐⭐⭐ 较高</td></tr>
+    <tr><td>适合场景</td><td>日志、流处理、事件溯源</td><td>业务消息、RPC</td><td>电商交易、金融</td><td>多租户、存算分离</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 11. 核心题 ═══════ -->
+<section id="kf-qa" class="section">
+  <h2>❓ 高频考题</h2>
+  <div class="qa"><div class="q">Q1: Kafka 为什么快？</div><div class="a">三板斧：① 顺序写磁盘（机械磁盘顺序写 600MB/s vs 随机写 100KB/s）；② Page Cache（消费者读热数据时命中内存，不走磁盘）；③ sendfile() 零拷贝（数据从 Page Cache DMA 到网卡，不经过用户态）。</div></div>
+  <div class="qa"><div class="q">Q2: 怎么保证消息不丢？</div><div class="a">三端配合：Producer → acks=all + retries>0；Broker → replication.factor≥3 + min.insync.replicas≥2 + unclean.leader.election.enable=false；Consumer → 手动提交 offset（处理完再提交，不是读完就提交）。</div></div>
+  <div class="qa"><div class="q">Q3: 怎么保证消息不重复？</div><div class="a">Producer：enable.idempotence=true（单分区单会话幂等）+ 事务（跨分区幂等）。Consumer：业务幂等（唯一键去重 INSERT ON DUPLICATE KEY / Redis SETNX）+ 手动维护消费记录。</div></div>
+  <div class="qa"><div class="q">Q4: 消息积压了怎么办？</div><div class="a">① 临时增加 Consumer 实例（但不能超过分区数）；② 增加分区数（注意 key 的 hash 会变）；③ 降级——不重要的消息先跳过或丢弃；④ 提升单 Consumer 性能（批量拉取、异步处理）。</div></div>
+  <div class="qa"><div class="q">Q5: 怎么保证消息有序？</div><div class="a">Kafka 只保证<strong>分区内有序</strong>，不保证跨分区有序。方案：① 相同 key 的消息发到同一分区 → 局部有序；② 如果必须全局有序 → 只用 1 个 Partition（牺牲并行度）。</div></div>
+  <div class="qa"><div class="q">Q6: Rebalance 有什么危害？怎么优化？</div><div class="a">Rebalance 期间消费者组 <strong>Stop-The-World</strong>——所有 Consumer 暂停消费，重新分配分区。大状态消费者（如本地缓存了很多数据）恢复很慢。优化：① 使用 Cooperative Sticky 策略（增量分配，不动现有分配）；② 调大 session.timeout.ms 和 heartbeat.interval.ms 减少误判；③ 减少分区数变动。</div></div>
+</section>
+
+<!-- ═══════ 12. 苏格拉底提问 ═══════ -->
+<section id="kf-socratic" class="section">
+  <h2>💬 苏格拉底式提问 —— 检验真理解</h2>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:20px">以下问题用来逼你追问本质。先自己想 30 秒，再点开验证。</p>
+  <details class="socratic">
+    <summary>Kafka 为什么不像 RabbitMQ 那样"消费完就删消息"？<span class="socratic-num">Q1</span></summary>
+    <div class="socratic-a"><span class="highlight">因为 Kafka 本质上是一个日志系统，不是消息队列。</span><br>RabbitMQ 是"消息分发器"——消息被消费后删除，队列变空。<br>Kafka 是"commit log"——消息写入后永久保留（按时间或大小清理），多个 Consumer 可以独立消费同一条消息，还可以回溯历史。<br><span class="highlight">这个设计差异决定了一切：</span>RabbitMQ 适合"一条消息一个消费者"的 RPC 模式；Kafka 适合"一条消息多个消费者 + 事件溯源 + 流处理"的模式。</div>
+  </details>
+  <details class="socratic">
+    <summary>acks=all 真的 100% 不丢消息吗？<span class="socratic-num">Q2</span></summary>
+    <div class="socratic-a"><span class="highlight">不是。</span>acks=all 只能保证"写入时所有 ISR 副本确认"，但两个场景仍然可能丢：<br>① ISR 里只剩 Leader 自己（其他副本挂了）→ acks=all 退化成 acks=1 → Leader 宕机 → 丢。需要 min.insync.replicas≥2 来兜底。<br>② Leader 宕机且 unclean.leader.election.enable=true → 选了一个落后很多的副本当 Leader → 新 Leader 没有旧 Leader 上的最新消息 → 丢。必须设 false。<br><span class="highlight">结论：</span>acks=all + min.insync.replicas≥2 + unclean=false 三者缺一不可。</div>
+  </details>
+  <details class="socratic">
+    <summary>为什么分区数不能随便改大？<span class="socratic-num">Q3</span></summary>
+    <div class="socratic-a">Kafka <span class="highlight">不支持减少分区数</span>（只能增不能减）。原因是底层 Segment 文件的 offset 是连续递增的，减分区意味着要把部分 offset 区间删掉——这不兼容 Kafka 的"日志不可变"模型。<br>但增加分区也有代价：① 有 key 的消息 hash 会变 → 同一 key 可能落到不同分区 → 局部有序被破坏；② 分区数增加 → 文件句柄增加 → 选举时间变长；③ 已消费的 offset 在新分区上无效（新分区从 0 开始）→ 消费者需要处理。</div>
+  </details>
+</section>
+
+<!-- ═══════ 13. 口播总结 ═══════ -->
+<div class="feynman" style="margin-top:40px;background:linear-gradient(135deg,rgba(251,191,36,0.06),rgba(107,70,17,0.04));border-color:rgba(251,191,36,0.3)">
+  <p style="font-size:11px;color:#fbbf24;margin-bottom:8px;font-weight:700">📖 本文思想来源</p>
+  <p style="font-size:12px;line-height:1.9">
+    <strong>《设计数据密集型应用》DDIA</strong> —— Martin Kleppmann<br>
+    • <span style="color:#fcd34d">第 11 章「流处理」</span>：Kafka 作为流处理平台的理论基础——消息系统 vs 数据库的融合<br>
+    • <span style="color:#fcd34d">第 8 章「分布式系统的挑战」</span>：Leader 选举、ISR 机制背后的分布式共识理论<br>
+    • <span style="color:#94a3b8">另见：</span>Kafka 官方文档、Kafka: The Definitive Guide（Confluent 出品）、Jay Kreps（Kafka 创始人）博客
+  </p>
+</div>
+
+<section id="kf-summary" class="section" style="margin-top:40px">
+  <h2>🎙️ 口播总结</h2>
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(248,81,73,0.04));border-color:rgba(251,191,36,0.3)">
+    <p style="font-size:15px;line-height:2"><strong>这篇文章把 Kafka 从入门到讲透了。</strong></p>
+    <p>Kafka 的本质是<strong>分布式日志系统</strong>——顺序写磁盘 + Page Cache + 零拷贝三大性能支柱让它做到百万 QPS。架构上记住 Topic→Partition→Segment 三层模型。可靠性由 acks、ISR、min.insync.replicas 三者配合。消费端关注 Consumer Group 的 Rebalance 和 Offset 管理。Exactly-Once 需要幂等 Producer + 事务，但不是所有场景都需要。Kafka 不是万能的——它是"日志"，不是"队列"。选型时看你的场景是"消息分发"还是"事件流"。</p>
+  </div>
+</section>
+
+</main>
+</div>
+<script src="/mobile.js"></script>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

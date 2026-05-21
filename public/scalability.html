@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高可扩展性系统设计 · 费曼学习法</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascada Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+
+  /* 苏格拉底提问 */
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">📐 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">第一章：核心概念</div>
+  <a class="nav-item" href="#sc-basics">📐 什么是可扩展性</a>
+  <a class="nav-item" href="#sc-stateless">🧩 无状态设计</a>
+  <div class="nav-section">第二章：数据层扩展</div>
+  <a class="nav-item" href="#sc-shard">🍕 数据库分片</a>
+  <a class="nav-item" href="#sc-hash">🔘 一致性哈希</a>
+  <a class="nav-item" href="#sc-nosql">🗂️ NoSQL 选型</a>
+  <div class="nav-section">第三章：架构模式</div>
+  <a class="nav-item" href="#sc-ms">🔧 微服务拆分</a>
+  <a class="nav-item" href="#sc-cqrs">📖 CQRS 读写分离</a>
+  <a class="nav-item" href="#sc-event">📜 事件溯源</a>
+  <div class="nav-section">第四章：全局扩展</div>
+  <a class="nav-item" href="#sc-dist-cache">🌐 分布式缓存</a>
+  <a class="nav-item" href="#sc-global">🌍 全局扩展策略</a>
+  <a class="nav-item" href="#sc-evolution">📈 扩展性演进路线</a>
+  <a class="nav-item" href="#sc-qa">❓ 核心题</a>
+  <a class="nav-item" href="#sc-summary">🎙️ 口播总结</a>
+  <a class="nav-item" href="#sc-socratic">💬 苏格拉底提问</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>📐 高可扩展性系统设计</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>可扩展 = 用户从 1 万涨到 1 亿，系统不需要重写，加机器就能扛住。</p>
+    <p>核心公式：<strong>无状态 + 分片 + 异步 = 无限扩展</strong>。和高性能的区别：高性能关心"单机跑多快"，可扩展性关心"加机器能不能线性提速"。</p>
+  </div>
+</section>
+
+<!-- ═══════ 1. 基础 ═══════ -->
+<section id="sc-basics" class="section">
+  <h2>📐 什么是可扩展性？</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏋️ 类比：</span><strong>垂直扩展</strong> = 一个人吃蛋白粉练成施瓦辛格——但人类有极限，不能无限变强。<strong>水平扩展</strong> = 雇 100 个普通人一起搬砖——没有单点瓶颈，来多少活就加多少人。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 240" style="max-width:820px;width:100%">
+      <defs><marker id="aS" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
+      <!-- Vertical -->
+      <rect x="10" y="10" width="390" height="110" rx="8" fill="rgba(248,81,73,0.05)" stroke="#f87171" stroke-width="1.5" stroke-dasharray="6,3"/>
+      <text x="205" y="35" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">⬆️ 垂直扩展 (Scale Up)</text>
+      <rect x="40" y="45" width="100" height="30" rx="4" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1"/>
+      <text x="90" y="65" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="9">2C4G →</text>
+      <text x="165" y="65" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="18" font-weight="700">→</text>
+      <rect x="185" y="45" width="120" height="30" rx="4" fill="rgba(248,81,73,0.2)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="245" y="65" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="9">16C64G</text>
+      <text x="205" y="108" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">换更大机器 · 有物理天花板 · 停机升级</text>
+
+      <!-- Horizontal -->
+      <rect x="420" y="10" width="390" height="110" rx="8" fill="rgba(63,185,80,0.05)" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="6,3"/>
+      <text x="615" y="35" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">↔️ 水平扩展 (Scale Out)</text>
+      <rect x="440" y="50" width="60" height="35" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="470" y="72" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">节点1</text>
+      <rect x="510" y="50" width="60" height="35" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="540" y="72" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">节点2</text>
+      <rect x="580" y="50" width="60" height="35" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="610" y="72" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">节点3</text>
+      <text x="690" y="72" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="14" font-weight="700">...</text>
+      <text x="615" y="108" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">加机器 · 理论上无限 · 自动扩缩 · 不停机</text>
+
+      <!-- Bottom: Amdahl -->
+      <rect x="10" y="145" width="800" height="80" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="30" y="168" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">阿姆达尔定律 — 扩展性的天花板</text>
+      <text x="30" y="192" fill="#58a6ff" font-family="JetBrains Mono,monospace" font-size="14">S = 1 / ((1 - P) + P / N)</text>
+      <text x="30" y="215" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="10">P=可并行比例 · N=节点数 · P&lt;1 时加速比有上限 → 串行部分决定扩展性的天花板</text>
+    </svg>
+    <div class="diagram-caption">垂直 vs 水平扩展 + 阿姆达尔定律：串行部分是扩展性的死穴</div>
+  </div>
+
+  <h3>扩展性的四个维度</h3>
+  <table>
+    <tr><th>维度</th><th>问自己</th><th>关键指标</th></tr>
+    <tr><td><strong>流量扩展</strong></td><td>QPS 翻 10 倍，架构要改吗？</td><td>加机器后 QPS 是否线性增长</td></tr>
+    <tr><td><strong>数据扩展</strong></td><td>数据量从 GB→TB→PB，查询还快吗？</td><td>分片后查询延迟不劣化</td></tr>
+    <tr><td><strong>功能扩展</strong></td><td>加新功能需要改动几个服务？</td><td>新功能上线的影响面</td></tr>
+    <tr><td><strong>团队扩展</strong></td><td>10 个团队并行开发，会不会冲突？</td><td>服务边界是否清晰（康威定律）</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 2. 无状态 ═══════ -->
+<section id="sc-stateless" class="section">
+  <h2>🧩 无状态设计：水平扩展的前提</h2>
+  <div class="feynman">
+    <p><span class="analogy">🍔 类比：</span>快餐店——你点餐时，收银员不认识你，不记得你上次点了什么。任何收银员都能服务你。如果一个收银台排队太长，开一个新的就行——因为所有收银员都一样（无状态）。</p>
+    <p>如果有状态（如"老王只认小李点餐"）→ 小李请假你就没法点餐 → 不可扩展。</p>
+  </div>
+
+  <h3>怎么做到无状态？</h3>
+  <div class="info-card">
+    <table>
+      <tr><th>状态</th><th>从应用层剥离到...</th><th>技术</th></tr>
+      <tr><td>用户会话 Session</td><td>Redis / JWT Token（客户端自包含）</td><td>JWT + Redis</td></tr>
+      <tr><td>文件上传</td><td>对象存储（S3/MinIO）</td><td>预签名 URL 直接上传</td></tr>
+      <tr><td>数据库连接</td><td>连接池（每个实例独立管理）</td><td>无需剥离</td></tr>
+      <tr><td>缓存</td><td>集中式 Redis Cluster</td><td>不依赖本地内存</td></tr>
+      <tr><td>配置</td><td>配置中心（etcd/Consul）</td><td>动态配置热更新</td></tr>
+    </table>
+  </div>
+
+  <pre><code><span class="cm">// 无状态服务 = 请求自包含所有上下文</span>
+<span class="kw">func</span> <span class="fn">GetUserOrders</span>(w http.ResponseWriter, r *http.Request) {
+    <span class="cm">// JWT 中自带 userID，不需要查 Session 表</span>
+    userID := r.Context().Value(<span class="str">"userID"</span>).(<span class="kw">string</span>)
+    orders := orderService.ListByUser(userID)
+    json.NewEncoder(w).Encode(orders)
+}
+<span class="cm">// 这个函数可以在任意节点执行 → 加机器就能加容量</span></code></pre>
+</section>
+
+<!-- ═══════ 3. 分片 ═══════ -->
+<section id="sc-shard" class="section">
+  <h2>🍕 数据库分片：一张表存不下就切成 N 张</h2>
+  <div class="feynman">
+    <p><span class="analogy">📚 类比：</span>图书馆藏书太多——A-D 作者放一楼，E-M 放二楼，N-Z 放三楼。你要找《三体》（作者刘慈欣，L开头）→ 直接去二楼，不用翻整个图书馆。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 280" style="max-width:820px;width:100%">
+      <defs><marker id="aSh" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
+      <!-- Router -->
+      <rect x="290" y="10" width="200" height="40" rx="6" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="390" y="35" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="12" font-weight="600">Sharding Router</text>
+
+      <!-- Arrows -->
+      <line x1="360" y1="50" x2="130" y2="90" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aSh)"/>
+      <line x1="390" y1="50" x2="390" y2="90" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aSh)"/>
+      <line x1="420" y1="50" x2="650" y2="90" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aSh)"/>
+
+      <!-- Shard 1 -->
+      <rect x="30" y="100" width="200" height="80" rx="8" fill="rgba(6,78,59,0.10)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="130" y="125" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">Shard 0</text>
+      <text x="130" y="145" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">user_id % 4 = 0</text>
+      <text x="130" y="165" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">id: 4, 8, 12, 16...</text>
+
+      <!-- Shard 2 -->
+      <rect x="290" y="100" width="200" height="80" rx="8" fill="rgba(6,78,59,0.10)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="390" y="125" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">Shard 1</text>
+      <text x="390" y="145" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">user_id % 4 = 1</text>
+
+      <!-- Shard 3 -->
+      <rect x="550" y="100" width="200" height="80" rx="8" fill="rgba(6,78,59,0.10)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="650" y="125" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">Shard 2</text>
+      <text x="650" y="145" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">user_id % 4 = 2</text>
+
+      <!-- Shard 4 -->
+      <rect x="310" y="200" width="200" height="60" rx="8" fill="rgba(6,78,59,0.06)" stroke="#34d399" stroke-width="1"/>
+      <text x="410" y="225" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="12">Shard 3</text>
+      <text x="410" y="245" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">user_id % 4 = 3</text>
+
+      <!-- Callout -->
+      <text x="780" y="145" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">分片策略</text>
+      <text x="780" y="168" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">Hash: user_id%N</text>
+      <text x="780" y="186" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">Range: 0-1000万</text>
+      <text x="780" y="204" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">Directory: 路由表</text>
+    </svg>
+    <div class="diagram-caption">Hash 分片：user_id % 4 路由到 4 个 Shard</div>
+  </div>
+
+  <h3>三种分片策略</h3>
+  <table>
+    <tr><th>策略</th><th>做法</th><th>优点</th><th>缺点</th></tr>
+    <tr><td><strong>Hash 分片</strong></td><td><code>id % N</code></td><td>数据均匀分布</td><td>加节点要全量迁移</td></tr>
+    <tr><td><strong>范围分片</strong></td><td>id 1-1000 万 → 分片1</td><td>易扩展、可归档</td><td>热点：新数据全在一个分片</td></tr>
+    <tr><td><strong>目录分片</strong></td><td>查路由表决定去哪个分片</td><td>灵活、在线迁移</td><td>路由表自身需高可用</td></tr>
+  </table>
+
+  <h4>分片后的难题与解法</h4>
+  <table>
+    <tr><th>难题</th><th>解法</th></tr>
+    <tr><td>跨分片 JOIN</td><td>应用层组装、冗余字段、全局广播表</td></tr>
+    <tr><td>全局唯一 ID</td><td>雪花算法（含分片 ID 位段）、号段模式</td></tr>
+    <tr><td>跨分片分页</td><td>各分片查 TOP N 后内存合并排序</td></tr>
+    <tr><td>扩容数据迁移</td><td>一致性哈希、双写 + 历史迁移 + 灰度</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 4. 一致性哈希 ═══════ -->
+<section id="sc-hash" class="section">
+  <h2>🔘 一致性哈希：加节点只影响邻居</h2>
+  <div class="feynman">
+    <p><span class="analogy">🪑 类比：</span>圆桌吃饭——8 个人围坐，每人负责照顾自己右手边的菜（数据）。加一个人（加节点）只需要重新分配他右手边那道菜，其他菜不动。而普通 Hash 分片（id%N 改 N）等于所有人站起来重新分菜。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 500 420" style="max-width:500px;width:100%">
+      <!-- Ring -->
+      <circle cx="250" cy="210" r="150" fill="none" stroke="#475569" stroke-width="2"/>
+      <!-- Nodes on ring -->
+      <circle cx="170" cy="100" r="22" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="2"/>
+      <text x="170" y="105" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">N1</text>
+
+      <circle cx="370" cy="140" r="22" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="2"/>
+      <text x="370" y="145" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">N2</text>
+
+      <circle cx="370" cy="300" r="22" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="2"/>
+      <text x="370" y="305" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">N3</text>
+
+      <circle cx="150" cy="310" r="22" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="2"/>
+      <text x="150" y="315" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">N4</text>
+
+      <!-- Data points -->
+      <circle cx="100" cy="180" r="8" fill="rgba(88,166,255,0.3)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="85" y="175" fill="#58a6ff" font-family="JetBrains Mono,monospace" font-size="8">k1</text>
+
+      <circle cx="220" cy="60" r="8" fill="rgba(88,166,255,0.3)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="225" y="55" fill="#58a6ff" font-family="JetBrains Mono,monospace" font-size="8">k2</text>
+
+      <circle cx="420" cy="210" r="8" fill="rgba(88,166,255,0.3)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="425" y="208" fill="#58a6ff" font-family="JetBrains Mono,monospace" font-size="8">k3</text>
+
+      <circle cx="290" cy="370" r="8" fill="rgba(88,166,255,0.3)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="295" y="368" fill="#58a6ff" font-family="JetBrains Mono,monospace" font-size="8">k4</text>
+
+      <!-- Annotations -->
+      <text x="250" y="390" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">顺时针查找：key 落到环上 → 找下一个节点</text>
+      <text x="250" y="408" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">k1→N1 · k2→N1 · k3→N3 · k4→N4</text>
+    </svg>
+    <div class="diagram-caption">一致性哈希环：key 顺时针找最近的节点，加/删节点只影响局部</div>
+  </div>
+
+  <h3>🧮 虚拟节点：用数学解决数据倾斜</h3>
+  <div class="feynman">
+    <p><span class="analogy">🎯 类比：</span>4 个人围坐圆桌分菜——有人面前菜多、有人面前菜少（数据倾斜）。现在给每个人发 150 张"替身卡"随机撒在桌上——每个替身代表原主人拿菜。由于替身均匀散布，每个人最终拿到的菜量趋近相等。这就是虚拟节点的魔力。</p>
+  </div>
+
+  <h4>问题：为什么普通一致性哈希会倾斜？</h4>
+  <p>一致性哈希环上，4 个物理节点把环切成 4 段。但 4 个点不是均匀分布的——它们是通过 <code>hash(node_id)</code> 算出来的，落到环上的位置<strong>完全随机</strong>。</p>
+  <p>结果：4 个点在环上形成的 4 段弧长<strong>差异巨大</strong>——最长的可能是最短的几十倍。数据落到哪段就归哪个节点管，导致有的节点扛 50% 流量，有的只扛 5%。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 340" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="av1" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4 Z" fill="#f87171"/></marker>
+      </defs>
+      <!-- LEFT: without virtual nodes -->
+      <rect x="10" y="10" width="390" height="320" rx="8" fill="rgba(248,81,73,0.04)" stroke="#f87171" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="205" y="35" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">❌ 无虚拟节点：4个物理节点</text>
+
+      <circle cx="205" cy="190" r="130" fill="none" stroke="#475569" stroke-width="1.5"/>
+      <!-- 4 nodes, intentionally clustered on left side -->
+      <circle cx="120" cy="140" r="18" fill="rgba(63,185,80,0.25)" stroke="#3fb950" stroke-width="2"/>
+      <text x="120" y="145" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700">N1</text>
+      <circle cx="95" cy="210" r="18" fill="rgba(63,185,80,0.25)" stroke="#3fb950" stroke-width="2"/>
+      <text x="95" y="215" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700">N2</text>
+      <circle cx="140" cy="270" r="18" fill="rgba(63,185,80,0.25)" stroke="#3fb950" stroke-width="2"/>
+      <text x="140" y="275" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700">N3</text>
+      <circle cx="300" cy="170" r="18" fill="rgba(63,185,80,0.25)" stroke="#3fb950" stroke-width="2"/>
+      <text x="300" y="175" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700">N4</text>
+
+      <!-- Annotations -->
+      <text x="205" y="315" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10">N1-N3 挤在一起 → 大量数据都落到 N4</text>
+      <text x="205" y="330" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">数据分布方差大 → 负载严重不均</text>
+
+      <!-- RIGHT: with virtual nodes -->
+      <rect x="420" y="10" width="390" height="320" rx="8" fill="rgba(63,185,80,0.04)" stroke="#3fb950" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="615" y="35" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">✅ 有虚拟节点：4节点 × 4虚拟</text>
+
+      <circle cx="615" cy="190" r="130" fill="none" stroke="#475569" stroke-width="1.5"/>
+      <!-- 16 virtual nodes spread evenly -->
+      <circle cx="500" cy="120" r="14" fill="rgba(63,185,80,0.18)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="500" y="124" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="8">N1'</text>
+      <circle cx="580" cy="95" r="14" fill="rgba(163,113,247,0.18)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="580" y="99" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="8">N2'</text>
+      <circle cx="660" cy="105" r="14" fill="rgba(34,211,238,0.18)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="660" y="109" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="8">N3'</text>
+      <circle cx="720" cy="140" r="14" fill="rgba(251,191,36,0.18)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="720" y="144" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="8">N4'</text>
+
+      <circle cx="740" cy="210" r="14" fill="rgba(63,185,80,0.18)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="740" y="214" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="8">N1''</text>
+      <circle cx="710" cy="270" r="14" fill="rgba(163,113,247,0.18)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="710" y="274" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="8">N2''</text>
+      <circle cx="650" cy="300" r="14" fill="rgba(34,211,238,0.18)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="650" y="304" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="8">N3''</text>
+      <circle cx="570" cy="310" r="14" fill="rgba(251,191,36,0.18)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="570" y="314" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="8">N4''</text>
+
+      <circle cx="510" cy="280" r="14" fill="rgba(63,185,80,0.18)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="510" y="284" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="8">N1'''</text>
+      <circle cx="490" cy="230" r="14" fill="rgba(163,113,247,0.18)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="490" y="234" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="8">N2'''</text>
+
+      <text x="615" y="315" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10">虚拟节点均匀散布 → 每段弧长趋近相等</text>
+      <text x="615" y="330" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">数据分布方差小 → 负载均匀</text>
+    </svg>
+    <div class="diagram-caption">左：无虚拟节点 → 节点聚集，数据倾斜 | 右：虚拟节点 → 均匀散布，负载均衡</div>
+  </div>
+
+  <h4>数学原理 #1：为什么节点多了就更均匀？—— 大数定律</h4>
+  <div class="feynman">
+    <p>一致性哈希的分配本质上是：在 [0, 2³²) 的环上随机撒 K 个点（虚拟节点），数据 key 也随机落在环上。每个虚拟节点管辖的弧长是一个<strong>随机变量</strong>。</p>
+    <p>K 个独立同分布的弧长 → 由<strong>大数定律</strong>，K 越大，各虚拟节点分管的数据量越趋近期望值。方差 ∝ 1/K。</p>
+  </div>
+
+  <pre><code><span class="cm">设：环上共有 K 个虚拟节点，数据总量为 D</span>
+<span class="cm">每个虚拟节点期望分管：D / K</span>
+
+<span class="cm">无虚拟节点时：K = N（物理节点数），通常 N ∈ {3, 5, 7}</span>
+<span class="cm">→ 一个节点可能分到 2-3 倍期望值的数据（方差极大）</span>
+
+<span class="cm">有虚拟节点时：K = N × V，V 是每个物理节点的虚拟节点数</span>
+<span class="cm">→ 由中心极限定理，每个物理节点负载 ~ N(D/N, σ²/V)</span>
+<span class="cm">→ V 越大，方差越小，负载越均匀</span></code></pre>
+
+  <h4>数学原理 #2：负载标准差与虚拟节点数的关系</h4>
+  <div class="info-card">
+    <h4>🧮 形式化推导</h4>
+    <p>设 <strong>N</strong> 个物理节点，每个节点 <strong>V</strong> 个虚拟节点，总共 <strong>K = N×V</strong> 个虚拟节点均匀分布在环上。</p>
+    <p>一个物理节点 i 的负载 = 它的 V 个虚拟节点分到的数据之和。由于每个虚拟节点的数据量独立同分布（均期望 = D/K）：</p>
+    <p style="text-align:center;font-family:JetBrains Mono,monospace;font-size:14px;color:var(--accent);margin:12px 0">
+      Var(负载<sub>i</sub>) = V × Var(单个虚拟节点) = V × (D/K)² = D² / (N²·V)
+    </p>
+    <p>标准差与均值的比值（<strong>变异系数 CV</strong>）：</p>
+    <p style="text-align:center;font-family:JetBrains Mono,monospace;font-size:14px;color:var(--accent);margin:12px 0">
+      CV = σ / μ = √(D²/(N²·V)) / (D/N) = <strong>1 / √V</strong>
+    </p>
+    <p style="margin-top:10px"><strong>核心结论：负载不均匀程度 ∝ 1/√V，只跟虚拟节点数有关，跟物理节点数 N 无关！</strong></p>
+  </div>
+
+  <h4>实践选择：V 取多少？</h4>
+  <table>
+    <tr><th>虚拟节点数 V</th><th>CV (负载变异系数)</th><th>最轻/最重节点比</th><th>适用</th></tr>
+    <tr><td>1（无虚拟节点）</td><td>100%</td><td>可能差 10-50 倍</td><td>—</td></tr>
+    <tr><td>10</td><td>31.6%</td><td>~2 倍</td><td>小规模、可容忍不均</td></tr>
+    <tr><td><strong>100-150</strong></td><td><strong>8-10%</strong></td><td><strong>&lt; 1.3 倍 ← 业界推荐</strong></td><td>生产环境标配</td></tr>
+    <tr><td>1000</td><td>3.2%</td><td>~1.06 倍</td><td>极致均匀，但路由表变大</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>⚖️ 权衡：不是 V 越大越好</h4>
+    <table>
+      <tr><th>V 太小</th><th>V 太大</th></tr>
+      <tr><td>❌ 数据倾斜严重</td><td>❌ 内存开销大（路由表 = N×V 条目）</td></tr>
+      <tr><td>❌ 加节点时大量数据迁移</td><td>❌ 节点变更时需更新大量虚拟节点映射</td></tr>
+      <tr><td colspan="2" style="text-align:center;color:var(--green)">✅ <strong>业界标准：100-150 个虚拟节点/物理节点</strong>（Cassandra 默认 256，Dynamo 用 100-150）</td></tr>
+    </table>
+  </div>
+
+  <h4>加/删节点时的数学</h4>
+  <div class="feynman">
+    <p>加一个物理节点（V 个虚拟节点插入环上）→ 平均每个现有节点只损失它数据的 <strong>1/(N+1)</strong>，而不是像 <code>id % N</code> 那样几乎全量重分配。</p>
+  </div>
+
+  <pre><code><span class="cm">普通 Hash：</span>
+N=4 → N=5，需迁移 80% 数据 (4/5 的 key 的 hash 值变了)
+
+<span class="cm">一致性哈希 + 虚拟节点：</span>
+N=4, V=150 → 600 个虚拟节点
+N=5, V=150 → 750 个虚拟节点
+→ 新节点 V 个虚拟节点插入环 → 只从相邻虚拟节点"抢"数据
+→ 平均每个旧节点只需迁移 1/(N+1) = 20% 的数据
+→ 实际迁移量 ≈ 1/(N+1)，与 V 无关！</code></pre>
+
+</section>
+
+<!-- ═══════ 5. NoSQL ═══════ -->
+<section id="sc-nosql" class="section">
+  <h2>🗂️ NoSQL 选型：不是银弹，是用对场景</h2>
+  <table>
+    <tr><th>类型</th><th>代表</th><th>扩展方式</th><th>适合</th><th>不适合</th></tr>
+    <tr><td><strong>KV 存储</strong></td><td>Redis / DynamoDB</td><td>分片（天然支持）</td><td>缓存、计数、Session</td><td>复杂查询</td></tr>
+    <tr><td><strong>文档型</strong></td><td>MongoDB</td><td>分片（shard key）</td><td>灵活的 Schema、日志</td><td>多表 JOIN、事务</td></tr>
+    <tr><td><strong>列族型</strong></td><td>Cassandra / HBase</td><td>一致性哈希（无中心）</td><td>写多读少、时序数据</td><td>频繁更新、复杂查询</td></tr>
+    <tr><td><strong>搜索型</strong></td><td>Elasticsearch</td><td>索引分片</td><td>全文搜索、日志分析</td><td>OLTP 主存储</td></tr>
+    <tr><td><strong>图数据库</strong></td><td>Neo4j</td><td>分片（较复杂）</td><td>社交关系、推荐</td><td>简单 CRUD</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 6. 微服务 ═══════ -->
+<section id="sc-ms" class="section">
+  <h2>🔧 微服务拆分：不是越细越好</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏢 类比：</span>创业公司 5 个人坐在一个房间里，沟通靠喊（单体）。公司 500 人必须分部门（微服务）——财务部、技术部、市场部各管各的，通过邮件和会议（API）协作。</p>
+  </div>
+
+  <h3>拆分的黄金法则</h3>
+  <div class="info-card">
+    <ol>
+      <li><strong>按业务域拆分（DDD 限界上下文）：</strong>用户服务、订单服务、支付服务</li>
+      <li><strong>高内聚、低耦合：</strong>一个服务改代码不改另一个。改订单促销逻辑只改订单服务</li>
+      <li><strong>数据独立：</strong>每个服务有自己的数据库，不共享。通过 API 访问别人数据</li>
+      <li><strong>先不拆，等痛了再拆：</strong>过早拆分 = 分布式系统的复杂度超过收益</li>
+    </ol>
+  </div>
+
+  <h4>拆分信号——什么时候该拆了？</h4>
+  <table>
+    <tr><th>信号</th><th>说明</th></tr>
+    <tr><td>不同模块的部署频率差异大</td><td>改 A 模块要连带部署 B、C</td></tr>
+    <tr><td>不同模块的流量差异大</td><td>A 需要扩容但 B 跟着扩浪费资源</td></tr>
+    <tr><td>团队冲突</td><td>两个团队改同一个代码库经常冲突</td></tr>
+    <tr><td>技术栈差异</td><td>A 适合 Go 但 B 必须用 Python（ML）</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 7. CQRS ═══════ -->
+<section id="sc-cqrs" class="section">
+  <h2>📖 CQRS：读和写用两套模型</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏦 类比：</span>银行柜台——存款走 1 号窗（写操作：校验、记账、持久化），查余额走大厅的 ATM（读操作：直接显示）。读写分离，各自优化。</p>
+  </div>
+
+  <h3>CQRS 架构</h3>
+  <table>
+    <tr><th>端</th><th>数据源</th><th>优化方向</th></tr>
+    <tr><td><strong>Command（写）</strong></td><td>主库（MySQL/PostgreSQL）</td><td>强一致性、事务、高可靠</td></tr>
+    <tr><td><strong>Query（读）</strong></td><td>只读副本（ES/Redis/从库）</td><td>高性能、可任意 JOIN、可面向页面优化</td></tr>
+  </table>
+  <p>写操作更新主库 → 通过 MQ/CDC 同步到读模型 → 查询从读模型出。读模型可以按前端页面的需要反范式化，极致优化查询性能。</p>
+
+  <h4>CQRS 适合什么时候？</h4>
+  <ul>
+    <li>读写比 > 10:1（读远多于写）</li>
+    <li>查询逻辑复杂、涉及多表 JOIN（面向页面建模）</li>
+    <li>读写性能要求差异大（写要强一致，读要毫秒级）</li>
+  </ul>
+</section>
+
+<!-- ═══════ 8. 事件溯源 ═══════ -->
+<section id="sc-event" class="section">
+  <h2>📜 事件溯源：会计账簿模式</h2>
+  <div class="feynman">
+    <p><span class="analogy">📒 类比：</span>传统的记账是直接改余额（UPDATE balance=100）。事件溯源 = 记录每笔交易流水：+50、-30、+80。余额 = 所有交易之和。好处：永远不会丢数据，可以回溯到任意时间点。</p>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4>传统 CRUD</h4>
+      <pre><code>UPDATE accounts
+SET balance = 120
+WHERE id = 1</code></pre>
+      <p style="color:var(--red);font-size:12px">❌ 旧值丢失</p>
+      <p style="color:var(--red);font-size:12px">❌ 改前余额不知道</p>
+    </div>
+    <div>
+      <h4>Event Sourcing</h4>
+      <pre><code>INSERT INTO events
+(type, amount)
+VALUES ('deposit', 20)</code></pre>
+      <p style="color:var(--green);font-size:12px">✅ 完整审计日志</p>
+      <p style="color:var(--green);font-size:12px">✅ 重放事件=任意时刻快照</p>
+    </div>
+  </div>
+
+  <h4>三个核心概念</h4>
+  <table>
+    <tr><th>概念</th><th>是什么</th></tr>
+    <tr><td><strong>Event Store</strong></td><td>只追加的事件日志（不可修改、不可删除）</td></tr>
+    <tr><td><strong>Snapshot</strong></td><td>定期生成快照（事件1-1000 的聚合结果），加速读取</td></tr>
+    <tr><td><strong>Projection</strong></td><td>把事件流转换成查询友好的格式（就是 CQRS 的读模型）</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 9. 分布式缓存 ═══════ -->
+<section id="sc-dist-cache" class="section">
+  <h2>🌐 分布式缓存：Redis Cluster 怎么扩展到 TB 级</h2>
+  <div class="feynman">
+    <p><span class="analogy">🗄️ 类比：</span>一个文件柜（单机 Redis）最多 64GB → 不够用？换成 16 个文件柜的档案室（Redis Cluster），每个柜子存一部分，总共 1TB。</p>
+  </div>
+
+  <h3>Redis Cluster 架构要点</h3>
+  <div class="info-card">
+    <ul>
+      <li><strong>16384 个 slot</strong> —— 所有 key 通过 <code>CRC16(key) % 16384</code> 映射到 slot</li>
+      <li><strong>每个节点负责一部分 slot</strong> —— 加节点时 slot 自动迁移</li>
+      <li><strong>每个 slot 有主从</strong> —— 主节点挂了从节点自动顶上</li>
+      <li><strong>客户端直连</strong> —— 不需要代理，客户端知道 slot 分布</li>
+    </ul>
+  </div>
+
+  <h4>客户端怎么知道 key 在哪个节点？</h4>
+  <pre><code><span class="cm">// Go Redis Cluster 客户端自动处理路由</span>
+rdb := redis.NewClusterClient(&redis.ClusterOptions{
+    Addrs: []<span class="kw">string</span>{<span class="str">"node1:6379"</span>, <span class="str">"node2:6379"</span>, <span class="str">"node3:6379"</span>},
+})
+<span class="cm">// MOVED 重定向：key 不在这个节点 → 客户端自动跳转到正确节点</span>
+val := rdb.Get(ctx, <span class="str">"mykey"</span>).Val()</code></pre>
+</section>
+
+<!-- ═══════ 10. 全局扩展 ═══════ -->
+<section id="sc-global" class="section">
+  <h2>🌍 全局扩展：从单机房到全球</h2>
+  <table>
+    <tr><th>阶段</th><th>架构</th><th>解决了什么</th></tr>
+    <tr><td>单机房单活</td><td>所有服务在一个机房</td><td>起步</td></tr>
+    <tr><td>同城双活</td><td>两个机房同时服务，数据同步</td><td>机房级容灾</td></tr>
+    <tr><td>两地三中心</td><td>同城双活 + 异地灾备</td><td>城市级容灾</td></tr>
+    <tr><td>单元化</td><td>按用户 ID 路由到固定机房（如华南用户→深圳机房）</td><td>无限水平扩展 + 低延迟</td></tr>
+    <tr><td>边缘计算</td><td>CDN + Edge Function 就近处理</td><td>全球 50ms 延迟</td></tr>
+  </table>
+
+  <div class="feynman">
+    <p><span class="analogy">🎯 单元化 = 终极扩展方案：</span>每个机房是一个自给自足的"单元"——包含完整的应用+数据库+缓存。用户通过 DNS 路由到最近的单元。单元之间数据隔离，互不干扰。阿里双十一就是这个架构。</p>
+  </div>
+</section>
+
+<!-- ═══════ 11. 演进路线 ═══════ -->
+<section id="sc-evolution" class="section">
+  <h2>📈 扩展性演进路线：从 0 到 1 亿用户</h2>
+  <table>
+    <tr><th>用户量</th><th>架构</th><th>关键动作</th></tr>
+    <tr><td>&lt; 1 万</td><td>单机单体</td><td>快速验证，别过度设计</td></tr>
+    <tr><td>1~10 万</td><td>应用 + DB 分离，加 Redis 缓存</td><td>无状态化、读写分离</td></tr>
+    <tr><td>10~100 万</td><td>多实例 + 负载均衡 + 主从</td><td>水平扩展应用层</td></tr>
+    <tr><td>100~1000 万</td><td>服务拆分 + MQ + 分库分表</td><td>微服务、异步化、数据分片</td></tr>
+    <tr><td>1000 万~1 亿</td><td>单元化 + 多活 + Service Mesh</td><td>全局路由、就近接入</td></tr>
+    <tr><td>&gt; 1 亿</td><td>自研中间件 + 定制存储</td><td>通用方案不够用，自己造</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 12. 核心题 ═══════ -->
+<section id="sc-qa" class="section">
+  <h2>❓ 高频考题</h2>
+
+  <div class="qa"><div class="q">Q1: 设计一个短链接系统（如 t.cn），怎么扩展到 100 亿条？</div><div class="a">
+    <strong>ID 生成：</strong>雪花算法/号段模式 生成 62 进制短码。<br>
+    <strong>存储分片：</strong>按短码 Hash 分片 MySQL（100 亿 / 每片 1 亿 = 100 片）。<br>
+    <strong>缓存：</strong>热门链接缓存到 Redis（8 小时过期）。<br>
+    <strong>扩展：</strong>无状态 API + 一致性哈希 Redis Cluster + DB 动态扩容。
+  </div></div>
+
+  <div class="qa"><div class="q">Q2: 分库分表后怎么扩容？数据怎么迁移？</div><div class="a">
+    <strong>推荐：双写 + 历史迁移 + 灰度切流。</strong><br>
+    ① 新数据同时写旧分片和新分片（双写）→ ② 后台任务把历史数据从旧分片迁到新分片 → ③ 校验数据一致后切读流量到新分片 → ④ 下掉旧分片双写。
+  </div></div>
+
+  <div class="qa"><div class="q">Q3: 微服务和单体到底怎么选？</div><div class="a">
+    团队 &lt; 5 人 → 单体，别折腾。团队 &gt; 20 人 + 部署冲突频发 + 模块流量差异大 → 拆分。核心判断标准：<strong>拆分的收益（独立部署、独立扩容）> 分布式成本（网络延迟、数据一致性、运维复杂度）</strong>。
+  </div></div>
+
+  <div class="qa"><div class="q">Q4: 一致性哈希和普通哈希分片的区别？什么时候用哪个？</div><div class="a">
+    普通 Hash：<code>id % N</code>，N 变了数据全迁移 → 适合<strong>分片数固定</strong>（如提前规划好 64 个分片）。<br>
+    一致性哈希：加/减节点只迁移 1/N 数据 → 适合<strong>节点数频繁变化</strong>（如 Redis Cluster、CDN 边缘节点）。<br>
+    生产实践：很多系统用<strong>预分片</strong>——一次性建 1024 个逻辑分片，物理扩容时移动逻辑分片。
+  </div></div>
+
+  <div class="qa"><div class="q">Q5: CQRS 和 Event Sourcing 必须一起用吗？</div><div class="a">
+    不必须，但经常一起用。CQRS 解决读写分离，Event Sourcing 是写端的实现方式之一。你可以只用 CQRS（写 MySQL 主库 + 读 ES 副本），不用 Event Sourcing。Event Sourcing 适合审计、回溯、事件驱动架构，但有复杂度成本。
+  </div></div>
+
+  <div class="qa"><div class="q">Q6: 怎么看待"过早优化"和"过度设计"？</div><div class="a">
+    <strong>可扩展性设计是"留接口"而非"提前实现"。</strong>比如：设计时用抽象层隔离存储（<code>type UserRepo interface</code>），但不提前写 Redis 实现。选分片 key 时考虑未来扩容，但不提前建 100 个分片。核心：<strong>架构上支持扩展，代码上不过度实现。</strong>
+  </div></div>
+</section>
+
+<p style="text-align:center;color:var(--muted);margin-top:60px;padding-bottom:40px;font-size:12px">
+  📐 高可扩展性系统设计复习完成 · 无状态+分片+异步=无限扩展<br>
+  <a href="/" style="color:var(--accent)">← 返回首页</a>
+</p>
+
+
+<!-- ═══════ 苏格拉底式提问 ═══════ -->
+<section id="sc-socratic" class="section">
+  <h2>💬 苏格拉底式提问 —— 检验真理解</h2>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:20px">以下问题用来逼你追问本质。先自己想 30 秒，再点开验证。</p>
+  <details class="socratic"><summary>无状态就一定能水平扩展吗？<span class="socratic-num">Q1</span></summary><div class="socratic-a"><span class="highlight">只对了一半。</span>瓶颈可能在：<br>① <strong>有状态的下游：</strong>应用从 10→100 实例，DB 连接数暴涨。<br>② <strong>负载均衡器：</strong>LB 本身可能成为瓶颈。<br>③ <strong>共享资源：</strong>Redis、MQ——"无状态背后的有状态"是真正的天花板。<br><span class="highlight">真谛：</span>无状态只是"应用层无状态"，基础层一定有状态。把有状态的集中管理，让无状态的任意复制。</div></details>
+  <details class="socratic"><summary>CQRS 的代价是什么？<span class="socratic-num">Q2</span></summary><div class="socratic-a"><span class="highlight">隐藏代价：</span><br>① <strong>最终一致性：</strong>写完命令模型，查询模型可能还没更新。<br>② <strong>代码量翻倍：</strong>命令和查询各一套代码。<br>③ <strong>运维复杂度：</strong>两个模型独立部署。<br><span class="highlight">不该用的场景：</span>简单 CRUD、团队小、强一致性要求。<br><span class="highlight">黄金法则：</span>CQRS 解决"读写模型根本不同"的问题，不是"代码拆两半"。</div></details>
+  <details class="socratic"><summary>一致性哈希解决了什么又引入了什么？<span class="socratic-num">Q3</span></summary><div class="socratic-a"><span class="highlight">解决：</span>普通哈希 hash(key) % N 在节点变化时数据全乱。<br><span class="highlight">一致性哈希：</span>节点和数据映射到同一个环，增删节点只影响相邻节点。<br><span class="highlight">新问题：</span>① 数据倾斜 → 虚拟节点；② 节点挂了 → 数据全落到下一个 → 可能雪崩；③ 维护复杂度。<br><span class="highlight">本质：</span>用"少量不一致"换"可扩展性"。</div></details>
+</section>
+
+
+<div class="feynman" style="margin-top:40px;background:linear-gradient(135deg,rgba(251,191,36,0.06),rgba(107,70,17,0.04));border-color:rgba(251,191,36,0.3)">
+  <p style="font-size:11px;color:#fbbf24;margin-bottom:8px;font-weight:700">📖 本文思想来源</p>
+  <p style="font-size:12px;line-height:1.9">
+    <strong>《设计数据密集型应用》DDIA</strong> —— Martin Kleppmann<br>
+    • <span style="color:#fcd34d">第 5 章「复制」</span>：读扩展的基础——为什么无状态才能水平复制<br>
+    • <span style="color:#fcd34d">第 6 章「分区」</span>：一致性哈希、分片策略、再平衡——本文最核心的原料（Kleppmann 对一致性哈希的批判性分析尤其精彩）<br>
+    • <span style="color:#fcd34d">第 12 章「数据系统的未来」</span>：CQRS 和事件溯源的终极归宿<br>
+    • <span style="color:#94a3b8">另见：</span>Martin Fowler「CQRS」博文、Greg Young 事件溯源演讲、Dynamo 论文
+  </p>
+</div>
+
+<section id="sc-summary" class="section" style="margin-top:40px">
+  <h2>🎙️ 口播总结</h2>
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(248,81,73,0.04));border-color:rgba(251,191,36,0.3)">
+    <p style="font-size:15px;line-height:2"><strong>这篇文章讲的是系统怎么从 1 万用户撑到 1 亿用户。</strong></p>
+    <p>可扩展性的核心公式就五个字：无状态加分片。无状态就像快餐店——任何一个收银员都能服务你，因为不记你是谁。加机器就能加容量。有状态就像理发店固定师傅——师傅不在你就没法理发。</p>
+    <p>阿姆达尔定律揭示了扩展的天花板：串行部分决定你加多少机器都没用。所以 DDD 的聚合设计要坚持"小聚合"原则，减小锁范围和事务边界。</p>
+    <p>数据层扩展有三种策略：Hash 分片均匀但扩容难、范围分片扩容容易但热点集中、目录分片灵活但路由表本身要保证高可用。一致性哈希是精髓——加节点只影响邻居，不像普通哈希要全量迁移。Redis Cluster 把 16384 个 slot 分到不同节点，客户端直接路由。</p>
+    <p>CQRS 读写分离让读和写用不同的模型甚至不同的数据库。事件溯源像会计账簿——只记录每笔流水，余额是算出来的，永远可以回溯历史。</p>
+    <p>终极方案是单元化架构——每个机房是一个自给自足的单元，用户路由到最近单元，无限水平扩展。</p>
+    <p><strong>如果只能记住一句话，那就是"无状态+分片+异步=无限扩展"。</strong></p>
+  </div>
+</section>
+
+
+</main>
+</div>
+
+<script src="/mobile.js"></script>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>系统设计方法论 · 方法论 + 案例 · 费曼学习法</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascada Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+
+  /* 苏格拉底提问 */
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .step { counter-increment: step; }
+  .step::before { content: 'Step ' counter(step); display: block; font-size: 11px; color: var(--accent); font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🏛️ 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">第一部分：方法论</div>
+  <a class="nav-item" href="#sd-method">🎯 四步解题框架</a>
+  <a class="nav-item" href="#sd-require">📋 需求澄清</a>
+  <a class="nav-item" href="#sd-estimate">📐 容量估算</a>
+  <a class="nav-item" href="#sd-tradeoff">⚖️ 权衡取舍</a>
+  <div class="nav-section">第二部分：案例实战</div>
+  <a class="nav-item" href="#sd-url">🔗 案例1：短链接系统</a>
+  <a class="nav-item" href="#sd-ratelimit">🚦 案例2：限流器</a>
+  <a class="nav-item" href="#sd-chat">💬 案例3：聊天系统</a>
+  <a class="nav-item" href="#sd-feed">📰 案例4：信息流</a>
+  <a class="nav-item" href="#sd-kv">🗄️ 案例5：KV 存储</a>
+  <a class="nav-item" href="#sd-summary">🎙️ 口播总结</a>
+  <a class="nav-item" href="#sd-socratic">💬 苏格拉底提问</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>🏛️ 系统设计方法论</h2>
+  <div class="feynman">
+    <p><strong>系统设计方法论不是考你背答案，是考你"怎么想"。</strong>考官想看的是：你能不能把模糊的需求变成清晰的架构，能不能在约束下做合理的权衡。</p>
+    <p>本文分两部分：<strong>方法论</strong>教你怎么解题，<strong>五个经典案例</strong>带你走完完整流程。</p>
+  </div>
+</section>
+
+<!-- ═══════ 方法论 ═══════ -->
+<section id="sd-method" class="section">
+  <h2>🎯 四步解题框架</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏗️ 类比：</span>系统设计方法论 = 盖房子——①问清楚要几室几厅（需求澄清）②算算需要多少砖（容量估算）③画户型图（高层设计）④选材料定细节（深入组件）。</p>
+  </div>
+
+  <div class="info-card">
+    <h4>黄金 45 分钟分配</h4>
+    <table>
+      <tr><th>时间</th><th>阶段</th><th>做什么</th><th>禁忌</th></tr>
+      <tr><td>0-5min</td><td><strong>需求澄清</strong></td><td>问功能/非功能需求，明确边界</td><td>别上来就画图</td></tr>
+      <tr><td>5-10min</td><td><strong>容量估算</strong></td><td>QPS、存储、带宽大概算一下</td><td>别精确到小数点</td></tr>
+      <tr><td>10-25min</td><td><strong>高层设计</strong></td><td>画系统架构图，定组件和数据流</td><td>别陷入一个组件细节</td></tr>
+      <tr><td>25-40min</td><td><strong>深入组件</strong></td><td>挑 2-3 个核心组件深挖</td><td>别每个都蜻蜓点水</td></tr>
+      <tr><td>40-45min</td><td><strong>总结权衡</strong></td><td>复盘瓶颈、讨论扩展方案</td><td>别说"这个很简单"</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════ 需求澄清 ═══════ -->
+<section id="sd-require" class="section">
+  <h2>📋 需求澄清：不问清楚就设计 = 耍流氓</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏠 类比：</span>客户说"我要盖个房子"。你得问：几个人住？几层？预算多少？要车库吗？要求抗震几级？不问你直接盖了个别墅，客户说"我只要个平房"——白干了。</p>
+  </div>
+
+  <h3>必问三类问题</h3>
+  <table>
+    <tr><th>类型</th><th>问题模板</th><th>为什么重要</th></tr>
+    <tr><td><strong>功能需求</strong></td><td>"用户能做什么？核心功能是什么？"</td><td>决定做什么</td></tr>
+    <tr><td><strong>非功能需求</strong></td><td>"QPS 多大？延迟要求？一致性要求？"</td><td>决定怎么做</td></tr>
+    <tr><td><strong>边界条件</strong></td><td>"多少用户？读写比例？数据保留多久？"</td><td>决定做多大</td></tr>
+  </table>
+
+  <h4>万能提问清单（实战时直接套用）</h4>
+  <div class="info-card">
+    <ol>
+      <li><strong>用户量：</strong>DAU 多少？峰值 QPS？</li>
+      <li><strong>读写比：</strong>读多写少还是写多读少？</li>
+      <li><strong>数据量：</strong>每天产生多少数据？需要存储多久？</li>
+      <li><strong>一致性：</strong>需要强一致还是最终一致？</li>
+      <li><strong>延迟：</strong>P99 延迟要求多少毫秒？</li>
+      <li><strong>可用性：</strong>几个 9？能接受多长时间的不可用？</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ═══════ 估算 ═══════ -->
+<section id="sd-estimate" class="section">
+  <h2>📐 容量估算：用"信封背面"算清楚</h2>
+  <div class="feynman">
+    <p><span class="analogy">🧮 类比：</span>去超市买东西，你不需要算到分——知道大概 300 块就够了。系统设计估算同理：不必精确，数量级对就行。</p>
+  </div>
+
+  <h3>常用数字（背下来）</h3>
+  <table>
+    <tr><th>操作</th><th>耗时</th><th>记住这个</th></tr>
+    <tr><td>L1 缓存访问</td><td>~1 ns</td><td>—</td></tr>
+    <tr><td>内存访问</td><td>~100 ns</td><td>比 L1 慢 100 倍</td></tr>
+    <tr><td>SSD 随机读</td><td>~100 μs</td><td>比内存慢 1000 倍</td></tr>
+    <tr><td>同机房网络 RTT</td><td>~0.5 ms</td><td>500 μs</td></tr>
+    <tr><td>跨洲网络 RTT</td><td>~150 ms</td><td>—</td></tr>
+  </table>
+
+  <h3>估算公式</h3>
+  <pre><code><span class="cm">// 每日活跃用户 1000 万，每人每天发 5 条，读写比 10:1</span>
+写 QPS = 10M × 5 / 86400 ≈ <span class="num">580</span>
+读 QPS = 580 × 10 = <span class="num">5800</span>
+峰值 QPS = 5800 × 2 = <span class="num">11600</span>
+
+<span class="cm">// 存储：每条消息 1KB，保存 5 年</span>
+日增量 = 10M × 5 × 1KB = <span class="num">50 GB</span>
+5 年 = 50 × 365 × 5 ≈ <span class="num">91 TB</span></code></pre>
+  <p>关键原则：<strong>数量级对就行，考官不抠数字。</strong></p>
+</section>
+
+<!-- ═══════ 权衡 ═══════ -->
+<section id="sd-tradeoff" class="section">
+  <h2>⚖️ 权衡取舍：考官最想听的部分</h2>
+  <div class="feynman">
+    <p><span class="analogy">⚖️ 类比：</span>买车——动力强就费油，省油就动力弱，又强又省油就贵。系统设计处处是这种不可能三角。</p>
+  </div>
+
+  <h3>五个经典权衡</h3>
+  <table>
+    <tr><th>权衡</th><th>选 A</th><th>选 B</th><th>怎么选</th></tr>
+    <tr><td><strong>SQL vs NoSQL</strong></td><td>强一致、支持 JOIN</td><td>水平扩展容易、Schema 灵活</td><td>需要事务/SQL → SQL；海量+扩展 → NoSQL</td></tr>
+    <tr><td><strong>强一致 vs 最终一致</strong></td><td>数据绝对正确</td><td>性能高、可用性高</td><td>金融/库存 → 强一致；社交/缓存 → 最终一致</td></tr>
+    <tr><td><strong>推 vs 拉</strong></td><td>实时性好</td><td>实现简单</td><td>粉丝少推、粉丝多拉、大 V 推拉结合</td></tr>
+    <tr><td><strong>长连接 vs 短连接</strong></td><td>实时推送</td><td>实现简单</td><td>聊天/实时通知 → WebSocket；普通 API → HTTP</td></tr>
+    <tr><td><strong>单机大 vs 集群小</strong></td><td>运维简单</td><td>弹性扩缩</td><td>初创 → 单体；规模上来了 → 微服务</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 案例1：短链接 ═══════ -->
+<section id="sd-url" class="section">
+  <h2>🔗 案例1：设计一个短链接系统（TinyURL）</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📎 类比：</span>你把一长串网址缩成 <code>t.cn/abc123</code>。就像给文件起短名——原名太长记不住，短名好记好分享。</p>
+  </div>
+
+  <h3>Step 1：需求澄清</h3>
+  <ul>
+    <li><strong>功能：</strong>输入长 URL → 返回短 URL；访问短 URL → 重定向到长 URL</li>
+    <li><strong>QPS：</strong>写 100/秒，读 10,000/秒（读写比 100:1）</li>
+    <li><strong>存储：</strong>每天 10 亿条短链接，保存 10 年</li>
+    <li><strong>短码长度：</strong>7 位（62^7 ≈ 3.5 万亿，够用）</li>
+  </ul>
+
+  <h3>Step 2：核心设计</h3>
+  <div class="info-card">
+    <h4>ID 生成方案对比</h4>
+    <table>
+      <tr><th>方案</th><th>优点</th><th>缺点</th><th>选它？</th></tr>
+      <tr><td>Hash(MD5/SHA256)</td><td>简单</td><td>碰撞、长度不可控</td><td>❌</td></tr>
+      <tr><td>UUID → 62 进制</td><td>无碰撞</td><td>22 字符太长</td><td>❌</td></tr>
+      <tr><td><strong>雪花 ID → 62 进制</strong></td><td><strong>短、有序、分布式</strong></td><td>依赖机器时钟</td><td><strong>✅ 推荐</strong></td></tr>
+      <tr><td>自增 ID + 62 进制</td><td>最短</td><td>单点瓶颈、可被遍历</td><td>⚠️</td></tr>
+    </table>
+  </div>
+
+  <h3>Step 3：架构图</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 220" style="max-width:820px;width:100%">
+      <defs><marker id="aSU" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
+      <rect x="20" y="20" width="120" height="40" rx="6" fill="rgba(8,51,68,0.3)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="80" y="45" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="11">User</text>
+      <line x1="140" y1="40" x2="190" y2="40" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aSU)"/>
+
+      <rect x="195" y="10" width="150" height="60" rx="8" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="270" y="35" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">API 网关</text>
+      <text x="270" y="55" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">限流 · 鉴权 · 路由</text>
+
+      <line x1="345" y1="40" x2="395" y2="40" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#aSU)"/>
+
+      <rect x="400" y="10" width="130" height="60" rx="8" fill="rgba(6,78,59,0.15)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="465" y="35" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">Short URL Svc</text>
+      <text x="465" y="55" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">无状态 · 多副本</text>
+
+      <line x1="530" y1="55" x2="530" y2="90" stroke="#34d399" stroke-width="1.2"/>
+      <line x1="465" y1="70" x2="465" y2="90" stroke="#34d399" stroke-width="1.2"/>
+
+      <rect x="400" y="95" width="130" height="45" rx="6" fill="rgba(76,29,149,0.12)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="465" y="115" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">ID Generator</text>
+      <text x="465" y="132" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">雪花算法 → 62进制</text>
+
+      <line x1="530" y1="117" x2="590" y2="117" stroke="#a78bfa" stroke-width="1.2"/>
+
+      <rect x="595" y="95" width="200" height="45" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="695" y="113" text-anchor="middle" fill="#fca5a5" font-family="JetBrains Mono,monospace" font-size="10">MySQL 分片 (Hash)</text>
+      <text x="695" y="130" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">短码→长URL · 长URL→短码</text>
+
+      <rect x="20" y="160" width="780" height="50" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="40" y="182" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">读路径：User → API网关 → Cache(Redis) → miss → DB → 302 重定向</text>
+      <text x="40" y="200" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="10">写路径：User → API网关 → ID生成器 → 存DB → 写Cache → 返回短码</text>
+    </svg>
+    <div class="diagram-caption">短链接系统架构：API 网关 + 无状态服务 + 雪花 ID 生成 + MySQL 分片 + Redis 缓存</div>
+  </div>
+
+  <h3>Step 4：深入要点</h3>
+  <ul>
+    <li><strong>302 还是 301？</strong>临时重定向用 302（可以统计点击），永久用 301（浏览器缓存）</li>
+    <li><strong>短码预生成：</strong>ID 生成器后台预生成一批短码放内存，服务直接取，无需每次调 ID 服务</li>
+    <li><strong>布隆过滤器：</strong>读请求先查布隆，不存在直接 404，避免穿透到 DB</li>
+    <li><strong>自定义短码：</strong>用户想 <code>t.cn/my-brand</code>，单独一张表存，优先匹配</li>
+  </ul>
+</section>
+
+<!-- ═══════ 案例2：限流器 ═══════ -->
+<section id="sd-ratelimit" class="section">
+  <h2>🚦 案例2：设计一个限流器（Rate Limiter）</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🚗 类比：</span>高速公路收费站——不管后面排多长队，闸机每 5 秒放一辆。限流器就是保护下游服务的收费站。</p>
+  </div>
+
+  <h3>四种算法对比</h3>
+  <table>
+    <tr><th>算法</th><th>原理</th><th>允许突发？</th><th>内存消耗</th><th>场景</th></tr>
+    <tr><td><strong>固定窗口</strong></td><td>每分钟固定 N 次</td><td>边界突刺</td><td>⭐ 极小</td><td>简单场景</td></tr>
+    <tr><td><strong>滑动窗口日志</strong></td><td>记每条请求时间戳</td><td>精确</td><td>⭐⭐⭐ 大</td><td>精确限流</td></tr>
+    <tr><td><strong>滑动窗口计数器</strong></td><td>前窗口×权重+当前窗口</td><td>较平滑</td><td>⭐ 小</td><td>推荐</td></tr>
+    <tr><td><strong>令牌桶</strong></td><td>固定速率放令牌</td><td>✅ 支持</td><td>⭐ 极小</td><td><strong>最常用</strong></td></tr>
+    <tr><td><strong>漏桶</strong></td><td>请求排队，固定速率流出</td><td>❌ 削峰</td><td>⭐ 极小</td><td>严格平滑</td></tr>
+  </table>
+
+  <h3>分布式限流架构</h3>
+  <pre><code><span class="cm">// Redis + Lua 实现滑动窗口计数器（原子执行）</span>
+<span class="kw">local</span> key = KEYS[1]          <span class="cm">-- rate:user:123:minute</span>
+<span class="kw">local</span> limit = <span class="kw">tonumber</span>(ARGV[1])  <span class="cm">-- 100</span>
+<span class="kw">local</span> window = <span class="kw">tonumber</span>(ARGV[2])  <span class="cm">-- 60 秒</span>
+<span class="kw">local</span> now = <span class="kw">tonumber</span>(ARGV[3])
+
+redis.call(<span class="str">'ZREMRANGEBYSCORE'</span>, key, <span class="num">0</span>, now - window)
+<span class="kw">local</span> count = redis.call(<span class="str">'ZCARD'</span>, key)
+<span class="kw">if</span> count >= limit <span class="kw">then</span> <span class="kw">return</span> <span class="num">0</span> <span class="kw">end</span>
+redis.call(<span class="str">'ZADD'</span>, key, now, now .. <span class="str">':'</span> .. <span class="kw">math.random</span>())
+redis.call(<span class="str">'EXPIRE'</span>, key, window)
+<span class="kw">return</span> <span class="num">1</span>  <span class="cm">-- 放行</span></code></pre>
+
+  <div class="info-card">
+    <h4>多层限流架构</h4>
+    <p>① <strong>网关层：</strong>全局 QPS 限制（Nginx/Kong）→ ② <strong>服务层：</strong>单服务 QPS（令牌桶中间件）→ ③ <strong>用户层：</strong>每用户每分钟 N 次（Redis 滑动窗口）→ ④ <strong>业务层：</strong>发短信/支付等敏感操作（独立计数器）</p>
+  </div>
+</section>
+
+<!-- ═══════ 案例3：聊天系统 ═══════ -->
+<section id="sd-chat" class="section">
+  <h2>💬 案例3：设计一个聊天系统（WhatsApp）</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📱 类比：</span>聊天系统 = 快递 + 信箱。你发消息（寄快递），服务器帮你投递到对方信箱。对方在线直接投递（WebSocket 推送），不在线存到信箱等他来取（离线消息）。</p>
+  </div>
+
+  <h3>核心抉择</h3>
+  <table>
+    <tr><th>问题</th><th>选择</th><th>原因</th></tr>
+    <tr><td>通信协议</td><td><strong>WebSocket</strong></td><td>双向实时、长连接、低开销</td></tr>
+    <tr><td>存储</td><td>MySQL + Redis + 对象存储</td><td>消息存 MySQL 分片，图片/视频存 S3</td></tr>
+    <tr><td>一对一消息</td><td>服务端中转</td><td>不直连，安全、离线消息支持</td></tr>
+    <tr><td>群聊</td><td>消息队列广播</td><td>一条消息 → MQ 分发给所有群成员</td></tr>
+    <tr><td>已读回执</td><td>异步更新</td><td>不阻塞消息发送，后台批量更新 last_read</td></tr>
+  </table>
+
+  <h3>架构要点</h3>
+  <div class="info-card">
+    <ol>
+      <li><strong>WebSocket 长连接：</strong>客户端连到 WebSocket 服务器，服务端维护 userId → connection 映射。Go 用 <code>gorilla/websocket</code></li>
+      <li><strong>消息投递：</strong>发送方 → API → 消息服务 → 存 DB → 查接收方是否在线 → 在线推 WebSocket / 离线存 Redis 等拉取</li>
+      <li><strong>群聊扩散：</strong>一个 500 人群发一条消息 → 消息服务把消息写入 MQ → MQ 广播给 500 个消费者的 WebSocket 连接</li>
+      <li><strong>在线状态：</strong>WebSocket 心跳（每 10s），断开后标离线，通知好友</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ═══════ 案例4：信息流 ═══════ -->
+<section id="sd-feed" class="section">
+  <h2>📰 案例4：设计一个信息流系统（Twitter Feed）</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📬 类比：</span>你关注了 100 个人。每个人发推文就像往你的信箱投一封信。你打开信箱（刷新 Feed），看到所有关注的人的信件按时间排序。</p>
+  </div>
+
+  <h3>推模式 vs 拉模式 vs 推拉结合</h3>
+  <table>
+    <tr><th>模式</th><th>原理</th><th>读延迟</th><th>写压力</th><th>存储</th></tr>
+    <tr><td><strong>纯推</strong></td><td>发推时写入所有粉丝的 Feed</td><td>⭐ 低</td><td>大 V 爆炸</td><td>每用户存一份 Feed</td></tr>
+    <tr><td><strong>纯拉</strong></td><td>刷 Feed 时去拉所有关注者的推文</td><td>⭐⭐⭐ 高</td><td>⭐ 低</td><td>只存一份</td></tr>
+    <tr><td><strong>推拉结合 ✅</strong></td><td>普通用户推，大 V 拉</td><td>⭐ 低</td><td>⭐⭐ 可控</td><td>混合</td></tr>
+  </table>
+
+  <h3>推拉结合的架构</h3>
+  <div class="info-card">
+    <h4>推（普通用户，粉丝 < 10 万）</h4>
+    <p>用户发推 → 写入自己的推文表 → 粉丝 Feed 列表中追加推文 ID → Redis List/ZSet 存储 → 粉丝打开 App 直接读自己的 Feed 列表。</p>
+    <h4>拉（大 V，粉丝 > 10 万）</h4>
+    <p>大 V 发推 → 存入大 V 专属缓存 → 粉丝刷 Feed → 合并"推来的 Feed"+"拉来的大 V Feed"→ 排序 → 展示。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 200" style="max-width:820px;width:100%">
+      <defs><marker id="aFD" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
+      <rect x="10" y="10" width="250" height="80" rx="8" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="135" y="35" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">普通用户发文（推）</text>
+      <text x="30" y="58" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">发推 → 写入粉丝 Feed 列表</text>
+      <text x="30" y="76" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">每个粉丝的 Redis ZSet 追加推文ID</text>
+      <rect x="290" y="10" width="250" height="80" rx="8" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="415" y="35" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">大V发文（拉）</text>
+      <text x="310" y="58" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">发推 → 写入大V专属缓存</text>
+      <text x="310" y="76" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">粉丝刷新时拉取+合并</text>
+      <rect x="570" y="10" width="240" height="80" rx="8" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="690" y="35" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">粉丝刷新（合并）</text>
+      <text x="590" y="58" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">读自己的Feed列表 + 拉大V缓存</text>
+      <text x="590" y="76" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">ZUNIONSTORE 合并 → 按时间排序</text>
+      <text x="30" y="120" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">⚖️ 分界线：粉丝数 < 10万 推 / > 10万 拉</text>
+      <rect x="30" y="130" width="780" height="55" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="50" y="155" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="10">存储：每个用户 Redis ZSet（member=推文ID, score=时间戳）→ ZREVRANGE 倒序取最近N条</text>
+      <text x="50" y="173" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">为什么推大V的Feed会爆炸？Justin Bieber 发一条→写入1亿粉丝的ZSet→1亿次Redis写→不可接受</text>
+    </svg>
+    <div class="diagram-caption">信息流推拉结合：普通用户推（预先写Feed） + 大V拉（刷新时拉取），各取所长</div>
+  </div>
+
+  <h4>Feed 存储选型</h4>
+  <p>每个用户的 Feed 只需存最近 N 条（如 1000 条），用 <strong>Redis Sorted Set</strong>——推文 ID 为 member，时间戳为 score。ZREVRANGE 按时间倒序取。</p>
+</section>
+
+<!-- ═══════ 案例5：KV存储 ═══════ -->
+<section id="sd-kv" class="section">
+  <h2>🗄️ 案例5：设计一个分布式 KV 存储（DynamoDB-like）</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📕 类比：</span>字典——每个词（key）对应一个解释（value）。分布式 KV 存储 = 把一本超厚的字典拆成多本，分别放在不同书架上，但查词时你只需要知道去哪个书架。</p>
+  </div>
+
+  <h3>核心设计决策</h3>
+  <table>
+    <tr><th>问题</th><th>选择</th><th>原因</th></tr>
+    <tr><td>分片策略</td><td><strong>一致性哈希 + 虚拟节点</strong></td><td>加节点只迁移局部数据</td></tr>
+    <tr><td>数据复制</td><td>N=3（每个 key 存 3 副本）</td><td>平衡可靠性和成本</td></tr>
+    <tr><td>一致性</td><td>最终一致（ hinted handoff + read repair）</td><td>高可用 > 强一致</td></tr>
+    <tr><td>冲突解决</td><td>向量时钟（Vector Clock）</td><td>判断更新顺序</td></tr>
+    <tr><td>故障检测</td><td>Gossip 协议</td><td>去中心化、容错</td></tr>
+    <tr><td>存储引擎</td><td>LSM-Tree</td><td>写优化 ＞ 读优化</td></tr>
+  </table>
+
+  <h3>LSM-Tree（写优化的秘密）</h3>
+  <div class="feynman">
+    <p><span class="analogy">📝 类比：</span>写日记——不是每次写都翻到对应日期那页（随机写），而是在最后一页一直往下写（顺序写）。LSM-Tree 就是数据的"一直往下写"模式——先写内存 MemTable，满了刷到磁盘 SSTable，后台合并（Compaction）去重。</p>
+  </div>
+
+  <pre><code><span class="cm">// LSM-Tree 写流程</span>
+写入 → MemTable (内存) → 满了 → Immutable MemTable → 刷盘 SSTable
+读取 → 查 MemTable → 查 Immutable → 查 SSTable（布隆过滤器加速）
+后台 → Compaction 合并多个 SSTable → 去重 + 删除过期数据</code></pre>
+
+  <h4>为什么选 LSM-Tree 而不是 B+Tree？</h4>
+  <p>B+Tree 写是随机 IO（要找到对应页再修改），LSM-Tree 是顺序 IO（追加写）。<strong>对于写多读少的 KV 存储，顺序写比随机写快 100 倍。</strong></p>
+</section>
+
+
+<!-- ═══════ 苏格拉底式提问 ═══════ -->
+<section id="sd-socratic" class="section">
+  <h2>💬 苏格拉底式提问 —— 检验真理解</h2>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:20px">以下问题用来逼你追问本质。先自己想 30 秒，再点开验证。</p>
+
+  <details class="socratic">
+    <summary>短链接用 302 还是 301？这个选择会影响什么？<span class="socratic-num">Q1</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">选 302（临时重定向），不能用 301（永久重定向）。</span><br>
+      • <strong>301 的问题：</strong>浏览器会缓存 301——第一次访问后，浏览器直接跳转目标 URL，不再请求短链接服务器。后果：你再也统计不到这个链接的点击量。更糟的是，如果你改了目标 URL，老用户仍然被缓存导向旧地址。<br>
+      • <strong>302 的行为：</strong>每次都会请求短链接服务器 → 可以统计点击 → 可以动态修改目标 URL → 可以做 A/B 测试。<br>
+      <span class="highlight">技术之外：</span>302 还有一个好处——可以在跳转前做风控（检查 IP、频率限制）、用户画像（记录 User-Agent、地理位置）等。301 完全跳过了服务端。
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>信息流为什么是"推拉结合"而不是全推或全拉？<span class="socratic-num">Q2</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">全推和全拉各有致命缺陷，结合才能互补。</span><br>
+      <span class="highlight">全推的问题：</span>大 V 有 1 亿粉丝，发一条动态 → 写入 1 亿个收件箱 → 写放大灾难。而且大部分粉丝根本不活跃，白白浪费存储和 IO。<br>
+      <span class="highlight">全拉的问题：</span>你关注了 1000 人，打开 App → 查询 1000 个人的最新动态 → 合并排序 → 非常慢。<br>
+      <span class="highlight">推拉结合：</span><br>
+      • 普通用户 → 推（关注者少，写入成本低）。<br>
+      • 大 V → 拉（关注者太多，推送成本太高）。<br>
+      • 活跃用户 → 推（保证体验）。<br>
+      • 非活跃用户 → 拉（他们不常打开，推了也浪费）。<br>
+      <span class="highlight">本质：</span>这是一个"计算换存储"还是"存储换计算"的权衡。推 = 写时计算 + 存储放大，拉 = 读时计算 + 延迟放大。
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>限流器应该放在哪一层？网关层还是应用层？有什么区别？<span class="socratic-num">Q3</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">应该多层都放，各司其职。</span><br>
+      <span class="highlight">网关层限流：</span><br>
+      • <strong>作用：</strong>保护整个系统不被单个用户/IP 打垮。<br>
+      • <strong>粒度：</strong>粗粒度——按 IP/用户 ID/API Key。<br>
+      • <strong>优点：</strong>请求在到达业务层之前就被拦截，节省下游资源。<br>
+      • <strong>缺点：</strong>无法感知业务语义（比如"这个用户虽然是高频请求，但都是轻量操作"）。<br>
+      <span class="highlight">应用层限流：</span><br>
+      • <strong>作用：</strong>保护具体的服务资源（DB 连接池、线程池）。<br>
+      • <strong>粒度：</strong>细粒度——按 API 接口 + 用户等级 + 时间段。<br>
+      • <strong>优点：</strong>可以感知业务——VIP 用户配额更高，付费接口单独限流。<br>
+      • <strong>缺点：</strong>请求已进入业务层，消耗了部分资源。<br>
+      <span class="highlight">最佳实践：</span>网关 → 粗粒度全局限流 + 应用层 → 细粒度业务限流 + 存储层 → 连接池限流。三道防线层层过滤。
+    </div>
+  </details>
+</section>
+
+
+<!-- ═══════ 口播 ═══════ -->
+<div class="feynman" style="margin-top:40px;background:linear-gradient(135deg,rgba(251,191,36,0.06),rgba(107,70,17,0.04));border-color:rgba(251,191,36,0.3)">
+  <p style="font-size:11px;color:#fbbf24;margin-bottom:8px;font-weight:700">📖 本文思想来源</p>
+  <p style="font-size:12px;line-height:1.9">
+    <strong>《设计数据密集型应用》DDIA</strong> —— Martin Kleppmann<br>
+    • <span style="color:#fcd34d">第 12 章「数据系统的未来」</span>：系统设计方法论的终极纲领——Kleppmann 用一整章告诉你"没有银弹，只有 trade-off"，这正是考官想听的<br>
+    • <span style="color:#fcd34d">全书的案例散布在各章</span>：短链接（Ch5 复制）、信息流（Ch6 分区 + Ch11 流处理）、分布式 KV（Ch3 存储引擎）、限流器（Ch8 分布式系统）<br>
+    <strong>《系统设计方法论》（Alex Xu）</strong> —— 四步框架的来源<br>
+    • <span style="color:#fcd34d">第 1 章</span>：Back-of-the-envelope 估算方法<br>
+    • <span style="color:#94a3b8">另见：</span>Grokking the System Design Interview、High Scalability 博客、各大公司工程博客
+  </p>
+</div>
+
+<section id="sd-summary" class="section" style="margin-top:40px">
+  <h2>🎙️ 口播总结</h2>
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(248,81,73,0.04));border-color:rgba(251,191,36,0.3)">
+    <p style="font-size:15px;line-height:2"><strong>这篇文章帮你拿下系统设计方法论。</strong></p>
+    <p>系统设计方法论的核心不是背答案，是展示你的思维过程。记住四步框架：需求澄清问清楚做什么、容量估算算清楚做多大、高层设计画架构图、深入组件挑 2 到 3 个核心模块深挖。</p>
+    <p>五个经典案例覆盖了实战中最高频的题型。短链接系统的关键是雪花 ID 生成短码，读写比 100 比 1 所以强依赖缓存。限流器首选令牌桶算法，用 Redis 加 Lua 做分布式滑动窗口。聊天系统用 WebSocket 长连接做实时双向通信，群聊用消息队列做扩散。信息流系统的核心是推拉结合——普通用户推、大 V 拉，Redis Sorted Set 存 Feed 按时间排序。分布式 KV 存储用一致性哈希分片、LSM-Tree 做写优化、Gossip 协议做故障检测、向量时钟解决冲突。</p>
+    <p>实战中最打动考官的不是你"知道某个方案"，而是你能说出"为什么选这个方案而不是那个"。每个选择背后都要有理由——数据量、读写比、一致性要求、延迟要求决定了你的架构决策。</p>
+    <p><strong>如果只能记住一个框架，那就是"需求→估算→设计→深挖"四步走。按这个节奏来，45 分钟刚好，考官也听得舒服。</strong></p>
+  </div>
+</section>
+
+<p style="text-align:center;color:var(--muted);margin-top:20px;padding-bottom:40px;font-size:12px">
+  🏛️ 系统设计知识库完成 · 方法论 + 五案例<br>
+  <a href="/" style="color:var(--accent)">← 返回首页</a>
+</p>
+
+</main>
+</div>
+
+<script src="/mobile.js"></script>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

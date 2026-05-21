@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka 进阶实战 · 从幂等到KRaft · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .voice-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .voice-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 420px; }
+  }
+
+  /* Kafka custom styles */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) { .diagram svg { min-width: 420px; } }
+  .qa-q { cursor: pointer; user-select: none; }
+  .qa-q::after { content: ' ▾'; opacity: 0.5; }
+  .qa-q.open::after { content: ' ▴'; }
+  .qa-a { display: none; }
+  .qa-a.open { display: block; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">进阶</div>
+  <a class="nav-item" href="#exactly-once">🎯 精确一次语义</a>
+  <a class="nav-item" href="#rebalance">🔄 重平衡</a>
+  <a class="nav-item" href="#streams">🌊 Kafka Streams</a>
+  <a class="nav-item" href="#kraft">⚡ KRaft模式</a>
+  <a class="nav-item" href="#partition">📊 分区分配</a>
+  <a class="nav-item" href="#watermark">📏 高水位与LEO</a>
+  <a class="nav-item" href="#tuning">🔧 压测调优</a>
+  <div class="nav-section">实战</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ====== 总览 ====== -->
+<section class="section" id="overview">
+  <h2>📋 总览：Kafka 进阶实战全景</h2>
+  <p>Apache Kafka 不只是"消息队列"——它是<strong>分布式流处理平台</strong>。进阶开发者需要掌握：<strong>幂等/事务生产者</strong>保证精确一次语义、<strong>重平衡机制</strong>的优雅处理、<strong>Kafka Streams</strong> 实时流计算、<strong>KRaft</strong> 去 ZooKeeper 架构、<strong>分区分配策略</strong>、<strong>高水位与 Leader Epoch</strong> 的数据一致性，以及<strong>压测调优</strong>方法论。</p>
+
+  <div class="feynman">
+    <p>想象 Kafka 是一个<strong>超级邮局系统</strong>：</p>
+    <p><span class="analogy">普通邮件（消息）从寄件人（Producer）送到收件人（Consumer），中间经过分拣中心（Broker）。</span></p>
+    <p>进阶话题就是让这个邮局系统更可靠、更高效、更智能：</p>
+    <ul>
+      <li><strong>幂等/事务</strong> = 确保信件不会重复投递，且一组信件要么全到要么全不到</li>
+      <li><strong>重平衡</strong> = 邮递员变更路线时不让信件丢失</li>
+      <li><strong>Kafka Streams</strong> = 在信件还在传送带上时就进行实时处理</li>
+      <li><strong>KRaft</strong> = 邮局去掉了外部"总调度系统"，自己管自己</li>
+      <li><strong>高水位</strong> = 标记"哪些信件已经安全送达可被读取"</li>
+      <li><strong>压测调优</strong> = 测试邮局能处理多少信件并发，并优化效率</li>
+    </ul>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="380" fill="#0f172a" rx="8"/>
+      <text x="400" y="36" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Kafka 进阶技术栈总览</text>
+
+      <!-- Producer -->
+      <rect x="30" y="70" width="220" height="120" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="140" y="98" text-anchor="middle" fill="#f87171" font-size="14" font-weight="bold">📤 生产者进阶</text>
+      <text x="140" y="122" text-anchor="middle" fill="#f87171" font-size="12">幂等性：<tspan fill="#c9d1d9">enable.idempotence=true</tspan></text>
+      <text x="140" y="142" text-anchor="middle" fill="#fbbf24" font-size="12">事务：<tspan fill="#c9d1d9">transactional.id</tspan></text>
+      <text x="140" y="165" text-anchor="middle" fill="#8b949e" font-size="11">保证 exactly-once 语义</text>
+
+      <!-- Broker -->
+      <rect x="290" y="70" width="220" height="120" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="400" y="98" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">🏛️ Broker 进阶</text>
+      <text x="400" y="122" text-anchor="middle" fill="#22d3ee" font-size="12">KRaft 模式（去ZooKeeper）</text>
+      <text x="400" y="142" text-anchor="middle" fill="#a78bfa" font-size="12">重平衡 + 分区分配</text>
+      <text x="400" y="165" text-anchor="middle" fill="#8b949e" font-size="11">Leader Epoch + 高水位</text>
+
+      <!-- Consumer -->
+      <rect x="550" y="70" width="220" height="120" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="660" y="98" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">📥 消费者/流处理</text>
+      <text x="660" y="122" text-anchor="middle" fill="#3fb950" font-size="12">Kafka Streams DSL</text>
+      <text x="660" y="142" text-anchor="middle" fill="#fbbf24" font-size="12">Stream-Table 二元性</text>
+      <text x="660" y="165" text-anchor="middle" fill="#8b949e" font-size="11">实时流计算引擎</text>
+
+      <!-- Bottom row: Testing & Tuning -->
+      <rect x="160" y="220" width="480" height="50" rx="10" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="400" y="250" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="bold">⚡ 压测与调优（kafka-producer-perf-test / kafka-consumer-perf-test）</text>
+
+      <!-- Connection arrows -->
+      <line x1="250" y1="110" x2="285" y2="110" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+      <line x1="510" y1="110" x2="545" y2="110" stroke="#475569" stroke-width="2"/>
+
+      <text x="400" y="310" text-anchor="middle" fill="#8b949e" font-size="11">核心线索：<tspan fill="#22d3ee">从"至少一次"到"精确一次"</tspan>，从"依赖ZK"到"自管理"</text>
+      <text x="400" y="332" text-anchor="middle" fill="#8b949e" font-size="11">实战重点：重平衡触发条件 + 事务原理 + KRaft 优势 + 分区策略选择</text>
+      <text x="400" y="354" text-anchor="middle" fill="#8b949e" font-size="11">费曼类比：<tspan fill="#3fb950">邮局系统——从普通快递到智能供应链的进化</tspan></text>
+
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#475569"/>
+        </marker>
+      </defs>
+    </svg>
+    <div class="diagram-caption">图 1：Kafka 进阶技术栈——生产者、Broker、消费者/流处理全链路</div>
+  </div>
+</section>
+
+<!-- ====== 精确一次语义 ====== -->
+<section class="section" id="exactly-once">
+  <h2>🎯 精确一次语义：幂等生产者 &amp; 事务</h2>
+  <p>消息投递语义是 Kafka 进阶的第一关。理解<strong>至少一次 (at-least-once)</strong>、<strong>至多一次 (at-most-once)</strong> 和 <strong>精确一次 (exactly-once)</strong> 的演进是关键。</p>
+
+  <div class="compare">
+    <div>
+      <h4>❌ at-most-once</h4>
+      <p>发出去不管——丢了就丢了。Producer 发完不等 ack，快但不可靠。适合日志类可容忍丢失的场景。</p>
+    </div>
+    <div>
+      <h4>⚠️ at-least-once</h4>
+      <p>默认模式——等 ack，超时重发。可能重复但不会丢。幂等性关闭时，网络重试会导致<strong>消息重复</strong>。</p>
+    </div>
+  </div>
+
+  <h3>幂等生产者（Idempotent Producer）</h3>
+  <p>设置 <code>enable.idempotence=true</code> 后，Producer 为每条消息分配一个 <strong>Producer ID (PID) + 序列号 (Sequence Number)</strong>。Broker 端去重——相同 (PID, 分区, 序列号) 的消息只会持久化一次。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">想象你去超市寄快递：普通模式（at-least-once） = 快递员没收到回执就重寄，结果你收到了两份同样的包裹。</span></p>
+    <p><span class="analogy">幂等模式 = 快递公司在每个包裹上贴了唯一的单号（PID+序列号）。即使快递员重寄了，分拣中心看到重复单号就直接扔掉——你只收到一份。</span></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 360" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="360" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">幂等生产者去重原理</text>
+
+      <!-- Producer -->
+      <rect x="30" y="60" width="180" height="80" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="120" y="88" text-anchor="middle" fill="#f87171" font-size="13" font-weight="bold">📤 Producer</text>
+      <text x="120" y="108" text-anchor="middle" fill="#94a3b8" font-size="11">PID = 1001</text>
+      <text x="120" y="126" text-anchor="middle" fill="#94a3b8" font-size="11">Seq = 0, 1, 2, 3...</text>
+
+      <!-- Arrow with retry -->
+      <line x1="210" y1="80" x2="290" y2="80" stroke="#475569" stroke-width="2"/>
+      <text x="250" y="72" text-anchor="middle" fill="#fbbf24" font-size="10">发送(1001,0,"a")</text>
+      <line x1="210" y1="110" x2="290" y2="110" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="250" y="130" text-anchor="middle" fill="#f87171" font-size="10">重试(1001,0,"a") ✖</text>
+
+      <!-- Broker -->
+      <rect x="300" y="55" width="200" height="130" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="400" y="80" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">🏛️ Broker</text>
+
+      <!-- Partition data -->
+      <rect x="315" y="92" width="170" height="75" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="112" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">Partition 0 数据</text>
+      <rect x="325" y="120" width="150" height="20" rx="4" fill="#22d3ee" opacity="0.12"/>
+      <text x="400" y="134" text-anchor="middle" fill="#22d3ee" font-size="10">(1001,0,"a") ✅ 已写入</text>
+      <text x="400" y="155" text-anchor="middle" fill="#f87171" font-size="10">(1001,0,"a") ❌ 去重丢弃</text>
+
+      <!-- Dedup table -->
+      <rect x="530" y="55" width="240" height="130" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1"/>
+      <text x="650" y="80" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="bold">🧹 去重缓存</text>
+      <rect x="545" y="92" width="210" height="22" rx="4" fill="#3fb950" opacity="0.1"/>
+      <text x="650" y="108" text-anchor="middle" fill="#c9d1d9" font-size="10">(PID, Partition, Seq)</text>
+      <text x="650" y="130" text-anchor="middle" fill="#3fb950" font-size="11">(1001, 0, 0) ✅</text>
+      <text x="650" y="150" text-anchor="middle" fill="#3fb950" font-size="11">(1001, 0, 0) → duplicate ❌</text>
+
+      <!-- Bottom -->
+      <text x="400" y="220" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">幂等原理：Producer 给每条消息一个唯一序号，Broker 按序号去重</text>
+      <text x="400" y="245" text-anchor="middle" fill="#8b949e" font-size="11">配置：<tspan fill="#22d3ee">enable.idempotence=true</tspan> + <tspan fill="#22d3ee">acks=all</tspan>（自动设置）</text>
+
+      <text x="400" y="280" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">事务生产者——多分区原子写入</text>
+      <rect x="100" y="295" width="600" height="48" rx="6" fill="#1e293b" stroke="#a78bfa" stroke-width="1"/>
+      <text x="120" y="318" fill="#a78bfa" font-size="12" font-weight="bold">事务流程</text>
+      <text x="200" y="318" fill="#8b949e" font-size="11">InitTransactions → BeginTransaction → SendOffsets → CommitTransaction</text>
+      <text x="200" y="336" fill="#8b949e" font-size="11">Transaction Coordinator + __transaction_state 主题 = 事务状态管理</text>
+    </svg>
+    <div class="diagram-caption">图 2：幂等生产者去重机制与事务流程</div>
+  </div>
+
+  <h3>事务性生产者（Transactional Producer）</h3>
+  <p>幂等只能保证<strong>单分区</strong>内的精确一次。事务则保证<strong>跨分区的原子写入</strong>——要么全部成功，要么全部回滚。核心组件：</p>
+  <ul>
+    <li><strong>Transaction Coordinator</strong>：管理事务生命周期</li>
+    <li><strong>__transaction_state</strong>：内部主题，存储事务状态</li>
+    <li><strong>控制消息 (Control Batches)</strong>：COMMIT/ABORT 标记，Consumer 根据标记决定是否可见</li>
+    <li><strong>isolation.level</strong>：Consumer 设为 <code>read_committed</code> 只读取已提交事务的消息</li>
+  </ul>
+
+  <div class="info-card">
+    <h4>🎯 一句话总结</h4>
+    <p><strong>幂等 Producer</strong> = 给每条消息打唯一序号防止重复（单分区内）。<br>
+    <strong>事务 Producer</strong> = 跨分区原子写入 + Consumer 端隔离（read_committed）。<br>
+    <span class="handwritten">前者解决"重复"问题，后者解决"部分写入"问题。</span></p>
+  </div>
+</section>
+
+<!-- ====== 重平衡 ====== -->
+<section class="section" id="rebalance">
+  <h2>🔄 重平衡机制（Consumer Rebalance）</h2>
+  <p>当 Consumer Group 中有成员<strong>加入、离开、崩溃</strong>，或分区数发生变化时，Kafka 会触发<strong>重平衡 (Rebalance)</strong>——重新分配分区给各 Consumer。这是 Kafka 保证<strong>高可用</strong>的核心机制，也是<strong>常见问题的根源</strong>（Stop-the-world 停顿）。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="420" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Consumer Group 重平衡流程</text>
+
+      <!-- Before -->
+      <rect x="30" y="55" width="350" height="155" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="205" y="78" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">✅ 重平衡前（3 Consumer + 6 Partition）</text>
+      <rect x="45" y="92" width="90" height="36" rx="6" fill="#22d3ee" opacity="0.12"/>
+      <text x="90" y="115" text-anchor="middle" fill="#22d3ee" font-size="11">C1: [0,3]</text>
+      <rect x="150" y="92" width="90" height="36" rx="6" fill="#3fb950" opacity="0.12"/>
+      <text x="195" y="115" text-anchor="middle" fill="#3fb950" font-size="11">C2: [1,4]</text>
+      <rect x="255" y="92" width="90" height="36" rx="6" fill="#fbbf24" opacity="0.12"/>
+      <text x="300" y="115" text-anchor="middle" fill="#fbbf24" font-size="11">C3: [2,5]</text>
+
+      <!-- Trigger -->
+      <rect x="45" y="145" width="300" height="50" rx="6" fill="#f87171" opacity="0.08" stroke="#f87171" stroke-width="1"/>
+      <text x="195" y="167" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold">💥 触发条件：C2 宕机 / 新 Consumer 加入 / 分区数变化</text>
+
+      <!-- Arrow -->
+      <text x="400" y="130" text-anchor="middle" fill="#8b949e" font-size="20">→</text>
+
+      <!-- After -->
+      <rect x="420" y="55" width="350" height="155" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="595" y="78" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">⚠️ 重平衡后（重新分配）</text>
+      <rect x="435" y="92" width="90" height="36" rx="6" fill="#22d3ee" opacity="0.12"/>
+      <text x="480" y="115" text-anchor="middle" fill="#22d3ee" font-size="11">C1: [0,2,4]</text>
+      <rect x="540" y="92" width="90" height="36" rx="6" fill="#3fb950" opacity="0.12"/>
+      <text x="585" y="115" text-anchor="middle" fill="#3fb950" font-size="11">C3: [1,3,5]</text>
+      <rect x="645" y="92" width="90" height="36" rx="6" fill="#f87171" opacity="0.12"/>
+      <text x="690" y="115" text-anchor="middle" fill="#f87171" font-size="11">C2: ❌</text>
+
+      <text x="595" y="167" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">所有 Consumer 暂停消费 → 重新分配 → 恢复</text>
+
+      <!-- Cooperative Rebalance -->
+      <rect x="30" y="230" width="740" height="175" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1"/>
+      <text x="400" y="255" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="bold">两种重平衡策略对比</text>
+
+      <!-- Eager -->
+      <rect x="50" y="272" width="340" height="55" rx="6" fill="#0f172a" stroke="#f87171" stroke-width="1"/>
+      <text x="220" y="294" text-anchor="middle" fill="#f87171" font-size="12" font-weight="bold">Eager（旧版 / eager）</text>
+      <text x="220" y="314" text-anchor="middle" fill="#94a3b8" font-size="10">所有成员退出 → 全部重新分配 → Stop-The-World</text>
+
+      <!-- Cooperative -->
+      <rect x="410" y="272" width="340" height="55" rx="6" fill="#0f172a" stroke="#3fb950" stroke-width="1"/>
+      <text x="580" y="294" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">Cooperative（增量式 / sticky）</text>
+      <text x="580" y="314" text-anchor="middle" fill="#94a3b8" font-size="10">只重新分配受影响的分区 → 不停顿</text>
+
+      <!-- Key config -->
+      <text x="400" y="350" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">关键配置</text>
+      <text x="400" y="372" text-anchor="middle" fill="#8b949e" font-size="11">partition.assignment.strategy = <tspan fill="#22d3ee">RangeAssignor</tspan> | <tspan fill="#22d3ee">RoundRobinAssignor</tspan> | <tspan fill="#22d3ee">StickyAssignor</tspan> | <tspan fill="#22d3ee">CooperativeStickyAssignor</tspan></text>
+      <text x="400" y="392" text-anchor="middle" fill="#8b949e" font-size="11">max.poll.interval.ms（最大处理间隔）| session.timeout.ms（心跳超时）</text>
+    </svg>
+    <div class="diagram-caption">图 3：重平衡机制——触发条件、流程与策略对比</div>
+  </div>
+
+  <h3>导致重平衡的常见原因</h3>
+  <table>
+    <tr><th>原因</th><th>表现</th><th>解决</th></tr>
+    <tr><td>Consumer 崩溃</td><td>心跳超时 → session.timeout.ms 触发</td><td>增大 session.timeout.ms</td></tr>
+    <tr><td>处理太慢</td><td>max.poll.interval.ms 超时</td><td>增大 max.poll.interval.ms 或减少 max.poll.records</td></tr>
+    <tr><td>Full GC 停顿</td><td>JVM GC 导致心跳暂停</td><td>优化 GC 参数 / 使用独立线程发心跳</td></tr>
+    <tr><td>新成员加入</td><td>加入组请求触发重平衡</td><td>正常行为，Cooperative 策略减轻影响</td></tr>
+  </table>
+
+  <div class="feynman">
+    <p><span class="analogy">想象一个快递配送团队：每位快递员负责几条街道。如果某位快递员突然离职（Crash），站长必须暂停所有配送，重新分配路线，再让所有人复工。</span></p>
+    <p><span class="analogy">Eager 模式 = 所有人都停车等重新排班。Cooperative 模式 = 只把离职同事的路线分给其他人，其他人继续配送。</span></p>
+    <p><span class="analogy">重平衡的"暂停"就像双十一前物流系统重新分线路——短暂的割接期可能导致延误，但之后整个系统恢复平衡。</span></p>
+  </div>
+</section>
+
+<!-- ====== Kafka Streams ====== -->
+<section class="section" id="streams">
+  <h2>🌊 Kafka Streams —— 轻量级流处理</h2>
+  <p>Kafka Streams 是 Kafka 自带的<strong>轻量级流处理库</strong>（不是独立集群！）。它作为 Java 库嵌入你的应用中，无需额外的流处理框架（对比 Flink/Spark Streaming）。核心概念：<strong>Stream</strong>（不可变记录序列）和 <strong>Table</strong>（可变更新视图）。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">Stream = <strong>收银台的小票流水</strong>（每笔交易都追加到卷纸上，不能修改已有的记录）。</span></p>
+    <p><span class="analogy">Table = <strong>今天的库存本</strong>（每次进货或售出，库存数量被更新覆盖——只关心最新状态）。</span></p>
+    <p><span class="analogy">Stream-Table 二元性：库存本其实就是把收银小票累加（或减）得到的。反过来，如果你记录库存本的每次变化，你就得到了收银流水。这就是 KStream 和 KTable 的关系。</span></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="420" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Kafka Streams 核心概念：Stream-Table 二元性</text>
+
+      <!-- Input Stream -->
+      <rect x="30" y="60" width="340" height="140" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="200" y="88" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">📥 Input Stream（不可变流水）</text>
+      <rect x="50" y="105" width="60" height="28" rx="4" fill="#f87171" opacity="0.15"/>
+      <text x="80" y="124" text-anchor="middle" fill="#f87171" font-size="10">Alice 买🔥</text>
+      <rect x="120" y="105" width="60" height="28" rx="4" fill="#fbbf24" opacity="0.15"/>
+      <text x="150" y="124" text-anchor="middle" fill="#fbbf24" font-size="10">Bob 买🍎</text>
+      <rect x="190" y="105" width="60" height="28" rx="4" fill="#3fb950" opacity="0.15"/>
+      <text x="220" y="124" text-anchor="middle" fill="#3fb950" font-size="10">Alice 退🔥</text>
+      <rect x="260" y="105" width="60" height="28" rx="4" fill="#22d3ee" opacity="0.15"/>
+      <text x="290" y="124" text-anchor="middle" fill="#22d3ee" font-size="10">Bob 买🍎</text>
+      <text x="200" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">每条记录不可变，新记录追加到末尾 | 像刷卡流水账单</text>
+
+      <!-- Arrow -->
+      <text x="400" y="140" text-anchor="middle" fill="#8b949e" font-size="22">→</text>
+
+      <!-- Result Table -->
+      <rect x="430" y="60" width="340" height="140" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="600" y="88" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">📊 Result Table（可变快照）</text>
+      <rect x="460" y="110" width="120" height="28" rx="4" fill="#a78bfa" opacity="0.1"/>
+      <text x="520" y="129" text-anchor="middle" fill="#a78bfa" font-size="11">Alice: 1 🔥</text>
+      <rect x="600" y="110" width="120" height="28" rx="4" fill="#fbbf24" opacity="0.1"/>
+      <text x="660" y="129" text-anchor="middle" fill="#fbbf24" font-size="11">Bob: 2 🍎</text>
+      <text x="600" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">只保留每个 key 的最新值 | 像实时更新的库存表</text>
+
+      <!-- DSL components -->
+      <rect x="30" y="225" width="740" height="180" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1"/>
+      <text x="400" y="252" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="bold">Kafka Streams DSL 核心操作示例</text>
+
+      <!-- Topologies -->
+      <rect x="50" y="268" width="230" height="55" rx="6" fill="#0f172a" stroke="#22d3ee" stroke-width="1"/>
+      <text x="165" y="290" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">KStream ↔ KTable 转换</text>
+      <text x="165" y="310" text-anchor="middle" fill="#94a3b8" font-size="10">.toStream() / .toTable() / .groupByKey()</text>
+
+      <rect x="300" y="268" width="230" height="55" rx="6" fill="#0f172a" stroke="#fbbf24" stroke-width="1"/>
+      <text x="415" y="290" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">有状态操作</text>
+      <text x="415" y="310" text-anchor="middle" fill="#94a3b8" font-size="10">.aggregate() / .reduce() / .count()</text>
+
+      <rect x="550" y="268" width="200" height="55" rx="6" fill="#0f172a" stroke="#3fb950" stroke-width="1"/>
+      <text x="650" y="290" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">窗口操作</text>
+      <text x="650" y="310" text-anchor="middle" fill="#94a3b8" font-size="10">Tumbling / Hopping / Session</text>
+
+      <!-- Code example -->
+      <rect x="50" y="335" width="700" height="55" rx="6" fill="#16181d" stroke="#475569" stroke-width="1"/>
+      <text x="70" y="355" fill="#8b949e" font-size="11" font-family="monospace">// KStream&lt;String, Order&gt; orders = ...</text>
+      <text x="70" y="375" fill="#c9d1d9" font-size="11" font-family="monospace">orders.groupByKey().count()  // 实时统计每人买了多少次</text>
+    </svg>
+    <div class="diagram-caption">图 4：Kafka Streams 的 Stream-Table 二元性与 DSL 操作</div>
+  </div>
+
+  <h3>Kafka Streams vs Flink/Spark Streaming</h3>
+  <table>
+    <tr><th>特性</th><th>Kafka Streams</th><th>Apache Flink</th><th>Spark Streaming</th></tr>
+    <tr><td>部署方式</td><td>Java 库嵌入应用</td><td>独立集群</td><td>Spark 集群</td></tr>
+    <tr><td>处理模式</td><td>Record-by-record</td><td>Record-by-record（真流）</td><td>微批次 (micro-batch)</td></tr>
+    <tr><td>状态存储</td><td>RocksDB（嵌入式）</td><td>RocksDB / 内存</td><td>RDD Checkpoint</td></tr>
+    <tr><td>精确一次</td><td>✅ 原生支持</td><td>✅ 内置</td><td>✅ 需配置</td></tr>
+    <tr><td>优势</td><td>轻量、部署简单</td><td>功能最全、生态丰富</td><td>与 Spark 生态集成</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>💡 核心理解</h4>
+    <p>Kafka Streams 不是"另一个流处理框架"——它是 Kafka 自身的<strong>流处理能力延伸</strong>。你不需要部署 Flink 集群来做简单的 ETL、Join、聚合。Kafka Streams 应用就是普通的 Java 应用，<code>java -jar myapp.jar</code> 就能跑，水平扩展就是启动更多实例。</p>
+  </div>
+</section>
+
+<!-- ====== KRaft ====== -->
+<section class="section" id="kraft">
+  <h2>⚡ KRaft 模式 —— 告别 ZooKeeper</h2>
+  <p>从 Kafka 2.8 开始引入、3.x 版本生产就绪的 <strong>KRaft (Kafka Raft) 模式</strong>，彻底去掉了对 ZooKeeper 的依赖。Kafka 的<strong>元数据</strong>（主题、分区、配置等）由 Kafka 自身的 <strong>Raft 协议</strong> 管理。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="400" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">ZooKeeper 模式 vs KRaft 模式</text>
+
+      <!-- ZK Mode -->
+      <rect x="30" y="60" width="350" height="310" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="205" y="88" text-anchor="middle" fill="#f87171" font-size="14" font-weight="bold">❌ 旧架构：ZooKeeper 模式</text>
+
+      <rect x="50" y="105" width="310" height="40" rx="6" fill="#fbbf24" opacity="0.1" stroke="#fbbf24" stroke-width="1"/>
+      <text x="205" y="130" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">ZooKeeper 集群</text>
+
+      <!-- ZK components -->
+      <rect x="50" y="160" width="140" height="50" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="120" y="184" text-anchor="middle" fill="#c9d1d9" font-size="11">Controller 选举</text>
+      <text x="120" y="200" text-anchor="middle" fill="#8b949e" font-size="10">ZooKeeper 决定谁当 Leader</text>
+
+      <rect x="220" y="160" width="140" height="50" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="290" y="184" text-anchor="middle" fill="#c9d1d9" font-size="11">元数据存储</text>
+      <text x="290" y="200" text-anchor="middle" fill="#8b949e" font-size="10">主题、分区、配置</text>
+
+      <text x="205" y="245" text-anchor="middle" fill="#f87171" font-size="11">Broker ↔ ZK 频繁通信</text>
+      <text x="205" y="265" text-anchor="middle" fill="#f87171" font-size="11">两个集群都要维护</text>
+      <text x="205" y="285" text-anchor="middle" fill="#f87171" font-size="11">ZK 写入瓶颈限制分区数</text>
+
+      <!-- Arrow -->
+      <text x="400" y="210" text-anchor="middle" fill="#8b949e" font-size="26">→</text>
+
+      <!-- KRaft Mode -->
+      <rect x="420" y="60" width="350" height="310" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="595" y="88" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">✅ 新架构：KRaft 模式</text>
+
+      <!-- Controller Quorum -->
+      <rect x="440" y="105" width="310" height="40" rx="6" fill="#3fb950" opacity="0.1" stroke="#3fb950" stroke-width="1"/>
+      <text x="595" y="130" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">Controller Quorum（Raft 组）</text>
+
+      <rect x="440" y="160" width="140" height="50" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="510" y="184" text-anchor="middle" fill="#c9d1d9" font-size="11">Active Controller</text>
+      <text x="510" y="200" text-anchor="middle" fill="#8b949e" font-size="10">写元数据日志</text>
+
+      <rect x="610" y="160" width="140" height="50" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="680" y="184" text-anchor="middle" fill="#c9d1d9" font-size="11">Follower</text>
+      <text x="680" y="200" text-anchor="middle" fill="#8b949e" font-size="10">复制元数据</text>
+
+      <text x="595" y="245" text-anchor="middle" fill="#3fb950" font-size="11">不需要额外维护 ZK 集群</text>
+      <text x="595" y="265" text-anchor="middle" fill="#3fb950" font-size="11">元数据 Log 存在 Kafka 自身主题</text>
+      <text x="595" y="285" text-anchor="middle" fill="#3fb950" font-size="11">支持更多分区（百万级）</text>
+      <text x="595" y="305" text-anchor="middle" fill="#3fb950" font-size="11">Controller 故障切换更快</text>
+
+      <!-- Bottom -->
+      <rect x="50" y="340" width="700" height="50" rx="6" fill="#1e293b" stroke="#a78bfa" stroke-width="1"/>
+      <text x="400" y="362" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="bold">KRaft 核心优势：</text>
+      <text x="400" y="380" text-anchor="middle" fill="#8b949e" font-size="11">更简单运维 | 更快 Controller 切换 | 更高分区上限 | 更低的端到端延迟</text>
+    </svg>
+    <div class="diagram-caption">图 5：ZooKeeper 模式 vs KRaft 模式架构对比</div>
+  </div>
+
+  <h3>KRaft 的 Raft 协议核心</h3>
+  <table>
+    <tr><th>角色</th><th>职责</th><th>类比</th></tr>
+    <tr><td><strong>Active Controller</strong></td><td>唯一可写入元数据的节点，处理 CreateTopic、分区分配等</td><td>🏢 总部的"总经理"，只有他有签字权</td></tr>
+    <tr><td><strong>Follower</strong></td><td>从 Active 复制元数据日志，参与投票</td><td>📋 各部门经理，备份总部的决议</td></tr>
+    <tr><td><strong>Voter</strong></td><td>参与 Leader 选举的节点集合 (Controller Quorum)</td><td>🗳️ 董事会成员，决定谁当总经理</td></tr>
+    <tr><td><strong>Observer</strong></td><td>只读副本，不参与投票，用于灾备</td><td>👀 实习观察员</td></tr>
+  </table>
+
+  <div class="feynman">
+    <p><span class="analogy">旧架构（ZK 模式）就像一家公司把<strong>人事档案</strong>托管给外部的人力资源外包公司（ZooKeeper）——公司内部的人事变动（新的主题/分区）都要通知外包公司记录，如果外包公司出了小毛病，整个公司都得等着。</span></p>
+    <p><span class="analogy">新架构（KRaft）就像公司<strong>自己建立了内控部门</strong>（Controller Quorum），采用董事投票制度（Raft 协议）来决定谁当家。所有决议都记录在公司自己的账本上（元数据日志），不需要外部系统了。人事调动更快、更安全、更好管理。</span></p>
+  </div>
+</section>
+
+<!-- ====== 分区分配 ====== -->
+<section class="section" id="partition">
+  <h2>📊 分区分配策略</h2>
+  <p>Kafka 提供了多种<strong>分区分配策略</strong>（通过 <code>partition.assignment.strategy</code> 配置），决定 Consumer Group 内如何将分区分配给各个 Consumer。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 440" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="440" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">四种分区分配策略对比</text>
+
+      <!-- 初始状态 -->
+      <rect x="30" y="50" width="740" height="30" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="70" text-anchor="middle" fill="#94a3b8" font-size="11">底池：10 个分区 [P0, P1, P2, P3, P4, P5, P6, P7, P8, P9] | 2 个 Consumer [C1, C2]</text>
+
+      <!-- RangeAssignor -->
+      <rect x="30" y="95" width="355" height="155" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1"/>
+      <text x="207" y="118" text-anchor="middle" fill="#f87171" font-size="13" font-weight="bold">🏋️ RangeAssignor（按主题范围）</text>
+      <rect x="50" y="130" width="310" height="30" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="205" y="150" text-anchor="middle" fill="#c9d1d9" font-size="11">每个主题内，按分区号排序后均分给 Consumer</text>
+      <rect x="50" y="170" width="145" height="30" rx="6" fill="#22d3ee" opacity="0.12"/>
+      <text x="122" y="190" text-anchor="middle" fill="#22d3ee" font-size="11">C1: [P0-P4]（5个）</text>
+      <rect x="215" y="170" width="145" height="30" rx="6" fill="#fbbf24" opacity="0.12"/>
+      <text x="287" y="190" text-anchor="middle" fill="#fbbf24" font-size="11">C2: [P5-P9]（5个）</text>
+      <text x="207" y="235" text-anchor="middle" fill="#f87171" font-size="10">⚠️ 主题数 * Consumer 数不均时，前面 Consumer 会多分</text>
+
+      <!-- RoundRobin -->
+      <rect x="415" y="95" width="355" height="155" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1"/>
+      <text x="592" y="118" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">⚖️ RoundRobinAssignor（轮询）</text>
+      <rect x="435" y="130" width="310" height="30" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="590" y="150" text-anchor="middle" fill="#c9d1d9" font-size="11">所有分区排成环，轮流分配给 Consumer</text>
+      <rect x="435" y="170" width="145" height="30" rx="6" fill="#22d3ee" opacity="0.12"/>
+      <text x="507" y="190" text-anchor="middle" fill="#22d3ee" font-size="11">C1: [P0,P2,P4,P6,P8]</text>
+      <rect x="600" y="170" width="145" height="30" rx="6" fill="#fbbf24" opacity="0.12"/>
+      <text x="672" y="190" text-anchor="middle" fill="#fbbf24" font-size="11">C2: [P1,P3,P5,P7,P9]</text>
+      <text x="592" y="235" text-anchor="middle" fill="#3fb950" font-size="10">✅ 最均匀，但未考虑 Consumer 负载差异</text>
+
+      <!-- Sticky -->
+      <rect x="30" y="265" width="355" height="155" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="1"/>
+      <text x="207" y="288" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">📌 StickyAssignor（粘性）</text>
+      <rect x="50" y="300" width="310" height="30" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="205" y="320" text-anchor="middle" fill="#c9d1d9" font-size="11">尽量保持已有分配不变 + 尽量均匀</text>
+      <rect x="50" y="340" width="145" height="30" rx="6" fill="#22d3ee" opacity="0.12"/>
+      <text x="122" y="360" text-anchor="middle" fill="#22d3ee" font-size="11">C1: [P0,P1,P2,P8,P9]</text>
+      <rect x="215" y="340" width="145" height="30" rx="6" fill="#fbbf24" opacity="0.12"/>
+      <text x="287" y="360" text-anchor="middle" fill="#fbbf24" font-size="11">C2: [P3,P4,P5,P6,P7]</text>
+      <text x="207" y="405" text-anchor="middle" fill="#3fb950" font-size="10">✅ 重平衡时尽量减少分区移动（减少重复消费）</text>
+
+      <!-- CooperativeSticky -->
+      <rect x="415" y="265" width="355" height="155" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1"/>
+      <text x="592" y="288" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">🤝 CooperativeStickyAssignor（增量粘性）</text>
+      <rect x="435" y="300" width="310" height="30" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="590" y="320" text-anchor="middle" fill="#c9d1d9" font-size="11">增量式重平衡 + 粘性分配（Kafka 3.x 推荐）</text>
+      <rect x="435" y="340" width="145" height="30" rx="6" fill="#22d3ee" opacity="0.12"/>
+      <text x="507" y="360" text-anchor="middle" fill="#22d3ee" font-size="11">C1: [P0,P1,P4,P5,P8]</text>
+      <rect x="600" y="340" width="145" height="30" rx="6" fill="#fbbf24" opacity="0.12"/>
+      <text x="672" y="360" text-anchor="middle" fill="#fbbf24" font-size="11">C2: [P2,P3,P6,P7,P9]</text>
+      <text x="592" y="405" text-anchor="middle" fill="#3fb950" font-size="10">✅ 推荐生产使用：不停顿 + 少移动 + 尽量均匀</text>
+    </svg>
+    <div class="diagram-caption">图 6：四种分区分配策略对比——Range、RoundRobin、Sticky、CooperativeSticky</div>
+  </div>
+
+  <h3>策略选择指南</h3>
+  <table>
+    <tr><th>策略</th><th>特点</th><th>适用场景</th><th>推荐度</th></tr>
+    <tr><td>RangeAssignor</td><td>按主题范围分，可能不均匀</td><td>单主题 / 传统旧应用</td><td><span class="badge badge-orange">⭐</span></td></tr>
+    <tr><td>RoundRobinAssignor</td><td>轮询，均匀但重平衡成本高</td><td>多主题且追求均匀</td><td><span class="badge badge-orange">⭐⭐</span></td></tr>
+    <tr><td>StickyAssignor</td><td>均匀 + 尽量保留已有分配</td><td>减少重平衡开销</td><td><span class="badge badge-green">⭐⭐⭐</span></td></tr>
+    <tr><td>CooperativeStickyAssignor</td><td>增量 + 粘性，不停顿</td><td><strong>生产环境推荐</strong></td><td><span class="badge badge-green">⭐⭐⭐⭐</span></td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🎯 核心理解</h4>
+    <p>分配策略本质是<strong>权衡</strong>：均匀性 vs 重平衡代价 vs 计算复杂度。<br>
+    <code>CooperativeStickyAssignor</code> 是目前最先进的策略——它解决了 Eager 模式"全体暂停"的问题，只移动必要的分区（增量式），<br>
+    同时保持分配尽可能均匀。<span class="handwritten">Kafka 3.x 之后的默认推荐策略。</span></p>
+  </div>
+</section>
+
+<!-- ====== 高水位与LEO ====== -->
+<section class="section" id="watermark">
+  <h2>📏 高水位（HW）与 Leader Epoch</h2>
+  <p>高水位 (High Watermark, HW) 和 Leader Epoch 是 Kafka 保证<strong>数据一致性和正确性</strong>的核心机制。它们控制着 Consumer 能看到什么数据，以及 Leader 切换后如何处理。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 430" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="430" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">高水位 (HW) / LEO / Leader Epoch 关系</text>
+
+      <!-- Leader partition -->
+      <rect x="30" y="55" width="350" height="200" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="205" y="80" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">Leader Partition（领导者）</text>
+
+      <!-- Log segments -->
+      <rect x="50" y="100" width="60" height="34" rx="4" fill="#3fb950" opacity="0.15"/>
+      <text x="80" y="121" text-anchor="middle" fill="#3fb950" font-size="10">offset 0</text>
+      <rect x="120" y="100" width="60" height="34" rx="4" fill="#3fb950" opacity="0.15"/>
+      <text x="150" y="121" text-anchor="middle" fill="#3fb950" font-size="10">offset 1</text>
+      <rect x="190" y="100" width="60" height="34" rx="4" fill="#3fb950" opacity="0.15"/>
+      <text x="220" y="121" text-anchor="middle" fill="#3fb950" font-size="10">offset 2</text>
+      <rect x="260" y="100" width="60" height="34" rx="4" fill="#fbbf24" opacity="0.15"/>
+      <text x="290" y="121" text-anchor="middle" fill="#fbbf24" font-size="10">offset 3</text>
+
+      <!-- HW line -->
+      <line x1="50" y1="145" x2="320" y2="145" stroke="#a78bfa" stroke-width="2" stroke-dasharray="4,3"/>
+      <rect x="100" y="150" width="120" height="26" rx="4" fill="#a78bfa" opacity="0.1"/>
+      <text x="160" y="168" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="bold">HW = 高水位线</text>
+      <text x="160" y="188" text-anchor="middle" fill="#8b949e" font-size="10">所有 Follower 都已同步的最新 offset</text>
+      <text x="160" y="208" text-anchor="middle" fill="#8b949e" font-size="10">Consumer 只能读取 HW 之前的消息</text>
+
+      <!-- LEO label -->
+      <text x="290" y="140" text-anchor="end" fill="#fbbf24" font-size="11" font-weight="bold">LEO = 4</text>
+      <text x="290" y="230" text-anchor="end" fill="#94a3b8" font-size="10">LEO (Log End Offset)</text>
+
+      <!-- Follower -->
+      <rect x="420" y="55" width="350" height="200" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="595" y="80" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">Follower Partition（副本）</text>
+
+      <rect x="440" y="100" width="60" height="34" rx="4" fill="#3fb950" opacity="0.15"/>
+      <text x="470" y="121" text-anchor="middle" fill="#3fb950" font-size="10">offset 0</text>
+      <rect x="510" y="100" width="60" height="34" rx="4" fill="#3fb950" opacity="0.15"/>
+      <text x="540" y="121" text-anchor="middle" fill="#3fb950" font-size="10">offset 1</text>
+      <rect x="580" y="100" width="60" height="34" rx="4" fill="#3fb950" opacity="0.15"/>
+      <text x="610" y="121" text-anchor="middle" fill="#3fb950" font-size="10">offset 2</text>
+      <rect x="650" y="100" width="60" height="34" rx="4" fill="#f87171" opacity="0.1"/>
+      <text x="680" y="121" text-anchor="middle" fill="#f87171" font-size="10">🐌 同步中</text>
+
+      <line x1="440" y1="145" x2="710" y2="145" stroke="#f87171" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="680" y="140" text-anchor="end" fill="#f87171" font-size="11" font-weight="bold">LEO = 3</text>
+      <text x="595" y="170" text-anchor="middle" fill="#8b949e" font-size="10">Follower 从 Leader 拉取数据复制</text>
+      <text x="595" y="228" text-anchor="middle" fill="#8b949e" font-size="10">Follower 的 HW = min(Leader的HW, 自己的LEO)</text>
+
+      <!-- Leader Epoch section -->
+      <rect x="30" y="275" width="740" height="140" rx="10" fill="#1e293b" stroke="#a78bfa" stroke-width="1"/>
+      <text x="400" y="300" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="bold">👑 Leader Epoch（领导者纪元）—— 解决日志不一致问题</text>
+
+      <rect x="50" y="315" width="340" height="40" rx="6" fill="#0f172a" stroke="#f87171" stroke-width="1"/>
+      <text x="220" y="335" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold">旧问题：Leader 切换后 HW 截断导致数据丢失</text>
+      <text x="220" y="350" text-anchor="middle" fill="#94a3b8" font-size="10">旧的 Leader 重启后，可能截断了已写入但未到 HW 的数据</text>
+
+      <rect x="410" y="315" width="340" height="40" rx="6" fill="#0f172a" stroke="#3fb950" stroke-width="1"/>
+      <text x="580" y="335" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">✅ Leader Epoch 解决：每个任期有唯一的 epoch</text>
+      <text x="580" y="350" text-anchor="middle" fill="#94a3b8" font-size="10">新 Leader 比对 epoch 决定哪些数据有效</text>
+
+      <text x="400" y="385" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">Leader Epoch = (epoch, offset) 映射表——跟踪每个 Leader 任期的起始 offset</text>
+      <text x="400" y="405" text-anchor="middle" fill="#8b949e" font-size="11">新 Leader 上任时 epoch+1，记录上任时的起始 offset，截断时回到这个 offset 即可</text>
+    </svg>
+    <div class="diagram-caption">图 7：高水位 (HW)、LEO 与 Leader Epoch 的关系</div>
+  </div>
+
+  <h3>核心概念</h3>
+  <table>
+    <tr><th>概念</th><th>含义</th><th>类比</th></tr>
+    <tr><td><strong>LEO (Log End Offset)</strong></td><td>分区日志中<strong>下一条消息</strong>将被写入的 offset</td><td>📝 记到哪一行了</td></tr>
+    <tr><td><strong>HW (High Watermark)</strong></td><td>所有 ISR 副本都已同步的 offset，Consumer 只能读 HW 之前的数据</td><td>🚧 水位线——标记"所有人都确认收到"的位置</td></tr>
+    <tr><td><strong>ISR (In-Sync Replicas)</strong></td><td>与 Leader 保持同步的副本集合</td><td>🤝 "已确认收到"的跟单员名单</td></tr>
+    <tr><td><strong>Leader Epoch</strong></td><td>每个 Leader 任期的递增编号，防止截断丢失数据</td><td>👑 每届总统的任期编号，新总统不认旧账</td></tr>
+  </table>
+
+  <div class="feynman">
+    <p><span class="analogy">想象一个<strong>班级日志本</strong>的传递过程：</span></p>
+    <p><strong>LEO</strong> = 小明（Leader）在日志本上写到了第 10 页，但他还在继续写。<br>
+    <strong>HW</strong> = 只有前 8 页的内容已经传递给所有小组成员（ISR 都确认了），所以大家只能看到第 8 页及以前的内容。<br>
+    <strong>Leader Epoch</strong> = 如果小明被撤职了，换小华当班长——小华会说"我是第 2 届班长，从我上任的第 10 页开始重写"。之前写的第 9 页（没传递出去的）作废。<br>
+    <span class="analogy">高水位线保障了"数据的安全性"，Leader Epoch 保障了"切换的正确性"。</span></p>
+  </div>
+</section>
+
+<!-- ====== 压测调优 ====== -->
+<section class="section" id="tuning">
+  <h2>🔧 压测与调优</h2>
+  <p>Kafka 性能调优是系统工程——需要从<strong>生产者、Broker、消费者、操作系统</strong>四个维度来考虑。Kafka 自带了强大的压测工具（<code>kafka-producer-perf-test</code> 和 <code>kafka-consumer-perf-test</code>）。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="400" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Kafka 压测与调优方法论</text>
+
+      <!-- 4 dimensions -->
+      <rect x="30" y="55" width="355" height="170" rx="8" fill="#1e293b" stroke="#f87171" stroke-width="1"/>
+      <text x="207" y="80" text-anchor="middle" fill="#f87171" font-size="13" font-weight="bold">📤 生产者调优</text>
+      <text x="50" y="105" fill="#22d3ee" font-size="11">• <tspan fill="#c9d1d9">batch.size</tspan>：批次大小（默认 16KB → 32-64KB）</text>
+      <text x="50" y="125" fill="#22d3ee" font-size="11">• <tspan fill="#c9d1d9">linger.ms</tspan>：等待时间（默认 0 → 5-10ms 增加批处理）</text>
+      <text x="50" y="145" fill="#22d3ee" font-size="11">• <tspan fill="#c9d1d9">compression.type</tspan>：lz4 / snappy / zstd</text>
+      <text x="50" y="165" fill="#22d3ee" font-size="11">• <tspan fill="#c9d1d9">buffer.memory</tspan>：发送缓冲区大小</text>
+      <text x="50" y="185" fill="#22d3ee" font-size="11">• <tspan fill="#c9d1d9">acks=all</tspan> + <tspan fill="#c9d1d9">enable.idempotence=true</tspan></text>
+
+      <rect x="415" y="55" width="355" height="170" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="1"/>
+      <text x="592" y="80" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">🏛️ Broker 调优</text>
+      <text x="435" y="105" fill="#3fb950" font-size="11">• <tspan fill="#c9d1d9">num.network.threads</tspan>（网络线程数=CPU核数）</text>
+      <text x="435" y="125" fill="#3fb950" font-size="11">• <tspan fill="#c9d1d9">num.io.threads</tspan>（IO线程=CPU核数*2）</text>
+      <text x="435" y="145" fill="#3fb950" font-size="11">• <tspan fill="#c9d1d9">log.segment.bytes</tspan>（日志段大小=1GB默认）</text>
+      <text x="435" y="165" fill="#3fb950" font-size="11">• <tspan fill="#c9d1d9">log.retention.hours</tspan> / <tspan fill="#c9d1d9">bytes</tspan></text>
+
+      <rect x="30" y="240" width="355" height="145" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1"/>
+      <text x="207" y="265" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">📥 消费者调优</text>
+      <text x="50" y="290" fill="#fbbf24" font-size="11">• <tspan fill="#c9d1d9">fetch.min.bytes</tspan> / <tspan fill="#c9d1d9">max.wait.ms</tspan></text>
+      <text x="50" y="310" fill="#fbbf24" font-size="11">• <tspan fill="#c9d1d9">max.poll.records</tspan>（500 → 按处理能力调）</text>
+      <text x="50" y="330" fill="#fbbf24" font-size="11">• <tspan fill="#c9d1d9">enable.auto.commit=false</tspan>（手动提交）</text>
+      <text x="50" y="350" fill="#fbbf24" font-size="11">• 分区数 = Consumer 数（最大化并行）</text>
+
+      <rect x="415" y="240" width="355" height="145" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1"/>
+      <text x="592" y="265" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">🖥️ OS &amp; 硬件调优</text>
+      <text x="435" y="290" fill="#a78bfa" font-size="11">• <tspan fill="#c9d1d9">Page Cache</tspan>：至少预留 8GB</text>
+      <text x="435" y="310" fill="#a78bfa" font-size="11">• <tspan fill="#c9d1d9">磁盘</tspan>：SSD + 独立挂载 / 多盘 RAID</text>
+      <text x="435" y="330" fill="#a78bfa" font-size="11">• <tspan fill="#c9d1d9">网络</tspan>：万兆网卡 + 网卡多队列</text>
+      <text x="435" y="350" fill="#a78bfa" font-size="11">• <tspan fill="#c9d1d9">JVM</tspan>：堆 4-8GB，G1GC 收集器</text>
+    </svg>
+    <div class="diagram-caption">图 8：Kafka 四维调优——生产者、Broker、消费者、操作系统</div>
+  </div>
+
+  <h3>压测命令示例</h3>
+  <div class="compare">
+    <div>
+      <h4>生产者压测</h4>
+      <pre><code># 单 topic，消息 1KB，100万条
+kafka-producer-perf-test \
+  --topic test \
+  --num-records 1000000 \
+  --record-size 1024 \
+  --throughput -1 \
+  --producer-props \
+    bootstrap.servers=localhost:9092 \
+    batch.size=32768 \
+    linger.ms=10 \
+    compression.type=lz4
+
+# 输出示例：
+# 500000 records sent, 83124.1 records/sec
+# (98.23 MB/sec), 12.3 ms avg latency</code></pre>
+    </div>
+    <div>
+      <h4>消费者压测</h4>
+      <pre><code># 消费性能测试
+kafka-consumer-perf-test \
+  --bootstrap-server localhost:9092 \
+  --topic test \
+  --fetch-size 1048576 \
+  --messages 1000000 \
+  --group perf-group
+
+# 输出示例：
+# start.time, end.time, data.consumed.in.MB,
+# MB.sec, data.consumed.in.nMsg,
+# nMsg.sec, rebalance.time.ms,
+# fetch.time.ms, fetch.MB.sec</code></pre>
+    </div>
+  </div>
+
+  <h3>调优最佳实践</h3>
+  <table>
+    <tr><th>场景</th><th>瓶颈</th><th>推荐做法</th></tr>
+    <tr><td>高吞吐写入</td><td>Producer 端</td><td>增大 batch.size(32-64KB) + linger.ms(5-10) + 启用压缩(zstd)</td></tr>
+    <tr><td>低延迟写入</td><td>acks=1 + 关闭压缩</td><td>linger.ms=0 + batch.size=16KB</td></tr>
+    <tr><td>高吞吐消费</td><td>Consumer 端</td><td>增大 fetch.min.bytes + 增大 max.poll.records + 多线程消费</td></tr>
+    <tr><td>超大消息</td><td>Broker / 网络</td><td>max.message.bytes(10MB) + 压缩 + 消息分片</td></tr>
+    <tr><td>磁盘瓶颈</td><td>IO</td><td>SSD + 调整 log.segment.bytes + 多目录挂载</td></tr>
+    <tr><td>分区数过多</td><td>元数据管理</td><td>KRaft 模式支持百万分区</td></tr>
+  </table>
+
+  <div class="feynman">
+    <p><span class="analogy">调优就像<strong>调整赛车</strong>：</span></p>
+    <p><strong>Producer 调优</strong> = 调整发动机的喷油量和涡轮增压（batch.size + compression）——让每口"油"烧得更高效。<br>
+    <strong>Broker 调优</strong> = 调整赛车的底盘和变速箱齿比（网络/IO 线程）——让动力传递更顺畅。<br>
+    <strong>Consumer 调优</strong> = 调整司机的反应速度和读取仪表盘频率——让驾驶更高效。<br>
+    <strong>OS 调优</strong> = 选择赛道材质和轮胎（SSD + 网络）——地面条件决定上限。<br>
+    <span class="analogy">记住：先找到瓶颈在哪（用压测工具），再针对性地调整——别盲目优化。</span></p>
+  </div>
+
+  <div class="info-card">
+    <h4>📊 压测铁律</h4>
+    <p><strong>没有基准数据就不要做优化。</strong> 先跑一次基准压测（默认配置），记录吞吐量和延迟。然后修改一个参数，再跑一次，对比结果。每次只调整一个变量，确保结果的因果性。<br>
+    <span class="handwritten">调优是科学，不是玄学。</span></p>
+  </div>
+</section>
+
+<!-- ====== 实战问答 ====== -->
+<section class="section" id="qa">
+  <h2>❓ 实战问答（8 题）</h2>
+  <p>点击问题展开答案，先自己想想再看解析 👇</p>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q1：Kafka 的幂等生产者是如何实现的？解决了什么问题？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">幂等生产者通过 <code>enable.idempotence=true</code> 开启。Kafka 为每个 Producer 分配唯一的 <strong>PID (Producer ID)</strong>，每条消息携带 <strong>(PID, 分区, 序列号)</strong> 三元组。</p>
+      <p class="a">Broker 端维护一个序列号缓存——如果收到相同 (PID, 分区, 序列号) 的消息，说明是重试导致的重复，直接丢弃。这解决了<strong>网络重试导致的重复消息问题</strong>。</p>
+      <p class="q">限制：</p>
+      <p class="a">幂等只保证<strong>单分区</strong>内的 exactly-once。跨多分区需要<strong>事务生产者</strong>。重启 Producer 后 PID 会变化，所以不能跨会话去重。</p>
+      <p class="a"><span class="handwritten">一句话：给消息贴唯一编号，Broker 见号识重复。</span></p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open'')">Q2：Kafka 事务生产者如何实现跨分区原子写入？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">事务生产者通过 <code>transactional.id</code> 配置启用。核心组件：</p>
+      <ul class="a">
+        <li><strong>Transaction Coordinator</strong>：Broker 上的协调者，管理事务状态</li>
+        <li><strong>__transaction_state</strong> 主题：持久化事务状态（Ongoing / PrepareCommit / CompletedCommit）</li>
+        <li><strong>控制消息（Control Batches）</strong>：COMMIT/ABORT 标记，写入目标分区</li>
+      </ul>
+      <p class="a">流程：<code>initTransactions()</code> → <code>beginTransaction()</code> → 发送消息 → <code>commitTransaction()</code>。Consumer 设置 <code>isolation.level=read_committed</code> 可跳过未提交的事务消息。</p>
+      <p class="q">注意点：</p>
+      <p class="a">事务超时（<code>transaction.timeout.ms</code>）和僵尸实例隔离（通过递增的 <code>transactional.id</code> epoch 防止旧 Producer 继续写）。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q3：Consumer 重平衡的触发条件和影响是什么？如何减少影响？</h4>
+    <div class="qa-a">
+      <p class="q">触发条件：</p>
+      <ul class="a">
+        <li>Consumer 加入/退出 Consumer Group</li>
+        <li>Consumer 心跳超时（<code>session.timeout.ms</code>）</li>
+        <li>Consumer 处理时间超时（<code>max.poll.interval.ms</code>）</li>
+        <li>订阅主题的分区数发生变化</li>
+      </ul>
+      <p class="q">影响：</p>
+      <p class="a">Eager 模式下所有 Consumer 暂停消费（Stop-the-world），待分区重新分配后恢复。期间消息积压，消费者偏移量需要重置，可能导致重复消费。</p>
+      <p class="q">减少影响的方法：</p>
+      <ul class="a">
+        <li>使用 <strong>CooperativeStickyAssignor</strong>（增量重平衡，不停顿）</li>
+        <li>合理设置 <code>session.timeout.ms</code>（默认 45s）和 <code>max.poll.interval.ms</code>（默认 5min）</li>
+        <li>降低 <code>max.poll.records</code> 避免单次 poll 处理时间过长</li>
+        <li>使用独立线程处理消息，主线程保持心跳</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q4：Kafka Streams 中的 KStream 和 KTable 有什么区别？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>KStream</strong> 是<strong>不可变记录流</strong>——每条记录都是新数据，追加到流中。类比为银行流水账单。</p>
+      <p class="a"><strong>KTable</strong> 是<strong>可变更新日志</strong>（changelog）——每个 key 只有最新值，后到的记录覆盖先到的。类比为银行账户余额。</p>
+      <p class="q">Stream-Table 二元性：</p>
+      <p class="a">KTable 可通过 KStream 的 <code>.aggregate()</code> 或 <code>.reduce()</code> 推导出来。反过来，KTable 的每次变更事件可以映射为 KStream。两者本质是同一枚硬币的两面。</p>
+      <p class="a"><span class="handwritten">KStream = 流水，KTable = 余额。</span></p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q5：KRaft 模式相比 ZooKeeper 模式有哪些优势？什么时候应该迁移？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>KRaft (Kafka Raft) 模式</strong>将元数据管理从 ZooKeeper 迁移到 Kafka 自身的 Raft 协议中。核心优势：</p>
+      <ul class="a">
+        <li><strong>简化运维</strong>：不再需要额外维护 ZK 集群（少一套系统）</li>
+        <li><strong>更快 Controller 切换</strong>：Raft 选举比 ZK 模式更快（秒级 → 毫秒级）</li>
+        <li><strong>更高分区上限</strong>：ZK 的写入瓶颈限制了分区数（通常不建议超过 20 万），KRaft 支持百万级</li>
+        <li><strong>更低延迟</strong>：元数据变更不需要经过 ZK 的写入确认</li>
+      </ul>
+      <p class="q">迁移时机：</p>
+      <p class="a">Kafka 3.x 版本 KRaft 已生产就绪。新建集群建议直接使用 KRaft 模式。存量 ZK 集群可通过 <code>kafka-storage.sh</code> 迁移工具逐步切换（Kafka 4.0 将完全移除 ZK 支持）。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q6：分区分配策略 Range、RoundRobin、Sticky、CooperativeSticky 有什么区别？如何选择？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>策略</th><th>特点</th><th>重平衡代价</th></tr>
+        <tr><td>RangeAssignor</td><td>按主题范围分配，前面 Consumer 可能多分</td><td>高（全体暂停）</td></tr>
+        <tr><td>RoundRobinAssignor</td><td>轮询分配，最均匀</td><td>高（全体暂停）</td></tr>
+        <tr><td>StickyAssignor</td><td>均匀 + 尽量保留已有分配</td><td>中（全体暂停但少移动）</td></tr>
+        <tr><td>CooperativeStickyAssignor</td><td>增量 + 粘性，不停顿</td><td><strong>低（推荐）</strong></td></tr>
+      </table>
+      <p class="a"><strong>选择建议</strong>：新项目直接用 <code>CooperativeStickyAssignor</code>。它解决了传统策略"全体暂停"的问题，只移动必要的分区，同时保持分配均匀。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q7：Kafka 的高水位（High Watermark）和 Leader Epoch 的作用是什么？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>高水位 (HW)</strong> 标记了 ISR 中所有副本都已同步的最新 offset。Consumer 只能读取 HW 之前的数据——保证了消费者不会读到"可能丢失"的消息。</p>
+      <p class="a"><strong>LEO (Log End Offset)</strong> 是下一条消息将被写入的位置。</p>
+      <p class="a">两者关系：HW ≤ LEO（因为 HW 是已同步的确认位，LEO 是最新写入位）。</p>
+      <p class="q">Leader Epoch 的作用：</p>
+      <p class="a">每个 Leader 任期（epoch）的唯一递增编号，解决<strong>Leader 切换后日志截断不一致</strong>问题。新任 Leader 通过比对 epoch 确定哪些数据有效，避免旧 Leader 重启后截断已提交数据。</p>
+      <p class="a"><span class="handwritten">HW = 安全水位线，Leader Epoch = 任期身份证。</span></p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q8：Kafka 的性能调优应该从哪里入手？常用的压测工具有哪些？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>先基准，后优化</strong>——不要盲目调参数。</p>
+      <p class="q">常用压测工具：</p>
+      <ul class="a">
+        <li><code>kafka-producer-perf-test</code>：生产者吞吐量/延迟压测</li>
+        <li><code>kafka-consumer-perf-test</code>：消费者吞吐量压测</li>
+        <li><code>kafka-run-class.sh</code>：底层脚本运行各种测试</li>
+      </ul>
+      <p class="q">调优维度（按重要性排序）：</p>
+      <ol class="a">
+        <li><strong>磁盘</strong>：SSD + 独立挂载，页面缓存充足（≥8GB）</li>
+        <li><strong>网络</strong>：万兆网卡，网卡多队列</li>
+        <li><strong>Producer 参数</strong>：batch.size、linger.ms、compression.type</li>
+        <li><strong>Consumer 参数</strong>：fetch.min.bytes、max.poll.records</li>
+        <li><strong>JVM</strong>：堆 4-8GB、G1GC</li>
+        <li><strong>分区数</strong>：分区数 = max(Producer 并行度, Consumer 并行度)</li>
+      </ol>
+      <p class="a">每次只改一个参数，对比压测结果。<span class="handwritten">没有数据支持，不要做优化。</span></p>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>📌 核心要点</h4>
+    <p>读者问 Kafka 进阶问题时最看重——</p>
+    <ul>
+      <li><strong>理解设计权衡</strong>：为什么要有幂等？→ 吞吐 vs 可靠性的权衡</li>
+      <li><strong>关注一致性</strong>：HW、LEO、Leader Epoch 解决什么问题？</li>
+      <li><strong>知其所以然</strong>：KRaft 为什么好？Raft 协议在 Kafka 怎么用的？</li>
+      <li><strong>实战经验</strong>：用什么工具压测？遇到过什么性能问题？怎么解决的？</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== 口播总结 ====== -->
+<section class="section" id="summary">
+  <h2>🎙️ 口播总结</h2>
+  <div class="voice-summary">
+    <p>好，我们快速捋一遍 Kafka 进阶实战的知识体系。</p>
+    <p><strong>第一，精确一次语义</strong>是 Kafka 进阶的基础。幂等生产者通过 <strong>PID + 序列号</strong> 实现单分区去重，事务生产者通过 <strong>Transaction Coordinator + 控制消息</strong> 实现跨分区原子写入。核心思想就是"给消息打唯一标识，让系统能识别重复和部分写入"。</p>
+    <p><strong>第二，重平衡机制</strong>是 Consumer Group 高可用的保障，但也是<strong>性能抖动</strong>的根源。理解 Eager 和 Cooperative 两种模式的差异，知道如何配置 <code>session.timeout.ms</code> 和 <code>max.poll.interval.ms</code> 来避免不必要的重平衡，是生产运维的必修课。</p>
+    <p><strong>第三，Kafka Streams</strong> 是轻量级流处理方案——<strong>Stream 是流水，Table 是余额</strong>，理解这个二元性就理解了流处理的核心。</p>
+    <p><strong>第四，KRaft</strong> 是 Kafka 架构的未来。没有了 ZooKeeper，运维更简单，分区上限更高，Controller 切换更快。4.0 版本将完全移除 ZK 支持。</p>
+    <p><strong>第五，高水位和 Leader Epoch</strong> 保障了数据的一致性和正确性——HW 管"安全"，Leader Epoch 管"正确切换"。</p>
+    <p><strong>最后，压测调优</strong>是工程能力的体现。记住：<strong>先基准，单变量，后优化</strong>。用自带的 <code>kafka-producer-perf-test</code> 和 <code>kafka-consumer-perf-test</code> 获取数据，再针对性地调整。</p>
+    <p>下一篇我们聊聊 <strong>RocketMQ 深度解析</strong>——对比 Kafka 看差异，掌握消息中间件的通用设计哲学。敬请期待！🎯</p>
+  </div>
+</section>
+
+</main>
+
+</div><!-- .app -->
+
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

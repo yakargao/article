@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes 实战 · 从零到一理解容器编排 · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .voice-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .voice-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 420px; }
+  }
+
+  /* Custom K8s styles */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) { .diagram svg { min-width: 420px; } }
+  .qa-q { cursor: pointer; user-select: none; }
+  .qa-q::after { content: ' ▾'; opacity: 0.5; }
+  .qa-q.open::after { content: ' ▴'; }
+  .qa-a { display: none; }
+  .qa-a.open { display: block; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">基础</div>
+  <a class="nav-item" href="#why">🤔 为什么需要K8s</a>
+  <a class="nav-item" href="#arch">🏗️ 核心架构</a>
+  <a class="nav-item" href="#pod">📦 Pod</a>
+  <a class="nav-item" href="#workload">⚙️ 工作负载</a>
+  <a class="nav-item" href="#scheduling">🎯 调度策略</a>
+  <a class="nav-item" href="#configmap">🔧 配置管理</a>
+  <a class="nav-item" href="#storage">💾 存储</a>
+  <a class="nav-item" href="#helm">⛵ Helm</a>
+  <div class="nav-section">实战</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ====== 总览 ====== -->
+<section class="section" id="overview">
+  <h2>📋 总览：Kubernetes 是什么</h2>
+  <p>Kubernetes（K8s）是 Google 开源的<strong>容器编排平台</strong>，是目前云原生时代的事实标准。它负责自动化容器的<strong>部署、伸缩、运维</strong>——简单说，你告诉 K8s"我要跑 3 个 Nginx 容器，CPU 使用率超过 70% 就自动加一个"，剩下的它帮你搞定。</p>
+  <div class="feynman">
+    <p>想象你开了一家连锁餐厅：<span class="analogy">刚开始只有一家店（单体应用），你亲自管后厨、收银、清洁。</span></p>
+    <p>生意火了，开了 50 家分店（微服务），每家店都配后厨、收银、仓库——这时候你需要一个<strong>总部的管理系统</strong>：哪家店缺厨师就调人过去（自动调度），哪家店排队太长就加人手（弹性伸缩），哪家店机器坏了就换备用的（自愈）。</p>
+    <p><span class="analogy">Kubernetes 就是这个"餐饮连锁管理系统"，容器就是你的厨师和服务员——它们按标准流程（Docker 镜像）工作，K8s 保证每个岗位都有人干活的节奏。</span></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="380" fill="#0f172a" rx="8"/>
+      <!-- Title -->
+      <text x="400" y="36" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">从单体到 K8s：三阶段演进</text>
+
+      <!-- Stage 1: Monolith -->
+      <rect x="30" y="60" width="220" height="120" rx="10" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+      <text x="140" y="90" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="bold">🪨 阶段一：单体应用</text>
+      <rect x="55" y="105" width="170" height="30" rx="6" fill="#fbbf24" opacity="0.15"/>
+      <text x="140" y="124" text-anchor="middle" fill="#fbbf24" font-size="12">App + DB + Cache 全在一起</text>
+      <text x="140" y="150" text-anchor="middle" fill="#f87171" font-size="11">❌ 改一行代码重启整个服务</text>
+      <text x="140" y="168" text-anchor="middle" fill="#f87171" font-size="11">❌ 无法独立扩缩容</text>
+
+      <!-- Arrow 1 -->
+      <text x="270" y="130" fill="#8b949e" font-size="22">→</text>
+
+      <!-- Stage 2: Docker -->
+      <rect x="295" y="60" width="220" height="120" rx="10" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+      <text x="405" y="90" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">🐳 阶段二：Docker 容器化</text>
+      <rect x="320" y="105" width="170" height="30" rx="6" fill="#3fb950" opacity="0.15"/>
+      <text x="405" y="124" text-anchor="middle" fill="#3fb950" font-size="12">各服务独立容器</text>
+      <text x="405" y="150" text-anchor="middle" fill="#3fb950" font-size="11">✅ 环境一致性</text>
+      <text x="405" y="168" text-anchor="middle" fill="#f87171" font-size="11">❌ 容器挂了没人管</text>
+
+      <!-- Arrow 2 -->
+      <text x="535" y="130" fill="#8b949e" font-size="22">→</text>
+
+      <!-- Stage 3: K8s -->
+      <rect x="560" y="60" width="210" height="120" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="2"/>
+      <text x="665" y="90" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">☸️ 阶段三：Kubernetes</text>
+      <rect x="585" y="105" width="160" height="30" rx="6" fill="#22d3ee" opacity="0.15"/>
+      <text x="665" y="124" text-anchor="middle" fill="#22d3ee" font-size="12">容器编排平台</text>
+      <text x="665" y="150" text-anchor="middle" fill="#3fb950" font-size="11">✅ 自动调度 + 自愈</text>
+      <text x="665" y="168" text-anchor="middle" fill="#3fb950" font-size="11">✅ 弹性伸缩 + 滚动更新</text>
+
+      <!-- Bottom comparison table -->
+      <line x1="30" y1="210" x2="770" y2="210" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="236" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">K8s 核心能力（四"自"真言）</text>
+
+      <rect x="50" y="252" width="160" height="48" rx="8" fill="#22d3ee" opacity="0.1" stroke="#22d3ee" stroke-width="1"/>
+      <text x="130" y="270" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">♻️ 自愈</text>
+      <text x="130" y="290" text-anchor="middle" fill="#94a3b8" font-size="10">容器挂了自动重启</text>
+
+      <rect x="230" y="252" width="160" height="48" rx="8" fill="#3fb950" opacity="0.1" stroke="#3fb950" stroke-width="1"/>
+      <text x="310" y="270" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">📈 弹性伸缩</text>
+      <text x="310" y="290" text-anchor="middle" fill="#94a3b8" font-size="10">根据负载自动扩缩</text>
+
+      <rect x="410" y="252" width="160" height="48" rx="8" fill="#fbbf24" opacity="0.1" stroke="#fbbf24" stroke-width="1"/>
+      <text x="490" y="270" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">🔄 滚动更新</text>
+      <text x="490" y="290" text-anchor="middle" fill="#94a3b8" font-size="10">不停机升级版本</text>
+
+      <rect x="590" y="252" width="160" height="48" rx="8" fill="#a78bfa" opacity="0.1" stroke="#a78bfa" stroke-width="1"/>
+      <text x="670" y="270" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="bold">🔍 服务发现</text>
+      <text x="670" y="290" text-anchor="middle" fill="#94a3b8" font-size="10">DNS + 负载均衡</text>
+
+      <text x="400" y="338" text-anchor="middle" fill="#8b949e" font-size="11">核心思想：<tspan fill="#22d3ee">声明式</tspan>（告诉 K8s 你想要什么状态，它负责实现）</text>
+      <text x="400" y="358" text-anchor="middle" fill="#8b949e" font-size="11">相当于"点菜" vs "告诉厨师每一步怎么做"——声明式就是点菜🧑‍🍳</text>
+    </svg>
+    <div class="diagram-caption">图 1：从单体到 K8s 的三阶段演进及 K8s 四大核心能力</div>
+  </div>
+</section>
+
+<!-- ====== 为什么需要K8s ====== -->
+<section class="section" id="why">
+  <h2>🤔 为什么需要 Kubernetes</h2>
+  <p>在没有 K8s 的世界里，运维工程师的日常是：SSH 到服务器 → 拉镜像 → <code>docker run</code> → 祈祷不要挂。当你有 3 个服务还能忍，30 个服务就疯了，300 个服务？直接提离职。</p>
+
+  <div class="compare">
+    <div>
+      <h4>🐌 没有 K8s</h4>
+      <ul>
+        <li>手动登录每台服务器部署</li>
+        <li>服务挂了必须等人去重启</li>
+        <li>流量暴增只能手动加机器</li>
+        <li>升级版本：先停服 → 升级 → 重启</li>
+        <li>不同环境的配置靠复制粘贴</li>
+        <li>端口冲突经常发生</li>
+      </ul>
+    </div>
+    <div>
+      <h4>🚀 有 K8s</h4>
+      <ul>
+        <li><code>kubectl apply -f deploy.yaml</code></li>
+        <li>K8s 自动重启/重新调度</li>
+        <li>HPA 自动扩缩（Horizontal Pod Autoscaler）</li>
+        <li>滚动更新：零停机逐步替换</li>
+        <li>ConfigMap/Secret 集中管理配置</li>
+        <li>每个 Pod 独立 IP + Service 隔离</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="feynman">
+    <p><span class="analogy">没有 K8s 的运维就像开一家没有管理系统的连锁餐厅——每家店的大厨自己决定放多少盐、什么时候开业、坏了找谁修。</span></p>
+    <p>有了 K8s 就相当于有了<strong>总部的标准化运营系统</strong>：统一菜品配方（镜像）、统一排班调度（调度器）、统一配送（Service）、统一巡检（kubelet 健康检查）。哪家店生意好就多派厨师（弹性伸缩），哪家店厨房着火了自动从后门逃生并呼叫新厨师（自愈）。</p>
+  </div>
+
+  <div class="info-card">
+    <h4>🎯 一句话记住 K8s 的定位</h4>
+    <p>Kubernetes 不是"又一种容器技术"——它是<strong>管理容器的基础设施操作系统</strong>。如果 Docker 是"打包和运行应用的箱子"，K8s 就是"管理成千上万个箱子的智能仓库系统"。</p>
+  </div>
+</section>
+
+<!-- ====== 核心架构 ====== -->
+<section class="section" id="arch">
+  <h2>🏗️ 核心架构</h2>
+  <p>Kubernetes 采用<strong>Master-Worker 架构</strong>（也叫 Control Plane + Data Plane）。一个集群通常有 1 个或多个 Master 节点（高可用部署）和多个 Worker 节点。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="480" fill="#0f172a" rx="8"/>
+
+      <!-- Title -->
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Kubernetes 核心架构</text>
+
+      <!-- Master Node -->
+      <rect x="20" y="55" width="280" height="400" rx="12" fill="#1e293b" stroke="#a78bfa" stroke-width="2" stroke-dasharray="6,3"/>
+      <text x="160" y="80" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="bold">☸️ Master 节点（控制面）</text>
+
+      <!-- API Server -->
+      <rect x="40" y="100" width="240" height="50" rx="8" fill="#a78bfa" opacity="0.12" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="160" y="120" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">kube-apiserver</text>
+      <text x="160" y="140" text-anchor="middle" fill="#94a3b8" font-size="11">K8s 的"前厅"——所有请求的入口</text>
+
+      <!-- Scheduler -->
+      <rect x="40" y="165" width="240" height="50" rx="8" fill="#fbbf24" opacity="0.12" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="160" y="185" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">kube-scheduler</text>
+      <text x="160" y="205" text-anchor="middle" fill="#94a3b8" font-size="11">"大堂经理"——决定 Pod 放哪个节点</text>
+
+      <!-- Controller Manager -->
+      <rect x="40" y="230" width="240" height="50" rx="8" fill="#3fb950" opacity="0.12" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="160" y="250" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">controller-manager</text>
+      <text x="160" y="270" text-anchor="middle" fill="#94a3b8" font-size="11">"质检员"——确保实际状态=期望状态</text>
+
+      <!-- etcd -->
+      <rect x="40" y="295" width="240" height="50" rx="8" fill="#f87171" opacity="0.12" stroke="#f87171" stroke-width="1.5"/>
+      <text x="160" y="315" text-anchor="middle" fill="#f87171" font-size="13" font-weight="bold">etcd</text>
+      <text x="160" y="335" text-anchor="middle" fill="#94a3b8" font-size="11">"保险柜"——所有配置和状态的 key-value 存储</text>
+
+      <!-- Worker Node heading -->
+      <rect x="340" y="55" width="440" height="400" rx="12" fill="#1e293b" stroke="#22d3ee" stroke-width="2" stroke-dasharray="6,3"/>
+      <text x="560" y="80" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">🖥️ Worker 节点（工作节点）</text>
+
+      <!-- Node 1 -->
+      <rect x="360" y="100" width="195" height="155" rx="8" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="457" y="120" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">Worker Node 1</text>
+
+      <!-- Pods in Node 1 -->
+      <rect x="370" y="135" width="80" height="28" rx="6" fill="#22d3ee" opacity="0.15"/>
+      <text x="410" y="154" text-anchor="middle" fill="#22d3ee" font-size="10">📦 Pod A</text>
+      <rect x="460" y="135" width="80" height="28" rx="6" fill="#3fb950" opacity="0.15"/>
+      <text x="500" y="154" text-anchor="middle" fill="#3fb950" font-size="10">📦 Pod B</text>
+      <rect x="370" y="173" width="80" height="28" rx="6" fill="#fbbf24" opacity="0.15"/>
+      <text x="410" y="192" text-anchor="middle" fill="#fbbf24" font-size="10">📦 Pod C</text>
+      <rect x="460" y="173" width="80" height="28" rx="6" fill="#a78bfa" opacity="0.15"/>
+      <text x="500" y="192" text-anchor="middle" fill="#a78bfa" font-size="10">📦 Pod D</text>
+
+      <!-- kubelet + kube-proxy -->
+      <rect x="370" y="213" width="170" height="28" rx="6" fill="#f87171" opacity="0.1" stroke="#f87171" stroke-width="1"/>
+      <text x="455" y="232" text-anchor="middle" fill="#f87171" font-size="10">🔧 kubelet（管家）</text>
+
+      <!-- Node 2 -->
+      <rect x="570" y="100" width="195" height="155" rx="8" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="667" y="120" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">Worker Node 2</text>
+
+      <rect x="580" y="135" width="80" height="28" rx="6" fill="#3fb950" opacity="0.15"/>
+      <text x="620" y="154" text-anchor="middle" fill="#3fb950" font-size="10">📦 Pod E</text>
+      <rect x="670" y="135" width="80" height="28" rx="6" fill="#fbbf24" opacity="0.15"/>
+      <text x="710" y="154" text-anchor="middle" fill="#fbbf24" font-size="10">📦 Pod F</text>
+      <rect x="580" y="173" width="80" height="28" rx="6" fill="#22d3ee" opacity="0.15"/>
+      <text x="620" y="192" text-anchor="middle" fill="#22d3ee" font-size="10">📦 Pod G</text>
+
+      <rect x="580" y="213" width="170" height="28" rx="6" fill="#f87171" opacity="0.1" stroke="#f87171" stroke-width="1"/>
+      <text x="665" y="232" text-anchor="middle" fill="#f87171" font-size="10">🔧 kubelet（管家）</text>
+
+      <!-- kube-proxy row -->
+      <rect x="370" y="245" width="390" height="28" rx="6" fill="#a78bfa" opacity="0.1" stroke="#a78bfa" stroke-width="1"/>
+      <text x="565" y="264" text-anchor="middle" fill="#a78bfa" font-size="10">🔄 kube-proxy（网络代理——维护节点上的网络规则和负载均衡）</text>
+
+      <!-- Container Runtime -->
+      <rect x="370" y="283" width="390" height="28" rx="6" fill="#3fb950" opacity="0.1" stroke="#3fb950" stroke-width="1"/>
+      <text x="565" y="302" text-anchor="middle" fill="#3fb950" font-size="10">📦 容器运行时（Container Runtime — Docker / containerd / CRI-O）</text>
+
+      <text x="400" y="350" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">组件职责一览</text>
+
+      <!-- Component table -->
+      <rect x="50" y="365" width="700" height="80" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="90" y="385" fill="#22d3ee" font-size="11" font-weight="bold">etcd</text>
+      <text x="160" y="385" fill="#94a3b8" font-size="10">→ 集群的"数据库"，存储所有资源对象的状态</text>
+      <text x="90" y="403" fill="#a78bfa" font-size="11" font-weight="bold">API Server</text>
+      <text x="160" y="403" fill="#94a3b8" font-size="10">→ 唯一和 etcd 通信的组件，RESTful API 入口</text>
+      <text x="90" y="421" fill="#fbbf24" font-size="11" font-weight="bold">Scheduler</text>
+      <text x="160" y="421" fill="#94a3b8" font-size="10">→ 根据资源需求和策略为 Pod 选节点</text>
+      <text x="430" y="385" fill="#3fb950" font-size="11" font-weight="bold">Controller Mgr</text>
+      <text x="510" y="385" fill="#94a3b8" font-size="10">→ 运行各种控制器（Deployment、StatefulSet...）</text>
+      <text x="430" y="403" fill="#f87171" font-size="11" font-weight="bold">kubelet</text>
+      <text x="510" y="403" fill="#94a3b8" font-size="10">→ 每个节点上的"代理"管理 Pod 生命周期</text>
+      <text x="430" y="421" fill="#a78bfa" font-size="11" font-weight="bold">kube-proxy</text>
+      <text x="510" y="421" fill="#94a3b8" font-size="10">→ 维护网络规则，实现 Service 负载均衡</text>
+    </svg>
+    <div class="diagram-caption">图 2：K8s Master-Worker 架构及核心组件</div>
+  </div>
+
+  <h3>核心组件详解</h3>
+  <table>
+    <tr><th>组件</th><th>一句话</th><th>类比</th></tr>
+    <tr><td><code>kube-apiserver</code></td><td>所有操作唯一入口</td><td>🏢 公司前台，所有访客必须经过它</td></tr>
+    <tr><td><code>etcd</code></td><td>分布式 key-value 存储</td><td>🔐 保险柜，存着公司所有档案</td></tr>
+    <tr><td><code>kube-scheduler</code></td><td>给 Pod 找合适的节点</td><td>🧑‍💼 HR，把新人分配到最合适的部门</td></tr>
+    <tr><td><code>controller-manager</code></td><td>运行各种控制器</td><td>🔍 质检经理，确保每个环节按标准执行</td></tr>
+    <tr><td><code>kubelet</code></td><td>节点上的"小管家"</td><td>🏠 每个分店的店长，管店里一切</td></tr>
+    <tr><td><code>kube-proxy</code></td><td>网络代理 + 负载均衡</td><td>📡 快递分拣员，包裹正确送达</td></tr>
+  </table>
+</section>
+
+<!-- ====== Pod ====== -->
+<section class="section" id="pod">
+  <h2>📦 Pod —— K8s 最小的部署单元</h2>
+  <p><strong>Pod</strong> 是 Kubernetes 中<strong>最小的可调度单元</strong>。一个 Pod 可以包含一个或多个容器（通常是一个 Pod 一个容器），它们共享网络栈和存储卷。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">Pod 的英文原意是"豌豆荚"——Pod 就是豌豆荚（Pod），里面的容器就是一颗颗豌豆（container）。</span></p>
+    <p>豌豆荚（Pod）把几颗豌豆（容器）包在一起：它们共享同一个壳（<strong>网络命名空间</strong>——同一个 IP、端口空间）、同一份土壤（<strong>存储卷</strong>——共享文件系统）。</p>
+    <p>如果你需要两个容器"紧密协作"（例如 Nginx + sidecar 日志采集器），就放在同一个 Pod 里。它们用 <code>localhost</code> 就能互相通信，像哥俩住在同一个房间。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="420" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Pod = 豌豆荚里的豌豆</text>
+
+      <!-- The pea pod -->
+      <path d="M 200 80 Q 80 100 60 220 Q 45 320 200 360" fill="none" stroke="#3fb950" stroke-width="3"/>
+      <path d="M 600 80 Q 720 100 740 220 Q 755 320 600 360" fill="none" stroke="#3fb950" stroke-width="3"/>
+      <path d="M 200 80 Q 400 50 600 80" fill="none" stroke="#3fb950" stroke-width="3"/>
+      <path d="M 200 360 Q 400 390 600 360" fill="none" stroke="#3fb950" stroke-width="2"/>
+
+      <!-- Pod label -->
+      <text x="400" y="72" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">🫛 Pod（豌豆荚）</text>
+
+      <!-- Container 1 -->
+      <ellipse cx="280" cy="200" rx="70" ry="55" fill="#22d3ee" opacity="0.12" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="280" y="190" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">🐳 豌豆 1</text>
+      <text x="280" y="210" text-anchor="middle" fill="#94a3b8" font-size="11">主容器（Nginx）</text>
+      <text x="280" y="230" text-anchor="middle" fill="#8b949e" font-size="10">端口 80</text>
+
+      <!-- Container 2 -->
+      <ellipse cx="400" cy="200" rx="70" ry="55" fill="#fbbf24" opacity="0.12" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="400" y="190" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">🐳 豌豆 2</text>
+      <text x="400" y="210" text-anchor="middle" fill="#94a3b8" font-size="11">Sidecar（日志）</text>
+      <text x="400" y="230" text-anchor="middle" fill="#8b949e" font-size="10">读 /var/log</text>
+
+      <!-- Container 3 -->
+      <ellipse cx="520" cy="200" rx="70" ry="55" fill="#a78bfa" opacity="0.12" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="520" y="190" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">🐳 豌豆 3</text>
+      <text x="520" y="210" text-anchor="middle" fill="#94a3b8" font-size="11">Init 容器</text>
+      <text x="520" y="230" text-anchor="middle" fill="#8b949e" font-size="10">启动前初始化</text>
+
+      <!-- Shared resources -->
+      <rect x="100" y="280" width="600" height="50" rx="8" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="300" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">共享资源（同一个壳）</text>
+      <text x="400" y="320" text-anchor="middle" fill="#94a3b8" font-size="11">同一 IP 地址  |  同一网络命名空间  |  共享存储卷（emptyDir） |  localhost 互通</text>
+
+      <!-- Key points at bottom -->
+      <text x="400" y="370" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">关键概念</text>
+      <text x="400" y="390" text-anchor="middle" fill="#8b949e" font-size="11">Pod 内容器通过 localhost 通信 | Pod 间通过 Service 通信 | Pod 是"逻辑主机"</text>
+    </svg>
+    <div class="diagram-caption">图 3：Pod 结构示意——容器共享网络和存储</div>
+  </div>
+
+  <h3>Pod 的生命周期</h3>
+  <table>
+    <tr><th>阶段</th><th>描述</th><th>状态码</th></tr>
+    <tr><td>Pending</td><td>Pod 已被接受但还没启动（拉镜像中）</td><td><span class="badge badge-orange">⏳</span></td></tr>
+    <tr><td>Running</td><td>Pod 已绑定到节点，所有容器已启动</td><td><span class="badge badge-green">✅</span></td></tr>
+    <tr><td>Succeeded</td><td>所有容器正常退出（Job 类任务）</td><td><span class="badge badge-cyan">✅</span></td></tr>
+    <tr><td>Failed</td><td>至少一个容器非零退出码</td><td><span class="badge badge-red">❌</span></td></tr>
+    <tr><td>CrashLoopBackOff</td><td>容器反复崩溃，K8s 在退避重启</td><td><span class="badge badge-red">🔄</span></td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>💡 关键理解</h4>
+    <p>Pod 是<strong>临时性</strong>的——它可能随时被销毁和重建（IP 会变）。所以永远不要直接访问 Pod 的 IP！要用 Service 来暴露 Pod。</p>
+  </div>
+</section>
+
+<!-- ====== 工作负载 ====== -->
+<section class="section" id="workload">
+  <h2>⚙️ 工作负载：Deployment → Service → Ingress</h2>
+  <p>K8s 中最常见的"三件套"工作流：<strong>Deployment 管理 Pod → Service 暴露内部访问 → Ingress 暴露外部访问</strong>。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="460" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Deployment → Service → Ingress 工作流</text>
+
+      <!-- User -->
+      <rect x="30" y="60" width="100" height="40" rx="20" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="80" y="85" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">👤 用户</text>
+
+      <!-- Arrow -->
+      <text x="145" y="90" fill="#8b949e" font-size="18">→</text>
+
+      <!-- Ingress -->
+      <rect x="170" y="55" width="140" height="50" rx="8" fill="#a78bfa" opacity="0.12" stroke="#a78bfa" stroke-width="2"/>
+      <text x="240" y="76" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">🌐 Ingress</text>
+      <text x="240" y="96" text-anchor="middle" fill="#94a3b8" font-size="10">域名/路径路由</text>
+
+      <!-- Arrow -->
+      <text x="325" y="90" fill="#8b949e" font-size="18">→</text>
+
+      <!-- Service -->
+      <rect x="350" y="55" width="140" height="50" rx="8" fill="#22d3ee" opacity="0.12" stroke="#22d3ee" stroke-width="2"/>
+      <text x="420" y="76" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">🔗 Service</text>
+      <text x="420" y="96" text-anchor="middle" fill="#94a3b8" font-size="10">内部负载均衡</text>
+
+      <!-- Arrow to Pods -->
+      <text x="505" y="90" fill="#8b949e" font-size="18">→</text>
+
+      <!-- Deployment box -->
+      <rect x="530" y="50" width="240" height="200" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="2"/>
+      <text x="650" y="75" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">⚙️ Deployment</text>
+
+      <!-- ReplicaSet -->
+      <rect x="550" y="90" width="200" height="36" rx="6" fill="#3fb950" opacity="0.1" stroke="#3fb950" stroke-width="1"/>
+      <text x="650" y="113" text-anchor="middle" fill="#3fb950" font-size="12">ReplicaSet（副本控制器）</text>
+
+      <!-- Pods -->
+      <rect x="555" y="140" width="55" height="34" rx="6" fill="#22d3ee" opacity="0.15"/>
+      <text x="582" y="160" text-anchor="middle" fill="#22d3ee" font-size="10">📦 Pod</text>
+
+      <rect x="620" y="140" width="55" height="34" rx="6" fill="#3fb950" opacity="0.15"/>
+      <text x="647" y="160" text-anchor="middle" fill="#3fb950" font-size="10">📦 Pod</text>
+
+      <rect x="685" y="140" width="55" height="34" rx="6" fill="#fbbf24" opacity="0.15"/>
+      <text x="712" y="160" text-anchor="middle" fill="#fbbf24" font-size="10">📦 Pod</text>
+
+      <text x="650" y="205" text-anchor="middle" fill="#8b949e" font-size="11">replicas: 3（声明我们要 3 个副本）</text>
+
+      <!-- Labels selectors connection -->
+      <line x1="490" y1="70" x2="530" y2="95" stroke="#475569" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="510" y="65" text-anchor="middle" fill="#8b949e" font-size="9">selector: app=nginx</text>
+
+      <!-- Bottom: YAML example -->
+      <rect x="30" y="275" width="740" height="170" rx="8" fill="#16181d" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="300" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">完整的"三件套" YAML 示例</text>
+
+      <text x="50" y="325" fill="#8b949e" font-size="11" font-family="monospace"># Deployment</text>
+      <text x="50" y="342" fill="#c9d1d9" font-size="11" font-family="monospace">apiVersion: apps/v1</text>
+      <text x="50" y="358" fill="#c9d1d9" font-size="11" font-family="monospace">kind: Deployment</text>
+      <text x="50" y="375" fill="#94a3b8" font-size="10" font-family="monospace">  ... replicas: 3  ...  selector: app=nginx</text>
+
+      <text x="50" y="397" fill="#8b949e" font-size="11" font-family="monospace"># Service（ClusterIP）</text>
+      <text x="50" y="413" fill="#c9d1d9" font-size="11" font-family="monospace">apiVersion: v1 | kind: Service | ports: 80 → 80</text>
+
+      <text x="50" y="435" fill="#8b949e" font-size="11" font-family="monospace"># Ingress</text>
+      <text x="50" y="450" fill="#c9d1d9" font-size="11" font-family="monospace">apiVersion: networking.k8s.io/v1 | host: myapp.com</text>
+    </svg>
+    <div class="diagram-caption">图 4：用户 → Ingress → Service → Deployment(Pods) 的请求流转</div>
+  </div>
+
+  <h3>三种 Service 类型</h3>
+  <table>
+    <tr><th>Type</th><th>访问方式</th><th>场景</th></tr>
+    <tr><td><code>ClusterIP</code></td><td>集群内部 IP 访问</td><td>内部微服务互调</td></tr>
+    <tr><td><code>NodePort</code></td><td>节点 IP + 端口访问</td><td>开发测试环境</td></tr>
+    <tr><td><code>LoadBalancer</code></td><td>云厂商 LB + 公网 IP</td><td>生产环境对外暴露</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🎯 核心工作流</h4>
+    <ol>
+      <li><strong>写 YAML</strong>：定义 Deployment（要啥镜像、几个副本）、Service（如何暴露）、Ingress（域名和路径规则）</li>
+      <li><strong>kubectl apply</strong>：告诉 K8s"按这个配置干活"</li>
+      <li><strong>K8s 自动执行</strong>：创建 Pod → 调度到节点 → 启动容器 → 配置网络 → 对外暴露</li>
+      <li><strong>持续维护</strong>：Pod 挂了？重新创建。副本不够？自动扩容。版本更新？滚动替换。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ====== 调度策略 ====== -->
+<section class="section" id="scheduling">
+  <h2>🎯 调度策略：把 Pod 放到合适的"床位"</h2>
+  <p>Scheduler 给 Pod 选节点的过程就像"酒店前台给客人分配房间"——既要满足客人的硬性要求，也要考虑酒店各楼层的均衡负载。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="420" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">K8s 调度策略总览</text>
+
+      <!-- Scheduler -->
+      <rect x="300" y="55" width="200" height="45" rx="10" fill="#a78bfa" opacity="0.15" stroke="#a78bfa" stroke-width="2"/>
+      <text x="400" y="83" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="bold">kube-scheduler</text>
+
+      <!-- Filtering -->
+      <rect x="50" y="125" width="330" height="120" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="215" y="150" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">🔍 筛选阶段（Predicate / Filter）</text>
+      <text x="70" y="175" fill="#22d3ee" font-size="11">• <tspan fill="#94a3b8">NodeSelector</tspan>：必须匹配标签（node-role=GPU）</text>
+      <text x="70" y="195" fill="#22d3ee" font-size="11">• <tspan fill="#94a3b8">Toleration</tspan>：容忍污点（key=special:NoSchedule）</text>
+      <text x="70" y="215" fill="#22d3ee" font-size="11">• <tspan fill="#94a3b8">资源要求</tspan>：CPU/Memory 请求 &lt; 可用</text>
+
+      <!-- Arrow -->
+      <text x="400" y="138" fill="#8b949e" font-size="22">⇩</text>
+
+      <!-- Scoring -->
+      <rect x="420" y="125" width="330" height="120" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="585" y="150" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">📊 打分阶段（Priority / Score）</text>
+      <text x="440" y="175" fill="#3fb950" font-size="11">• <tspan fill="#94a3b8">NodeAffinity</tspan>：preferred（尽量去 GPU 节点）</text>
+      <text x="440" y="195" fill="#3fb950" font-size="11">• <tspan fill="#94a3b8">PodAffinity</tspan>：跟某 Pod 挨着放（低延迟）</text>
+      <text x="440" y="215" fill="#3fb950" font-size="11">• <tspan fill="#94a3b8">资源均衡</tspan>：选负载最轻的节点</text>
+
+      <!-- Result -->
+      <rect x="150" y="270" width="500" height="55" rx="10" fill="#0f172a" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="400" y="296" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">🎯 打分最高的节点 → 绑定 Pod → kubelet 启动容器</text>
+
+      <!-- Strategy comparison -->
+      <rect x="50" y="345" width="700" height="62" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="60" y="368" fill="#f87171" font-size="11" font-weight="bold">Taints &amp; Toleration</text>
+      <text x="60" y="388" fill="#8b949e" font-size="10">节点打"标签"说"我不欢迎某类Pod"——除非 Pod 有对应的"通行证"(Toleration)</text>
+      <text x="330" y="368" fill="#fbbf24" font-size="11" font-weight="bold">Taint effects</text>
+      <text x="330" y="388" fill="#8b949e" font-size="10">NoSchedule | PreferNoSchedule | NoExecute</text>
+      <text x="550" y="368" fill="#3fb950" font-size="11" font-weight="bold">场景</text>
+      <text x="550" y="388" fill="#8b949e" font-size="10">GPU节点只跑AI任务 | 专用节点</text>
+    </svg>
+    <div class="diagram-caption">图 5：调度流程——先筛选（硬约束），后打分（软偏好）</div>
+  </div>
+
+  <h3>调度策略对比</h3>
+  <table>
+    <tr><th>策略</th><th>类型</th><th>描述</th><th>示例</th></tr>
+    <tr><td><code>nodeSelector</code></td><td>硬约束</td><td>节点必须有指定标签</td><td><code>disktype: ssd</code></td></tr>
+    <tr><td><code>nodeAffinity</code></td><td>硬/软约束</td><td>高级节点选择</td><td><code>required: gpu=true</code></td></tr>
+    <tr><td><code>podAffinity</code></td><td>软约束</td><td>跟某类 Pod 放一起</td><td>降低网络延迟</td></tr>
+    <tr><td><code>taints/tolerations</code></td><td>排斥/容忍</td><td>节点排斥不带通行证的 Pod</td><td>专用 GPU 节点</td></tr>
+  </table>
+
+  <div class="feynman">
+    <p><span class="analogy">想象酒店前台（Scheduler）分配房间：</span></p>
+    <p><strong>nodeSelector</strong> = "客人要求必须在 3 楼以上"（筛选）<br>
+    <strong>nodeAffinity</strong> = "最好能住海景房，但如果没有也行"（软偏好）<br>
+    <strong>taint/toleration</strong> = "VIP 楼层在门口写着'非 VIP 请勿入'，只有 VIP 客人能刷卡进入"（排斥机制）<br>
+    <strong>podAffinity</strong> = "这两位客人希望住隔壁房间"（亲和性）</p>
+  </div>
+</section>
+
+<!-- ====== 配置管理 ====== -->
+<section class="section" id="configmap">
+  <h2>🔧 配置管理：ConfigMap &amp; Secret</h2>
+  <p>在 K8s 中，<strong>配置和敏感信息</strong>应该从镜像中解耦出来。这就是 ConfigMap（非敏感配置）和 Secret（敏感信息，如密码/密钥）的作用。</p>
+
+  <div class="compare">
+    <div>
+      <h4>📋 ConfigMap</h4>
+      <ul>
+        <li>存配置文件、环境变量</li>
+        <li>非敏感文本</li>
+        <li>以文件挂载或 env 注入</li>
+        <li>Base64 编码（纯文本）</li>
+        <li>例：<code>nginx.conf</code>、<code>application.yml</code></li>
+      </ul>
+    </div>
+    <div>
+      <h4>🔒 Secret</h4>
+      <ul>
+        <li>存密码、API Key、证书</li>
+        <li>敏感信息</li>
+        <li>以文件或 env 注入</li>
+        <li>Base64 编码（建议加密）</li>
+        <li>例：DB 密码、TLS 证书</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>💡 最佳实践</h4>
+    <p><strong>千万别把密码写在镜像里！</strong> 用 ConfigMap/Secret 的好处：改配置不用重新构建镜像，不同环境（dev/staging/prod）可以挂载不同的配置。Secret 默认只存内存（tmpfs），不会写到磁盘。</p>
+  </div>
+
+  <pre><code># 创建 ConfigMap
+kubectl create configmap app-config --from-literal=APP_ENV=production
+
+# 创建 Secret
+kubectl create secret generic db-secret --from-literal=DB_PASSWORD=S3cur3!
+
+# 在 Pod 中挂载
+env:
+  - name: APP_ENV
+    valueFrom:
+      configMapKeyRef:
+        name: app-config
+        key: APP_ENV</code></pre>
+</section>
+
+<!-- ====== 存储 ====== -->
+<section class="section" id="storage">
+  <h2>💾 存储：PV / PVC / StorageClass</h2>
+  <p>Pod 是临时性的，但数据需要持久化。K8s 通过 <strong>PV（PersistentVolume）、PVC（PersistentVolumeClaim）、StorageClass</strong> 三层抽象来解决存储问题。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">想象你去租办公室：</span></p>
+    <p><strong>PV（PersistentVolume）</strong> = 房东的房源（服务器上的存储空间），有 500GB，在北京朝阳区（zone: beijing-a）。<br>
+    <strong>PVC（PersistentVolumeClaim）</strong> = 你的租房需求："我要 200GB 以上、北京区域的办公室"（存储申请）。<br>
+    <strong>StorageClass</strong> = "经纪人"——自动从云厂商那租新房子（动态创建 PV），比如"高性能 SSD"或"大容量 HDD"类型。</p>
+    <p>K8s 的匹配逻辑：看到 PVC 申请 → 找符合条件的 PV → 找不到就用 StorageClass 动态创建 → 绑定 → Pod 使用。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="400" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">PV / PVC / StorageClass 关系</text>
+
+      <!-- Pod -->
+      <rect x="300" y="55" width="200" height="45" rx="8" fill="#1e293b" stroke="#22d3ee" stroke-width="2"/>
+      <text x="400" y="83" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">📦 Pod</text>
+
+      <!-- Arrow down -->
+      <text x="400" y="115" text-anchor="middle" fill="#8b949e" font-size="16">⬇ 使用</text>
+
+      <!-- PVC -->
+      <rect x="300" y="130" width="200" height="45" rx="8" fill="#fbbf24" opacity="0.12" stroke="#fbbf24" stroke-width="2"/>
+      <text x="400" y="158" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="bold">📄 PVC（存储申请）</text>
+
+      <!-- Arrow down -->
+      <text x="400" y="190" text-anchor="middle" fill="#8b949e" font-size="16">⬇ 绑定</text>
+
+      <!-- Binding area -->
+      <rect x="50" y="205" width="700" height="155" rx="10" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="230" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">存储供需匹配</text>
+
+      <!-- PV left -->
+      <rect x="70" y="245" width="200" height="50" rx="8" fill="#3fb950" opacity="0.1" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="170" y="267" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">💽 PV 静态供应</text>
+      <text x="170" y="285" text-anchor="middle" fill="#94a3b8" font-size="10">管理员手动创建</text>
+
+      <!-- OR text -->
+      <text x="335" y="278" text-anchor="middle" fill="#8b949e" font-size="14" font-weight="bold">OR</text>
+
+      <!-- StorageClass right -->
+      <rect x="360" y="245" width="370" height="50" rx="8" fill="#22d3ee" opacity="0.1" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="545" y="267" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">⚡ StorageClass 动态供应</text>
+      <text x="545" y="285" text-anchor="middle" fill="#94a3b8" font-size="10">PVC 申请 → 自动创建 PV（云厂商 Provisioner）</text>
+
+      <!-- Result -->
+      <rect x="150" y="310" width="500" height="38" rx="8" fill="#0f172a" stroke="#fbbf24" stroke-width="1"/>
+      <text x="400" y="335" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">✅ PVC &amp; PV 绑定成功 → Pod 开始读写数据</text>
+
+      <!-- Access Modes -->
+      <text x="400" y="385" text-anchor="middle" fill="#8b949e" font-size="11">访问模式：ReadWriteOnce（单节点读写） | ReadOnlyMany（多节点只读） | ReadWriteMany（多节点读写）</text>
+    </svg>
+    <div class="diagram-caption">图 6：存储体系——Pod 通过 PVC 申请存储，由 PV 或 StorageClass 供应</div>
+  </div>
+
+  <h3>存储场景对比</h3>
+  <table>
+    <tr><th>场景</th><th>方案</th><th>说明</th></tr>
+    <tr><td>临时日志</td><td><code>emptyDir</code></td><td>Pod 删除即消失</td></tr>
+    <tr><td>持久化数据库</td><td>PV + PVC + StatefulSet</td><td>Pod 重建后数据还在</td></tr>
+    <tr><td>多 Pod 共享读写</td><td><code>ReadWriteMany</code>（如 NFS）</td><td>文件存储场景</td></tr>
+    <tr><td>高 IO 数据库</td><td>Local SSDs + StorageClass</td><td>性能敏感场景</td></tr>
+  </table>
+</section>
+
+<!-- ====== Helm ====== -->
+<section class="section" id="helm">
+  <h2>⛵ Helm —— K8s 的"包管理器"</h2>
+  <p>一个微服务可能有 10+ 个 YAML 文件（Deployment、Service、ConfigMap、Ingress……）。Helm 就是 <strong>K8s 的 apt-get/homebrew</strong>——把一堆 YAML 打包成可复用的 <strong>Chart</strong>，一行命令部署整个应用。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="380" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Helm Chart 结构</text>
+
+      <!-- Chart directory tree -->
+      <rect x="30" y="55" width="280" height="310" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="50" y="80" fill="#22d3ee" font-size="13" font-weight="bold">📁 my-app/</text>
+      <text x="65" y="105" fill="#fbbf24" font-size="12">📄 Chart.yaml</text>
+      <text x="90" y="125" fill="#94a3b8" font-size="11">元数据：名称、版本、依赖</text>
+      <text x="65" y="150" fill="#a78bfa" font-size="12">📄 values.yaml</text>
+      <text x="90" y="170" fill="#94a3b8" font-size="11">默认配置值（可覆盖）</text>
+      <text x="65" y="195" fill="#3fb950" font-size="12">📁 templates/</text>
+      <text x="85" y="215" fill="#c9d1d9" font-size="11">├── deployment.yaml</text>
+      <text x="85" y="232" fill="#c9d1d9" font-size="11">├── service.yaml</text>
+      <text x="85" y="249" fill="#c9d1d9" font-size="11">├── ingress.yaml</text>
+      <text x="85" y="266" fill="#c9d1d9" font-size="11">└── _helpers.tpl</text>
+      <text x="65" y="295" fill="#f87171" font-size="12">📁 charts/</text>
+      <text x="90" y="315" fill="#94a3b8" font-size="11">子依赖（如 MySQL chart）</text>
+
+      <!-- Usage right side -->
+      <rect x="340" y="55" width="430" height="150" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="555" y="80" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">Helm 核心操作</text>
+
+      <text x="360" y="110" fill="#3fb950" font-size="12" font-weight="bold">helm install my-app ./chart</text>
+      <text x="360" y="130" fill="#94a3b8" font-size="11">→ 部署整个应用</text>
+
+      <text x="360" y="155" fill="#fbbf24" font-size="12" font-weight="bold">helm upgrade my-app ./chart</text>
+      <text x="360" y="175" fill="#94a3b8" font-size="11">→ 升级应用（滚动更新）</text>
+
+      <text x="360" y="200" fill="#f87171" font-size="12" font-weight="bold">helm rollback my-app 1</text>
+      <text x="360" y="220" fill="#94a3b8" font-size="11">→ 回滚到版本 1</text>
+
+      <!-- Values injection diagram -->
+      <rect x="340" y="220" width="430" height="145" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="555" y="245" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">模板引擎工作原理</text>
+
+      <rect x="360" y="260" width="120" height="32" rx="6" fill="#fbbf24" opacity="0.12" stroke="#fbbf24" stroke-width="1"/>
+      <text x="420" y="281" text-anchor="middle" fill="#fbbf24" font-size="11">values.yaml</text>
+
+      <text x="498" y="282" fill="#8b949e" font-size="14">+</text>
+
+      <rect x="520" y="260" width="120" height="32" rx="6" fill="#22d3ee" opacity="0.12" stroke="#22d3ee" stroke-width="1"/>
+      <text x="580" y="281" text-anchor="middle" fill="#22d3ee" font-size="11">模板.yaml</text>
+
+      <text x="658" y="282" fill="#8b949e" font-size="14">=</text>
+
+      <rect x="680" y="260" width="75" height="32" rx="6" fill="#3fb950" opacity="0.12" stroke="#3fb950" stroke-width="1"/>
+      <text x="717" y="281" text-anchor="middle" fill="#3fb950" font-size="11">K8s YAML</text>
+
+      <text x="555" y="320" text-anchor="middle" fill="#8b949e" font-size="11">场景：开发/测试/生产用同一 chart，不同 values 文件</text>
+      <text x="555" y="345" text-anchor="middle" fill="#8b949e" font-size="11">helm install -f prod-values.yaml my-app ./chart</text>
+    </svg>
+    <div class="diagram-caption">图 7：Helm Chart 结构及模板引擎工作原理</div>
+  </div>
+
+  <div class="info-card">
+    <h4>🎯 为什么要用 Helm？</h4>
+    <ul>
+      <li><strong>复用</strong>：官方 Artifact Hub 上 1000+ 现成 charts（Redis、MySQL、Nginx……）</li>
+      <li><strong>参数化</strong>：同一 chart + 不同 values = 不同环境配置</li>
+      <li><strong>版本管理</strong>：helm list / helm history / helm rollback 轻松管理版本</li>
+      <li><strong>依赖管理</strong>：一个 chart 可以依赖另一个 chart（如应用 chart 依赖 MySQL chart）</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== 实战问答 ====== -->
+<section class="section" id="qa">
+  <h2>❓ 实战问答（6 题）</h2>
+  <p>点击问题展开答案，先自己想想再看解析 👇</p>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q1：Kubernetes 的架构是怎样的？Master 和 Worker 节点各包含哪些组件？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">K8s 采用 <strong>Master-Worker</strong>（控制面-工作节点）架构。</p>
+      <p class="a"><strong>Master 节点</strong>：kube-apiserver（入口）、etcd（存储）、kube-scheduler（调度）、controller-manager（运行控制器）。</p>
+      <p class="a"><strong>Worker 节点</strong>：kubelet（管理 Pod）、kube-proxy（网络代理）、容器运行时（Docker/containerd）。</p>
+      <p class="q">加分点：</p>
+      <p class="a">提到"所有组件只通过 API Server 通信"和"etcd 是唯一有状态的组件"。高可用部署需要多 Master + etcd 集群。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q2：Pod 是什么？为什么 K8s 不直接调度容器？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">Pod 是 K8s 的<strong>最小调度单元</strong>，包含一个或多个容器，共享网络命名空间和存储卷。Pod 是"逻辑主机"的概念。</p>
+      <p class="a">不直接调度容器的原因：</p>
+      <ol class="a">
+        <li><strong>资源共享</strong>：需要"紧耦合"的容器（如 Nginx + sidecar）共享 localhost 通信</li>
+        <li><strong>原子调度</strong>：一组容器要么全在一个节点上，要么都不调度</li>
+        <li><strong>生命周期绑定</strong>：共享网络、存储、健康检查和重启策略</li>
+      </ol>
+      <p class="a"><span class="handwritten">一句话：Pod 是豌豆荚，容器是豌豆——几颗豌豆共享一个荚。</span></p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q3：Deployment 和 StatefulSet 的区别是什么？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>特性</th><th>Deployment</th><th>StatefulSet</th></tr>
+        <tr><td>身份</td><td>无状态，Pod 名字随机</td><td>有状态，Pod 名字固定（-0, -1, -2）</td></tr>
+        <tr><td>存储</td><td>所有 Pod 共享卷或临时卷</td><td>每个 Pod 绑定独立 PVC</td></tr>
+        <tr><td>启停顺序</td><td>并行启停</td><td>有序启停（从-0到-n）</td></tr>
+        <tr><td>网络</td><td>随机 IP</td><td>稳定的网络标识（DNS）</td></tr>
+        <tr><td>场景</td><td>Web / API 服务</td><td>数据库 / 消息队列 / 缓存</td></tr>
+      </table>
+      <p class="a">StatefulSet 保证"每个 Pod 有固定的身份和存储"——状态敏感应用需要这种保证。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q4：Service 有哪几种类型？ClusterIP、NodePort、LoadBalancer 分别适用于什么场景？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>类型</th><th>访问范围</th><th>场景</th></tr>
+        <tr><td>ClusterIP</td><td>集群内部</td><td>微服务间内部调用（默认）</td></tr>
+        <tr><td>NodePort</td><td>节点 IP + 端口（外网可访问）</td><td>开发测试，或自建 LB 场景</td></tr>
+        <tr><td>LoadBalancer</td><td>云厂商 LB + 公网 IP</td><td>生产环境对外暴露</td></tr>
+      </table>
+      <p class="a">额外知识：<strong>Headless Service</strong>（<code>clusterIP: None</code>）用于有状态应用，直接返回所有 Pod IP 列表而不是负载均衡。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q5：K8s 的调度器是如何为 Pod 选择节点的？有哪些调度策略？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">调度分<strong>两阶段</strong>：</p>
+      <ol class="a">
+        <li><strong>Predicates（筛选）</strong>：过滤掉不满足硬性条件的节点（资源不足、不匹配 nodeSelector、不容忍 taint）</li>
+        <li><strong>Priorities（打分）</strong>：对剩余节点打分（资源利用率均衡、节点亲和性、Pod 亲和性）</li>
+      </ol>
+      <p class="a">关键策略：</p>
+      <ul class="a">
+        <li><code>nodeSelector</code> / <code>nodeAffinity</code>：节点标签匹配</li>
+        <li><code>podAffinity</code> / <code>podAntiAffinity</code>：Pod 间亲和/反亲和</li>
+        <li><code>Taints &amp; Tolerations</code>：节点排斥 / Pod 容忍</li>
+      </ul>
+      <p class="a">最终：评分最高的节点胜出，Pod 绑定到该节点。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q6：K8s 中如何进行滚动更新和回滚？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>滚动更新</strong>：修改 Deployment 的镜像版本 → <code>kubectl set image</code> 或更新 YAML → K8s 逐步创建新 Pod（ReplicaSet），销毁旧 Pod。</p>
+      <p class="a">滚动更新策略参数：</p>
+      <ul class="a">
+        <li><code>maxSurge</code>：更新期间最多超出的 Pod 数（默认 25%）</li>
+        <li><code>maxUnavailable</code>：更新期间最多不可用的 Pod 数（默认 25%）</li>
+      </ul>
+      <p class="a"><strong>回滚</strong>：<code>kubectl rollout undo deployment/nginx</code> → K8s 把 ReplicaSet 回退到上一个版本。</p>
+      <p class="a">注意：每个 Deployment 变更都会生成新的 ReplicaSet，所以 K8s 可以"记住"历史版本用于回滚。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q7（附加）：ConfigMap 和 Secret 的区别是什么？如何安全使用 Secret？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>特性</th><th>ConfigMap</th><th>Secret</th></tr>
+        <tr><td>存储内容</td><td>非敏感配置</td><td>敏感数据（密码、密钥）</td></tr>
+        <tr><td>编码</td><td>明文</td><td>Base64（建议额外加密）</td></tr>
+        <tr><td>内存存储</td><td>可写磁盘</td><td>默认 tmpfs（仅内存）</td></tr>
+        <tr><td>大小限制</td><td>1MB</td><td>1MB</td></tr>
+      </table>
+      <p class="a">安全使用 Secret 的最佳实践：</p>
+      <ul class="a">
+        <li>启用 <strong>Encryption at Rest</strong>（etcd 加密）</li>
+        <li>使用 <strong>External Secrets Operator</strong> 从 AWS Secrets Manager / Vault 同步</li>
+        <li>开启 RBAC 限制 Secret 的访问权限</li>
+        <li>不要将 Secret 提交到 Git（.gitignore + 外部管理）</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q8（附加）：Ingress 和 Service 的区别是什么？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>Service</strong> 是第 4 层（传输层）的负载均衡，基于 IP+端口转发流量。只能在集群内部或通过 NodePort/LB 暴露。</p>
+      <p class="a"><strong>Ingress</strong> 是第 7 层（应用层）的路由，基于域名、路径、Header 等规则转发 HTTP/HTTPS 流量。需要 Ingress Controller（如 Nginx Ingress、Traefik）作为实际执行者。</p>
+      <p class="a"><span class="handwritten">Service 是"快递分拣到楼栋"，Ingress 是"快递分拣到具体房间号"。</span></p>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>📌 核心要点</h4>
+    <p>读者问 K8s 时最看重的不是背 API，而是理解<strong>设计哲学</strong>：</p>
+    <ul>
+      <li><strong>声明式 vs 命令式</strong>：告诉 K8s"要什么"而不是"怎么做"</li>
+      <li><strong>控制器模式</strong>：Reconciliation Loop（实际状态 → 期望状态的死循环检查）</li>
+      <li><strong>分层抽象</strong>：Pod → Deployment → Service → Ingress，每一层解决一个问题</li>
+      <li><strong>etcd 的分布式共识</strong>：Raft 协议保证数据一致性</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== 口播总结 ====== -->
+<section class="section" id="summary">
+  <h2>🎙️ 口播总结</h2>
+  <div class="voice-summary">
+    <p>好，我们来快速捋一遍 Kubernetes 的实战知识体系。</p>
+    <p><strong>第一，K8s 是"连锁餐厅的管理系统"</strong>——当你有几十上百个容器要管理时，手动操作是不现实的。K8s 提供<strong>自动部署、弹性伸缩、自愈、服务发现</strong>四大核心能力，核心思想是<strong>声明式 API</strong>：你告诉它"要什么状态"，它负责实现。</p>
+    <p><strong>第二，Master-Worker 架构</strong>是 K8s 的骨架。Master 节点上的 API Server 是唯一的入口，etcd 存所有状态，Scheduler 负责调度，Controller Manager 确保系统状态符合期望。Worker 节点上的 kubelet 是"管家"，管理 Pod 的生命周期。</p>
+    <p><strong>第三，Pod 是最小单元</strong>，相当于"豌豆荚"，里面一个或多个容器共享网络和存储。但 Pod 是临时性的，所以需要用 Deployment 来管理副本，用 Service 来暴露稳定的网络入口，用 Ingress 来做域名路由。</p>
+    <p><strong>第四，各种高级特性</strong>：调度策略（NodeSelector、Affinity、Taint/Toleration）控制 Pod 放哪里；ConfigMap/Secret 管配置；PV/PVC/StorageClass 管持久化存储；Helm 管应用打包。</p>
+    <p>K8s 内容很多，但抓住<strong>"声明式 + 控制器 + 分层抽象"</strong>这三个设计哲学，你就能理解 80% 的 K8s 行为。实战时展示对这些理念的理解，比背一堆 YAML 字段强得多。</p>
+    <p>下一篇我们聊聊 <strong>Docker 底层原理（Namespace + Cgroups）</strong>——看看容器技术到底是怎么"隔离"和"限制"资源的。敬请期待！🎯</p>
+  </div>
+</section>
+
+</main>
+
+</div><!-- .app -->
+
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

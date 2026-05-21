@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>计算机组成原理 · CPU 数据通路与流水线 · 流水线冒险/转发/分支预测/乱序执行 · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .voice-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .voice-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 420px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">CPU核心</div>
+  <a class="nav-item" href="#datapath">🛣️ 五阶段数据通路</a>
+  <a class="nav-item" href="#cycle">⚡ 单周期vs多周期</a>
+  <a class="nav-item" href="#hazards">⚠️ 流水线冒险</a>
+  <a class="nav-item" href="#forwarding">🔄 转发技术</a>
+  <a class="nav-item" href="#branch">🔮 分支预测</a>
+  <a class="nav-item" href="#oooe">⚙️ 乱序执行</a>
+  <div class="nav-section">练习</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ================================================================== -->
+<!-- 总览 -->
+<!-- ================================================================== -->
+<section id="overview" class="section">
+  <h2>🛣️ CPU·数据通路与流水线</h2>
+
+  <div class="feynman">
+    <p><strong>一句话：</strong>CPU 的 <span class="handwritten">数据通路</span> 就是"指令在CPU内部走的路线图"——从取指令到写回结果一共五步；<span class="handwritten">流水线</span> 相当于工厂装配线，让不同指令的不同阶段同时进行；而 <strong>冒险、转发、分支预测、乱序执行</strong> 就是为了让这条流水线不被"堵车"而设计的各种交通管理策略。</p>
+  </div>
+
+  <table>
+    <tr><th>章节</th><th>核心问题</th><th>一句话回答</th></tr>
+    <tr><td><span class="badge badge-cyan">① 五阶段数据通路</span></td><td>一条指令从加载到执行经历了什么？</td><td>取指→译码→执行→访存→写回，每个阶段由不同的硬件单元完成</td></tr>
+    <tr><td><span class="badge badge-orange">② 单周期vs多周期</span></td><td>为什么不用一个周期处理完所有指令？</td><td>单周期时钟受最慢指令限制，多周期按需分配，效率更高</td></tr>
+    <tr><td><span class="badge badge-red">③ 流水线冒险</span></td><td>流水线会遇到什么\"坑\"？</td><td>结构冒险（争硬件）、数据冒险（等结果）、控制冒险（猜错分支）</td></tr>
+    <tr><td><span class="badge badge-green">④ 转发技术</span></td><td>如何解决数据依赖？</td><td>把ALU结果直接\"短路\"到下一个指令的输入，不用等写回寄存器</td></tr>
+    <tr><td><span class="badge badge-purple">⑤ 分支预测</span></td><td>遇到条件跳转怎么办？</td><td>猜一个方向继续执行，猜错了清空流水线重新来过</td></tr>
+    <tr><td><span class="badge badge-cyan">⑥ 乱序执行</span></td><td>指令可以不按顺序执行吗？</td><td>能！硬件动态调度，让不依赖的指令提前执行，隐藏长延迟操作</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================== -->
+<!-- 五阶段数据通路 -->
+<!-- ================================================================== -->
+<section id="datapath" class="section">
+  <h2>🛣️ 五阶段数据通路——指令的旅程</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🚚 类比：快递包裹的分拣流水线</span></p>
+    <p>想象一个自动化快递分拣中心：<strong>① 扫码录入</strong>（取指：从内存拿指令）→ <strong>② 识别面单</strong>（译码：看懂指令要干什么）→ <strong>③ 按地址分拣</strong>（执行：ALU做加法/比较/跳转）→ <strong>④ 暂存中转站</strong>（访存：读写数据内存）→ <strong>⑤ 装车发运</strong>（写回：把结果写回寄存器）。每个工位的人各司其职，包裹依次经过五个工位——这就是最经典的 <strong>五级流水线 RISC 数据通路</strong>。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 480" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="dp-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+        <marker id="dp-arr" markerWidth="8" markerHeight="6" refX="8" refY="3">
+          <path d="M0,0 L8,3 L0,6Z" fill="#58a6ff"/>
+        </marker>
+      </defs>
+      <rect x="10" y="5" width="780" height="470" rx="10" fill="url(#dp-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">经典五级 RISC 流水线数据通路</text>
+
+      <!-- Stage 1: IF -->
+      <rect x="30" y="55" width="130" height="85" rx="8" fill="rgba(57,197,207,0.10)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="95" y="78" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="700" font-family="sans-serif">① IF</text>
+      <text x="95" y="95" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">取指</text>
+      <text x="95" y="112" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">PC → 指令内存</text>
+      <text x="95" y="126" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">IR ← 指令</text>
+      <text x="95" y="136" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">PC += 4</text>
+
+      <!-- arrow 1 -->
+      <line x1="160" y1="97" x2="185" y2="97" stroke="#58a6ff" stroke-width="2" marker-end="url(#dp-arr)"/>
+      <text x="172" y="88" fill="#64748b" font-size="8" font-family="sans-serif">IR</text>
+
+      <!-- Stage 2: ID -->
+      <rect x="190" y="55" width="130" height="85" rx="8" fill="rgba(163,113,247,0.10)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="255" y="78" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="700" font-family="sans-serif">② ID</text>
+      <text x="255" y="95" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">译码/读寄存器</text>
+      <text x="255" y="112" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">指令译码</text>
+      <text x="255" y="126" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">rs1, rs2, rd</text>
+      <text x="255" y="136" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">生成控制信号</text>
+
+      <!-- arrow 2 -->
+      <line x1="320" y1="97" x2="345" y2="97" stroke="#58a6ff" stroke-width="2" marker-end="url(#dp-arr)"/>
+      <text x="332" y="88" fill="#64748b" font-size="8" font-family="sans-serif">操作数</text>
+
+      <!-- Stage 3: EX -->
+      <rect x="350" y="55" width="130" height="85" rx="8" fill="rgba(248,81,73,0.10)" stroke="#f87171" stroke-width="2"/>
+      <text x="415" y="78" text-anchor="middle" fill="#f87171" font-size="14" font-weight="700" font-family="sans-serif">③ EX</text>
+      <text x="415" y="95" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">执行</text>
+      <text x="415" y="112" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">ALU 运算</text>
+      <text x="415" y="126" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">地址计算</text>
+      <text x="415" y="136" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">分支条件判断</text>
+
+      <!-- arrow 3 -->
+      <line x1="480" y1="97" x2="505" y2="97" stroke="#58a6ff" stroke-width="2" marker-end="url(#dp-arr)"/>
+      <text x="492" y="88" fill="#64748b" font-size="8" font-family="sans-serif">结果/地址</text>
+
+      <!-- Stage 4: MEM -->
+      <rect x="510" y="55" width="130" height="85" rx="8" fill="rgba(210,153,34,0.10)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="575" y="78" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="700" font-family="sans-serif">④ MEM</text>
+      <text x="575" y="95" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">访存</text>
+      <text x="575" y="112" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">数据内存读/写</text>
+      <text x="575" y="126" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">load: M[addr]</text>
+      <text x="575" y="136" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">store: M[addr] ← rt</text>
+
+      <!-- arrow 4 -->
+      <line x1="640" y1="97" x2="665" y2="97" stroke="#58a6ff" stroke-width="2" marker-end="url(#dp-arr)"/>
+
+      <!-- Stage 5: WB -->
+      <rect x="670" y="55" width="110" height="85" rx="8" fill="rgba(63,185,80,0.10)" stroke="#3fb950" stroke-width="2"/>
+      <text x="725" y="78" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700" font-family="sans-serif">⑤ WB</text>
+      <text x="725" y="95" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">写回</text>
+      <text x="725" y="112" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">reg[rd] ← 结果</text>
+      <text x="725" y="126" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">不执行操作</text>
+      <text x="725" y="136" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">只更新寄存器</text>
+
+      <!-- Pipeline register labels -->
+      <!-- IF/ID -->
+      <rect x="155" y="170" width="56" height="22" rx="4" fill="rgba(30,41,59,0.8)" stroke="#334155" stroke-width="1"/>
+      <text x="183" y="185" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">IF/ID</text>
+      <!-- ID/EX -->
+      <rect x="315" y="170" width="56" height="22" rx="4" fill="rgba(30,41,59,0.8)" stroke="#334155" stroke-width="1"/>
+      <text x="343" y="185" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">ID/EX</text>
+      <!-- EX/MEM -->
+      <rect x="475" y="170" width="56" height="22" rx="4" fill="rgba(30,41,59,0.8)" stroke="#334155" stroke-width="1"/>
+      <text x="503" y="185" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">EX/MEM</text>
+      <!-- MEM/WB -->
+      <rect x="635" y="170" width="56" height="22" rx="4" fill="rgba(30,41,59,0.8)" stroke="#334155" stroke-width="1"/>
+      <text x="663" y="185" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">MEM/WB</text>
+
+      <!-- 流水线寄存器箭头 -->
+      <line x1="125" y1="181" x2="155" y2="181" stroke="#334155" stroke-width="1" marker-end="url(#dp-arr)"/>
+      <line x1="285" y1="181" x2="315" y2="181" stroke="#334155" stroke-width="1" marker-end="url(#dp-arr)"/>
+      <line x1="445" y1="181" x2="475" y2="181" stroke="#334155" stroke-width="1" marker-end="url(#dp-arr)"/>
+      <line x1="605" y1="181" x2="635" y2="181" stroke="#334155" stroke-width="1" marker-end="url(#dp-arr)"/>
+
+      <!-- 底部额外说明 -->
+      <rect x="30" y="210" width="740" height="60" rx="6" fill="rgba(30,41,59,0.4)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="232" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">🔑 关键：流水线寄存器（Pipeline Registers）</text>
+      <text x="400" y="250" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">每个阶段之间的流水线寄存器保存中间结果，让不同指令的不同阶段可以同时进行</text>
+      <text x="400" y="265" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">如 IF/ID 存指令和PC+4，ID/EX 存操作数和控制信号，EX/MEM 存ALU结果，MEM/WB 存加载数据</text>
+
+      <!-- 时间轴流水线示例 -->
+      <rect x="30" y="290" width="740" height="165" rx="6" fill="rgba(30,41,59,0.25)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="312" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700" font-family="sans-serif">⏱ 流水线时空图（4条指令）</text>
+
+      <!-- Clock cycles -->
+      <text x="50" y="338" fill="#64748b" font-size="9" font-family="sans-serif">Cycle</text>
+      <text x="95" y="338" fill="#64748b" font-size="9" font-family="sans-serif">1</text>
+      <text x="170" y="338" fill="#64748b" font-size="9" font-family="sans-serif">2</text>
+      <text x="245" y="338" fill="#64748b" font-size="9" font-family="sans-serif">3</text>
+      <text x="320" y="338" fill="#64748b" font-size="9" font-family="sans-serif">4</text>
+      <text x="395" y="338" fill="#64748b" font-size="9" font-family="sans-serif">5</text>
+      <text x="470" y="338" fill="#64748b" font-size="9" font-family="sans-serif">6</text>
+      <text x="545" y="338" fill="#64748b" font-size="9" font-family="sans-serif">7</text>
+      <text x="620" y="338" fill="#64748b" font-size="9" font-family="sans-serif">8</text>
+
+      <!-- I1 --><rect x="90" y="348" width="60" height="22" rx="3" fill="rgba(57,197,207,0.2)" stroke="#22d3ee" stroke-width="1"/><text x="120" y="363" text-anchor="middle" fill="#22d3ee" font-size="7" font-family="sans-serif">IF</text>
+      <rect x="165" y="348" width="60" height="22" rx="3" fill="rgba(163,113,247,0.2)" stroke="#a78bfa" stroke-width="1"/><text x="195" y="363" text-anchor="middle" fill="#a78bfa" font-size="7" font-family="sans-serif">ID</text>
+      <rect x="240" y="348" width="60" height="22" rx="3" fill="rgba(248,81,73,0.2)" stroke="#f87171" stroke-width="1"/><text x="270" y="363" text-anchor="middle" fill="#f87171" font-size="7" font-family="sans-serif">EX</text>
+      <rect x="315" y="348" width="60" height="22" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="345" y="363" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">MEM</text>
+      <rect x="390" y="348" width="60" height="22" rx="3" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1"/><text x="420" y="363" text-anchor="middle" fill="#3fb950" font-size="7" font-family="sans-serif">WB</text>
+      <text x="80" y="362" fill="#e2e8f0" font-size="9" font-weight="600" font-family="sans-serif">I1</text>
+
+      <!-- I2 --><rect x="165" y="375" width="60" height="22" rx="3" fill="rgba(57,197,207,0.2)" stroke="#22d3ee" stroke-width="1"/><text x="195" y="390" text-anchor="middle" fill="#22d3ee" font-size="7" font-family="sans-serif">IF</text>
+      <rect x="240" y="375" width="60" height="22" rx="3" fill="rgba(163,113,247,0.2)" stroke="#a78bfa" stroke-width="1"/><text x="270" y="390" text-anchor="middle" fill="#a78bfa" font-size="7" font-family="sans-serif">ID</text>
+      <rect x="315" y="375" width="60" height="22" rx="3" fill="rgba(248,81,73,0.2)" stroke="#f87171" stroke-width="1"/><text x="345" y="390" text-anchor="middle" fill="#f87171" font-size="7" font-family="sans-serif">EX</text>
+      <rect x="390" y="375" width="60" height="22" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="420" y="390" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">MEM</text>
+      <rect x="465" y="375" width="60" height="22" rx="3" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1"/><text x="495" y="390" text-anchor="middle" fill="#3fb950" font-size="7" font-family="sans-serif">WB</text>
+      <text x="155" y="389" fill="#e2e8f0" font-size="9" font-weight="600" font-family="sans-serif">I2</text>
+
+      <!-- I3 --><rect x="240" y="402" width="60" height="22" rx="3" fill="rgba(57,197,207,0.2)" stroke="#22d3ee" stroke-width="1"/><text x="270" y="417" text-anchor="middle" fill="#22d3ee" font-size="7" font-family="sans-serif">IF</text>
+      <rect x="315" y="402" width="60" height="22" rx="3" fill="rgba(163,113,247,0.2)" stroke="#a78bfa" stroke-width="1"/><text x="345" y="417" text-anchor="middle" fill="#a78bfa" font-size="7" font-family="sans-serif">ID</text>
+      <rect x="390" y="402" width="60" height="22" rx="3" fill="rgba(248,81,73,0.2)" stroke="#f87171" stroke-width="1"/><text x="420" y="417" text-anchor="middle" fill="#f87171" font-size="7" font-family="sans-serif">EX</text>
+      <rect x="465" y="402" width="60" height="22" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="495" y="417" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">MEM</text>
+      <rect x="540" y="402" width="60" height="22" rx="3" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1"/><text x="570" y="417" text-anchor="middle" fill="#3fb950" font-size="7" font-family="sans-serif">WB</text>
+      <text x="230" y="416" fill="#e2e8f0" font-size="9" font-weight="600" font-family="sans-serif">I3</text>
+
+      <!-- I4 --><rect x="315" y="429" width="60" height="22" rx="3" fill="rgba(57,197,207,0.2)" stroke="#22d3ee" stroke-width="1"/><text x="345" y="444" text-anchor="middle" fill="#22d3ee" font-size="7" font-family="sans-serif">IF</text>
+      <rect x="390" y="429" width="60" height="22" rx="3" fill="rgba(163,113,247,0.2)" stroke="#a78bfa" stroke-width="1"/><text x="420" y="444" text-anchor="middle" fill="#a78bfa" font-size="7" font-family="sans-serif">ID</text>
+      <rect x="465" y="429" width="60" height="22" rx="3" fill="rgba(248,81,73,0.2)" stroke="#f87171" stroke-width="1"/><text x="495" y="444" text-anchor="middle" fill="#f87171" font-size="7" font-family="sans-serif">EX</text>
+      <rect x="540" y="429" width="60" height="22" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="570" y="444" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">MEM</text>
+      <rect x="615" y="429" width="60" height="22" rx="3" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1"/><text x="645" y="444" text-anchor="middle" fill="#3fb950" font-size="7" font-family="sans-serif">WB</text>
+      <text x="305" y="443" fill="#e2e8f0" font-size="9" font-weight="600" font-family="sans-serif">I4</text>
+
+      <text x="400" y="465" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">理想流水线：每周期完成一条指令 → CPI ≈ 1（单周期 CPI ≈ CPI × 周期数 反而更低效）</text>
+    </svg>
+    <div class="diagram-caption">图1：五级 RISC 流水线数据通路 —— IF(取指) → ID(译码) → EX(执行) → MEM(访存) → WB(写回)，流水线寄存器隔开各阶段，下方时空图展示指令并行执行</div>
+  </div>
+
+  <h3>五种指令类型在数据通路中的行为</h3>
+  <table>
+    <tr><th>指令类型</th><th>IF</th><th>ID</th><th>EX</th><th>MEM</th><th>WB</th></tr>
+    <tr><td><strong>R型</strong> (add, sub, and)</td><td>取指</td><td>读 rs1, rs2</td><td>ALU 运算</td><td>—</td><td>写 rd</td></tr>
+    <tr><td><strong>I型</strong> (addi, lw)</td><td>取指</td><td>读 rs1</td><td>ALU(rs1+imm)</td><td>访问数据内存 (lw)</td><td>写 rt</td></tr>
+    <tr><td><strong>S型</strong> (sw)</td><td>取指</td><td>读 rs1, rs2</td><td>ALU 计算地址</td><td>写数据内存</td><td>—</td></tr>
+    <tr><td><strong>B型</strong> (beq, bne)</td><td>取指</td><td>读 rs1, rs2</td><td>比较 + 计算目标</td><td>—</td><td>—</td></tr>
+    <tr><td><strong>J型</strong> (jal, j)</td><td>取指</td><td>读取目标地址</td><td>PC ← 目标</td><td>—</td><td>写返回地址</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================== -->
+<!-- 单周期 vs 多周期 -->
+<!-- ================================================================== -->
+<section id="cycle" class="section">
+  <h2>⚡ 单周期 vs 多周期——设计的取舍</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏭 类比：流水线工人的节奏</span></p>
+    <p>想象工厂的装配线：<strong>单周期</strong> 就像所有工人都按最慢的那个人的节奏干活——遇到简单任务也得等很久。而 <strong>多周期</strong> 就像每个人有自己的步调——简单的活快干完，复杂的活多花点时间。这提升效率的关键在于：<strong>不让快的等人，也不让慢的拖垮所有人</strong>。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="cy-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+        <marker id="cy-arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5">
+          <path d="M0,0 L7,2.5 L0,5Z" fill="#58a6ff"/>
+        </marker>
+      </defs>
+      <rect x="10" y="5" width="780" height="410" rx="10" fill="url(#cy-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">单周期 CPU  vs  多周期 CPU  vs  流水线 CPU</text>
+
+      <!-- 单周期 -->
+      <rect x="30" y="45" width="230" height="160" rx="8" fill="rgba(57,197,207,0.06)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="145" y="68" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="700" font-family="sans-serif">🔴 单周期</text>
+
+      <rect x="45" y="82" width="200" height="28" rx="5" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="145" y="100" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">IF+ID+EX+MEM+WB 一个周期</text>
+
+      <rect x="45" y="120" width="200" height="28" rx="5" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="145" y="138" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">IF+ID+EX+MEM+WB 一个周期</text>
+
+      <rect x="45" y="158" width="200" height="28" rx="5" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="145" y="176" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">IF+ID+EX+MEM+WB 一个周期</text>
+
+      <text x="145" y="200" text-anchor="middle" fill="#f87171" font-size="10" font-family="sans-serif">⏱ 周期 = 最慢指令所需时间</text>
+      <text x="145" y="213" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">CPI = 1, 但时钟频率低</text>
+
+      <!-- 多周期 -->
+      <rect x="285" y="45" width="230" height="160" rx="8" fill="rgba(210,153,34,0.06)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="400" y="68" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="700" font-family="sans-serif">🟡 多周期</text>
+
+      <rect x="300" y="82" width="50" height="20" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="325" y="96" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">IF</text>
+      <rect x="355" y="82" width="50" height="20" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="380" y="96" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">ID</text>
+      <rect x="410" y="82" width="50" height="20" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="435" y="96" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">EX</text>
+      <rect x="465" y="82" width="35" height="20" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="482" y="96" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">WB</text>
+
+      <rect x="300" y="108" width="70" height="20" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="335" y="122" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">IF</text>
+      <rect x="375" y="108" width="70" height="20" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="410" y="122" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">ID</text>
+      <rect x="450" y="108" width="50" height="20" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="475" y="122" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">EX</text>
+
+      <rect x="300" y="134" width="60" height="20" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="330" y="148" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">IF</text>
+      <rect x="365" y="134" width="60" height="20" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="395" y="148" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">ID</text>
+      <rect x="430" y="134" width="70" height="20" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="465" y="148" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">MEM</text>
+      <rect x="505" y="134" width="30" height="20" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="520" y="148" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">WB</text>
+
+      <text x="400" y="200" text-anchor="middle" fill="#3fb950" font-size="10" font-family="sans-serif">⏱ 每条指令周期数不同</text>
+      <text x="400" y="213" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">CPI = 3~5, 但时钟频率高</text>
+
+      <!-- 流水线 -->
+      <rect x="540" y="45" width="230" height="160" rx="8" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="655" y="68" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700" font-family="sans-serif">🟢 流水线</text>
+
+      <rect x="555" y="82" width="40" height="18" rx="2" fill="rgba(57,197,207,0.2)" stroke="#22d3ee" stroke-width="1"/><text x="575" y="94" text-anchor="middle" fill="#22d3ee" font-size="6" font-family="sans-serif">IF</text>
+      <rect x="555" y="106" width="40" height="18" rx="2" fill="rgba(163,113,247,0.2)" stroke="#a78bfa" stroke-width="1"/><text x="575" y="118" text-anchor="middle" fill="#a78bfa" font-size="6" font-family="sans-serif">ID</text>
+      <rect x="555" y="130" width="40" height="18" rx="2" fill="rgba(248,81,73,0.2)" stroke="#f87171" stroke-width="1"/><text x="575" y="142" text-anchor="middle" fill="#f87171" font-size="6" font-family="sans-serif">EX</text>
+      <rect x="555" y="154" width="40" height="18" rx="2" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="575" y="166" text-anchor="middle" fill="#fbbf24" font-size="6" font-family="sans-serif">MEM</text>
+      <rect x="555" y="178" width="40" height="18" rx="2" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1"/><text x="575" y="190" text-anchor="middle" fill="#3fb950" font-size="6" font-family="sans-serif">WB</text>
+
+      <text x="700" y="100" fill="#e2e8f0" font-size="10" font-family="sans-serif">I1 → I2 → I3 → I4 → I5</text>
+      <text x="700" y="135" fill="#64748b" font-size="9" font-family="sans-serif">不同指令的</text>
+      <text x="700" y="150" fill="#64748b" font-size="9" font-family="sans-serif">不同阶段</text>
+      <text x="700" y="165" fill="#64748b" font-size="9" font-family="sans-serif">同时进行</text>
+
+      <text x="655" y="213" text-anchor="middle" fill="#3fb950" font-size="10" font-family="sans-serif">⏱ 理论 CPI ≈ 1</text>
+      <text x="655" y="225" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">吞吐量最高</text>
+
+      <!-- 底部对比 -->
+      <rect x="30" y="255" width="740" height="140" rx="8" fill="rgba(30,41,59,0.4)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="278" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700" font-family="sans-serif">三种 CPU 设计对比</text>
+
+      <!-- 表格头 -->
+      <rect x="45" y="290" width="110" height="22" rx="3" fill="#21242c"/><text x="100" y="306" text-anchor="middle" fill="#e6edf3" font-size="9" font-weight="600" font-family="sans-serif">特性</text>
+      <rect x="160" y="290" width="140" height="22" rx="3" fill="#21242c"/><text x="230" y="306" text-anchor="middle" fill="#22d3ee" font-size="9" font-weight="600" font-family="sans-serif">🔴 单周期</text>
+      <rect x="305" y="290" width="140" height="22" rx="3" fill="#21242c"/><text x="375" y="306" text-anchor="middle" fill="#fbbf24" font-size="9" font-weight="600" font-family="sans-serif">🟡 多周期</text>
+      <rect x="450" y="290" width="140" height="22" rx="3" fill="#21242c"/><text x="520" y="306" text-anchor="middle" fill="#3fb950" font-size="9" font-weight="600" font-family="sans-serif">🟢 流水线</text>
+
+      <text x="100" y="328" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">CPI</text>
+      <text x="230" y="328" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="sans-serif">1</text>
+      <text x="375" y="328" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="sans-serif">3~5</text>
+      <text x="520" y="328" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="sans-serif">≈ 1（理想）</text>
+
+      <text x="100" y="345" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">周期长度</text>
+      <text x="230" y="345" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="sans-serif">长（~10ns）</text>
+      <text x="375" y="345" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="sans-serif">中（~2ns）</text>
+      <text x="520" y="345" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="sans-serif">中（~2ns）</text>
+
+      <text x="100" y="362" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">硬件复杂度</text>
+      <text x="230" y="362" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="sans-serif">简单</text>
+      <text x="375" y="362" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="sans-serif">中等</text>
+      <text x="520" y="362" text-anchor="middle" fill="#e2e8f0" font-size="9" font-family="sans-serif">高（需冒险处理）</text>
+
+      <text x="100" y="379" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">吞吐量</text>
+      <text x="230" y="379" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">最低</text>
+      <text x="375" y="379" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">中等</text>
+      <text x="520" y="379" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">最高</text>
+    </svg>
+    <div class="diagram-caption">图2：单周期 vs 多周期 vs 流水线三种 CPU 设计方式对比 —— 单周期简单但周期长，流水线复杂但吞吐量最高</div>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4>⚡ 单周期 CPU</h4>
+      <ul>
+        <li>每条指令只用 <strong>一个时钟周期</strong></li>
+        <li>周期长度 = 最慢指令（如 lw 需要取指+译码+计算地址+访存+写回）</li>
+        <li>优点是 <strong>设计简单</strong>，控制逻辑一目了然</li>
+        <li>缺点是 <strong>时钟频率极低</strong>，简单指令（如 add）也必须等满一个长周期</li>
+      </ul>
+    </div>
+    <div>
+      <h4>🔄 多周期 CPU</h4>
+      <ul>
+        <li>每条指令分成 <strong>多个小步</strong>，每步一个周期</li>
+        <li>不同指令步数不同（add 需3步，lw 需5步）</li>
+        <li>允许 <strong>复用硬件单元</strong>（一个 ALU 在不同周期做不同事）</li>
+        <li>时钟周期可按 <strong>最快的步</strong> 设定，频率提高</li>
+        <li>但需要 <strong>有限状态机</strong> 控制，设计复杂度增加</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>🔬 为什么流水线 CPU 是主流？</h4>
+    <p>多周期 CPU 虽然提高了频率，但指令的 <strong>重叠执行度为 0</strong>——下一条指令要等上一条完全结束才开始。流水线通过把指令的不同阶段重叠，让 <strong>CPI 趋近于 1</strong>，实现了最高的吞吐量。</p>
+    <p>代价是：<strong>流水线冒险</strong> 需要额外的硬件处理（转发、插入气泡、分支预测），而且 <strong>流水线深度</strong> 不能无限增加——每深一层，冒险处理越复杂，功耗越大。现代 CPU 的流水线深度一般在 <strong>10~20 级</strong>（如 Apple M1 ~ 16 级，Intel Raptor Cove ~ 14 级）。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 流水线冒险 -->
+<!-- ================================================================== -->
+<section id="hazards" class="section">
+  <h2>⚠️ 流水线冒险——流水线的\"交通事故\"</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🚦 类比：多车道高速公路的三种堵车原因</span></p>
+    <p>想象一条多车道高速公路（流水线）：<strong>结构冒险</strong> = 所有车同时要过一个收费站（资源不足）；<strong>数据冒险</strong> = 前车急刹车，后车不得不保持安全距离（数据依赖）；<strong>控制冒险</strong> = 导航说"前方路口请左转"，但到了才发现是死路（分支预测失败）。优秀的交通管理（转发+预测）能让这些\"事故\"的影响最小化。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 500" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="hz-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+        <marker id="hz-arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5">
+          <path d="M0,0 L7,2.5 L0,5Z" fill="#58a6ff"/>
+        </marker>
+      </defs>
+      <rect x="10" y="5" width="780" height="490" rx="10" fill="url(#hz-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">三类流水线冒险详解</text>
+
+      <!-- 结构冒险 -->
+      <rect x="30" y="45" width="740" height="125" rx="8" fill="rgba(248,81,73,0.04)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="50" y="68" fill="#f87171" font-size="14" font-weight="700" font-family="sans-serif">① 结构冒险 (Structural Hazard)</text>
+      <text x="50" y="90" fill="#94a3b8" font-size="11" font-family="sans-serif">当两条指令需要<strong>同一硬件资源</strong>时发生。最常见的例子：</text>
+      <text x="50" y="112" fill="#64748b" font-size="10" font-family="sans-serif">• 冯·诺依曼架构中指令和数据共用同一内存 → IF 与 MEM 阶段争用内存端口</text>
+      <text x="50" y="130" fill="#64748b" font-size="10" font-family="sans-serif">• 解决方案：哈佛架构（L1 分开指令/数据 Cache）、增加硬件资源</text>
+      <text x="50" y="148" fill="#64748b" font-size="10" font-family="sans-serif">• 另一种方案：插入\"气泡\"（bubble / stall）——让其中一个指令暂停一个周期</text>
+      <text x="720" y="90" fill="#f87171" font-size="22" font-weight="700" font-family="sans-serif">⚠️</text>
+
+      <!-- 数据冒险 -->
+      <rect x="30" y="180" width="740" height="145" rx="8" fill="rgba(210,153,34,0.04)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="50" y="203" fill="#fbbf24" font-size="14" font-weight="700" font-family="sans-serif">② 数据冒险 (Data Hazard) —— 最复杂的冒险</text>
+      <text x="50" y="225" fill="#94a3b8" font-size="11" font-family="sans-serif">后一条指令依赖前一条指令的计算结果，但结果还没写回寄存器</text>
+      <text x="50" y="247" fill="#64748b" font-size="10" font-family="sans-serif">• <strong>RAW (Read After Write)</strong>：先写后读 — 最常见的依赖</text>
+      <text x="50" y="265" fill="#64748b" font-size="10" font-family="sans-serif">  例：add x1,x2,x3 → sub x4,x1,x5 （sub 需要 x1 的结果）</text>
+      <text x="50" y="283" fill="#64748b" font-size="10" font-family="sans-serif">• <strong>WAR (Write After Read)</strong>：先读后写 — 按序流水线不会发生</text>
+      <text x="50" y="301" fill="#64748b" font-size="10" font-family="sans-serif">• <strong>WAW (Write After Write)</strong>：两次写同一寄存器 — 乱序执行中可能出现</text>
+      <text x="50" y="319" fill="#64748b" font-size="10" font-family="sans-serif">• 解决方案：<strong>转发(Forwarding)</strong> + 必要时 <strong>插入气泡</strong></text>
+
+      <!-- 控制冒险 -->
+      <rect x="30" y="335" width="740" height="140" rx="8" fill="rgba(163,113,247,0.04)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="50" y="358" fill="#a78bfa" font-size="14" font-weight="700" font-family="sans-serif">③ 控制冒险 (Control Hazard)</text>
+      <text x="50" y="380" fill="#94a3b8" font-size="11" font-family="sans-serif">当遇到分支/跳转指令时，流水线需要猜下一步去哪里</text>
+      <text x="50" y="402" fill="#64748b" font-size="10" font-family="sans-serif">• 分支指令（beq, bne）在 EX 阶段才能算出结果，但后续指令已经在 IF/ID 阶段了</text>
+      <text x="50" y="420" fill="#64748b" font-size="10" font-family="sans-serif">• <strong>猜错了</strong>（mispredict）：清空（flush）流水线，从正确地址重新取指令</text>
+      <text x="50" y="438" fill="#64748b" font-size="10" font-family="sans-serif">• 损失：每次猜错浪费 ~3-20 个周期（取决于流水线深度）</text>
+      <text x="50" y="456" fill="#64748b" font-size="10" font-family="sans-serif">• 解决方案：<strong>分支预测</strong>（静态/动态）+ 分支目标缓冲（BTB）</text>
+      <text x="670" y="456" fill="#a78bfa" font-size="10" font-family="sans-serif">命中率 &gt; 95%</text>
+
+      <!-- 底部说明 -->
+      <rect x="30" y="75" width="100" height="24" rx="4" fill="rgba(248,81,73,0.15)" stroke="none"/>
+      <text x="80" y="92" text-anchor="middle" fill="#f87171" font-size="9" font-weight="600" font-family="sans-serif">少发，易解</text>
+
+      <rect x="30" y="210" width="100" height="24" rx="4" fill="rgba(210,153,34,0.15)" stroke="none"/>
+      <text x="80" y="227" text-anchor="middle" fill="#fbbf24" font-size="9" font-weight="600" font-family="sans-serif">多发，高发</text>
+
+      <rect x="30" y="365" width="100" height="24" rx="4" fill="rgba(163,113,247,0.15)" stroke="none"/>
+      <text x="80" y="382" text-anchor="middle" fill="#a78bfa" font-size="9" font-weight="600" font-family="sans-serif">最严重</text>
+    </svg>
+    <div class="diagram-caption">图3：三种流水线冒险 —— 结构冒险（争资源）、数据冒险（等结果）、控制冒险（分支猜错），其中数据冒险最频繁，控制冒险代价最大</div>
+  </div>
+
+  <h3>数据冒险的具体例子（无转发）</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 800 250" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="ex-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+        <marker id="ex-arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5">
+          <path d="M0,0 L7,2.5 L0,5Z" fill="#58a6ff"/>
+        </marker>
+      </defs>
+      <rect x="10" y="5" width="780" height="240" rx="10" fill="url(#ex-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="14" font-weight="700" font-family="sans-serif">示例：add x1, x2, x3 → sub x4, x1, x5</text>
+
+      <!-- Cycles -->
+      <text x="50" y="58" fill="#64748b" font-size="9" font-family="sans-serif">周期</text>
+      <text x="110" y="58" fill="#64748b" font-size="9" font-family="sans-serif">1</text>
+      <text x="190" y="58" fill="#64748b" font-size="9" font-family="sans-serif">2</text>
+      <text x="270" y="58" fill="#64748b" font-size="9" font-family="sans-serif">3</text>
+      <text x="350" y="58" fill="#64748b" font-size="9" font-family="sans-serif">4</text>
+      <text x="430" y="58" fill="#64748b" font-size="9" font-family="sans-serif">5</text>
+      <text x="510" y="58" fill="#64748b" font-size="9" font-family="sans-serif">6</text>
+      <text x="590" y="58" fill="#64748b" font-size="9" font-family="sans-serif">7</text>
+
+      <!-- add row -->
+      <text x="40" y="90" fill="#22d3ee" font-size="10" font-weight="600" font-family="sans-serif">add</text>
+      <rect x="100" y="75" width="65" height="22" rx="3" fill="rgba(57,197,207,0.2)" stroke="#22d3ee" stroke-width="1"/><text x="132" y="90" text-anchor="middle" fill="#22d3ee" font-size="7" font-family="sans-serif">IF</text>
+      <rect x="175" y="75" width="65" height="22" rx="3" fill="rgba(163,113,247,0.2)" stroke="#a78bfa" stroke-width="1"/><text x="207" y="90" text-anchor="middle" fill="#a78bfa" font-size="7" font-family="sans-serif">ID</text>
+      <rect x="250" y="75" width="65" height="22" rx="3" fill="rgba(248,81,73,0.2)" stroke="#f87171" stroke-width="1"/><text x="282" y="90" text-anchor="middle" fill="#f87171" font-size="7" font-family="sans-serif">EX</text>
+      <rect x="325" y="75" width="65" height="22" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="357" y="90" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">MEM</text>
+      <rect x="400" y="75" width="65" height="22" rx="3" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1"/><text x="432" y="90" text-anchor="middle" fill="#3fb950" font-size="7" font-family="sans-serif">WB</text>
+
+      <!-- sub row with stalling -->
+      <text x="40" y="120" fill="#f87171" font-size="10" font-weight="600" font-family="sans-serif">sub</text>
+      <rect x="250" y="105" width="65" height="22" rx="3" fill="rgba(57,197,207,0.2)" stroke="#22d3ee" stroke-width="1"/><text x="282" y="120" text-anchor="middle" fill="#22d3ee" font-size="7" font-family="sans-serif">IF</text>
+      <rect x="325" y="105" width="65" height="22" rx="3" fill="rgba(163,113,247,0.2)" stroke="#a78bfa" stroke-width="1"/><text x="357" y="120" text-anchor="middle" fill="#a78bfa" font-size="7" font-family="sans-serif">ID</text>
+
+      <!-- Stall bubble -->
+      <rect x="400" y="105" width="30" height="22" rx="3" fill="rgba(248,81,73,0.25)" stroke="#f87171" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="415" y="120" text-anchor="middle" fill="#f87171" font-size="8" font-weight="700" font-family="sans-serif">💨</text>
+      <rect x="435" y="105" width="30" height="22" rx="3" fill="rgba(248,81,73,0.25)" stroke="#f87171" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="450" y="120" text-anchor="middle" fill="#f87171" font-size="8" font-weight="700" font-family="sans-serif">💨</text>
+
+      <rect x="470" y="105" width="65" height="22" rx="3" fill="rgba(248,81,73,0.2)" stroke="#f87171" stroke-width="1"/><text x="502" y="120" text-anchor="middle" fill="#f87171" font-size="7" font-family="sans-serif">EX</text>
+      <rect x="545" y="105" width="65" height="22" rx="3" fill="rgba(210,153,34,0.2)" stroke="#fbbf24" stroke-width="1"/><text x="577" y="120" text-anchor="middle" fill="#fbbf24" font-size="7" font-family="sans-serif">MEM</text>
+      <rect x="620" y="105" width="65" height="22" rx="3" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1"/><text x="652" y="120" text-anchor="middle" fill="#3fb950" font-size="7" font-family="sans-serif">WB</text>
+
+      <!-- 依赖箭头 -->
+      <line x1="320" y1="97" x2="320" y2="130" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <polygon points="315,120 325,120 320,130" fill="#f87171"/>
+      <text x="335" y="152" fill="#f87171" font-size="9" font-family="sans-serif">⚠️ 等待 x1</text>
+      <text x="335" y="168" fill="#64748b" font-size="8" font-family="sans-serif">（无转发时需要气泡）</text>
+
+      <!-- 说明 -->
+      <rect x="50" y="185" width="720" height="40" rx="6" fill="rgba(30,41,59,0.5)" stroke="#334155" stroke-width="1"/>
+      <text x="410" y="203" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">无转发时：sub 必须在 ID 阶段等待 2 个气泡，等 add 写完 x1 之后才能读</text>
+      <text x="410" y="219" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">有转发时：sub 的 EX 阶段可以直接从 add 的 EX/MEM 流水线寄存器拿到 x1 值，无需等待</text>
+    </svg>
+    <div class="diagram-caption">图4：数据冒险示例（无转发）—— sub 指令需要等待 add 写回 x1，插入两个"气泡"（stall）导致流水线空转</div>
+  </div>
+
+  <div class="info-card">
+    <h4>📊 三种数据冒险的区分</h4>
+    <table>
+      <tr><th>类型</th><th>全称</th><th>含义</th><th>按序流水线</th><th>乱序执行</th></tr>
+      <tr><td><span class="badge badge-red">RAW</span></td><td>Read After Write</td><td>先写后读——后指令读前指令写的结果</td><td>✅ 会发生</td><td>✅ 会发生</td></tr>
+      <tr><td><span class="badge badge-orange">WAR</span></td><td>Write After Read</td><td>先读后写——后指令写前指令读的寄存器</td><td>❌ 不会（按序执行）</td><td>✅ 可能</td></tr>
+      <tr><td><span class="badge badge-purple">WAW</span></td><td>Write After Write</td><td>两次写同一寄存器</td><td>❌ 不会（按序执行）</td><td>✅ 可能</td></tr>
+    </table>
+    <p style="margin-top:8px;font-size:12px;color:var(--muted)">按序流水线（In-Order）只有 RAW 危险。乱序执行（Out-of-Order）因为指令顺序被打乱，三种都可能出现，需要更复杂的 <strong>寄存器重命名（Register Renaming）</strong> 来解决 WAR 和 WAW。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 转发技术 -->
+<!-- ================================================================== -->
+<section id="forwarding" class="section">
+  <h2>🔄 转发（Forwarding）——让数据走\"近路\"</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">📦 类比：快递直接递送 vs 走中转站</span></p>
+    <p>想象你网购了东西：<strong>没有转发</strong> = 快递必须从发货仓库（ALU结果）送到分拣中心（寄存器文件），再送到你手里（下一个指令的输入）。<strong>转发</strong> = 快递直接从一个送货员的手里直接交给另一个送货员——省去了\"回仓库再出库\"的步骤。这就是所谓的 <strong>前递（Forwarding）</strong> 或 <strong>旁路（Bypassing）</strong>。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="fw-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+        <marker id="fw-arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5">
+          <path d="M0,0 L7,2.5 L0,5Z" fill="#58a6ff"/>
+        </marker>
+        <marker id="fw-arr-g" markerWidth="7" markerHeight="5" refX="7" refY="2.5">
+          <path d="M0,0 L7,2.5 L0,5Z" fill="#3fb950"/>
+        </marker>
+      </defs>
+      <rect x="10" y="5" width="780" height="410" rx="10" fill="url(#fw-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">转发（Forwarding）数据通路</text>
+
+      <!-- 正常数据通路 -->
+      <text x="400" y="55" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">正常通路（走寄存器）</text>
+
+      <!-- IF -->
+      <rect x="30" y="68" width="100" height="40" rx="6" fill="rgba(57,197,207,0.1)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="80" y="92" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="600" font-family="sans-serif">IF</text>
+
+      <line x1="130" y1="88" x2="150" y2="88" stroke="#334155" stroke-width="1.5" marker-end="url(#fw-arr)"/>
+
+      <!-- ID -->
+      <rect x="155" y="68" width="100" height="40" rx="6" fill="rgba(163,113,247,0.1)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="205" y="88" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600" font-family="sans-serif">ID/RegFile</text>
+      <text x="205" y="103" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">读 rs1, rs2</text>
+
+      <line x1="255" y1="88" x2="275" y2="88" stroke="#334155" stroke-width="1.5" marker-end="url(#fw-arr)"/>
+
+      <!-- EX -->
+      <rect x="280" y="68" width="100" height="40" rx="6" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="330" y="88" text-anchor="middle" fill="#f87171" font-size="11" font-weight="600" font-family="sans-serif">EX/ALU</text>
+      <text x="330" y="103" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">运算结果</text>
+
+      <line x1="380" y1="88" x2="400" y2="88" stroke="#334155" stroke-width="1.5" marker-end="url(#fw-arr)"/>
+
+      <!-- MEM -->
+      <rect x="405" y="68" width="100" height="40" rx="6" fill="rgba(210,153,34,0.1)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="455" y="88" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="600" font-family="sans-serif">MEM</text>
+      <text x="455" y="103" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">加载结果</text>
+
+      <line x1="505" y1="88" x2="525" y2="88" stroke="#334155" stroke-width="1.5" marker-end="url(#fw-arr)"/>
+
+      <!-- WB -->
+      <rect x="530" y="68" width="100" height="40" rx="6" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="580" y="88" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600" font-family="sans-serif">WB</text>
+      <text x="580" y="103" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">写入寄存器</text>
+
+      <!-- 转发路径 -->
+      <text x="400" y="140" text-anchor="middle" fill="#3fb950" font-size="11" font-family="sans-serif">转发路径（近路）</text>
+
+      <!-- 转发从 EX → EX 输入 -->
+      <rect x="280" y="155" width="100" height="40" rx="6" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="330" y="175" text-anchor="middle" fill="#3fb950" font-size="10" font-weight="600" font-family="sans-serif">转发路径</text>
+      <text x="330" y="190" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">来自前一条指令的 EX 结果</text>
+
+      <!-- 转发箭头：MEM → EX -->
+      <path d="M455,108 L455,175 L330,175" stroke="#3fb950" stroke-width="2" fill="none" stroke-dasharray="4,3" marker-end="url(#fw-arr-g)"/>
+      <text x="470" y="155" fill="#3fb950" font-size="8" font-family="sans-serif">MEM转发</text>
+
+      <!-- 转发箭头：WB → EX -->
+      <path d="M580,108 L580,200 L330,200" stroke="#3fb950" stroke-width="2" fill="none" stroke-dasharray="4,3" marker-end="url(#fw-arr-g)"/>
+      <text x="600" y="175" fill="#3fb950" font-size="8" font-family="sans-serif">WB转发</text>
+
+      <!-- Mux 选择器 -->
+      <rect x="315" y="208" width="30" height="18" rx="3" fill="rgba(30,41,59,0.8)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="330" y="221" text-anchor="middle" fill="#fbbf24" font-size="8" font-weight="600" font-family="sans-serif">MUX</text>
+
+      <!-- 原始来源 -->
+      <rect x="50" y="155" width="180" height="50" rx="6" fill="rgba(248,81,73,0.06)" stroke="#f87171" stroke-width="1"/>
+      <text x="140" y="175" text-anchor="middle" fill="#f87171" font-size="10" font-family="sans-serif">如果没有转发：  </text>
+      <text x="140" y="193" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">必须等待 WB 写回 → 气泡</text>
+
+      <!-- 边界线 -->
+      <line x1="30" y1="240" x2="770" y2="240" stroke="#334155" stroke-width="1"/>
+
+      <!-- 底部：转发引擎逻辑 -->
+      <text x="400" y="265" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700" font-family="sans-serif">转发控制逻辑</text>
+
+      <rect x="50" y="280" width="340" height="50" rx="6" fill="rgba(30,41,59,0.4)" stroke="#334155" stroke-width="1"/>
+      <text x="220" y="302" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">转发检测：当前指令的源寄存器 rs</text>
+      <text x="220" y="320" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">== 前一条指令的目标寄存器 rd？</text>
+
+      <rect x="420" y="280" width="330" height="50" rx="6" fill="rgba(30,41,59,0.4)" stroke="#334155" stroke-width="1"/>
+      <text x="585" y="302" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">转发选择优先级：</text>
+      <text x="585" y="320" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">EX/MEM 转发 ＞ MEM/WB 转发 ＞ 寄存器文件</text>
+
+      <rect x="50" y="345" width="700" height="50" rx="6" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1"/>
+      <text x="400" y="367" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600" font-family="sans-serif">✅ 转发效果：原本需要 2 个气泡的数据冒险 → 0 个气泡</text>
+      <text x="400" y="385" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">唯一无法转发的情况：load-use 冒险（lw 在 MEM 阶段才有数据，EX 阶段的指令等不及，仍需要 1 个气泡）</text>
+    </svg>
+    <div class="diagram-caption">图5：转发(Forwarding)技术——ALU 结果直接从 EX/MEM 或 MEM/WB 流水线寄存器"短路"到下一个 ALU 的输入，无需经过寄存器文件</div>
+  </div>
+
+  <h3>load-use 冒险——转发无法完全消除的情况</h3>
+  <div class="compare">
+    <div>
+      <h4>📋 代码示例</h4>
+      <pre><code>lw  x1, 0(x2)   // MEM 阶段才有 x1
+add x3, x1, x4   // EX 阶段需要 x1</code></pre>
+      <p style="font-size:12px;color:var(--muted)">lw 在 MEM 阶段才加载到数据，而 add 在 EX 阶段就需要 → 必须插入 1 个气泡</p>
+    </div>
+    <div>
+      <h4>🛡️ 应对策略</h4>
+      <ul>
+        <li><strong>编译器调度</strong>：在两指令之间插入不依赖的指令</li>
+        <li><strong>硬件插入气泡</strong>：流水线停顿 1 周期</li>
+        <li><strong>流水线互锁</strong>（Pipeline Interlock）：硬件自动检测并暂停</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 分支预测 -->
+<!-- ================================================================== -->
+<section id="branch" class="section">
+  <h2>🔮 分支预测——CPU的\"猜谜\"游戏</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🗺️ 类比：导航猜路 vs 到了再找路</span></p>
+    <p>想象开车到一个岔路口：<strong>不预测</strong> = 到路口停下，查完地图再走（流水线清空，损失 ~10 周期）。<strong>静态预测</strong> = \"朝右拐吧，大多数人都走右边\"（猜对赚了，猜错掉头）。<strong>动态预测</strong> = \"上次在这个路口右拐后堵车了，这次左拐试试\"（有学习能力）。好的分支预测器 <strong>准确率超过 95%</strong>，相当于每次到路口前就猜对方向。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 450" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="bp-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+        <marker id="bp-arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5">
+          <path d="M0,0 L7,2.5 L0,5Z" fill="#58a6ff"/>
+        </marker>
+      </defs>
+      <rect x="10" y="5" width="780" height="440" rx="10" fill="url(#bp-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">分支预测技术演进</text>
+
+      <!-- 静态预测 -->
+      <rect x="30" y="45" width="230" height="120" rx="8" fill="rgba(57,197,207,0.06)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="145" y="70" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="700" font-family="sans-serif">① 静态预测</text>
+      <text x="145" y="92" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">总是预测"不跳转"</text>
+      <text x="145" y="110" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">或者"向后跳转预测跳"</text>
+      <text x="145" y="128" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">（循环分支通常向后跳）</text>
+      <text x="145" y="148" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">准确率 ~50-70%</text>
+
+      <!-- 1-bit -->
+      <rect x="285" y="45" width="230" height="120" rx="8" fill="rgba(210,153,34,0.06)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="400" y="70" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="700" font-family="sans-serif">② 1-bit 预测</text>
+      <text x="400" y="92" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">记录上次是否跳转</text>
+      <text x="400" y="110" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">上次跳→这次也猜跳</text>
+      <text x="400" y="128" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">简单，但循环末尾会猜错两次</text>
+      <text x="400" y="148" text-anchor="middle" fill="#fbbf24" font-size="9" font-family="sans-serif">准确率 ~70-85%</text>
+
+      <!-- 2-bit -->
+      <rect x="540" y="45" width="230" height="120" rx="8" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="655" y="70" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700" font-family="sans-serif">③ 2-bit 饱和计数器</text>
+      <text x="655" y="92" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">4 状态：强不跳→弱不跳→弱跳→强跳</text>
+      <text x="655" y="110" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">需要连续两次猜错才反转</text>
+      <text x="655" y="128" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">循环末尾只猜错一次</text>
+      <text x="655" y="148" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">准确率 ~85-93%</text>
+
+      <!-- 状态机 -->
+      <rect x="50" y="180" width="700" height="90" rx="8" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="203" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700" font-family="sans-serif">2-bit 饱和计数器状态机</text>
+
+      <ellipse cx="175" cy="235" rx="45" ry="18" fill="rgba(248,81,73,0.15)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="175" y="239" text-anchor="middle" fill="#f87171" font-size="10" font-weight="600" font-family="sans-serif">强不跳</text>
+
+      <ellipse cx="325" cy="235" rx="45" ry="18" fill="rgba(210,153,34,0.15)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="325" y="239" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="600" font-family="sans-serif">弱不跳</text>
+
+      <ellipse cx="475" cy="235" rx="45" ry="18" fill="rgba(210,153,34,0.15)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="475" y="239" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="600" font-family="sans-serif">弱跳</text>
+
+      <ellipse cx="625" cy="235" rx="45" ry="18" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="625" y="239" text-anchor="middle" fill="#3fb950" font-size="10" font-weight="600" font-family="sans-serif">强跳</text>
+
+      <!-- 转移箭头 -->
+      <path d="M220,235 L280,235" stroke="#f87171" stroke-width="1.5" marker-end="url(#bp-arr)"/>
+      <text x="250" y="228" fill="#f87171" font-size="8" font-family="sans-serif">跳</text>
+      <path d="M280,243 L220,243" stroke="#fbbf24" stroke-width="1" marker-end="url(#bp-arr)"/>
+      <text x="245" y="252" fill="#fbbf24" font-size="8" font-family="sans-serif">不跳</text>
+
+      <path d="M370,235 L430,235" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#bp-arr)"/>
+      <text x="395" y="228" fill="#fbbf24" font-size="8" font-family="sans-serif">跳</text>
+      <path d="M430,243 L370,243" stroke="#fbbf24" stroke-width="1" marker-end="url(#bp-arr)"/>
+      <text x="395" y="252" fill="#fbbf24" font-size="8" font-family="sans-serif">不跳</text>
+
+      <path d="M520,235 L580,235" stroke="#3fb950" stroke-width="1.5" marker-end="url(#bp-arr)"/>
+      <text x="545" y="228" fill="#3fb950" font-size="8" font-family="sans-serif">跳</text>
+      <path d="M580,243 L520,243" stroke="#fbbf24" stroke-width="1" marker-end="url(#bp-arr)"/>
+      <text x="545" y="252" fill="#fbbf24" font-size="8" font-family="sans-serif">不跳</text>
+
+      <!-- 现代预测技术 -->
+      <rect x="50" y="285" width="700" height="140" rx="8" fill="rgba(30,41,59,0.4)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="308" text-anchor="middle" fill="#e2e8f0" font-size="13" font-weight="700" font-family="sans-serif">现代分支预测技术</text>
+
+      <rect x="65" y="322" width="320" height="45" rx="6" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="225" y="342" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600" font-family="sans-serif">BTB (Branch Target Buffer)</text>
+      <text x="225" y="358" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">缓存分支指令地址 → 目标地址的映射</text>
+
+      <rect x="415" y="322" width="320" height="45" rx="6" fill="rgba(57,197,207,0.06)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="575" y="342" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="600" font-family="sans-serif">TAGE 预测器</text>
+      <text x="575" y="358" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">多表折叠历史 + 标签匹配，准确率 &gt; 95%</text>
+
+      <rect x="65" y="377" width="320" height="38" rx="6" fill="rgba(248,81,73,0.06)" stroke="#f87171" stroke-width="1"/>
+      <text x="225" y="395" text-anchor="middle" fill="#f87171" font-size="10" font-weight="600" font-family="sans-serif">RAS (Return Address Stack)</text>
+      <text x="225" y="410" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">预测函数调用的返回地址</text>
+
+      <rect x="415" y="377" width="320" height="38" rx="6" fill="rgba(210,153,34,0.06)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="575" y="395" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="600" font-family="sans-serif">间接分支预测</text>
+      <text x="575" y="410" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">预测函数指针、switch-case 等的目标</text>
+    </svg>
+    <div class="diagram-caption">图6：分支预测技术从静态→1-bit→2-bit→现代TAGE预测器的演进，以及 BTB、RAS 等辅助结构</div>
+  </div>
+
+  <h3>分支预测的惩罚成本</h3>
+  <table>
+    <tr><th>流水线深度</th><th>预测准确率</th><th>猜错惩罚</th><th>有效 CPI 损失</th></tr>
+    <tr><td>5 级（经典 RISC）</td><td>95%</td><td>2 周期</td><td>0.10</td></tr>
+    <tr><td>10 级（现代 CPU）</td><td>97%</td><td>4 周期</td><td>0.12</td></tr>
+    <tr><td>20 级（深度流水线）</td><td>99%</td><td>8 周期</td><td>0.08</td></tr>
+    <tr><td>20 级（无预测）</td><td>50%</td><td>8 周期</td><td>4.00</td></tr>
+  </table>
+  <p style="font-size:12px;color:var(--muted)">可见：没有分支预测的深度流水线几乎无法工作（CPI 暴增 4 倍）。这就是为什么现代 CPU 把巨大的芯片面积投入分支预测器。</p>
+
+  <div class="info-card">
+    <h4>🔬 分支预测器是怎么训练\"直觉\"的？</h4>
+    <p>现代 CPU 的分支预测器（如 Intel 的 TAGE-SC-L）本质是一个 <strong>机器学习模型</strong>——但不是神经网络，而是基于 <strong>分支历史（Global/Local History）</strong> 的查表预测。</p>
+    <p><strong>核心思想：</strong></p>
+    <ul>
+      <li><strong>全局历史</strong>：记录最近 N 次分支的跳转/不跳转模式（如 TNTNTT 表示"跳-不跳-跳-不跳-跳-跳"）</li>
+      <li><strong>局部历史</strong>：记录某个特定分支的历史行为（如循环出口的规律）</li>
+      <li><strong>预测器组合</strong>：多个预测器并行工作，用 <strong>选择器（Meta-Predictor）</strong> 选出最可信的那个结果</li>
+    </ul>
+    <p><strong>准确率：</strong>现代 TAGE 预测器在 SPEC CPU 基准上可达 <strong>97-99%</strong> 准确率，意味着平均每 100 条分支才猜错 1-3 次。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 乱序执行 -->
+<!-- ================================================================== -->
+<section id="oooe" class="section">
+  <h2>⚙️ 乱序执行（Out-of-Order Execution）</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🍽️ 类比：餐厅后厨的灵活调度</span></p>
+    <p>想象一个繁忙的餐厅后厨：<strong>按序执行</strong> = 厨师必须严格按照订单顺序做菜——就算顾客 A 的牛排正在煎（等待中），顾客 B 的沙拉只需 30 秒，也得等牛排做完再做沙拉。<strong>乱序执行</strong> = 厨师看到\"牛排还在煎，我先做沙拉\"——哪个菜先准备好就先做哪个，最后一起出餐。这就是乱序执行的核心：<strong>利用等待长延迟操作的时间，去做那些不依赖的操作</strong>。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 480" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="oo-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+        <marker id="oo-arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5">
+          <path d="M0,0 L7,2.5 L0,5Z" fill="#58a6ff"/>
+        </marker>
+      </defs>
+      <rect x="10" y="5" width="780" height="470" rx="10" fill="url(#oo-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">乱序执行（OoOE）数据通路 —— Tomasulo 算法</text>
+
+      <!-- In-order frontend -->
+      <rect x="30" y="45" width="240" height="60" rx="6" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="150" y="65" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700" font-family="sans-serif">按序前端 (In-Order Frontend)</text>
+      <text x="150" y="83" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">取指 → 译码 → 寄存器重命名</text>
+      <text x="150" y="97" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">按程序顺序将指令分发到保留站</text>
+
+      <line x1="270" y1="75" x2="295" y2="75" stroke="#58a6ff" stroke-width="2" marker-end="url(#oo-arr)"/>
+
+      <!-- 保留站 -->
+      <rect x="300" y="45" width="200" height="60" rx="6" fill="rgba(210,153,34,0.08)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="400" y="65" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="700" font-family="sans-serif">保留站 (Reservation Station)</text>
+      <text x="400" y="83" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">指令等待操作数就绪</text>
+      <text x="400" y="97" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">一旦操作数到位就发射执行</text>
+
+      <line x1="500" y1="75" x2="525" y2="75" stroke="#58a6ff" stroke-width="2" marker-end="url(#oo-arr)"/>
+
+      <!-- 乱序执行 -->
+      <rect x="530" y="35" width="230" height="85" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="645" y="58" text-anchor="middle" fill="#f87171" font-size="12" font-weight="700" font-family="sans-serif">乱序执行引擎</text>
+
+      <rect x="540" y="72" width="70" height="20" rx="3" fill="rgba(248,81,73,0.15)" stroke="#f87171" stroke-width="1"/>
+      <text x="575" y="86" text-anchor="middle" fill="#f87171" font-size="8" font-family="sans-serif">ALU 0</text>
+
+      <rect x="615" y="72" width="70" height="20" rx="3" fill="rgba(248,81,73,0.15)" stroke="#f87171" stroke-width="1"/>
+      <text x="650" y="86" text-anchor="middle" fill="#f87171" font-size="8" font-family="sans-serif">ALU 1</text>
+
+      <rect x="690" y="72" width="60" height="20" rx="3" fill="rgba(248,81,73,0.15)" stroke="#f87171" stroke-width="1"/>
+      <text x="720" y="86" text-anchor="middle" fill="#f87171" font-size="8" font-family="sans-serif">AGU</text>
+
+      <text x="575" y="105" text-anchor="middle" fill="#64748b" font-size="7" font-family="sans-serif">整数</text>
+      <text x="650" y="105" text-anchor="middle" fill="#64748b" font-size="7" font-family="sans-serif">整数</text>
+      <text x="720" y="105" text-anchor="middle" fill="#64748b" font-size="7" font-family="sans-serif">地址</text>
+
+      <!-- 乱序回写 -->
+      <path d="M645,120 L645,135 L400,135 L400,140" stroke="#f87171" stroke-width="1.5" fill="none" marker-end="url(#oo-arr)"/>
+
+      <!-- ROB -->
+      <rect x="300" y="145" width="200" height="55" rx="6" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="400" y="165" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="700" font-family="sans-serif">ROB (Reorder Buffer)</text>
+      <text x="400" y="183" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">乱序完成 → 按序提交 (In-Order Commit)</text>
+      <text x="400" y="195" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">确保精确异常 (Precise Exception)</text>
+
+      <line x1="300" y1="172" x2="280" y2="172" stroke="#3fb950" stroke-width="1.5" marker-end="url(#oo-arr)"/>
+
+      <!-- 按序提交 -->
+      <rect x="30" y="215" width="240" height="55" rx="6" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="150" y="237" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700" font-family="sans-serif">按序提交 (In-Order Commit)</text>
+      <text x="150" y="257" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">结果按程序顺序写入寄存器/内存</text>
+
+      <!-- 代码流展示 -->
+      <rect x="30" y="290" width="740" height="165" rx="8" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="313" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700" font-family="sans-serif">乱序执行示例</text>
+
+      <rect x="45" y="325" width="240" height="120" rx="6" fill="rgba(248,81,73,0.06)" stroke="#f87171" stroke-width="1"/>
+      <text x="165" y="345" text-anchor="middle" fill="#f87171" font-size="11" font-weight="600" font-family="sans-serif">程序顺序</text>
+      <text x="55" y="367" fill="#94a3b8" font-size="10" font-family="sans-serif">I1: ld   x1, 0(x2)  ;  Cache miss (~200周期)</text>
+      <text x="55" y="385" fill="#94a3b8" font-size="10" font-family="sans-serif">I2: add  x3, x4, x5  ; 操作数就绪</text>
+      <text x="55" y="403" fill="#94a3b8" font-size="10" font-family="sans-serif">I3: sub  x6, x7, x8  ; 操作数就绪</text>
+      <text x="55" y="421" fill="#94a3b8" font-size="10" font-family="sans-serif">I4: addi x9, x1, 1  ; 依赖I1</text>
+
+      <line x1="300" y1="385" x2="340" y2="385" stroke="#f87171" stroke-width="1.5" marker-end="url(#oo-arr)"/>
+      <text x="320" y="370" fill="#f87171" font-size="9" font-family="sans-serif">乱序</text>
+      <text x="320" y="382" fill="#f87171" font-size="9" font-family="sans-serif">执行</text>
+
+      <rect x="350" y="325" width="240" height="120" rx="6" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1"/>
+      <text x="470" y="345" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600" font-family="sans-serif">实际执行顺序</text>
+      <text x="360" y="367" fill="#94a3b8" font-size="10" font-family="sans-serif">I2: add  x3, x4, x5  ← 先执行（操作数已就绪）</text>
+      <text x="360" y="385" fill="#94a3b8" font-size="10" font-family="sans-serif">I3: sub  x6, x7, x8  ← 也先执行</text>
+      <text x="360" y="403" fill="#f87171" font-size="10" font-family="sans-serif">I1: ld   x1, 0(x2)  ← 等 Cache 返回</text>
+      <text x="360" y="421" fill="#f87171" font-size="10" font-family="sans-serif">I4: addi x9, x1, 1  ← 等 I1</text>
+
+      <rect x="610" y="340" width="150" height="80" rx="6" fill="rgba(210,153,34,0.06)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="685" y="362" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="600" font-family="sans-serif">提交顺序</text>
+      <text x="685" y="382" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">必须按程序顺序</text>
+      <text x="685" y="398" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">I1 → I2 → I3 → I4</text>
+      <text x="685" y="414" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">（精确异常的关键）</text>
+    </svg>
+    <div class="diagram-caption">图7：乱序执行架构 —— 按序取指/译码 → 乱序执行 → 按序提交。保留站(R.S.)调度就绪指令，ROB 保证最终按序提交</div>
+  </div>
+
+  <h3>乱序执行的关键技术</h3>
+  <table>
+    <tr><th>技术</th><th>作用</th><th>类比</th></tr>
+    <tr><td><strong>寄存器重命名</strong></td><td>将架构寄存器映射到物理寄存器，消除虚假依赖（WAR/WAW）</td><td>给每个变量分配不同的\"草稿纸\"，互不干扰</td></tr>
+    <tr><td><strong>保留站 (RS)</strong></td><td>等待操作数就绪，就绪后发射到执行单元</td><td>外卖等待区的骑手——餐一做好立即出发</td></tr>
+    <tr><td><strong>重排序缓冲 (ROB)</strong></td><td>乱序完成的结果按序提交，保证精确异常</td><td>厨房做完的菜要按订单编号上菜</td></tr>
+    <tr><td><strong>通用数据总线 (CDB)</strong></td><td>执行单元广播结果给所有等待的保留站</td><td>厨房传菜窗口——"XXX 做好了，谁要的来取"</td></tr>
+    <tr><td><strong>前瞻执行 (Speculative)</strong></td><td>在分支结果确定前继续执行</td><td>\"先做另一道菜，等客人确认再说\"</td></tr>
+  </table>
+
+  <div class="compare">
+    <div>
+      <h4>📈 乱序执行的好处</h4>
+      <ul>
+        <li><strong>隐藏 Cache Miss 延迟</strong>：在等主存数据时做其他工作</li>
+        <li><strong>提高 ALU 利用率</strong>：把执行单元喂饱</li>
+        <li><strong>充分利用 ILP</strong>（Instruction-Level Parallelism）</li>
+        <li>典型负载提升 ~<strong>30-50%</strong> 的性能</li>
+      </ul>
+    </div>
+    <div>
+      <h4>📉 乱序执行的代价</h4>
+      <ul>
+        <li><strong>功耗巨大</strong>：保留站、ROB、重命名逻辑都很耗电</li>
+        <li><strong>面积开销</strong>：乱序逻辑占芯片面积的 ~<strong>30-40%</strong></li>
+        <li><strong>设计复杂度高</strong>：验证 OoOE 逻辑极其困难</li>
+        <li>因此 <strong>低功耗 CPU</strong>（如 ARM Cortex-A53）使用按序流水线</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 实战问答 -->
+<!-- ================================================================== -->
+<section id="qa" class="section">
+  <h2>❓ 实战问答</h2>
+
+  <div class="qa-box">
+    <h4>Q1</h4>
+    <p class="q">什么是流水线数据冒险？有哪些类型？如何解决？</p>
+    <p class="a"><strong>定义：</strong>流水线中后一条指令需要前一条指令的结果，但结果还没准备好。<br>
+    <strong>三种类型：</strong>RAW (Read After Write) — 最常见；WAR (Write After Read)；WAW (Write After Write)。在按序流水线中只有 RAW 会发生。<br>
+    <strong>解决方案：</strong>① <strong>转发(Forwarding)</strong>：ALU 结果从流水线寄存器直接传给下一条指令的 ALU 输入（最有效）；② <strong>插入气泡(Stall)</strong>：流水线停顿直到数据就绪；③ <strong>编译器调度</strong>：重新排列指令，在依赖指令间插入不相关的指令。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q2</h4>
+    <p class="q">load-use 冒险是什么？为什么转发不能完全解决？</p>
+    <p class="a"><strong>load-use 冒险</strong> 是指：lw 指令从数据内存加载的值，紧接着的指令在 EX 阶段就需要使用。<br>
+    为什么转发不能完全解决？因为 lw 在 <strong>MEM 阶段</strong> 才从内存拿到数据，而紧接着的指令在 <strong>EX 阶段</strong> 就需要这个数据——转发路径只能从 MEM 阶段往回走，但 MEM 的结束时间晚于 EX 的开始时间。<br>
+    <strong>解决方案：</strong>必须插入 <strong>1 个气泡</strong>（流水线停顿 1 周期），或者编译器在 lw 和使用指令之间插一条不相关的指令（避免气泡）。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q3</h4>
+    <p class="q">流水线分支预测为什么重要？2-bit 预测器如何工作？</p>
+    <p class="a"><strong>重要性：</strong>每条分支指令猜错会导致流水线清空（flush），损失 ~5-20 个周期。现代程序平均每 5-6 条指令就有一条分支指令——没有预测的深度流水线几乎无法工作。<br>
+    <strong>2-bit 饱和计数器：</strong>有 4 个状态（强不跳→弱不跳→弱跳→强跳），每次猜测后状态转移。需要 <strong>连续两次猜错</strong> 才改变预测方向。相比于 1-bit 预测器（连续两次猜错只需一次猜错翻转），它在循环末尾的短循环中表现更好——大多数循环中 1-bit 在循环出口和入口各猜错一次，2-bit 只在出口猜错一次，准确率从 ~80% 提升到 ~90%。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q4</h4>
+    <p class="q">单周期、多周期、流水线 CPU 的区别是什么？</p>
+    <p class="a"><strong>单周期：</strong>每条指令一个周期完成，周期长度 = 最慢指令的延迟。CPI=1，但时钟频率极低。设计简单但效率低。<br>
+    <strong>多周期：</strong>每条指令分多步完成，每步一个周期。不同指令步数不同（add 需3步，lw 需5步）。时钟频率可提高，硬件复用更好。但指令之间没有重叠执行。<br>
+    <strong>流水线：</strong>将指令分解为多个阶段，不同指令的不同阶段同时执行。理想 CPI ≈ 1，时钟频率高，吞吐量最大。但需要处理冒险（结构/数据/控制），硬件复杂。<br>
+    <strong>性能对比：</strong>以 5 级流水线为例，假设最慢指令需 10ns：单周期 10ns/指令，多周期 2ns×5=10ns/指令，流水线理论 2ns/指令（5 倍加速）。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q5</h4>
+    <p class="q">什么是寄存器重命名？它解决了什么问题？</p>
+    <p class="a"><strong>寄存器重命名</strong> 是乱序执行中的关键技术。它将程序看到的 <strong>架构寄存器</strong>（如 x86 的 AX, BX；RISC-V 的 x1, x2）映射到更多 <strong>物理寄存器</strong>（如 320 个物理寄存器）。<br>
+    <strong>解决的问题：</strong>消除 <strong>虚假依赖</strong>（False Dependencies）——即 WAR 和 WAW 冒险。<br>
+    <strong>例子：</strong><br>
+    <code>I1: add x1, x2, x3  // 写 x1</code><br>
+    <code>I2: sub x4, x1, x5  // 读 x1（RAW，真依赖）</code><br>
+    <code>I3: add x1, x6, x7  // 写 x1（WAW，假依赖）</code><br>
+    如果没有重命名，I3 必须等 I1 完成才能写 x1（WAW 风险）。通过重命名，I3 实际写到物理寄存器 p10 而 I1 写到 p5，两者互不干扰。<br>
+    <strong>真依赖（RAW）</strong> 不能被消除——这就是所谓的"写后读真冒险"，必须通过转发解决。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q6</h4>
+    <p class="q">按序执行（In-Order）和乱序执行（Out-of-Order）CPU 各有什么优缺点？</p>
+    <p class="a"><strong>按序执行 CPU</strong>（如 ARM Cortex-A53, Intel Atom 早期）：<br>
+    ✅ 优点：功耗低，面积小，设计简单，验证容易<br>
+    ❌ 缺点：当指令 Cache miss 或遇到长延迟操作时，流水线停顿（stall），浪费执行能力<br>
+    <strong>乱序执行 CPU</strong>（如 ARM Cortex-X, Intel Core, AMD Ryzen）：<br>
+    ✅ 优点：能利用空闲的执行单元在等待时做其他工作，IPC（每周期指令数）高 ~30-100%<br>
+    ❌ 缺点：功耗大 ~30%，面积大 ~30-40%，验证难<br>
+    <strong>应用场景：</strong>手机 SoC 的<strong>大小核架构</strong>——大核乱序（高性能）、小核按序（省电）。例如 Apple M1 的 Firestorm（乱序）+ Icestorm（按序），日常任务用 Icestorm，重负载切 Firestorm。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 口播总结 -->
+<!-- ================================================================== -->
+<section class="section">
+  <div class="voice-summary">
+    <p><strong>朋友，来整理一下今天 CPU 数据通路与流水线的核心知识。</strong></p>
+    <p>第一，<strong>五阶段数据通路</strong> 是 CPU 执行指令的路线图——取指、译码、执行、访存、写回。每一条指令都要走完这条路，流水线让不同指令的不同阶段同时走，实现了 CPI ≈ 1 的高吞吐。</p>
+    <p>第二，<strong>流水线不是免费的午餐</strong>。结构冒险（争硬件）、数据冒险（等数据）、控制冒险（猜分支）是三个主要挑战。转发技术解决了大部分数据冒险，但 load-use 冒险仍然需要 1 个气泡。</p>
+    <p>第三，<strong>分支预测让深度流水线成为可能</strong>。从简单静态预测到 2-bit 饱和计数器，再到现代 TAGE 预测器（准确率 97-99%），每次分支预测进步都让流水线更高效。没有分支预测，深度流水线的 CPI 会暴增 4 倍以上。</p>
+    <p>第四，<strong>乱序执行是最高级的\"偷跑\"技术</strong>。通过保留站等待就绪操作数、寄存器重命名消除假依赖、ROB 保证精确异常——乱序执行让 CPU 在等 Cache 时还能做有用的事，典型负载提升 30-50%。但它的功耗和面积代价也很大，所以大小核架构成为移动处理器的标配。</p>
+    <p>计算机组成原理系列还长，下一篇我们聊聊 <strong>存储层次（Cache 和虚拟内存）</strong>——看看 CPU 和内存之间那些\"狡猾\"的缓存策略。敬请期待！🎯</p>
+  </div>
+</section>
+
+</main>
+
+</div><!-- .app -->
+
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

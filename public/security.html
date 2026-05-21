@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>安全攻防实战 · 认证·授权·渗透防御 · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .voice-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .voice-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) { .diagram svg { min-width: 420px; } }
+
+  /* QA toggle */
+  .qa-q { cursor: pointer; user-select: none; }
+  .qa-q::after { content: ' ▾'; opacity: 0.5; }
+  .qa-q.open::after { content: ' ▴'; }
+  .qa-a { display: none; }
+  .qa-a.open { display: block; }
+
+  /* Security-specific */
+  .attack-flow { background: var(--card); border-left: 3px solid var(--red); border-radius: 0 10px 10px 0; padding: 14px 18px; margin: 12px 0; }
+  .defense-flow { background: var(--card); border-left: 3px solid var(--green); border-radius: 0 10px 10px 0; padding: 14px 18px; margin: 12px 0; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">安全基础</div>
+  <a class="nav-item" href="#auth">🔐 认证与授权</a>
+  <a class="nav-item" href="#oauth">🔄 OAuth2/OIDC</a>
+  <a class="nav-item" href="#jwt">📜 JWT</a>
+  <a class="nav-item" href="#https">🔒 HTTPS/TLS</a>
+  <a class="nav-item" href="#web-sec">🛡️ Web安全</a>
+  <a class="nav-item" href="#best-practice">✅ 最佳实践</a>
+  <div class="nav-section">实战</div>
+  <a class="nav-item" href="#qa">❓ 高频实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ====== 总览 ====== -->
+<section class="section" id="overview">
+  <h2>📋 总览：安全攻防实战全景</h2>
+  <p>安全攻防是软件开发中最<span class="badge badge-red">硬核</span>也最容易被忽视的环节。本文从<strong>认证授权</strong>出发，深度剖析 OAuth2/OIDC、JWT、HTTPS/TLS 的核心原理，再深入到<strong>Web 安全攻防</strong>——CSRF、XSS、SQL 注入、SSRF——最后给出实战最佳实践。</p>
+
+  <div class="feynman">
+    <p>想象你经营一栋写字楼：<span class="analogy">认证（Authentication）就是门口的保安检查工牌——"你是谁？"；授权（Authorization）是楼层门禁——"你能进哪几层？"</span></p>
+    <p><span class="analogy">JWT 就像一张带有防伪芯片的访客卡，里面写着你叫什么、能去哪、什么时候过期。<strong>HTTPS/TLS</strong> 是包裹信件在传输途中的加密信封——偷看了也没用，撕开就发现被篡改。</span></p>
+    <p><span class="analogy">而 CSRF、XSS、SQL 注入这些攻击，就像有人从窗户爬进来、冒充你发邮件、或者假装成清洁工进入数据中心。我们要做的是给每扇窗装上报警器，并在进门时多重核验身份。</span></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="400" fill="#0f172a" rx="8"/>
+      <text x="400" y="36" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">🔐 安全攻防全景图</text>
+
+      <!-- Layer 1: Authentication & Authorization -->
+      <rect x="30" y="56" width="740" height="50" rx="8" fill="#1e293b" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="50" y="86" fill="#58a6ff" font-size="13" font-weight="bold">🔐 身份层</text>
+      <text x="160" y="86" fill="#c9d1d9" font-size="12">认证 (你是谁)</text>
+      <text x="310" y="86" fill="#8b949e" font-size="12">→</text>
+      <text x="340" y="86" fill="#c9d1d9" font-size="12">授权 (你能做什么)</text>
+      <text x="510" y="86" fill="#8b949e" font-size="12">|</text>
+      <text x="535" y="86" fill="#3fb950" font-size="12">OAuth2 授权码流程</text>
+      <text x="690" y="86" fill="#a371f7" font-size="12">OIDC 身份层</text>
+
+      <!-- Layer 2: Token -->
+      <rect x="30" y="116" width="740" height="50" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="50" y="146" fill="#3fb950" font-size="13" font-weight="bold">📜 令牌层</text>
+      <text x="160" y="146" fill="#c9d1d9" font-size="12">JWT: Header · Payload · Signature</text>
+      <text x="420" y="146" fill="#8b949e" font-size="12">|</text>
+      <text x="445" y="146" fill="#d29922" font-size="12">Access Token (短时效)</text>
+      <text x="595" y="146" fill="#f85149" font-size="12">Refresh Token (长时效)</text>
+
+      <!-- Layer 3: Transport -->
+      <rect x="30" y="176" width="740" height="50" rx="8" fill="#1e293b" stroke="#d29922" stroke-width="1.5"/>
+      <text x="50" y="206" fill="#d29922" font-size="13" font-weight="bold">🔒 传输层</text>
+      <text x="160" y="206" fill="#c9d1d9" font-size="12">HTTPS = HTTP + TLS</text>
+      <text x="330" y="206" fill="#8b949e" font-size="12">|</text>
+      <text x="355" y="206" fill="#39c5cf" font-size="12">TLS 1.3 握手 (1-RTT)</text>
+      <text x="510" y="206" fill="#c9d1d9" font-size="12">证书链验证</text>
+      <text x="630" y="206" fill="#c9d1d9" font-size="12">前向安全性 (PFS)</text>
+
+      <!-- Layer 4: Web Attacks -->
+      <rect x="30" y="236" width="740" height="50" rx="8" fill="#1e293b" stroke="#f85149" stroke-width="1.5"/>
+      <text x="50" y="266" fill="#f85149" font-size="13" font-weight="bold">🛡️ 防御层</text>
+
+      <rect x="145" y="278" width="85" height="22" rx="5" fill="#f85149" opacity="0.2"/>
+      <text x="187" y="293" text-anchor="middle" fill="#f85149" font-size="11" font-weight="bold">CSRF</text>
+      <rect x="245" y="278" width="85" height="22" rx="5" fill="#d29922" opacity="0.2"/>
+      <text x="287" y="293" text-anchor="middle" fill="#d29922" font-size="11" font-weight="bold">XSS</text>
+      <rect x="345" y="278" width="85" height="22" rx="5" fill="#a371f7" opacity="0.2"/>
+      <text x="387" y="293" text-anchor="middle" fill="#a371f7" font-size="11" font-weight="bold">SQL注入</text>
+      <rect x="445" y="278" width="85" height="22" rx="5" fill="#39c5cf" opacity="0.2"/>
+      <text x="487" y="293" text-anchor="middle" fill="#39c5cf" font-size="11" font-weight="bold">SSRF</text>
+
+      <!-- Best Practices -->
+      <rect x="30" y="316" width="740" height="50" rx="8" fill="#1e293b" stroke="#a371f7" stroke-width="1.5"/>
+      <text x="50" y="346" fill="#a371f7" font-size="13" font-weight="bold">✅ 最佳实践</text>
+      <text x="170" y="346" fill="#c9d1d9" font-size="12">最小权限 · 纵深防御 · 输入校验 · HTTPS-only · Content-Security-Policy · SameSite Cookie · 速率限制</text>
+
+      <text x="400" y="388" text-anchor="middle" fill="#8b949e" font-size="11">安全不是单点防御，而是<span tspan="#58a6ff" font-weight="bold">多层纵深防御体系</span> —— 每层失效时，下层还能兜底</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ====== 认证与授权 ====== -->
+<section class="section" id="auth">
+  <h2>🔐 认证 vs 授权</h2>
+  <p>这两个概念是最容易被混淆的安全基础，但它们的职责截然不同：</p>
+
+  <div class="compare">
+    <div>
+      <h4 style="color:var(--accent)">🔐 认证 (Authentication)</h4>
+      <p><strong>问：</strong>你是谁？</p>
+      <p>验证用户身份的<strong>过程</strong></p>
+      <ul>
+        <li>登录输入用户名+密码</li>
+        <li>指纹/人脸识别</li>
+        <li>OAuth 登录（用 Google 登录）</li>
+        <li>单点登录 (SSO)</li>
+      </ul>
+      <p><span class="badge badge-green">结果：</span>确认身份后颁发凭证</p>
+    </div>
+    <div>
+      <h4 style="color:var(--green)">✅ 授权 (Authorization)</h4>
+      <p><strong>问：</strong>你能做什么？</p>
+      <p>确定已认证用户的<strong>权限范围</strong></p>
+      <ul>
+        <li>普通用户可读，管理员可写</li>
+        <li>API 访问范围 (scope)</li>
+        <li>RBAC 角色权限控制</li>
+        <li>ACL 访问控制列表</li>
+      </ul>
+      <p><span class="badge badge-red">结果：</span>决定允许/拒绝访问资源</p>
+    </div>
+  </div>
+
+  <div class="feynman">
+    <p><span class="analogy">想象你去一家高级酒店：</span></p>
+    <p><strong>认证</strong> = 你站在前台出示身份证，前台确认你是房客张三（"确认你是谁"）。</p>
+    <p><strong>授权</strong> = 前台给你房卡，这张卡只能刷开 808 房间门，刷不开总统套房和机房（"确认你能去哪"）。</p>
+    <p><strong>关键区分：</strong>认证在"门前"，授权在"门内"。认证<strong>前置</strong>于授权——必须先知道你是谁，才能判断你能做什么。</p>
+  </div>
+
+  <h3>常见认证协议对比</h3>
+  <table>
+    <thead>
+      <tr><th>协议</th><th>场景</th><th>方式</th><th>特点</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>HTTP Basic Auth</td><td>老旧系统</td><td>Base64(username:password)</td><td>极简单，需搭配 HTTPS</td></tr>
+      <tr><td>Session-Cookie</td><td>传统 Web</td><td>服务端存 session ID</td><td>有状态，服务端内存开销</td></tr>
+      <tr><td>JWT (Bearer Token)</td><td>现代/分布式</td><td>自包含 Token</td><td>无状态，适合微服务</td></tr>
+      <tr><td>OAuth2</td><td>第三方授权</td><td>四种授权码流程</td><td>委托授权，不暴露密码</td></tr>
+      <tr><td>OIDC</td><td>身份认证</td><td>OAuth2 + ID Token</td><td>OAuth2 的认证扩展层</td></tr>
+    </tbody>
+  </table>
+
+  <div class="voice-summary">
+    <p>认证和授权是安全的"门"与"墙"——门决定了谁能进，墙决定了能走到哪。很多安全漏洞（比如越权访问）本质上就是授权没做好——门开了，墙却形同虚设。最经典的教训：<strong>永远不要仅靠认证来做授权</strong>。</p>
+  </div>
+</section>
+
+<!-- ====== OAuth2 & OIDC ====== -->
+<section class="section" id="oauth">
+  <h2>🔄 OAuth2 四种授权码流程 + OIDC</h2>
+  <p>OAuth2 是一个<strong>授权框架</strong>，解决的是"你允许第三方应用访问你在某服务上的资源，但不必把你的密码给它"的问题。OAuth2 定义了<strong>四种授权码流程</strong>（Grant Types）。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">想象你住的酒店有酒廊服务。你要朋友去酒廊帮你取一杯酒：</span></p>
+    <p>方式<span class="badge badge-purple">①</span> <strong>授权码模式（最安全）</strong>：你给前台打电话授权，前台给朋友一张代金券，朋友用房卡+代金券去酒廊取酒。代金券只能用一次。</p>
+    <p>方式<span class="badge badge-orange">②</span> <strong>隐式模式（已废弃）</strong>：你直接让朋友用房卡去。不安全——房卡就是你的身份。</p>
+    <p>方式<span class="badge badge-cyan">③</span> <strong>密码模式</strong>：你把房卡密码告诉朋友。完全不推荐！</p>
+    <p>方式<span class="badge badge-green">④</span> <strong>客户端凭证模式</strong>：内部服务员（API to API）不需要客人授权，直接用自己的工牌取酒。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 530" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="530" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="16" font-weight="bold">🔄 OAuth2 授权码模式 + PKCE 流程详解</text>
+
+      <!-- Actors -->
+      <rect x="20" y="52" width="130" height="36" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="85" y="75" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">👤 用户 (Resource Owner)</text>
+
+      <rect x="240" y="52" width="130" height="36" rx="8" fill="#1e293b" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="305" y="75" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="bold">🌐 第三方应用 (Client)</text>
+
+      <rect x="480" y="52" width="130" height="36" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="545" y="75" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">🪪 授权服务器 (Auth Server)</text>
+
+      <rect x="660" y="52" width="120" height="36" rx="8" fill="#1e293b" stroke="#a371f7" stroke-width="1.5"/>
+      <text x="720" y="75" text-anchor="middle" fill="#a371f7" font-size="12" font-weight="bold">🗄️ 资源服务器 (API)</text>
+
+      <!-- Step 1 -->
+      <defs><marker id="arrowG" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#3fb950"/></marker><marker id="arrowB" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#58a6ff"/></marker><marker id="arrowO" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#d29922"/></marker><marker id="arrowR" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f85149"/></marker></defs>
+
+      <line x1="150" y1="70" x2="235" y2="70" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowB)"/>
+      <text x="192" y="62" text-anchor="middle" fill="#58a6ff" font-size="11">① 请求登录</text>
+
+      <line x1="370" y1="88" x2="475" y2="110" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowB)"/>
+      <text x="400" y="102" text-anchor="middle" fill="#58a6ff" font-size="11">② 重定向到授权服务器</text>
+
+      <!-- Step 3: User auth -->
+      <line x1="500" y1="88" x2="140" y2="130" stroke="#d29922" stroke-width="1.5" marker-end="url(#arrowO)"/>
+      <text x="310" y="130" text-anchor="middle" fill="#d29922" font-size="11">③ 用户登录 + 授权</text>
+
+      <!-- Step 4: Auth Code -->
+      <line x1="510" y1="130" x2="375" y2="150" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arrowG)"/>
+      <text x="460" y="150" text-anchor="middle" fill="#3fb950" font-size="11">④ 返回授权码 (Authorization Code)</text>
+
+      <!-- Step 5: Exchange -->
+      <line x1="305" y1="150" x2="480" y2="170" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arrowG)"/>
+      <text x="400" y="172" text-anchor="middle" fill="#3fb950" font-size="11">⑤ client_id + client_secret + code 交换 Token</text>
+
+      <!-- Step 6: Token -->
+      <line x1="545" y1="170" x2="370" y2="190" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arrowG)"/>
+      <text x="475" y="192" text-anchor="middle" fill="#3fb950" font-size="11">⑥ 返回 Access Token + ID Token + Refresh Token</text>
+
+      <!-- Step 7: API call -->
+      <line x1="305" y1="210" x2="660" y2="210" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowB)"/>
+      <text x="485" y="204" text-anchor="middle" fill="#58a6ff" font-size="11">⑦ 使用 Access Token 调用 API (Bearer Auth)</text>
+
+      <!-- Step 8: Response -->
+      <line x1="720" y1="210" x2="370" y2="230" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arrowG)"/>
+      <text x="560" y="230" text-anchor="middle" fill="#3fb950" font-size="11">⑧ 返回受保护资源</text>
+
+      <!-- PKCE section -->
+      <line x1="30" y1="270" x2="770" y2="270" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="294" text-anchor="middle" fill="#39c5cf" font-size="14" font-weight="bold">PKCE (Proof Key for Code Exchange) — 防止授权码拦截攻击</text>
+
+      <text x="40" y="322" fill="#c9d1d9" font-size="12">➊ Client 生成 code_verifier（随机字符串）→ 计算 code_challenge = SHA256(code_verifier)</text>
+      <text x="40" y="348" fill="#c9d1d9" font-size="12">➋ 请求授权码时携带 code_challenge + code_challenge_method=S256</text>
+      <text x="40" y="374" fill="#c9d1d9" font-size="12">➌ 换取 Token 时必须携带 code_verifier</text>
+      <text x="40" y="400" fill="#c9d1d9" font-size="12">➍ 授权服务器验证 SHA256(code_verifier) == code_challenge → 匹配则颁发 Token</text>
+
+      <text x="400" y="435" text-anchor="middle" fill="#8b949e" font-size="12">即使授权码被拦截，没有 code_verifier 也无法换取 Token</text>
+
+      <!-- OIDC section -->
+      <line x1="30" y1="460" x2="770" y2="460" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="484" text-anchor="middle" fill="#a371f7" font-size="14" font-weight="bold">🆔 OIDC (OpenID Connect) — OAuth2 上的认证层</text>
+
+      <text x="40" y="512" fill="#a371f7" font-size="12">ID Token 格式：JWT，包含 sub (用户ID), name, email, picture, iss (签发者), aud (客户端ID), exp (过期时间)</text>
+      <text x="40" y="530" fill="#8b949e" font-size="12">OAuth2 管"授权"（能否访问 API）→ OIDC 管"认证"（用户是谁）→ 两者结合就是统一的认证授权方案</text>
+    </svg>
+  </div>
+
+  <h3>四种授权码模式速览</h3>
+  <table>
+    <thead>
+      <tr><th>模式</th><th>适用场景</th><th>安全等级</th><th>是否需要 client_secret</th><th>备注</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-purple">授权码 (Authorization Code)</span></td>
+        <td>服务端渲染 Web 应用</td>
+        <td>⭐⭐⭐⭐⭐</td>
+        <td>是</td>
+        <td>最推荐，配合 PKCE 更安全</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-red">隐式 (Implicit) 废弃</span></td>
+        <td>SPA (已不推荐)</td>
+        <td>⭐⭐</td>
+        <td>否</td>
+        <td>RFC 9700 宣布废弃，用 PKCE 代替</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-orange">密码 (Resource Owner Password)</span></td>
+        <td>信任的一方应用</td>
+        <td>⭐</td>
+        <td>是</td>
+        <td>不推荐，暴露密码</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-cyan">客户端凭证 (Client Credentials)</span></td>
+        <td>M2M (微服务间)</td>
+        <td>⭐⭐⭐⭐</td>
+        <td>是</td>
+        <td>无用户参与，纯后端</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ====== JWT ====== -->
+<section class="section" id="jwt">
+  <h2>📜 JWT 结构 / 签名 / 刷新</h2>
+  <p>JWT（JSON Web Token）是目前最流行的<strong>无状态认证令牌</strong>格式。它本身不是安全协议，而是一种<strong>令牌格式</strong>——使用不当会有严重安全隐患。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">JWT 就像一张<strong>防伪信用卡</strong>：</span></p>
+    <p><strong>Header</strong> = 信用卡的材质和制式——银联/VISA、芯片类型。</p>
+    <p><strong>Payload</strong> = 卡面信息——卡号、持卡人姓名、有效期。<span class="badge badge-red">注意：</span>这些信息是<strong>Base64 编码而非加密</strong>，任何人解码就能看到！</p>
+    <p><strong>Signature</strong> = 卡背面的磁条 + PIN 码的加密校验——银行用密钥验证卡片没有被伪造或篡改。</p>
+    <p><span class="analogy">所以：🟡 敏感数据不要放在 Payload！🔵 永远验证签名！🔴 永远检查过期时间！</span></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 450" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="450" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="16" font-weight="bold">📜 JWT 三大组成部分详解</text>
+
+      <!-- Header -->
+      <rect x="20" y="52" width="220" height="130" rx="10" fill="#1e293b" stroke="#58a6ff" stroke-width="2"/>
+      <text x="130" y="76" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="bold">HEADER</text>
+      <text x="40" y="100" fill="#8b949e" font-size="12">Base64URL 编码后的 JSON</text>
+      <text x="40" y="122" fill="#c9d1d9" font-size="12">{</text>
+      <text x="50" y="140" fill="#3fb950" font-size="12">"alg": "RS256",</text>
+      <text x="50" y="158" fill="#d29922" font-size="12">"typ": "JWT",</text>
+      <text x="50" y="176" fill="#a371f7" font-size="12">"kid": "key-id-1"</text>
+      <text x="40" y="194" fill="#c9d1d9" font-size="12">}</text>
+
+      <!-- Payload -->
+      <rect x="290" y="52" width="220" height="130" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="2"/>
+      <text x="400" y="76" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">PAYLOAD (Claims)</text>
+      <text x="310" y="100" fill="#8b949e" font-size="12">⚠️ Base64 编码，非加密！</text>
+      <text x="310" y="122" fill="#c9d1d9" font-size="12">{</text>
+      <text x="320" y="140" fill="#d29922" font-size="12">"sub": "user_123",</text>
+      <text x="320" y="158" fill="#d29922" font-size="12">"name": "张三",</text>
+      <text x="320" y="176" fill="#3fb950" font-size="12">"iat": 1715164800,</text>
+      <text x="320" y="194" fill="#f85149" font-size="12">"exp": 1715251200</text>
+      <text x="310" y="212" fill="#c9d1d9" font-size="12">}</text>
+
+      <!-- Signature -->
+      <rect x="560" y="52" width="220" height="130" rx="10" fill="#1e293b" stroke="#d29922" stroke-width="2"/>
+      <text x="670" y="76" text-anchor="middle" fill="#d29922" font-size="14" font-weight="bold">SIGNATURE</text>
+      <text x="580" y="100" fill="#8b949e" font-size="12">HMACSHA256(</text>
+      <text x="580" y="122" fill="#8b949e" font-size="12">  base64UrlEncode(header) + "." +</text>
+      <text x="580" y="140" fill="#8b949e" font-size="12">  base64UrlEncode(payload),</text>
+      <text x="580" y="158" fill="#f85149" font-size="12" font-weight="bold">  YOUR_SECRET_KEY</text>
+      <text x="580" y="176" fill="#8b949e" font-size="12">)</text>
+      <text x="580" y="198" fill="#3fb950" font-size="12">签名验证通过 = 未被篡改</text>
+
+      <!-- Combined JWT -->
+      <rect x="20" y="210" width="760" height="70" rx="10" fill="#16181d" stroke="#a371f7" stroke-width="1.5"/>
+      <text x="400" y="236" text-anchor="middle" fill="#a371f7" font-size="12" font-weight="bold">最终 JWT 字符串：header.payload.signature</text>
+      <text x="400" y="260" text-anchor="middle" fill="#8b949e" font-size="11">eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.<tspan fill="#3fb950">eyJzdWIiOiJ1c2VyXzEyMyJ9.</tspan><tspan fill="#d29922">sX6v8yQpZ9Lm...</tspan></text>
+
+      <!-- Key points -->
+      <line x1="20" y1="300" x2="780" y2="300" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="326" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">⏰ Access Token vs Refresh Token</text>
+
+      <rect x="40" y="344" width="340" height="48" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1"/>
+      <text x="210" y="364" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">🟢 Access Token</text>
+      <text x="210" y="383" text-anchor="middle" fill="#94a3b8" font-size="11">短时效（15min~1h），用于访问 API</text>
+
+      <rect x="420" y="344" width="340" height="48" rx="8" fill="#1e293b" stroke="#d29922" stroke-width="1"/>
+      <text x="590" y="364" text-anchor="middle" fill="#d29922" font-size="13" font-weight="bold">🟡 Refresh Token</text>
+      <text x="590" y="383" text-anchor="middle" fill="#94a3b8" font-size="11">长时效（7d~30d），用于获取新的 Access Token</text>
+
+      <text x="400" y="432" text-anchor="middle" fill="#f85149" font-size="11" font-weight="bold">⚡ 安全要点：不要在前端存储敏感数据 · 使用 HTTPS · 签名算法永远使用 RS256 而非 None 或 HS256</text>
+    </svg>
+  </div>
+
+  <h3>JWT 签名算法选择</h3>
+  <table>
+    <thead>
+      <tr><th>算法</th><th>对称/非对称</th><th>优势</th><th>劣势</th><th>推荐</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>HS256</td><td>对称</td><td>性能好</td><td>密钥分发困难，双方都得知道密钥</td><td><span class="badge badge-orange">内部使用</span></td>
+      </tr>
+      <tr>
+        <td>RS256</td><td>非对称 (RSA)</td><td>公钥分发，只有签发者知道私钥</td><td>密钥对较大</td><td><span class="badge badge-green">★ 推荐</span></td>
+      </tr>
+      <tr>
+        <td>ES256</td><td>非对称 (ECDSA)</td><td>密钥小，性能好</td><td>实现复杂度稍高</td><td><span class="badge badge-green">★ 推荐</span></td>
+      </tr>
+      <tr>
+        <td><code>alg: "none"</code></td><td>-</td><td>无</td><td>完全无安全保护，攻击者可随意伪造</td><td><span class="badge badge-red">绝对禁用！</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>JWT 刷新流程</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="240" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="16" font-weight="bold">🔄 Token 刷新流程图</text>
+
+      <rect x="20" y="55" width="150" height="36" rx="8" fill="#1e293b" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="95" y="78" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="bold">🌐 客户端</text>
+
+      <rect x="320" y="55" width="150" height="36" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="395" y="78" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">🪪 授权服务器</text>
+
+      <rect x="610" y="55" width="150" height="36" rx="8" fill="#1e293b" stroke="#a371f7" stroke-width="1.5"/>
+      <text x="685" y="78" text-anchor="middle" fill="#a371f7" font-size="12" font-weight="bold">🗄️ API 服务器</text>
+
+      <!-- Step 1: API call with AT -->
+      <line x1="170" y1="73" x2="605" y2="73" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowB)"/>
+      <text x="390" y="65" text-anchor="middle" fill="#58a6ff" font-size="11">① 携带 Access Token 请求 API</text>
+
+      <!-- Step 2: Expired -->
+      <line x1="685" y1="91" x2="200" y2="110" stroke="#f85149" stroke-width="1.5" marker-end="url(#arrowR)"/>
+      <text x="460" y="108" text-anchor="middle" fill="#f85149" font-size="11">② 返回 401 (Token 过期)</text>
+
+      <!-- Step 3: Refresh -->
+      <line x1="95" y1="110" x2="315" y2="130" stroke="#d29922" stroke-width="1.5" marker-end="url(#arrowO)"/>
+      <text x="210" y="130" text-anchor="middle" fill="#d29922" font-size="11">③ 发送 Refresh Token 请求刷新</text>
+
+      <!-- Step 4: New AT -->
+      <line x1="395" y1="130" x2="175" y2="150" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arrowG)"/>
+      <text x="290" y="152" text-anchor="middle" fill="#3fb950" font-size="11">④ 返回新的 Access Token (旧 Refresh Token 失效)</text>
+
+      <!-- Step 5: Retry -->
+      <line x1="170" y1="170" x2="605" y2="170" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowB)"/>
+      <text x="390" y="162" text-anchor="middle" fill="#58a6ff" font-size="11">⑤ 用新 Token 重试 API 请求</text>
+
+      <!-- Step 6 -->
+      <line x1="685" y1="170" x2="175" y2="190" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arrowG)"/>
+      <text x="440" y="190" text-anchor="middle" fill="#3fb950" font-size="11">⑥ 请求成功 ✅</text>
+
+      <text x="400" y="228" text-anchor="middle" fill="#f85149" font-size="11">⚡ 注意：Refresh Token 必须做 Rotation——每次刷新后旧的 Refresh Token 立即失效（防止泄露后被盗用）</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ====== HTTPS/TLS ====== -->
+<section class="section" id="https">
+  <h2>🔒 HTTPS / TLS 握手</h2>
+  <p>HTTPS = HTTP + TLS（传输层安全协议）。TLS 的核心目标：<strong>加密</strong>（防窃听）、<strong>完整性</strong>（防篡改）、<strong>身份验证</strong>（防冒充）。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">想象你在教室传纸条给同桌——但纸条可能被老师拦截查看（窃听）、被同学改写内容（篡改）、甚至有人冒充你同桌传回假消息（冒充）：</span></p>
+    <p>你（客户端）和同桌（服务器）先商量一种<strong>加密暗号</strong>——这就是 TLS 握手。</p>
+    <p>① <strong>Client Hello</strong>：你亮出你会的暗号方法（TLS 版本、密码套件）。</p>
+    <p>② <strong>Server Hello + 证书</strong>：同桌选择一种方法，并出示<strong>学生证</strong>（数字证书）证明自己确实是同桌本人。</p>
+    <p>③ <strong>证书验证</strong>：你检查学生证上的学校公章（CA 签名）是否真实有效——就像浏览器检查 HTTPS 证书。</p>
+    <p>④ <strong>密钥交换</strong>：你们用暗号约定一个只有你俩知道的<strong>秘密词</strong>（会话密钥），之后所有纸条都用这个秘密词加密。</p>
+    <p><span class="analogy">从此老师只能看到一堆乱码 🎭</span></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 560" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="560" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="16" font-weight="bold">🔒 TLS 1.3 握手 (1-RTT) vs TLS 1.2 握手 (2-RTT)</text>
+
+      <rect x="30" y="52" width="140" height="36" rx="8" fill="#1e293b" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="100" y="75" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="bold">🌐 客户端</text>
+
+      <rect x="600" y="52" width="140" height="36" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="670" y="75" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">🖥️ 服务器</text>
+
+      <!-- TLS 1.3 -->
+      <text x="100" y="150" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">TLS 1.3 (1-RTT)</text>
+
+      <!-- Step 1 -->
+      <rect x="20" y="168" width="160" height="32" rx="6" fill="#1e293b" stroke="#58a6ff" stroke-width="1"/>
+      <text x="100" y="189" text-anchor="middle" fill="#58a6ff" font-size="11">① ClientHello + KeyShare</text>
+
+      <line x1="180" y1="184" x2="595" y2="184" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowB)"/>
+
+      <rect x="600" y="168" width="180" height="32" rx="6" fill="#1e293b" stroke="#3fb950" stroke-width="1"/>
+      <text x="690" y="189" text-anchor="middle" fill="#3fb950" font-size="11">② ServerHello + Cert + Finished</text>
+
+      <line x1="600" y1="216" x2="185" y2="216" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arrowG)"/>
+
+      <rect x="20" y="200" width="160" height="32" rx="6" fill="#1e293b" stroke="#58a6ff" stroke-width="1"/>
+      <text x="100" y="221" text-anchor="middle" fill="#58a6ff" font-size="11">③ Finished → 握手完成！</text>
+
+      <line x1="180" y1="248" x2="595" y2="248" stroke="#d29922" stroke-width="1.5"/>
+      <text x="390" y="264" text-anchor="middle" fill="#d29922" font-size="12">📦 从此开始加密通信 (应用数据)</text>
+
+      <!-- TLS 1.2 -->
+      <line x1="30" y1="290" x2="770" y2="290" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="314" text-anchor="middle" fill="#8b949e" font-size="13" font-weight="bold">TLS 1.2 (2-RTT) — 对比</text>
+
+      <rect x="20" y="330" width="140" height="28" rx="6" fill="#16181d" stroke="#8b949e" stroke-width="1"/>
+      <text x="90" y="349" text-anchor="middle" fill="#8b949e" font-size="11">① ClientHello</text>
+      <line x1="160" y1="344" x2="595" y2="344" stroke="#8b949e" stroke-width="1" marker-end="url(#arrowB)"/>
+      <rect x="600" y="330" width="180" height="28" rx="6" fill="#16181d" stroke="#8b949e" stroke-width="1"/>
+      <text x="690" y="349" text-anchor="middle" fill="#8b949e" font-size="11">② ServerHello + Cert</text>
+      <line x1="600" y1="372" x2="165" y2="372" stroke="#8b949e" stroke-width="1" marker-end="url(#arrowG)"/>
+      <rect x="20" y="358" width="140" height="28" rx="6" fill="#16181d" stroke="#8b949e" stroke-width="1"/>
+      <text x="90" y="378" text-anchor="middle" fill="#8b949e" font-size="11">③ ClientKeyExchange</text>
+      <line x1="160" y1="400" x2="595" y2="400" stroke="#8b949e" stroke-width="1" marker-end="url(#arrowB)"/>
+      <rect x="600" y="395" width="180" height="28" rx="6" fill="#16181d" stroke="#8b949e" stroke-width="1"/>
+      <text x="690" y="414" text-anchor="middle" fill="#8b949e" font-size="11">④ ChangeCipherSpec</text>
+
+      <!-- Key points -->
+      <line x1="30" y1="450" x2="770" y2="450" stroke="#334155" stroke-width="1"/>
+
+      <rect x="40" y="466" width="350" height="40" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1"/>
+      <text x="215" y="484" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">✅ TLS 1.3 优势</text>
+      <text x="215" y="500" text-anchor="middle" fill="#94a3b8" font-size="11">握手只需 1-RTT · 移除不安全算法 · 0-RTT 恢复</text>
+
+      <rect x="410" y="466" width="350" height="40" rx="8" fill="#1e293b" stroke="#d29922" stroke-width="1"/>
+      <text x="585" y="484" text-anchor="middle" fill="#d29922" font-size="12" font-weight="bold">🔄 证书链验证</text>
+      <text x="585" y="500" text-anchor="middle" fill="#94a3b8" font-size="11">根 CA → 中间 CA → 服务器证书（浏览器预存根证书）</text>
+
+      <text x="400" y="548" text-anchor="middle" fill="#f85149" font-size="11">⚡ 关键：TLS 只保证传输安全，不保证应用安全！HTTPS 站点依然可能被 XSS/CSRF 攻击</text>
+    </svg>
+  </div>
+
+  <h3>证书链验证流程</h3>
+  <div class="attack-flow">
+    <p><strong>步骤：</strong></p>
+    <p>1. 服务端发送证书链（叶子证书 → 中间 CA 证书 → 根 CA 证书）</p>
+    <p>2. 客户端（浏览器）检查证书链：每个上级签发下级，逐级验证签名</p>
+    <p>3. 根证书必须在浏览器的<strong>信任存储区</strong>中（预装的操作系统/Mozilla 根证书包）</p>
+    <p>4. 验证域名匹配：证书的 CN/SAN 必须等于访问的域名</p>
+    <p>5. 验证有效期、是否被吊销（CRL/OCSP）</p>
+    <p>⚠️ 任何一步失败，浏览器显示"不安全"红色警告</p>
+  </div>
+
+  <h3>前向安全性 (Perfect Forward Secrecy)</h3>
+  <p>TLS 使用<strong>临时 Diffie-Hellman 密钥交换</strong>（ECDHE）保证 PFS：即使用户的长期私钥将来泄露，攻击者也无法解密之前记录的加密流量。因为每次连接使用独立的<strong>临时会话密钥</strong>，该密钥用完即销毁。</p>
+</section>
+
+<!-- ====== Web 安全 ====== -->
+<section class="section" id="web-sec">
+  <h2>🛡️ Web 安全攻防：CSRF · XSS · SQL注入 · SSRF</h2>
+  <p>这四个漏洞常年占据 OWASP Top 10，是每位开发者必须掌握的"安全基本功"。</p>
+
+  <!-- CSRF -->
+  <h3>1️⃣ CSRF（跨站请求伪造）</h3>
+  <div class="feynman">
+    <p><span class="analogy">想象你正在银行官网登录着。突然有人给你发了一封带图片的邮件，图片的 URL 其实是 <code>bank.com/transfer?to=hacker&amount=10000</code>。因为浏览器会自动携带银行网站的 Cookie，这个请求就像是你本人发起的！</span></p>
+    <p>这就是 CSRF —— <strong>攻击者利用你已经登录的身份，在你不知情的情况下伪造请求</strong>。</p>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4 style="color:var(--red)">⚔️ 攻击流程</h4>
+      <ol>
+        <li>用户登录 bank.com（获得 Cookie）</li>
+        <li>用户访问 malicious.com（攻击者站点）</li>
+        <li>恶意站点在页面中嵌入 &lt;img src="bank.com/transfer?to=hacker"&gt;</li>
+        <li>浏览器自动带 Cookie 发送 GET 请求（或通过表单自动提交 POST）</li>
+        <li>bank.com 看到有效 Cookie，执行转账！</li>
+      </ol>
+    </div>
+    <div>
+      <h4 style="color:var(--green)">🛡️ 防御措施</h4>
+      <ul>
+        <li><strong>CSRF Token</strong>：表单中嵌入随机 token，服务器验证（最有效）</li>
+        <li><strong>SameSite Cookie</strong>：设置 <code>SameSite=Strict</code> 或 <code>SameSite=Lax</code></li>
+        <li><strong>Referer/Origin 校验</strong>：检查请求来源</li>
+        <li><strong>关键操作二次验证</strong>：转账前短信/验证码确认</li>
+        <li><strong>RESTful 规范</strong>：GET 请求不做写操作</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- XSS -->
+  <h3>2️⃣ XSS（跨站脚本攻击）</h3>
+  <div class="feynman">
+    <p><span class="analogy">想象一个留言板。正常用户写"今天天气真好"——但攻击者写 <code>&lt;script&gt;alert('你被黑了')&lt;/script&gt;</code>。</span></p>
+    <p><span class="analogy">如果网站没有对用户输入做转义，这个脚本就会被当作正常代码执行，偷走你的 Cookie、跳转到钓鱼网站、甚至在你电脑上装键盘记录器！</span></p>
+    <p>XSS 就是<strong>攻击者把你的网页变成了他的代码执行器</strong>——本质是"数据被当作了代码执行"。</p>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4 style="color:var(--cyan)">📂 三种类型</h4>
+      <p><span class="badge badge-red">存储型</span> <strong>（最危险）</strong></p>
+      <p>恶意代码被<strong>持久化</strong>在服务器（如数据库的评论、用户头像）。每个访问该页面的人都会被攻击。</p>
+      <p><span class="badge badge-orange">反射型</span></p>
+      <p>恶意代码包含在 URL 参数中，服务器将参数直接回显在页面。需要用户点击恶意链接。</p>
+      <p><span class="badge badge-purple">DOM 型</span></p>
+      <p>纯前端攻击，恶意代码通过 DOM API 注入页面（如 <code>innerHTML</code>），不经过服务器。</p>
+    </div>
+    <div>
+      <h4 style="color:var(--green)">🛡️ 防御措施</h4>
+      <ul>
+        <li><strong>输出编码</strong>：HTML 实体编码 <code>&lt; → &amp;lt;</code></li>
+        <li><strong>Content-Security-Policy (CSP)</strong>：限制脚本加载来源</li>
+        <li><strong>HttpOnly Cookie</strong>：禁止 JavaScript 读取 Cookie</li>
+        <li><strong>避免危险 API</strong>：不用 <code>innerHTML</code>，用 <code>textContent</code></li>
+        <li><strong>输入验证</strong>：白名单限制允许的字符</li>
+        <li><strong>React/Vue 的自动转义</strong>：现代框架默认防御 XSS</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SQL Injection -->
+  <h3>3️⃣ SQL 注入</h3>
+  <div class="feynman">
+    <p><span class="analogy">你开了一家书店，告诉店员"给我找作者叫'鲁迅'的书"——店员老老实实地走去找。但攻击者过来说"给我找作者叫'鲁迅'; DROP TABLE books;--'的书"。</span></p>
+    <p><span class="analogy">如果店员（数据库）没有做任何检查，就把整个命令念出来——"找作者叫'鲁迅'；并且把书表删了"——你的书店就完蛋了！</span></p>
+    <p>SQL 注入的根源就是：<strong>用户输入被拼接到了 SQL 语句中，改变了 SQL 的语法结构</strong>。</p>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4 style="color:var(--red)">⚔️ 典型攻击</h4>
+      <pre><code>// ❌ 危险！拼接 SQL
+String sql = "SELECT * FROM users " +
+  "WHERE name = '" + input + "'";
+
+// 攻击者输入: ' OR '1'='1
+// SQL 变成:
+SELECT * FROM users
+WHERE name = '' OR '1'='1'
+// → 返回所有用户！</code></pre>
+    </div>
+    <div>
+      <h4 style="color:var(--green)">🛡️ 防御措施</h4>
+      <ul>
+        <li><strong>★ 参数化查询 (PreparedStatement)</strong></li>
+        <li><strong>ORM 的默认防注入</strong>（但小心原生查询）</li>
+        <li><strong>输入验证</strong>：类型/长度/格式校验</li>
+        <li><strong>最小权限原则</strong>：数据库用户只给必要的表权限</li>
+        <li><strong>关闭错误详情回显</strong></li>
+      </ul>
+      <pre><code>// ✅ 安全！参数化查询
+String sql = "SELECT * FROM users " +
+  "WHERE name = ?";
+PreparedStatement ps = conn.prepareStatement(sql);
+ps.setString(1, input);
+// → 用户输入永远是"值"，不会被解析为 SQL</code></pre>
+    </div>
+  </div>
+
+  <!-- SSRF -->
+  <h3>4️⃣ SSRF（服务端请求伪造）</h3>
+  <div class="feynman">
+    <p><span class="analogy">你的网站有一个"根据 URL 获取图片"的功能。攻击者不说"给我张猫的图片"，而是说"给我这个 URL 的内容：<code>http://localhost:6379</code>"。</span></p>
+    <p><span class="analogy">你的服务器老老实实地去请求内网的 Redis 服务（127.0.0.1:6379），把结果返回给攻击者。攻击者就这样通过你的服务器做跳板，攻击了你本不该暴露的内网服务！</span></p>
+    <p>SSRF 的可怕之处：<strong>攻击者利用你的服务器作为跳板，攻击你的内网</strong>——你的服务器对内部网络有信任关系。</p>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4 style="color:var(--red)">⚔️ 攻击场景</h4>
+      <ul>
+        <li>扫描内网 <code>192.168.x.x</code> 网段</li>
+        <li>攻击 <code>localhost:6379</code>（Redis）</li>
+        <li>攻击 <code>localhost:3306</code>（MySQL）</li>
+        <li>攻击云服务元数据 API（AWS <code>169.254.169.254</code>）</li>
+        <li>读取本地文件（<code>file:///etc/passwd</code>）</li>
+        <li>攻击内部管理后台</li>
+      </ul>
+    </div>
+    <div>
+      <h4 style="color:var(--green)">🛡️ 防御措施</h4>
+      <ul>
+        <li><strong>URL 白名单</strong>：只允许请求预设的 URL/域名</li>
+        <li><strong>禁用内网/回环地址</strong>：禁止 <code>127.0.0.1</code>, <code>169.254.x.x</code>, <code>10.x.x.x</code>, <code>192.168.x.x</code></li>
+        <li><strong>使用 AllowList 协议</strong>：仅允许 <code>https://</code>，禁用 <code>file://</code>, <code>dict://</code>, <code>gopher://</code></li>
+        <li><strong>网络隔离</strong>：服务不应有内网连通权限</li>
+        <li><strong>限制 DNS 解析</strong>：禁用 DNS rebinding 攻击</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Comparison table -->
+  <h3>四大漏洞对比总结</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="340" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="16" font-weight="bold">🛡️ 四大 Web 漏洞攻防对比</text>
+
+      <!-- CSRF -->
+      <rect x="15" y="52" width="180" height="120" rx="10" fill="#1e293b" stroke="#f85149" stroke-width="1.5"/>
+      <text x="105" y="76" text-anchor="middle" fill="#f85149" font-size="14" font-weight="bold">CSRF</text>
+      <text x="105" y="100" text-anchor="middle" fill="#94a3b8" font-size="11">利用已登录身份伪造请求</text>
+      <line x1="25" y1="112" x2="185" y2="112" stroke="#334155" stroke-width="1"/>
+      <text x="105" y="132" text-anchor="middle" fill="#3fb950" font-size="11">✅ CSRF Token</text>
+      <text x="105" y="152" text-anchor="middle" fill="#3fb950" font-size="11">✅ SameSite Cookie</text>
+      <text x="105" y="168" text-anchor="middle" fill="#3fb950" font-size="11">✅ 验证 Referer</text>
+
+      <!-- XSS -->
+      <rect x="210" y="52" width="180" height="120" rx="10" fill="#1e293b" stroke="#d29922" stroke-width="1.5"/>
+      <text x="300" y="76" text-anchor="middle" fill="#d29922" font-size="14" font-weight="bold">XSS</text>
+      <text x="300" y="100" text-anchor="middle" fill="#94a3b8" font-size="11">用户输入变成代码执行</text>
+      <line x1="220" y1="112" x2="380" y2="112" stroke="#334155" stroke-width="1"/>
+      <text x="300" y="132" text-anchor="middle" fill="#3fb950" font-size="11">✅ 输出编码</text>
+      <text x="300" y="152" text-anchor="middle" fill="#3fb950" font-size="11">✅ CSP 策略</text>
+      <text x="300" y="168" text-anchor="middle" fill="#3fb950" font-size="11">✅ HttpOnly Cookie</text>
+
+      <!-- SQL Injection -->
+      <rect x="405" y="52" width="180" height="120" rx="10" fill="#1e293b" stroke="#a371f7" stroke-width="1.5"/>
+      <text x="495" y="76" text-anchor="middle" fill="#a371f7" font-size="14" font-weight="bold">SQL 注入</text>
+      <text x="495" y="100" text-anchor="middle" fill="#94a3b8" font-size="11">用户输入篡改 SQL 语法</text>
+      <line x1="415" y1="112" x2="575" y2="112" stroke="#334155" stroke-width="1"/>
+      <text x="495" y="132" text-anchor="middle" fill="#3fb950" font-size="11">✅ 参数化查询</text>
+      <text x="495" y="152" text-anchor="middle" fill="#3fb950" font-size="11">✅ 最小权限</text>
+      <text x="495" y="168" text-anchor="middle" fill="#3fb950" font-size="11">✅ ORM 防注入</text>
+
+      <!-- SSRF -->
+      <rect x="600" y="52" width="180" height="120" rx="10" fill="#1e293b" stroke="#39c5cf" stroke-width="1.5"/>
+      <text x="690" y="76" text-anchor="middle" fill="#39c5cf" font-size="14" font-weight="bold">SSRF</text>
+      <text x="690" y="100" text-anchor="middle" fill="#94a3b8" font-size="11">攻击者利用服务端做跳板</text>
+      <line x1="610" y1="112" x2="770" y2="112" stroke="#334155" stroke-width="1"/>
+      <text x="690" y="132" text-anchor="middle" fill="#3fb950" font-size="11">✅ URL 白名单</text>
+      <text x="690" y="152" text-anchor="middle" fill="#3fb950" font-size="11">✅ 禁用内网地址</text>
+      <text x="690" y="168" text-anchor="middle" fill="#3fb950" font-size="11">✅ 网络隔离</text>
+
+      <!-- Common root cause -->
+      <rect x="15" y="190" width="765" height="48" rx="8" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="397" y="210" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="bold">⚠️ 共同根源：信任了不可信的输入</text>
+      <text x="397" y="230" text-anchor="middle" fill="#94a3b8" font-size="11">永远不要信任用户输入、URL 参数、请求头、Cookie、Referer、文件上传… 一切来自客户端的都是不可信的！</text>
+
+      <!-- Defense layers -->
+      <text x="400" y="270" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="bold">纵深防御三原则</text>
+      <rect x="40" y="282" width="220" height="36" rx="6" fill="#3fb950" opacity="0.1" stroke="#3fb950" stroke-width="1"/>
+      <text x="150" y="300" text-anchor="middle" fill="#3fb950" font-size="12">输入净化 · 输出编码</text>
+      <text x="150" y="315" text-anchor="middle" fill="#94a3b8" font-size="10">防注入第一道防线</text>
+
+      <rect x="290" y="282" width="220" height="36" rx="6" fill="#58a6ff" opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
+      <text x="400" y="300" text-anchor="middle" fill="#58a6ff" font-size="12">安全 HTTP 头部</text>
+      <text x="400" y="315" text-anchor="middle" fill="#94a3b8" font-size="10">CSP · HSTS · X-Frame-Options</text>
+
+      <rect x="540" y="282" width="220" height="36" rx="6" fill="#d29922" opacity="0.1" stroke="#d29922" stroke-width="1"/>
+      <text x="650" y="300" text-anchor="middle" fill="#d29922" font-size="12">审计 + 监控 + WAF</text>
+      <text x="650" y="315" text-anchor="middle" fill="#94a3b8" font-size="10">发现 & 阻断 & 响应</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ====== 实战最佳实践 ====== -->
+<section class="section" id="best-practice">
+  <h2>✅ 实战最佳实践</h2>
+  <p>以下是经过实践检验的安全最佳实践清单——每一条背后都有血的教训。</p>
+
+  <div class="info-card">
+    <h4>🔐 认证 + 令牌</h4>
+    <ul>
+      <li>使用 OAuth2 <strong>授权码 + PKCE</strong> 流程（不要再用 Implicit 流）</li>
+      <li>Access Token 有效期设为 15-30 分钟；Refresh Token 做 Rotation</li>
+      <li>JWT 必须验证：签名、过期时间（exp）、受众（aud）、签发者（iss）</li>
+      <li><strong>禁用</strong> <code>alg: none</code> 和弱签名算法</li>
+      <li>勿在 JWT Payload 中存放敏感信息（Base64 不是加密！）</li>
+    </ul>
+  </div>
+
+  <div class="info-card">
+    <h4>🔒 传输安全</h4>
+    <ul>
+      <li>全站 HTTPS（HSTS 头部：<code>Strict-Transport-Security: max-age=31536000</code>）</li>
+      <li>TLS 1.3 优先，禁用 TLS 1.0/1.1</li>
+      <li>使用现代化密码套件，禁用 RC4、3DES、CBC 模式</li>
+      <li>OCSP Stapling 提升证书状态查询性能</li>
+    </ul>
+  </div>
+
+  <div class="info-card">
+    <h4>🛡️ Web 安全</h4>
+    <ul>
+      <li>设置 <strong>Content-Security-Policy</strong> 头限制脚本/样式来源</li>
+      <li>Cookie 设置 <code>HttpOnly</code>、<code>Secure</code>、<code>SameSite=Lax/Strict</code></li>
+      <li>所有用户输入 <strong>参数化查询</strong>（PreparedStatement）</li>
+      <li>禁止内网 IP 的 URL 请求（SSRF 防御）</li>
+      <li>CSRF Token 绑定 Session（双提交 Cookie 模式也可）</li>
+      <li>文件上传校验：类型、大小、内容、重命名并存储到非 Web 可访问路径</li>
+    </ul>
+  </div>
+
+  <div class="info-card">
+    <h4>📋 开发运维</h4>
+    <ul>
+      <li><strong>最小权限原则</strong>：服务仅申请所需的最小 scope 和权限</li>
+      <li>密钥管理：使用 Vault/AWS Secrets Manager，不要硬编码在代码中</li>
+      <li>日志不记录密码、Token、信用卡等敏感信息</li>
+      <li>依赖扫描：定期检查已知漏洞（npm audit, trivy, snyk）</li>
+      <li>Web 安全扫描：OWASP ZAP、Burp Suite 定期扫描</li>
+      <li>速率限制：防止暴力破解和 DDoS</li>
+    </ul>
+  </div>
+
+  <div class="voice-summary">
+    <p>安全的第一性原理：<strong>不信任</strong>（Zero Trust）。永远假设攻击者已经知道了你的代码、你的架构、你的防御措施。设计安全策略时，问自己一个问题："如果攻击者知道了所有信息除了密钥，系统还安全吗？"——答案应该是肯定的。</p>
+    <p>没有绝对的安全，只有<strong>足够好的安全</strong>——让攻击者攻击你的成本远大于他获得的收益，他就不会来。</p>
+  </div>
+</section>
+
+<!-- ====== QA ====== -->
+<section class="section" id="qa">
+  <h2>❓ 高频实战问答</h2>
+  <p>以下8道问题覆盖安全方向的核心实战考点，点击题目展开详解。</p>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q1：认证 (Authentication) 和授权 (Authorization) 的区别？请用现实例子说明。</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>认证</strong>是"你是谁？"——验证身份。如：前台查身份证确认你是房客。</p>
+      <p class="a"><strong>授权</strong>是"你能做什么？"——确定权限。如：房卡只能刷开你房间的门。</p>
+      <p class="q">加分点：</p>
+      <p class="a">指出两者顺序：认证 <strong>先于</strong> 授权。提到常见的授权模型：RBAC（基于角色）、ABAC（基于属性）、ACL（访问控制列表）。还提到一个经典漏洞——越权访问（IDOR），本质就是认证正确但授权检查缺失。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q2：OAuth2 四种授权码模式的适用场景？为什么 Implicit 模式被废弃？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">① <strong>授权码模式</strong>：有后端的 Web 应用，最安全，配合 PKCE 用于 SPA 和移动端。</p>
+      <p class="a">② <strong>隐式模式（Implicit）</strong>：曾用于 SPA，直接在 URL 返回 Access Token。被 RFC 9700 废弃。</p>
+      <p class="a">③ <strong>密码模式</strong>：仅限高度信任的 first-party 应用，不推荐。</p>
+      <p class="a">④ <strong>客户端凭证模式</strong>：微服务间 M2M 通信，无用户参与。</p>
+      <p class="q">被废弃原因：</p>
+      <p class="a">Access Token 暴露在浏览器 URL 中（URL 会被日志记录、Referer 泄露、浏览器历史保存）；无法使用 Refresh Token；不支持 PKCE 绑定。现在所有场景都用授权码 + PKCE 代替。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q3：JWT 的结构是什么样的？为什么 payload 不能放敏感信息？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">JWT 由三部分用点号连接：<code>header.payload.signature</code>。</p>
+      <p class="a"><strong>Header</strong>：算法类型（alg）和 token 类型（typ）。</p>
+      <p class="a"><strong>Payload</strong>：声明（claims）——sub、exp、iat、自定义数据。</p>
+      <p class="a"><strong>Signature</strong>：对头部+载荷的签名，防止篡改。</p>
+      <p class="q">为什么不能放敏感信息？</p>
+      <p class="a">因为 Payload 只是 <strong>Base64URL 编码</strong>而非加密。任何人都可以用 <code>atob()</code> 解码看内容！签名只防止篡改，不提供机密性。敏感数据（密码、信用卡）需要额外加密或放在服务端存储。</p>
+      <p class="q">加分点：</p>
+      <p class="a">提到 JWT 的 <code>alg: none</code> 算法攻击——如果服务端不校验算法，攻击者可以修改 alg 为 none 伪造任意身份。还提到 JWT 无状态化的优缺点：无状态利于扩展，但无法主动吊销（除非用黑名单/短时效）。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q4：TLS 1.3 握手比 TLS 1.2 改进了什么？什么是前向安全性？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">TLS 1.3 的握手从 2-RTT 降到 <strong>1-RTT</strong>（一次往返完成握手）。客户端在 ClientHello 中就携带了密钥共享信息（KeyShare），服务端直接返回 ServerHello + 证书 + 握手完成消息。</p>
+      <p class="a">另外 TLS 1.3 支持 <strong>0-RTT</strong>（会话恢复）——对于之前连接过的客户端可以直接发送数据。</p>
+      <p class="q">前向安全性 (PFS)：</p>
+      <p class="a">即使服务器私钥将来泄露，攻击者也无法解密过去记录的通信内容。因为 TLS 使用 <strong>ECDHE</strong>（临时椭圆曲线 Diffie-Hellman）每次连接生成临时密钥，用完即销毁。TLS 1.3 移除了所有不支持 PFS 的密钥交换算法（如 RSA 密钥交换）。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q5：CSRF 和 XSS 有什么区别？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>CSRF</strong>（跨站请求伪造）：利用用户的已登录身份，在用户不知情的情况下发送请求。攻击者 <strong>不能看到响应内容</strong>（盲打）。本质是利用了 Cookie 自动携带的特性。</p>
+      <p class="a"><strong>XSS</strong>（跨站脚本攻击）：在目标网站中执行恶意脚本。攻击者 <strong>可以读取页面内容、窃取 Cookie、操控 DOM</strong>。</p>
+      <p class="q">关键区别：</p>
+      <p class="a">CSRF 不需要在目标网站执行代码——只需要用户已登录；XSS 需要目标网站有输入输出漏洞来执行代码。但 XSS <strong>可以用于绕过 CSRF 防御</strong>——比如用 XSS 偷 CSRF Token。</p>
+      <p class="q">防御对比：</p>
+      <p class="a">CSRF 用 <strong>CSRF Token / SameSite Cookie / 验证 Referer</strong>；XSS 用 <strong>输出编码 / CSP / HttpOnly Cookie</strong>。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q6：SQL 注入的原理是什么？参数化查询为什么能防注入？</h4>
+    <div class="qa-a">
+      <p class="q">原理：</p>
+      <p class="a">当用户输入被<strong>拼接到 SQL 语句中</strong>时，输入中的特殊字符（如单引号 <code>'</code>）改变了 SQL 的语法结构，使得攻击者可以执行任意 SQL 命令。</p>
+      <p class="q">为什么参数化查询有效：</p>
+      <p class="a">参数化查询（PreparedStatement）将 SQL 语句的<strong>结构与数据分离</strong>。先编译 SQL 结构（如 <code>SELECT * FROM users WHERE name = ?</code>），然后再绑定参数。绑定参数时，数据库会<strong>自动转义</strong>参数值，确保用户输入永远被当作<strong>数据值</strong>而非 SQL 代码来处理。</p>
+      <p class="q">加分点：</p>
+      <p class="a">提到即使使用了 ORM（如 JPA/MyBatis），也要注意 <code>${}</code>（字符串拼接）和 <code>#{}</code>（参数化绑定）的区别——前者仍然有注入风险。另外提到 <strong>NoSQL 注入</strong>（如 MongoDB 的 <code>$where</code> 注入）。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q7：SSRF 攻击如何利用？云环境中的 SSRF 为什么特别危险？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">SSRF（Server-Side Request Forgery）是攻击者让服务器<strong>替自己发送请求</strong>到内网/本地。常见场景：URL 预览、Webhook 回调、图片抓取、代理功能。</p>
+      <p class="q">云环境中的危险性：</p>
+      <p class="a">云服务器（AWS、GCP、Azure）都有一个<strong>元数据服务</strong>（如 AWS <code>http://169.254.169.254/latest/meta-data/</code>），返回实例的临时凭据（IAM Role 的 Access Key）。如果能用 SSRF 请求到这个地址，攻击者就能<strong>窃取云服务权限</strong>，这被称为"元数据攻击"——2019 年 Capital One 数据泄露就是通过 SSRF + 元数据服务实现的。</p>
+      <p class="q">防御重点：</p>
+      <p class="a">URL 白名单（只允许特定可信域名）、禁用回环地址和内网 IP、限制协议（仅允许 https）、网络隔离（服务应无内网访问权限）。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q8：请列举 10 条你日常开发中遵循的安全最佳实践。</h4>
+    <div class="qa-a">
+      <p class="q">核心思路（任选 10 条）：</p>
+      <ol class="a">
+        <li>全站启用 HTTPS + HSTS，禁用 HTTP 明文传输</li>
+        <li>所有数据库操作使用<strong>参数化查询</strong>（PreparedStatement）</li>
+        <li>用户输入/输出做 HTML 实体编码（防 XSS）</li>
+        <li>设置 <strong>Content-Security-Policy</strong> 头限制脚本来源</li>
+        <li>Cookie 设置 <code>HttpOnly</code> + <code>Secure</code> + <code>SameSite=Lax</code></li>
+        <li>所有表单添加 CSRF Token（或使用 SameSite Cookie）</li>
+        <li>API 端点实施<strong>频率限制</strong>（Rate Limiting）</li>
+        <li>密码使用 bcrypt/argon2 哈希，禁止明文存储</li>
+        <li>密钥、密码、Token 存在 Vault/Secret Manager，不写死在代码中</li>
+        <li>日志不记录敏感信息（密码、Token、信用卡、PII）</li>
+        <li>最小权限原则：每个微服务/用户仅分配所需的最小权限</li>
+        <li>文件上传限制类型、大小，重命名后存非公开路径</li>
+        <li>依赖库定期安全审计（npm audit, trivy, snyk）</li>
+        <li>错误页面不泄露堆栈信息、版本号、框架细节</li>
+        <li>JWT 使用 RS256/ES256 签名，验证 exp/aud/iss，禁用 alg: none</li>
+      </ol>
+      <p class="q">加分点：</p>
+      <p class="a">提到"你不是在写功能，你是在构建一个可能被攻击的系统"——安全是思维方式，不是 checklist。推荐阅读 OWASP Top 10 和参与 CTF 提升实战能力。</p>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var navItems = document.querySelectorAll('.nav-item');
+  var sections = document.querySelectorAll('.section');
+
+  function updateNav() {
+    var current = '';
+    sections.forEach(function(s) {
+      var rect = s.getBoundingClientRect();
+      if (rect.top <= 120) current = s.id;
+    });
+    navItems.forEach(function(i) {
+      i.classList.remove('active');
+      if (i.getAttribute('href') === '#' + current) i.classList.add('active');
+    });
+  }
+
+  window.addEventListener('scroll', updateNav);
+  updateNav();
+
+  navItems.forEach(function(item) {
+    item.addEventListener('click', function(e) {
+      var target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      document.querySelectorAll('.nav-item').forEach(function(i) { i.classList.remove('active'); });
+      item.classList.add('active');
+    });
+  });
+});
+
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

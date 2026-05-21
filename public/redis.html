@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redis · 费曼学习法</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascada Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+
+  /* 苏格拉底提问 */
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔴 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">第一章：数据结构</div>
+  <a class="nav-item" href="#redis-data">📦 九大数据结构</a>
+  <a class="nav-item" href="#redis-inner">🔬 底层实现</a>
+  <a class="nav-item" href="#redis-scenario">🎯 应用场景</a>
+  <div class="nav-section">第二章：持久化</div>
+  <a class="nav-item" href="#redis-rdb">📸 RDB 快照</a>
+  <a class="nav-item" href="#redis-aof">📝 AOF 日志</a>
+  <a class="nav-item" href="#redis-mixed">🔀 混合持久化</a>
+  <div class="nav-section">第三章：高可用</div>
+  <a class="nav-item" href="#redis-ms">📡 主从复制</a>
+  <a class="nav-item" href="#redis-sentinel">🛡️ Sentinel 哨兵</a>
+  <a class="nav-item" href="#redis-cluster">🧩 Cluster 集群</a>
+  <div class="nav-section">第四章：缓存 & 内存</div>
+  <a class="nav-item" href="#redis-cache">🎯 缓存三大问题</a>
+  <a class="nav-item" href="#redis-evict">🗑️ 淘汰策略</a>
+  <a class="nav-item" href="#redis-mem">💾 内存优化</a>
+  <div class="nav-section">第五章：进阶</div>
+  <a class="nav-item" href="#redis-adv">⚡ Pipeline/事务/Lua</a>
+  <a class="nav-item" href="#redis-qa">❓ 核心题</a>
+  <a class="nav-item" href="#redis-summary">🎙️ 口播总结</a>
+  <a class="nav-item" href="#redis-socratic">💬 苏格拉底提问</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>🔴 Redis</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>Redis = 内存数据结构服务器。快是因为<strong>数据在内存</strong> + <strong>单线程无锁</strong> + <strong>高效数据结构</strong>。</p>
+    <p>考察：数据结构底层、持久化对比、高可用三件套、缓存三大问题、分布式锁。</p>
+  </div>
+</section>
+
+<!-- ═══════ 数据结构 ═══════ -->
+<section id="redis-data" class="section">
+  <h2>📦 九大数据结构：一把瑞士军刀</h2>
+
+  <h3>5 种基础数据结构</h3>
+  <table>
+    <tr><th>类型</th><th>操作</th><th>时间复杂度</th><th>典型场景</th></tr>
+    <tr><td><strong>String</strong></td><td><code>SET/GET/INCR/DECR</code></td><td>O(1)</td><td>缓存、计数器、分布式锁、Session</td></tr>
+    <tr><td><strong>Hash</strong></td><td><code>HSET/HGET/HGETALL</code></td><td>O(1)</td><td>用户信息、购物车</td></tr>
+    <tr><td><strong>List</strong></td><td><code>LPUSH/RPOP/LRANGE</code></td><td>O(1)头尾 O(N)中间</td><td>消息队列、最新动态</td></tr>
+    <tr><td><strong>Set</strong></td><td><code>SADD/SINTER/SUNION</code></td><td>O(1)</td><td>标签、共同好友、去重</td></tr>
+    <tr><td><strong>Sorted Set</strong></td><td><code>ZADD/ZRANGE/ZRANK</code></td><td>O(log N)</td><td>排行榜、延迟队列、权重排序</td></tr>
+  </table>
+
+  <h3>4 种高级数据结构</h3>
+  <table>
+    <tr><th>类型</th><th>原理</th><th>空间</th><th>误差</th><th>场景</th></tr>
+    <tr><td><strong>Bitmaps</strong></td><td>位数组</td><td>极小</td><td>无</td><td>签到打卡、布隆过滤器底层</td></tr>
+    <tr><td><strong>HyperLogLog</strong></td><td>概率算法</td><td>12KB</td><td>0.81%</td><td>UV 统计、去重计数</td></tr>
+    <tr><td><strong>GEO</strong></td><td>ZSet + GeoHash</td><td>—</td><td>无</td><td>附近的人、距离计算</td></tr>
+    <tr><td><strong>Stream</strong></td><td>日志型</td><td>—</td><td>无</td><td>轻量 MQ、消费者组</td></tr>
+  </table>
+  <div class="diagram">
+    <svg viewBox="0 0 820 340" style="max-width:820px;width:100%">
+      <defs>
+        <linearGradient id="rbadge" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>
+        <linearGradient id="radv" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient>
+      </defs>
+      <!-- Category banners -->
+      <rect x="15" y="12" width="380" height="28" rx="6" fill="rgba(251,191,36,0.15)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="205" y="31" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">🔥 5 种基础结构 — 通用武器库</text>
+      <rect x="425" y="12" width="380" height="28" rx="6" fill="rgba(167,139,250,0.15)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="615" y="31" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">🚀 4 种高级结构 — 特种作战</text>
+
+      <!-- 5 basic structures row -->
+      <rect x="20" y="52" width="72" height="90" rx="8" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="56" y="75" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">String</text>
+      <text x="56" y="95" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="8">O(1)</text>
+      <text x="56" y="112" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">缓存·计数器·锁</text>
+      <rect x="56" y="122" width="1" height="15" fill="#fbbf24"/>
+
+      <rect x="100" y="52" width="72" height="90" rx="8" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="136" y="75" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">Hash</text>
+      <text x="136" y="95" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="8">O(1)</text>
+      <text x="136" y="112" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">用户信息·购物车</text>
+
+      <rect x="180" y="52" width="72" height="90" rx="8" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="216" y="75" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">List</text>
+      <text x="216" y="95" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="8">O(1) 头尾</text>
+      <text x="216" y="112" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">消息队列·动态</text>
+
+      <rect x="260" y="52" width="72" height="90" rx="8" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="296" y="75" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">Set</text>
+      <text x="296" y="95" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="8">O(1)</text>
+      <text x="296" y="112" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">标签·共同好友</text>
+
+      <rect x="340" y="52" width="80" height="90" rx="8" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="380" y="75" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700">ZSet</text>
+      <text x="380" y="95" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="8">O(log N)</text>
+      <text x="380" y="112" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">排行榜·延时队列</text>
+
+      <!-- 4 advanced structures -->
+      <rect x="430" y="52" width="88" height="90" rx="8" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="474" y="75" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">Bitmaps</text>
+      <text x="474" y="95" text-anchor="middle" fill="#ddd6fe" font-family="JetBrains Mono,monospace" font-size="8">位数组·极小</text>
+      <text x="474" y="112" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">签到·布隆底层</text>
+
+      <rect x="526" y="52" width="96" height="90" rx="8" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="574" y="75" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700">HyperLogLog</text>
+      <text x="574" y="95" text-anchor="middle" fill="#ddd6fe" font-family="JetBrains Mono,monospace" font-size="8">12KB·0.81%误差</text>
+      <text x="574" y="112" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">UV 统计·去重计数</text>
+
+      <rect x="630" y="52" width="80" height="90" rx="8" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="670" y="75" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">GEO</text>
+      <text x="670" y="95" text-anchor="middle" fill="#ddd6fe" font-family="JetBrains Mono,monospace" font-size="8">ZSet+GeoHash</text>
+      <text x="670" y="112" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">附近的人·距离</text>
+
+      <rect x="718" y="52" width="85" height="90" rx="8" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="760" y="75" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">Stream</text>
+      <text x="760" y="95" text-anchor="middle" fill="#ddd6fe" font-family="JetBrains Mono,monospace" font-size="8">日志型·消费者组</text>
+      <text x="760" y="112" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">轻量 MQ·事件流</text>
+
+      <!-- Bottom: decision tree -->
+      <rect x="15" y="162" width="790" height="168" rx="10" fill="rgba(15,17,23,0.6)" stroke="#475569" stroke-width="1"/>
+      <text x="410" y="188" text-anchor="middle" fill="#e2e8f0" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">🧭 选型决策树：你的场景该用哪个？</text>
+
+      <!-- Decision tree nodes -->
+      <rect x="350" y="200" width="120" height="28" rx="14" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="410" y="219" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="9" font-weight="600">要存什么数据？</text>
+
+      <!-- Branch 1: simple key-value -->
+      <line x1="350" y1="214" x2="200" y2="250" stroke="#475569" stroke-width="1"/>
+      <rect x="80" y="250" width="120" height="24" rx="12" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="140" y="267" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">简单键值 → String</text>
+
+      <!-- Branch 2: ordered -->
+      <line x1="410" y1="228" x2="410" y2="250" stroke="#475569" stroke-width="1"/>
+      <rect x="350" y="250" width="120" height="24" rx="12" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="410" y="267" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">需要排序？→ ZSet</text>
+
+      <!-- Branch 3: list -->
+      <line x1="470" y1="214" x2="620" y2="250" stroke="#475569" stroke-width="1"/>
+      <rect x="560" y="250" width="120" height="24" rx="12" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="620" y="267" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">队列/栈 → List</text>
+
+      <!-- Branch 4: unique -->
+      <line x1="410" y1="276" x2="200" y2="300" stroke="#475569" stroke-width="1"/>
+      <rect x="80" y="300" width="130" height="24" rx="12" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="145" y="317" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">去重/集合运算 → Set</text>
+
+      <!-- Branch 5: object -->
+      <line x1="410" y1="276" x2="620" y2="300" stroke="#475569" stroke-width="1"/>
+      <rect x="560" y="300" width="130" height="24" rx="12" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="625" y="317" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">对象字段 → Hash</text>
+
+      <!-- Bottom key -->
+      <text x="30" y="158" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">💡 选 String 几乎永远不会错——Redis 的核心就是"key→String"的极速映射</text>
+    </svg>
+    <div class="diagram-caption">Redis 九大数据结构全貌：5 基础 + 4 高级，每个都有不可替代的场景</div>
+  </div>
+
+</section>
+
+<!-- ═══════ 底层实现 ═══════ -->
+<section id="redis-inner" class="section">
+  <h2>🔬 底层实现：数据结构会"变形"</h2>
+  <div class="feynman">
+    <p><span class="analogy">🔄 类比：</span>变形金刚——同一种 Redis 类型，数据量小时用紧凑结构（省内存），数据量大时自动切换为高效结构（快）。这个过程叫<strong>编码转换</strong>。</p>
+  </div>
+
+  <table>
+    <tr><th>类型</th><th>小数据编码</th><th>大数据编码</th><th>转换条件</th></tr>
+    <tr><td><strong>String</strong></td><td>int（整数）</td><td>raw / embstr</td><td>数字 → int；>44字节 → raw</td></tr>
+    <tr><td><strong>Hash</strong></td><td>ziplist（压缩列表）</td><td>hashtable</td><td>元素>512 或 value>64B</td></tr>
+    <tr><td><strong>List</strong></td><td>quicklist（3.2+）</td><td>quicklist</td><td>一直都是 quicklist</td></tr>
+    <tr><td><strong>Set</strong></td><td>intset（整数集合）</td><td>hashtable</td><td>元素>512 或非整数</td></tr>
+    <tr><td><strong>ZSet</strong></td><td>ziplist</td><td>skiplist+dict</td><td>元素>128 或成员>64B</td></tr>
+  </table>
+
+  <h4>Skiplist（跳表）—— ZSet 的秘密武器</h4>
+  <div class="feynman">
+    <p><span class="analogy">🚇 类比：</span>地铁有快线和慢线——慢线每站都停（链表遍历），快线只停大站（跳表）。你要去某站，先坐快线到大站附近，再换慢线精准定位。</p>
+  </div>
+  <p>跳表 = 多层索引的链表。每层跳过一半节点，查询 O(log N)，插入 O(log N)，且<strong>实现比红黑树简单</strong>。Redis 选跳表不选红黑树的根本原因：跳表支持范围查询更自然。</p>
+
+  <h4>SDS（简单动态字符串）—— 为什么不用 C 字符串？</h4>
+  <table>
+    <tr><th>特性</th><th>C 字符串</th><th>Redis SDS</th></tr>
+    <tr><td>获取长度</td><td>O(N) 遍历</td><td>O(1) len 字段</td></tr>
+    <tr><td>缓冲区溢出</td><td>容易</td><td>自动扩容</td></tr>
+    <tr><td>内存分配</td><td>每次修改都分配</td><td>预分配 + 惰性释放</td></tr>
+    <tr><td>二进制安全</td><td>遇 \0 截断</td><td>len 指定长度</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 应用场景 ═══════ -->
+<section id="redis-scenario" class="section">
+  <h2>🎯 经典应用场景（高频必问）</h2>
+
+  <table>
+    <tr><th>场景</th><th>数据结构</th><th>关键命令</th><th>要点</th></tr>
+    <tr><td><strong>缓存</strong></td><td>String / Hash</td><td><code>SET EX / GET</code></td><td>缓存穿透/击穿/雪崩</td></tr>
+    <tr><td><strong>分布式锁</strong></td><td>String</td><td><code>SETNX + Lua 解锁</code></td><td><a href="/distributed-lock.html">详见分布式锁专题 ←</a></td></tr>
+    <tr><td><strong>计数器</strong></td><td>String</td><td><code>INCR / INCRBY</code></td><td>原子操作，天然并发安全</td></tr>
+    <tr><td><strong>排行榜</strong></td><td>ZSet</td><td><code>ZADD / ZREVRANGE</code></td><td>跳表实现 O(log N)</td></tr>
+    <tr><td><strong>延迟队列</strong></td><td>ZSet</td><td><code>ZADD score=时间戳</code></td><td>定时任务轮询 score 范围</td></tr>
+    <tr><td><strong>消息队列</strong></td><td>List / Stream</td><td><code>LPUSH+BRPOP / XADD+XREAD</code></td><td>Stream 支持消费者组</td></tr>
+    <tr><td><strong>共同好友</strong></td><td>Set</td><td><code>SINTER</code></td><td>交集</td></tr>
+    <tr><td><strong>UV 统计</strong></td><td>HyperLogLog</td><td><code>PFADD / PFCOUNT</code></td><td>12KB 统计 2^64 个 UV</td></tr>
+    <tr><td><strong>签到</strong></td><td>Bitmaps</td><td><code>SETBIT / BITCOUNT</code></td><td>365 天只需 46 字节</td></tr>
+    <tr><td><strong>附近的人</strong></td><td>GEO</td><td><code>GEOADD / GEORADIUS</code></td><td>底层是 ZSet + GeoHash</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ RDB ═══════ -->
+<section id="redis-rdb" class="section">
+  <h2>📸 RDB 快照：定期拍照</h2>
+  <div class="feynman">
+    <p><span class="analogy">📷 类比：</span>每 5 分钟给数据拍一张照片（dump.rdb）。系统崩了？恢复到最近那张照片。优点：恢复快（直接加载文件）。缺点：两次拍照之间的数据丢了。</p>
+  </div>
+
+  <h4>触发方式</h4>
+  <table>
+    <tr><th>方式</th><th>命令/配置</th><th>阻塞？</th></tr>
+    <tr><td><strong>手动</strong></td><td><code>SAVE</code>（阻塞）/ <code>BGSAVE</code>（fork 子进程）</td><td>BGSAVE 不阻塞</td></tr>
+    <tr><td><strong>自动</strong></td><td><code>save 900 1</code>（900s 内 ≥1 次修改）</td><td>自动 BGSAVE</td></tr>
+  </table>
+
+  <h4>BGSAVE 的 Copy-on-Write</h4>
+  <p>fork 子进程时父子共享内存（只读）。父进程修改数据时触发 COW——复制要改的内存页给父进程，<strong>子进程读到的始终是 fork 瞬间的快照</strong>。</p>
+  <p><span class="badge badge-red">⚠️ 风险：</span>写操作多 → COW 复制大量内存页 → 内存翻倍 → OOM。</p>
+</section>
+
+<!-- ═══════ AOF ═══════ -->
+<section id="redis-aof" class="section">
+  <h2>📝 AOF 日志：行车记录仪</h2>
+  <div class="feynman">
+    <p><span class="analogy">🚗 类比：</span>行车记录仪持续录像（每条写命令都记录）。车出事故（系统崩溃）？回放录像还原现场。优点：最多丢 1 秒数据。缺点：文件比 RDB 大，恢复慢。</p>
+  </div>
+
+  <h4>三种刷盘策略</h4>
+  <table>
+    <tr><th>策略</th><th>配置</th><th>丢数据</th><th>性能</th></tr>
+    <tr><td><strong>每次刷盘</strong></td><td><code>appendfsync always</code></td><td>不丢</td><td>最慢</td></tr>
+    <tr><td><strong>每秒刷盘（推荐）</strong></td><td><code>appendfsync everysec</code></td><td>最多 1s</td><td>平衡</td></tr>
+    <tr><td><strong>从不主动刷</strong></td><td><code>appendfsync no</code></td><td>不可控</td><td>最快</td></tr>
+  </table>
+
+  <h4>AOF 重写（Rewrite）—— 减肥</h4>
+  <p>AOF 文件一直追加会越来越大。重写 = 把多条命令合并。例如 <code>INCR counter 100次</code> → <code>SET counter 100</code>。BGREWRITEAOF fork 子进程后台做。</p>
+</section>
+
+<!-- ═══════ 混合持久化 ═══════ -->
+<section id="redis-mixed" class="section">
+  <div class="diagram">
+    <svg viewBox="0 0 820 180" style="max-width:820px;width:100%">
+      <defs><marker id="aRA" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
+      <rect x="10" y="10" width="390" height="80" rx="8" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="205" y="35" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">📸 RDB 快照</text>
+      <text x="30" y="60" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10">fork子进程 → COW读快照 → 写入 dump.rdb</text>
+      <text x="30" y="80" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="9">恢复：直接加载文件 · 快但丢分钟级数据</text>
+      <rect x="420" y="10" width="390" height="80" rx="8" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="615" y="35" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">📝 AOF 日志</text>
+      <text x="440" y="60" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10">每条写命令追加 → 重写合并 → 文件紧凑</text>
+      <text x="440" y="80" fill="#a5f3fc" font-family="JetBrains Mono,monospace" font-size="9">恢复：重放命令 · 慢但丢≤1s数据</text>
+      <rect x="10" y="110" width="800" height="55" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="30" y="135" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">🔀 混合持久化（4.0+ 推荐）：RDB 格式存快照 + AOF 存增量 → 兼顾恢复速度和数据安全</text>
+      <text x="30" y="155" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="10">配置：aof-use-rdb-preamble yes</text>
+    </svg>
+    <div class="diagram-caption">RDB vs AOF vs 混合：恢复速度和安全性的三维权衡</div>
+  </div>
+
+  <h4>混合持久化：RDB + AOF 合体</h4>
+  <table>
+    <tr><th>方案</th><th>恢复速度</th><th>数据安全</th><th>文件大小</th><th>推荐场景</th></tr>
+    <tr><td>仅 RDB</td><td>⭐⭐⭐ 快</td><td>⭐⭐ 丢分钟级</td><td>⭐⭐⭐ 紧凑</td><td>缓存、可接受丢失</td></tr>
+    <tr><td>仅 AOF</td><td>⭐ 慢</td><td>⭐⭐⭐ 丢 1s</td><td>⭐ 大</td><td>严格不丢数据</td></tr>
+    <tr><td><strong>混合 4.0+</strong></td><td><strong>⭐⭐⭐ 快</strong></td><td><strong>⭐⭐⭐ 丢 1s</strong></td><td><strong>⭐⭐ 中等</strong></td><td><strong>生产推荐 ✅</strong></td></tr>
+  </table>
+  <p>混合持久化 = AOF 重写时，前半部分写 RDB 格式（快），后半部分写 AOF 增量。恢复时先加载 RDB，再重放 AOF，兼顾速度和安全性。</p>
+</section>
+
+<!-- ═══════ 主从 ═══════ -->
+<section id="redis-ms" class="section">
+  <h2>📡 主从复制：读写分离 + 数据冗余</h2>
+  <div class="feynman">
+    <p><span class="analogy">📰 类比：</span>报社——主编写好文章（Master 写），复印机把文章分发到各个报刊亭（Slave 读）。读者去最近的报刊亭买报纸（读分离），不用跑报社。</p>
+  </div>
+
+  <h4>复制流程三阶段</h4>
+  <ol>
+    <li><strong>全量同步：</strong>从节点连上 → 主节点 BGSAVE 生成 RDB → 发给从节点 → 从节点加载 + 追增量</li>
+    <li><strong>增量同步：</strong>主节点把写命令写入 replication buffer → 发给从节点</li>
+    <li><strong>心跳：</strong>从节点每秒 PING 主节点，主节点 10s 一次 PING 从节点</li>
+  </ol>
+
+  <h4>复制风暴</h4>
+  <p>多个从节点同时重启 → 同时请求全量同步 → 主节点多次 BGSAVE → IO/CPU 打满。<strong>解法：</strong>级联复制（主→从→从），不要让所有从直连主。</p>
+</section>
+
+<!-- ═══════ Sentinel ═══════ -->
+<section id="redis-sentinel" class="section">
+  <h2>🛡️ Sentinel 哨兵：自动故障转移</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏥 类比：</span>ICU 监护仪——持续监控患者心跳（ping Master），心跳停了（Master 挂了）？立即启动抢救（Sentinel 投票选新主），通知护士站（通知客户端新地址）。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 240" style="max-width:820px;width:100%">
+      <defs><marker id="aS" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
+      <!-- Sentinel cluster -->
+      <rect x="20" y="10" width="780" height="45" rx="6" fill="rgba(251,146,60,0.08)" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="6,3"/>
+      <text x="410" y="30" text-anchor="middle" fill="#fb923c" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">Sentinel 哨兵集群（至少 3 个，奇数）</text>
+      <text x="410" y="47" text-anchor="middle" fill="#fdba74" font-family="JetBrains Mono,monospace" font-size="9">监控 · 通知 · 自动故障转移 · 配置提供者</text>
+
+      <!-- Monitoring arrows -->
+      <line x1="250" y1="55" x2="180" y2="90" stroke="#fb923c" stroke-width="1.2" stroke-dasharray="3,2"/>
+      <line x1="410" y1="55" x2="410" y2="90" stroke="#fb923c" stroke-width="1.2" stroke-dasharray="3,2"/>
+      <line x1="550" y1="55" x2="620" y2="90" stroke="#fb923c" stroke-width="1.2" stroke-dasharray="3,2"/>
+
+      <!-- Master -->
+      <rect x="130" y="100" width="120" height="50" rx="8" fill="rgba(6,78,59,0.2)" stroke="#34d399" stroke-width="2"/>
+      <text x="190" y="122" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono,monospace" font-size="13" font-weight="700">Master</text>
+      <text x="190" y="140" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="10">读写</text>
+
+      <!-- Slave 1 -->
+      <rect x="350" y="100" width="120" height="50" rx="8" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="410" y="122" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13">Slave 1</text>
+      <text x="410" y="140" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10">只读</text>
+
+      <!-- Slave 2 -->
+      <rect x="570" y="100" width="120" height="50" rx="8" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="630" y="122" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="13">Slave 2</text>
+      <text x="630" y="140" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="10">只读</text>
+
+      <!-- Replication arrows -->
+      <line x1="250" y1="125" x2="348" y2="125" stroke="#34d399" stroke-width="1.2" marker-end="url(#aS)"/>
+      <line x1="250" y1="130" x2="568" y2="130" stroke="#34d399" stroke-width="1.2" marker-end="url(#aS)"/>
+
+      <!-- Failover flow -->
+      <rect x="20" y="180" width="780" height="50" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
+      <text x="40" y="200" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">故障转移流程：</text>
+      <text x="40" y="218" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10">① 主观下线 (SDOWN)：单个 Sentinel ping 不通 → ② 客观下线 (ODOWN)：quorum 个 Sentinel 都 ping 不通</text>
+    </svg>
+    <div class="diagram-caption">Sentinel 架构：哨兵集群监控 → 主观下线 → 客观下线 → 投票选新主</div>
+  </div>
+
+  <h4>故障转移全流程</h4>
+  <ol>
+    <li><strong>SDOWN（主观下线）：</strong>一个 Sentinel 发现 Master 不可达</li>
+    <li><strong>ODOWN（客观下线）：</strong>≥quorum 个 Sentinel 都认为 Master 挂了 → 确认</li>
+    <li><strong>选举 Leader：</strong>Sentinel 之间 Raft 投票选出一个 Leader 执行故障转移</li>
+    <li><strong>选新主：</strong>Leader 从 Slave 中选最优的（复制偏移量最大、优先级最高）</li>
+    <li><strong>通知客户端：</strong>Leader 通知其他 Sentinel 和新主地址，客户端通过 Pub/Sub 收到通知</li>
+  </ol>
+
+  <h4>客户端怎么发现新主？</h4>
+  <p>客户端<strong>先连 Sentinel</strong>，Sentinel 返回当前 Master 地址。切换时 Sentinel 通过 Pub/Sub 推送新地址。Go 客户端（go-redis）自动处理。</p>
+</section>
+
+<!-- ═══════ Cluster ═══════ -->
+<section id="redis-cluster" class="section">
+  <h2>🧩 Cluster 集群：16,384 个抽屉</h2>
+  <div class="feynman">
+    <p><span class="analogy">🗄️ 类比：</span>中药房——16,384 个小抽屉（slot），每种药（key）按方子放到固定抽屉。抓药（查询）时直接去对应抽屉，不用翻遍所有柜子。加新柜子？把部分抽屉搬到新柜子上。</p>
+  </div>
+
+  <h3>Cluster 核心机制</h3>
+  <table>
+    <tr><th>机制</th><th>说明</th></tr>
+    <tr><td><strong>Slot 分片</strong></td><td>16384 个 slot，<code>slot = CRC16(key) % 16384</code></td></tr>
+    <tr><td><strong>Hash Tag</strong></td><td><code>key{user1}:name</code> → 只对 {} 内的部分计算 slot → 相关 key 落在同一 slot</td></tr>
+    <tr><td><strong>MOVED 重定向</strong></td><td>key 不在当前节点 → 返回 MOVED + 正确节点地址 → 客户端自动跳转</td></tr>
+    <tr><td><strong>ASK 重定向</strong></td><td>slot 正在迁移中 → ASK 临时重定向（不影响后续请求）</td></tr>
+    <tr><td><strong>Gossip 协议</strong></td><td>节点之间通过 Gossip 交换集群状态（谁负责哪些 slot）</td></tr>
+    <tr><td><strong>主从</strong></td><td>每个 slot 的主节点可以有多个从节点 → 主挂了从自动顶上</td></tr>
+  </table>
+
+  <h4>Cluster vs Sentinel 选型</h4>
+  <table>
+    <tr><th>维度</th><th>Sentinel</th><th>Cluster</th></tr>
+    <tr><td>数据量</td><td>&lt; 单机内存</td><td>TB 级（水平扩展）</td></tr>
+    <tr><td>复杂度</td><td>低</td><td>中（客户端需支持 cluster 协议）</td></tr>
+    <tr><td>多 key 操作</td><td>✅ 任意</td><td>⚠️ 需 hash tag 保证同 slot</td></tr>
+    <tr><td>事务</td><td>✅ 支持</td><td>⚠️ 仅同 slot 内支持</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 缓存三大问题 ═══════ -->
+<section id="redis-cache" class="section">
+  <h2>🎯 缓存三大经典问题</h2>
+
+  <div class="compare">
+    <div>
+      <h4>🔨 缓存穿透</h4>
+      <p>查一个<strong>根本不存在</strong>的数据 → 每次都穿透缓存打到 DB</p>
+      <p><strong>解法：</strong>布隆过滤器 + 缓存空值（短 TTL）</p>
+    </div>
+    <div>
+      <h4>⚡ 缓存击穿</h4>
+      <p><strong>热点 key 过期</strong> → 瞬间大量请求打到 DB</p>
+      <p><strong>解法：</strong>互斥锁 / 永不过期+异步刷新</p>
+    </div>
+  </div>
+  <div>
+    <h4>❄️ 缓存雪崩</h4>
+    <p><strong>大量 key 同时过期</strong>或 Redis 宕机 → DB 瞬间压垮</p>
+    <p><strong>解法：</strong>过期时间加随机值 + 多级缓存 + 熔断限流 + Redis 高可用</p>
+  </div>
+</section>
+
+<!-- ═══════ 淘汰 ═══════ -->
+<section id="redis-evict" class="section">
+  <h2>🗑️ 淘汰策略：内存满了怎么办？</h2>
+  <table>
+    <tr><th>策略</th><th>行为</th><th>适用</th></tr>
+    <tr><td><strong>noeviction</strong></td><td>不淘汰，拒绝写入，返回错误</td><td>不允许丢数据</td></tr>
+    <tr><td><strong>allkeys-lru</strong></td><td>所有 key 中淘汰最近最少用的</td><td>缓存场景（最常用）</td></tr>
+    <tr><td><strong>volatile-lru</strong></td><td>有过期时间的 key 中淘汰 LRU</td><td>缓存 + 持久数据混合</td></tr>
+    <tr><td><strong>allkeys-lfu</strong></td><td>所有 key 中淘汰最不频繁用的</td><td>避免偶发性热点被误淘汰</td></tr>
+    <tr><td><strong>volatile-ttl</strong></td><td>有过期时间的 key 中淘汰 TTL 最短的</td><td>优先淘汰快过期的</td></tr>
+    <tr><td><strong>allkeys-random</strong></td><td>所有 key 中随机淘汰</td><td>简单场景</td></tr>
+  </table>
+
+  <h4>LRU vs LFU</h4>
+  <div class="feynman">
+    <p><span class="analogy">📚 类比：</span><strong>LRU</strong> = 图书馆淘汰最久没被借的书（最近不用的）。<strong>LFU</strong> = 图书馆淘汰借阅次数最少的书（总是不用的）。LRU 只看时间，LFU 看重频率——热点 key 即使最近没访问也不淘汰。</p>
+  </div>
+  <p>Redis 的 LRU 是<strong>近似 LRU</strong>：随机采样 N 个 key，淘汰其中最久未用的（N 可通过 <code>maxmemory-samples</code> 配置）。不是严格 LRU 但够用且省内存。</p>
+</section>
+
+<!-- ═══════ 内存优化 ═══════ -->
+<section id="redis-mem" class="section">
+  <h2>💾 内存优化：用最少的空间存最多的数据</h2>
+
+  <h4>内存构成</h4>
+  <p>Redis 内存 = 数据内存 + 进程内存 + 缓冲内存（客户端缓冲、复制积压、AOF 缓冲）。</p>
+  <p>数据内存 = <code>used_memory = 键大小 + 值大小 + 指针开销</code>。键越短越好（"u:1001" 比 "user:1001:profile" 省 10 字节 × 百万 key = 10MB）。</p>
+
+  <h4>内存优化手段</h4>
+  <table>
+    <tr><th>手段</th><th>效果</th></tr>
+    <tr><td>短 key 名</td><td>百万 key 省几十 MB</td></tr>
+    <tr><td>Hash 代替 String 存对象</td><td>ziplist 编码极度省内存</td></tr>
+    <tr><td>设置 maxmemory + 淘汰策略</td><td>防止 OOM</td></tr>
+    <tr><td><code>hash-max-ziplist-entries</code> 调大</td><td>更多 Hash 用 ziplist 编码</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 进阶 ═══════ -->
+<section id="redis-adv" class="section">
+  <h2>⚡ Pipeline / 事务 / Lua</h2>
+
+  <h3>Pipeline：一次发一堆命令</h3>
+  <div class="feynman">
+    <p><span class="analogy">📦 类比：</span>快递集包——10 个包裹分 10 次寄 = 10 次往返（RTT）。Pipeline = 10 个包裹打成一个包一次寄出 = 1 次 RTT。注意：不保证原子性！</p>
+  </div>
+  <pre><code><span class="cm">// Go Pipeline</span>
+pipe := rdb.Pipeline()
+<span class="kw">for</span> i := <span class="num">0</span>; i < <span class="num">100</span>; i++ { pipe.Set(ctx, fmt.Sprintf(<span class="str">"k%d"</span>,i), i, <span class="num">0</span>) }
+_, err := pipe.Exec(ctx)  <span class="cm">// 一次 RTT 发 100 条命令</span></code></pre>
+
+  <h3>事务：MULTI/EXEC</h3>
+  <table>
+    <tr><th>特性</th><th>说明</th></tr>
+    <tr><td>原子性</td><td>⚠️ 不是严格原子——语法错误全部回滚，运行时错误不回滚</td></tr>
+    <tr><td>隔离性</td><td>✅ 事务内命令串行执行，不被其他客户端打断</td></tr>
+    <tr><td>WATCH</td><td>乐观锁——watch 的 key 被修改则事务取消</td></tr>
+  </table>
+
+  <h3>Lua 脚本：真正的原子操作</h3>
+  <p>多条命令要原子执行 → 写 Lua 脚本。整个脚本作为一个原子操作执行，不会被其他命令插入。<strong>替代事务的首选。</strong></p>
+  <pre><code><span class="cm">-- 限流脚本（原子执行）</span>
+<span class="kw">local</span> current = redis.call(<span class="str">'INCR'</span>, KEYS[1])
+<span class="kw">if</span> current == <span class="num">1</span> <span class="kw">then</span> redis.call(<span class="str">'EXPIRE'</span>, KEYS[1], ARGV[1]) <span class="kw">end</span>
+<span class="kw">if</span> current > <span class="kw">tonumber</span>(ARGV[2]) <span class="kw">then</span> <span class="kw">return</span> <span class="num">0</span> <span class="kw">end</span>  <span class="cm">-- 超过限制</span>
+<span class="kw">return</span> <span class="num">1</span>  <span class="cm">-- 放行</span></code></pre>
+
+  <h3>Pub/Sub 发布订阅</h3>
+  <p><code>PUBLISH channel msg</code> → 所有 <code>SUBSCRIBE channel</code> 的客户端收到。<span class="badge badge-red">注意：</span>消息不持久化，离线后消息丢失。需要可靠消息用 Stream。</p>
+</section>
+
+<!-- ═══════ 核心题 ═══════ -->
+<section id="redis-qa" class="section">
+  <h2>❓ 高频考题</h2>
+
+  <div class="qa"><div class="q">Q1: Redis 为什么快？单线程为什么快？</div><div class="a">
+    ① <strong>内存操作</strong>（核心）② <strong>单线程无锁</strong>（无上下文切换、无竞争）③ <strong>IO 多路复用</strong>（epoll）④ <strong>高效数据结构</strong>（SDS/跳表/压缩列表）。6.0+ 引入多线程 IO（只处理网络读写，执行命令仍是单线程）。
+  </div></div>
+
+  <div class="qa"><div class="q">Q2: Redis 过期 key 怎么删除的？</div><div class="a">
+    <strong>惰性删除 + 定期删除。</strong>惰性：访问 key 时检查，过期就删（省 CPU）。定期：每秒 10 次随机抽 20 个 key 检查，过期比例 >25% 继续抽（主动清理）。两者互补——极端情况可能有大量过期 key 占用内存但未被访问和抽到。
+  </div></div>
+
+  <div class="qa"><div class="q">Q3: 缓存和数据库双写一致性怎么保证？</div><div class="a">
+    <strong>Cache Aside 模式：</strong>先更新 DB → 再删除缓存（不是更新缓存！）。为什么要删而不是更新？更新缓存可能导致并发写覆盖。延迟双删兜底：删一次 → 等 500ms → 再删一次。<strong>追求强一致性 → 分布式事务/监听 binlog（Canal）。</strong>
+  </div></div>
+
+  <div class="qa"><div class="q">Q4: Redis Cluster 的 MOVED 和 ASK 有什么区别？</div><div class="a">
+    <strong>MOVED：</strong>slot 永久迁移完成 → 客户端更新本地 slot 映射，后续请求直接走新节点。<br>
+    <strong>ASK：</strong>slot 正在迁移中（部分 key 还在旧节点）→ 临时重定向，仅本次请求走新节点，客户端<strong>不更新</strong>本地映射。
+  </div></div>
+
+  <div class="qa"><div class="q">Q5: 怎么用 Redis 实现一个可靠的延迟队列？</div><div class="a">
+    ZSet：<code>ZADD delay_queue &lt;执行时间戳&gt; &lt;任务数据&gt;</code>。定时任务 <code>ZRANGEBYSCORE 0 NOW LIMIT 0 100</code> 取出到期任务 → 删除（ZREM）→ 执行业务。删除和执行业务不在同一事务内 → 可能重复执行 → <strong>业务方必须幂等</strong>。
+  </div></div>
+
+  <div class="qa"><div class="q">Q6: 大 key 和热 key 怎么处理？</div><div class="a">
+    <strong>大 key：</strong>单个 key 的 value 过大（如 hash 百万字段）→ <code>redis-cli --bigkeys</code> 扫描 → 拆分（按日期/用户分片）。<br>
+    <strong>热 key：</strong>某个 key QPS 极高 → 多副本（key 复制到多个节点，随机读一个）+ 本地缓存。提前发现：客户端统计 QPS 或 Redis 的 <code>--hotkeys</code>。
+  </div></div>
+</section>
+
+<p style="text-align:center;color:var(--muted);margin-top:60px;padding-bottom:40px;font-size:12px">
+  🔴 Redis 复习完成 · 九大数据结构 + 三种持久化 + 三级高可用<br>
+  <a href="/" style="color:var(--accent)">← 返回首页</a>
+</p>
+
+
+<!-- ═══════ 苏格拉底式提问 ═══════ -->
+<section id="redis-socratic" class="section">
+  <h2>💬 苏格拉底式提问 —— 检验真理解</h2>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:20px">以下问题用来逼你追问本质。先自己想 30 秒，再点开验证。</p>
+  <details class="socratic"><summary>用 String 存 JSON 有什么问题？<span class="socratic-num">Q1</span></summary><div class="socratic-a"><span class="highlight">三个问题：</span><br>① <strong>更新浪费：</strong>改一个字段 → 序列化整个 JSON → 传输整个对象。Hash 可以只更新一个 field。<br>② <strong>读取浪费：</strong>只要一个字段 → 读取整个 JSON → 反序列化。Hash 可以 HGET 一个 field。<br>③ <strong>内存浪费：</strong>字段名在多 key 中重复。Hash 底层用 ziplist/listpack 压缩。<br><span class="highlight">决策：</span>频繁整体读写 → String。频繁更新单个字段 → Hash。</div></details>
+  <details class="socratic"><summary>RDB 和 AOF 能同时开吗？用哪个恢复？<span class="socratic-num">Q2</span></summary><div class="socratic-a"><span class="highlight">可以同时开，强烈建议。</span><br>• <strong>恢复优先级：</strong>AOF > RDB。AOF 数据更完整（最多丢 1 秒）。<br>• <strong>RDB：</strong>快照 → 文件小、恢复快 → 灾备。<br>• <strong>AOF：</strong>日志 → 丢数据少 → 主节点。<br>• <strong>混合持久化（4.0+）：</strong>AOF 前半 RDB 快照 + 后半增量命令。<br><span class="highlight">建议：</span>主节点开 AOF（everysec），从节点可只开 RDB。</div></details>
+  <details class="socratic"><summary>穿透、击穿、雪崩的本质区别？<span class="socratic-num">Q3</span></summary><div class="socratic-a"><span class="highlight">三种不同问题，解法不同：</span><br>• <strong>穿透：</strong>数据根本不存在（DB 里也没有）。📌 布隆过滤器 + 缓存空值。<br>• <strong>击穿：</strong>热点 key 过期，大量请求同时查 DB。📌 互斥锁 + 逻辑过期。<br>• <strong>雪崩：</strong>大量 key 同时过期。📌 过期时间加随机扰动 + 多级缓存 + 限流。<br><span class="highlight">核心区别：</span>穿透 = 数据不存在，击穿 = 一个热点，雪崩 = 批量过期。解题思路完全不同，不可混用。</div></details>
+</section>
+
+
+<div class="feynman" style="margin-top:40px;background:linear-gradient(135deg,rgba(251,191,36,0.06),rgba(107,70,17,0.04));border-color:rgba(251,191,36,0.3)">
+  <p style="font-size:11px;color:#fbbf24;margin-bottom:8px;font-weight:700">📖 本文思想来源</p>
+  <p style="font-size:12px;line-height:1.9">
+    <strong>《设计数据密集型应用》DDIA</strong> —— Martin Kleppmann<br>
+    • <span style="color:#fcd34d">第 3 章「存储与检索」</span>：内存数据库 vs 磁盘数据库的 IO 模型——Redis 为什么快<br>
+    • <span style="color:#fcd34d">第 5 章「复制」</span>：主从复制、哨兵机制——Sentinel 和 Cluster 的理论基础<br>
+    • <span style="color:#fcd34d">第 6 章「分区」</span>：Redis Cluster 的哈希槽分片为什么不选一致性哈希<br>
+    • <span style="color:#94a3b8">另见：</span>Redis 官方文档（数据结构、持久化、集群）、《Redis 设计与实现》黄健宏、antirez 博客
+  </p>
+</div>
+
+<section id="redis-summary" class="section" style="margin-top:40px">
+  <h2>🎙️ 口播总结</h2>
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(248,81,73,0.04));border-color:rgba(251,191,36,0.3)">
+    <p style="font-size:15px;line-height:2"><strong>这篇文章是 Redis 的完整攻略。</strong></p>
+    <p>Redis 为什么快？四个字：内存操作。加三个辅助：单线程无锁、IO 多路复用、高效数据结构。6.0 后加了多线程 IO，但执行命令还是单线程。</p>
+    <p>九大数据结构各有用途：String 做缓存和计数器、Hash 存对象、List 做消息队列、Set 做共同好友、ZSet 做排行榜、Bitmaps 做签到（365 天只需 46 字节）、HyperLogLog 做 UV 统计（12KB 统计上亿）、GEO 做附近的人、Stream 做可靠消息队列。底层编码会变形——数据少时用紧凑的 ziplist 省内存，数据多时切换为 hashtable 或跳表。</p>
+    <p>持久化有三种：RDB 定期拍照恢复快但会丢数据、AOF 行车记录仪丢 1 秒但文件大、混合持久化 4.0 版本合二为一。高可用三件套：主从做读写分离、Sentinel 哨兵做自动故障转移、Cluster 集群用 16384 个 slot 做水平扩展。</p>
+    <p>缓存三大经典问题：穿透查不存在的数据用布隆过滤器挡、击穿热点过期用 singleflight 兜底、雪崩大量同时过期给 TTL 加随机值。淘汰策略首选 allkeys-lru。</p>
+    <p><strong>如果只能记住一个数字，那就是 16384。</strong>16384 个 slot 决定了 Redis Cluster 的分片逻辑、决定了多 key 操作的限制、决定了扩容迁移的粒度。</p>
+  </div>
+</section>
+
+
+</main>
+</div>
+
+<script src="/mobile.js"></script>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

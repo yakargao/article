@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go 内存与GC · TCMalloc/逃逸分析/三色标记 · 费曼学习法</title>
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; padding: 16px; } .compare { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">内存管理</div>
+  <a class="nav-item" href="#allocator">🏬 TCMalloc 分配器</a>
+  <a class="nav-item" href="#escape">🔍 逃逸分析</a>
+  <a class="nav-item" href="#stack">📚 栈管理</a>
+  <div class="nav-section">垃圾回收</div>
+  <a class="nav-item" href="#gc-evolution">📜 GC 演进史</a>
+  <a class="nav-item" href="#tricolor">🎨 三色标记详解</a>
+  <a class="nav-item" href="#write-barrier">⚠️ 写屏障</a>
+  <a class="nav-item" href="#gc-phases">⏱️ GC 四阶段</a>
+  <div class="nav-section">调优</div>
+  <a class="nav-item" href="#tuning">🔧 GC 调优</a>
+  <a class="nav-item" href="#cross-lang">🌍 跨语言 GC 对比</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>🧠 Go 内存与 GC</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>Go 的内存系统分两半——<strong>分配</strong>（TCMalloc 三级缓存 + 逃逸分析决定堆/栈）+ <strong>回收</strong>（三色标记并发 GC + 混合写屏障）。这两半的精心设计让 Go 在"不用手动管理内存"和"低延迟"之间找到了绝佳平衡点。</p>
+  </div>
+  <table>
+    <tr><th>模块</th><th>核心内容</th><th>关键词</th></tr>
+    <tr><td><span class="badge badge-green">分配器</span></td><td>mcache→mcentral→mheap→OS</td><td>67 size classes, span, tiny allocator</td></tr>
+    <tr><td><span class="badge badge-orange">逃逸分析</span></td><td>编译期决定堆 vs 栈</td><td>escape to heap, -gcflags="-m"</td></tr>
+    <tr><td><span class="badge badge-purple">GC</span></td><td>三色标记+并发清扫+写屏障</td><td>white/gray/black, Dijkstra+Yuasa hybrid</td></tr>
+    <tr><td><span class="badge badge-red">调优</span></td><td>GOGC, GOMEMLIMIT, trace</td><td>GC pacing, assist, pprof</td></tr>
+  </table>
+</section>
+
+<section id="allocator" class="section">
+  <h2>🏬 TCMalloc 风格的三级分配器</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏬 类比：</span>Go 的分配器像三层仓库——每个工位 P 有自己的小抽屉（mcache，无锁），抽屉空了去楼层仓库（mcentral，有锁）补货，楼层空了去总仓库（mheap）调拨，总仓库空了向 OS 要地（mmap）。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 780 240" style="max-width:780px;width:100%">
+      <rect x="10" y="10" width="175" height="105" rx="8" fill="rgba(34,211,238,0.05)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="97" y="35" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="700">mcache (P级)</text>
+      <text x="97" y="55" text-anchor="middle" fill="#67e8f9" font-size="9">无锁 · 每P独占</text>
+      <text x="97" y="72" text-anchor="middle" fill="#94a3b8" font-size="9">67-size-class span</text>
+      <text x="97" y="90" text-anchor="middle" fill="#64748b" font-size="8">≤32KB 直接分配</text>
+      <text x="97" y="105" text-anchor="middle" fill="#64748b" font-size="8">空了→mcentral补货</text>
+      <line x1="185" y1="55" x2="220" y2="30" stroke="#475569" stroke-width="1.2"/>
+      <line x1="185" y1="65" x2="220" y2="75" stroke="#475569" stroke-width="1.2"/>
+      <rect x="225" y="10" width="175" height="105" rx="8" fill="rgba(251,191,36,0.05)" stroke="#fbbf24" stroke-width="2"/>
+      <text x="312" y="35" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="700">mcentral (全局)</text>
+      <text x="312" y="55" text-anchor="middle" fill="#fcd34d" font-size="9">有锁 · 跨P共享</text>
+      <text x="312" y="75" text-anchor="middle" fill="#94a3b8" font-size="9">每种size class一个</text>
+      <text x="312" y="95" text-anchor="middle" fill="#64748b" font-size="8">nonempty ↔ empty两链</text>
+      <line x1="400" y1="55" x2="435" y2="55" stroke="#475569" stroke-width="1.2"/>
+      <rect x="440" y="10" width="175" height="105" rx="8" fill="rgba(248,81,73,0.05)" stroke="#f87171" stroke-width="2"/>
+      <text x="527" y="35" text-anchor="middle" fill="#f87171" font-size="13" font-weight="700">mheap (全局)</text>
+      <text x="527" y="55" text-anchor="middle" fill="#fca5a5" font-size="9">管理所有 span</text>
+      <text x="527" y="75" text-anchor="middle" fill="#94a3b8" font-size="9">arena/bitmap/spans</text>
+      <text x="527" y="95" text-anchor="middle" fill="#64748b" font-size="8">&gt;32KB直接分配</text>
+      <line x1="615" y1="55" x2="645" y2="55" stroke="#475569" stroke-width="1.2"/>
+      <rect x="650" y="25" width="110" height="75" rx="8" fill="rgba(63,185,80,0.05)" stroke="#3fb950" stroke-width="2"/>
+      <text x="705" y="55" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">🖥️ OS</text>
+      <text x="705" y="78" text-anchor="middle" fill="#64748b" font-size="9">mmap/VirtualAlloc</text>
+      <rect x="10" y="130" width="170" height="95" rx="8" fill="rgba(63,185,80,0.04)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="95" y="152" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="700">mspan: 基本单位</text>
+      <text x="95" y="172" text-anchor="middle" fill="#94a3b8" font-size="9">1 page = 8KB</text>
+      <text x="95" y="190" text-anchor="middle" fill="#94a3b8" font-size="9">N pages → N × 8KB</text>
+      <text x="95" y="210" text-anchor="middle" fill="#94a3b8" font-size="9">每个 span 一种 size class</text>
+      <rect x="210" y="130" width="235" height="95" rx="8" fill="rgba(88,166,255,0.04)" stroke="#58a6ff" stroke-width="1.2"/>
+      <text x="327" y="152" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="700">Size Class (67 级)</text>
+      <text x="327" y="172" text-anchor="middle" fill="#94a3b8" font-size="9">Class1=8B, Class2=16B, Class3=24B...</text>
+      <text x="327" y="190" text-anchor="middle" fill="#94a3b8" font-size="9">Class67=32KB (max small alloc)</text>
+      <text x="327" y="210" text-anchor="middle" fill="#64748b" font-size="8">&lt;16B且无指针→Tiny Allocator打包</text>
+      <rect x="470" y="130" width="290" height="95" rx="8" fill="rgba(251,191,36,0.04)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="615" y="152" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700">分配路径决策树</text>
+      <text x="615" y="175" text-anchor="middle" fill="#94a3b8" font-size="9">≤16B 无指针 → Tiny Allocator(打包)</text>
+      <text x="615" y="195" text-anchor="middle" fill="#94a3b8" font-size="9">≤32KB → mcache→mcentral→mheap</text>
+      <text x="615" y="215" text-anchor="middle" fill="#94a3b8" font-size="9">&gt;32KB → mheap 直接分配(mmap)</text>
+    </svg>
+    <div class="diagram-caption">Go 内存分配器全景：mcache(P级无锁)→mcentral(全局有锁)→mheap→OS mmap</div>
+  </div>
+
+  <h3>mspan 结构</h3>
+  <pre><code><span class="kw">type</span> mspan <span class="kw">struct</span> {
+    startAddr  <span class="kw">uintptr</span>      <span class="cm">// span 起始地址</span>
+    npages     <span class="kw">uintptr</span>      <span class="cm">// 占用 page 数（1 page = 8KB）</span>
+    spanclass  spanClass     <span class="cm">// size class (0-67)</span>
+    allocBits  *gcBits       <span class="cm">// 位图标记哪些槽位已分配</span>
+    allocCount <span class="kw">uint16</span>       <span class="cm">// 已分配对象数</span>
+    <span class="cm">// 对象大小 = class_to_size[spanclass]</span>
+    <span class="cm">// 一个 span 可容纳 E = npages×8KB / objectSize 个对象</span>
+}</code></pre>
+
+  <h3>🌍 内存分配器跨语言对比</h3>
+  <table>
+    <tr><th>语言</th><th>分配器</th><th>设计</th><th>特色</th></tr>
+    <tr><td><strong>Go</strong></td><td>TCMalloc 变体</td><td>三级缓存+size class</td><td>P级无锁mcache、tiny allocator</td></tr>
+    <tr><td><strong>C/C++</strong></td><td>ptmalloc/glibc malloc</td><td>Arena+chunk+bin</td><td>手动管理，有内存碎片问题</td></tr>
+    <tr><td><strong>Java</strong></td><td>TLS (Thread-Local Allocation)</td><td>TLAB+Eden+Survivor</td><td>和分配器深度耦合GC（分代）</td></tr>
+    <tr><td><strong>Rust</strong></td><td>jemalloc（默认）/ system</td><td>可替换分配器</td><td>编译期所有权避免大部分GC需求</td></tr>
+    <tr><td><strong>Python</strong></td><td>pymalloc</td><td>内存池+arena</td><td>小对象池(<512B)，大对象走malloc</td></tr>
+  </table>
+</section>
+
+<section id="escape" class="section">
+  <h2>🔍 逃逸分析：谁上堆，谁留栈</h2>
+  <div class="feynman">
+    <p><span class="analogy">🚪 类比：</span>逃逸分析是编译期的"门卫"——局部变量如果"逃出"了函数（返回指针、被闭包捕获、太大），就分配在堆上（GC 来回收）；如果只在函数里用，就留在栈上（函数返回自动回收，极快）。</p>
+  </div>
+
+  <h3>决定逃逸的四个条件</h3>
+  <table>
+    <tr><th>场景</th><th>示例</th><th>结果</th></tr>
+    <tr><td>返回局部变量的指针</td><td><code>return &x</code></td><td>逃逸到堆</td></tr>
+    <tr><td>Interface 装箱</td><td><code>fmt.Println(x)</code></td><td>可能逃逸</td></tr>
+    <tr><td>闭包捕获变量</td><td><code>go func() { use(x) }()</code></td><td>逃逸到堆</td></tr>
+    <tr><td>分配较大对象</td><td>slice cap &gt; 64KB 或变量 &gt; 10MB</td><td>直接堆分配</td></tr>
+  </table>
+
+  <pre><code><span class="cm"># 查看逃逸分析</span>
+go build -gcflags="-m -m" main.go
+
+<span class="cm"># 输出示例：</span>
+<span class="cm"># ./main.go:5:2: x escapes to heap       ← x 逃逸了</span>
+<span class="cm"># ./main.go:8:3: y does not escape       ← y 留在栈上</span>
+<span class="cm"># ./main.go:10:6: moved to heap: largeBuf ← 大对象直接上堆</span></code></pre>
+
+  <h3>🌍 逃逸分析跨语言对比</h3>
+  <table>
+    <tr><th>语言</th><th>机制</th><th>时机</th><th>特点</th></tr>
+    <tr><td><strong>Go</strong></td><td>编译期逃逸分析</td><td>编译时</td><td>不需要程序员指定，完全自动</td></tr>
+    <tr><td><strong>Java</strong></td><td>JIT 逃逸分析（C2编译器）</td><td>运行时</td><td>标量替换、栈上分配、锁消除</td></tr>
+    <tr><td><strong>Rust</strong></td><td>所有权系统</td><td>编译时</td><td>不需要逃逸分析——编译期保证不会逃逸</td></tr>
+    <tr><td><strong>C++</strong></td><td>程序员决定</td><td>编码时</td><td>手动 new/delete 或智能指针</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>💡 Go 逃逸分析的意义</h4>
+    <p>Go 能开百万协程的关键——每个 goroutine 初始栈只 2KB，按需增长。变量不逃逸就留在栈上，goroutine 结束栈自动回收。逃逸分析是 <strong>编译期</strong>完成的，零运行时开销。</p>
+  </div>
+</section>
+
+<section id="stack" class="section">
+  <h2>📚 Goroutine 栈：可增长的协程栈</h2>
+  <div class="feynman">
+    <p><span class="analogy">🪜 类比：</span>OS 线程的栈是固定尺寸的"房间"（1-8MB），goroutine 的栈是可伸缩的"帐篷"——初始 2KB，不够了自动扩容，甚至可以缩回去。扩容方式不是简单的追加，而是整块复制到新位置（copy stack）。</p>
+  </div>
+
+  <table>
+    <tr><th>维度</th><th>Go Goroutine</th><th>C/OS Thread</th><th>Java Virtual Thread</th></tr>
+    <tr><td><strong>初始大小</strong></td><td>2KB</td><td>1-8MB</td><td>~200-300B（continuation）</td></tr>
+    <tr><td><strong>增长方式</strong></td><td>copy stack（2x，最大1GB）</td><td>固定（无法增长）</td><td>按需分配堆对象</td></tr>
+    <tr><td><strong>栈指针</strong></td><td>会变（拷贝后地址变）</td><td>不变</td><td>无连续栈概念</td></tr>
+    <tr><td><strong>收缩</strong></td><td>GC 时可收缩</td><td>不收缩</td><td>GC 自动回收</td></tr>
+  </table>
+
+  <pre><code><span class="cm">// 栈扩容触发时机：</span>
+<span class="cm">// 1. 函数调用时 SP < stackguard0 → morestack</span>
+<span class="cm">// 2. 抢占时 SIGURG → morestack</span>
+<span class="cm">// 3. GC 扫描时可能需要扩容</span>
+
+<span class="cm">// copy stack 过程：</span>
+<span class="cm">// old stack: [...............XXXXXXXXXX] (用了一半)</span>
+<span class="cm">// new stack: [...............XXXXXXXXXX................] (2x space)</span>
+<span class="cm">// → memmove(new_low, old_low, used) + 调整所有指向旧栈的指针</span></code></pre>
+</section>
+
+<section id="gc-evolution" class="section">
+  <h2>📜 Go GC 演进史：十年磨一剑</h2>
+  <table>
+    <tr><th>版本</th><th>里程碑</th><th>关键变化</th><th>STW 时间变化</th></tr>
+    <tr><td><strong>Go 1.0</strong></td><td>简单 STW</td><td>标记+清扫全过程 STW</td><td>100ms-数秒</td></tr>
+    <tr><td><strong>Go 1.3</strong></td><td>并发清扫</td><td>Sweep 阶段不 STW</td><td>50-100ms</td></tr>
+    <tr><td><strong>Go 1.5</strong></td><td>并发标记</td><td>Mark 阶段不 STW（Dijkstra 写屏障）</td><td>10-40ms</td></tr>
+    <tr><td><strong>Go 1.6</strong></td><td>GC Assist</td><td>分配者可帮忙做标记工作</td><td>~10ms</td></tr>
+    <tr><td><strong>Go 1.8</strong></td><td>混合写屏障</td><td>取消 rescan 栈（Yuasa+Dijkstra 混合）</td><td>~0.5ms</td></tr>
+    <tr><td><strong>Go 1.12+</strong></td><td>GC Pacing</td><td>自适应调节 GC 频率和 CPU 占比</td><td>&lt;0.5ms</td></tr>
+  </table>
+
+  <div class="feynman">
+    <p><strong>核心趋势：</strong>从"全 STW 几百毫秒"到"两个 ~10μs 的 STW + 并发标记"。Go 1.5 是分水岭（引入并发标记），Go 1.8 是质变（混合写屏障消除栈重扫）。</p>
+  </div>
+</section>
+
+<section id="tricolor" class="section">
+  <h2>🎨 三色标记-清扫算法</h2>
+  <div class="feynman">
+    <p><span class="analogy">🎨 类比：</span>GC 是美术馆清场——先把所有画标白（可能是垃圾），从入口（根对象）出发，遇到画标灰→遍历其引用的画标灰→自身标黑。最后还白着的画清走。整个过程和游客参观<strong>同时进行</strong>（并发）。</p>
+  </div>
+
+  <h3>三色状态机</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 750 200" style="max-width:750px;width:100%">
+      <rect x="20" y="45" width="180" height="50" rx="10" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="2"/>
+      <text x="110" y="65" text-anchor="middle" fill="#f87171" font-size="15" font-weight="700">⬜ 白色</text>
+      <text x="110" y="85" text-anchor="middle" fill="#fca5a5" font-size="9">未被访问 · 可能是垃圾</text>
+      <line x1="200" y1="62" x2="250" y2="62" stroke="#475569" stroke-width="2"/>
+      <rect x="255" y="45" width="180" height="50" rx="10" fill="rgba(139,148,158,0.15)" stroke="#8b949e" stroke-width="2"/>
+      <text x="345" y="65" text-anchor="middle" fill="#8b949e" font-size="15" font-weight="700">⬛ 灰色</text>
+      <text x="345" y="85" text-anchor="middle" fill="#94a3b8" font-size="9">已发现 · 子对象待扫描</text>
+      <line x1="435" y1="62" x2="485" y2="62" stroke="#475569" stroke-width="2"/>
+      <rect x="490" y="45" width="180" height="50" rx="10" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="2"/>
+      <text x="580" y="65" text-anchor="middle" fill="#3fb950" font-size="15" font-weight="700">🟩 黑色</text>
+      <text x="580" y="85" text-anchor="middle" fill="#4ade80" font-size="9">已扫描 · 存活对象</text>
+      <rect x="60" y="120" width="630" height="65" rx="8" fill="rgba(163,113,247,0.04)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="375" y="145" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700">标记过程</text>
+      <text x="375" y="163" text-anchor="middle" fill="#c4b5fd" font-size="10">1. 所有对象初始为白 → 2. 根对象（栈/全局/寄存器引用）标灰 → 3. 从灰对象出发，子对象标灰，自身标黑</text>
+      <text x="375" y="180" text-anchor="middle" fill="#64748b" font-size="9">标记结束：黑=活 · 白=死 → Sweep 回收白色对象</text>
+    </svg>
+    <div class="diagram-caption">三色标记状态转换：白→(发现)→灰→(扫描完子对象)→黑</div>
+  </div>
+
+  <h3>标记过程示例</h3>
+  <pre><code><span class="cm">// 对象引用关系：Root → A → B → C</span>
+<span class="cm">// 初始：Root(黑) A(白) B(白) C(白)</span>
+<span class="cm">// Step1: 扫描 Root → A 标灰</span>
+<span class="cm">// Step2: 扫描 A → B 标灰, A 标黑</span>
+<span class="cm">// Step3: 扫描 B → C 标灰, B 标黑</span>
+<span class="cm">// Step4: 扫描 C → 无子对象, C 标黑</span>
+<span class="cm">// 结果：A B C 黑(活) | 其他全白 → Sweep 回收</span></code></pre>
+</section>
+
+<section id="write-barrier" class="section">
+  <h2>⚠️ 写屏障：并发标记的"安全网"</h2>
+  <div class="feynman">
+    <p><span class="analogy">🛡️ 类比：</span>并发 GC 期间，你的代码（mutator）在同时修改对象引用——可能刚标记完的黑色对象，被你改成指向一个白色对象（漏标！）。写屏障就是在这时候插入的"安全检查"——修改指针时自动把目标标灰，保证不会漏掉活对象。</p>
+  </div>
+
+  <h3>两种写屏障 + Go 的混合方案</h3>
+  <table>
+    <tr><th>屏障</th><th>原理</th><th>优点</th><th>缺点</th></tr>
+    <tr><td><strong>Dijkstra 插入屏障</strong></td><td>黑色对象指向白色时→标白为灰</td><td>不需要 STW 重扫</td><td>需要栈上的屏障（Go1.5-1.7需STW重扫栈）</td></tr>
+    <tr><td><strong>Yuasa 快照屏障</strong></td><td>白色对象被删除引用时→标白为灰（保护快照时所有可达对象）</td><td>不需要栈屏障</td><td>可能保留"实际已死"的对象</td></tr>
+    <tr><td><strong>Go 1.8 混合屏障</strong></td><td>1.写操作时旧指针对象标灰(Yuasa) + 2.新指针对象标灰(Dijkstra)</td><td>不需要STW重扫栈，精度高</td><td>实现复杂（但已完成）</td></tr>
+  </table>
+
+  <pre><code><span class="cm">// Go 1.8 混合写屏障伪代码</span>
+<span class="kw">func</span> writePointer(slot *unsafe.Pointer, ptr unsafe.Pointer) {
+    shade(*slot)          <span class="cm">// 1. 旧值标灰 (Yuasa 风格)</span>
+    <span class="kw">if</span> currentStackIsGrey {
+        shade(ptr)        <span class="cm">// 2. 新值标灰 (Dijkstra 风格)</span>
+    }
+    *slot = ptr           <span class="cm">// 3. 执行实际写入</span>
+}
+<span class="cm">// 关键：不需要在栈上插屏障（栈的写入不触发 barrier）</span>
+<span class="cm">// 原因：Yuasa 的快照保证了栈上"旧引用"的对象存活</span></code></pre>
+
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(63,185,80,0.06),rgba(251,191,36,0.04))">
+    <p><strong>为什么混合屏障是 Go GC 的里程碑？</strong>Go 1.5-1.7 用纯 Dijkstra 屏障，每次并发标记完了还要 <strong>STW 重扫所有 goroutine 的栈</strong>——因为栈上没有写屏障。Go 1.8 的混合方案消除这一步，STW 降到 ~100μs。这使 Go GC 延迟和 Java ZGC/Shenandoah 相当。</p>
+  </div>
+</section>
+
+<section id="gc-phases" class="section">
+  <h2>⏱️ GC 四阶段：两个 10μs 的 STW</h2>
+  <div class="diagram">
+    <svg viewBox="0 0 780 170" style="max-width:780px;width:100%">
+      <text x="10" y="20" fill="#94a3b8" font-size="12" font-weight="600">Go GC 四阶段时间轴</text>
+      <rect x="15" y="35" width="170" height="42" rx="8" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="2"/>
+      <text x="100" y="56" text-anchor="middle" fill="#f87171" font-size="11" font-weight="700">1. Mark Setup ⏸️</text>
+      <text x="100" y="72" text-anchor="middle" fill="#fca5a5" font-size="8">STW ~10μs · 启写屏障</text>
+      <line x1="185" y1="56" x2="220" y2="56" stroke="#22d3ee" stroke-width="1.5"/>
+      <rect x="225" y="35" width="200" height="42" rx="8" fill="rgba(34,211,238,0.1)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="325" y="56" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">2. Concurrent Mark</text>
+      <text x="325" y="72" text-anchor="middle" fill="#67e8f9" font-size="8">三色标记 · GC Assist</text>
+      <line x1="425" y1="56" x2="460" y2="56" stroke="#22d3ee" stroke-width="1.5"/>
+      <rect x="465" y="35" width="170" height="42" rx="8" fill="rgba(248,81,73,0.1)" stroke="#f87171" stroke-width="2"/>
+      <text x="550" y="56" text-anchor="middle" fill="#f87171" font-size="11" font-weight="700">3. Mark Term ⏸️</text>
+      <text x="550" y="72" text-anchor="middle" fill="#fca5a5" font-size="8">STW ~10μs · 结束标记</text>
+      <line x1="635" y1="56" x2="670" y2="56" stroke="#22d3ee" stroke-width="1.5"/>
+      <rect x="675" y="35" width="90" height="42" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="720" y="62" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="700">4. Sweep</text>
+      <rect x="40" y="100" width="700" height="55" rx="8" fill="rgba(163,113,247,0.04)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="390" y="120" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">触发条件：1. heap_live ≥ GOGC% × heap_marked (GOGC=100→堆翻倍)  2. 距上次GC超2分钟  3. runtime.GC()</text>
+      <text x="390" y="142" text-anchor="middle" fill="#64748b" font-size="9">GC Assist：mutator 分配太快？→ 分配者帮忙做标记 | GC Pacing：动态调整 GC 频率使 CPU 占比 ~25%</text>
+    </svg>
+    <div class="diagram-caption">GC 四阶段：只有 Setup 和 Term 两个极短的 STW（各~10μs）</div>
+  </div>
+</section>
+
+<section id="tuning" class="section">
+  <h2>🔧 GC 调优：最影响延迟的三个参数</h2>
+  <table>
+    <tr><th>参数</th><th>默认</th><th>调大效果</th><th>调小效果</th><th>场景</th></tr>
+    <tr><td><code>GOGC</code></td><td>100</td><td>GC频率↓ 内存↑ 吞吐↑</td><td>GC频率↑ 内存↓ 延迟↓</td><td>内存充足→调大；内存紧张→调小</td></tr>
+    <tr><td><code>GOMEMLIMIT</code></td><td>无</td><td>软上限，接近时自动更频繁GC</td><td>—</td><td>cgroup/容器内存限制</td></tr>
+    <tr><td><code>GODEBUG=gctrace=1</code></td><td>关闭</td><td>每次GC打印统计</td><td>—</td><td>分析GC行为</td></tr>
+  </table>
+  <pre><code><span class="cm"># 实际调优示例</span>
+GOGC=200 ./app                <span class="cm"># GC 频率减半，多用内存</span>
+GOMEMLIMIT=2GiB ./app         <span class="cm"># 容器 2G 内存上限</span>
+GODEBUG=gctrace=1 ./app       <span class="cm"># 观察 GC 行为</span>
+
+<span class="cm"># gctrace 输出解读：</span>
+<span class="cm"># gc 1 @0.005s 2%: 0.12+1.5+0.05 ms clock, 0.48+0.2/1.2/0+0.2 ms cpu</span>
+<span class="cm">#    ↑   ↑      ↑    ↑    ↑    ↑      ↑   ↑   ↑   ↑   ↑</span>
+<span class="cm">#   次数 启动后 CPU% STW setup  并发标记     STW term     total</span>
+
+<span class="cm"># pprof 内存分析</span>
+go tool pprof -http=:8080 http://localhost:6060/debug/pprof/heap</code></pre>
+</section>
+
+<section id="cross-lang" class="section">
+  <h2>🌍 跨语言 GC 全景对比</h2>
+  <table>
+    <tr><th>语言/VM</th><th>GC 算法</th><th>是否分代</th><th>STW</th><th>独特之处</th></tr>
+    <tr><td><strong>Go</strong></td><td>并发三色标记-清扫</td><td>❌ 不分代</td><td>&lt;0.5ms</td><td>混合写屏障 + GC Pacing</td></tr>
+    <tr><td><strong>Java G1</strong></td><td>分代并发标记-整理</td><td>✅ Young/Old</td><td>~10-50ms</td><td>Region-based, 可预测暂停</td></tr>
+    <tr><td><strong>Java ZGC</strong></td><td>并发标记-整理（染色指针）</td><td>❌ 不分代(到ZGC21前)</td><td>&lt;1ms</td><td>染色指针技术，TB 级堆</td></tr>
+    <tr><td><strong>.NET</strong></td><td>分代并发标记-压缩</td><td>✅ Gen0/1/2</td><td>~10ms</td><td>Server GC / Workstation GC</td></tr>
+    <tr><td><strong>Python</strong></td><td>引用计数 + 分代标记</td><td>✅ 3代</td><td>~ms</td><td>引用计数为主（即时回收），循环引用用GC</td></tr>
+    <tr><td><strong>Rust</strong></td><td>无 GC</td><td>❌</td><td>—</td><td>所有权 + 借用检查 = 编译期确定生命周期</td></tr>
+    <tr><td><strong>V8 (JS)</strong></td><td>分代并发标记-清扫 + 压缩</td><td>✅</td><td>~1-10ms</td><td>Orinoco 项目，并发标记+并发压缩</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>💡 Go 为什么不分代？</h4>
+    <p>Go 的设计者认为：1) Go 的逃逸分析已经让很多短期对象留在栈上，不需要分代来快速回收；2) 分代 GC 增加了复杂度（需要 write barrier 追踪跨代引用，Go 1.5 前不愿引入）；3) Go 的目标是 <strong>低延迟</strong>而非最大吞吐，并发标记足以满足需求。</p>
+    <p>但实际上，Go 社区对分代 GC 的讨论从未停止。2019 年有一个提案提议引入"请求分代 GC"，但未落地。Go 的不分代策略在<strong>大量短命对象</strong>场景下会导致 GC 频率偏高——这时调高 GOGC 或使用 sync.Pool 复用对象是常用对策。</p>
+  </div>
+
+  <h4>Go GC 的目标：延迟优先于吞吐</h4>
+  <table>
+    <tr><th>设计目标</th><th>数值</th><th>含义</th></tr>
+    <tr><td><strong>GC CPU 占比</strong></td><td>≤ 25%</td><td>GC 最多占用 1/4 的 CPU</td></tr>
+    <tr><td><strong>STW 时间</strong></td><td>&lt; 500μs</td><td>每次 STW 不超过 0.5ms（实际常~50μs）</td></tr>
+    <tr><td><strong>堆内存开销</strong></td><td>GOGC=100 → GC 触发时堆约 2x 存活对象</td><td>默认内存开销 = 100% 存活内存</td></tr>
+  </table>
+</section>
+
+</main>
+</div>
+<script src="/mobile.js"></script>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agent 架构原理 · 四大范式与状态机设计 · 费曼学习法</title>
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; --pink: #db61a2; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; transition: width 0.25s ease; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; text-decoration: none; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram svg { min-width: 580px; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+
+  .kw { color: #ff7b72; } .fn { color: #d2a8ff; } .str { color: #a5d6ff; } .num { color: #79c0ff; } .cm { color: #8b949e; font-style: italic; } .tp { color: #ffa657; } .op { color: #ff7b72; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .compare { grid-template-columns: 1fr; }
+    .diagram svg { min-width: 420px; }
+  }
+  @media (max-width: 480px) {
+    .diagram svg { min-width: 340px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🤖 AI <span>Agent 实战</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">四大范式</div>
+  <a class="nav-item" href="#react">🔄 ReAct 范式</a>
+  <a class="nav-item" href="#plan-execute">📋 Plan-Execute</a>
+  <a class="nav-item" href="#multi-agent">👥 Multi-Agent</a>
+  <a class="nav-item" href="#reflection">🧠 Reflection</a>
+  <div class="nav-section">深入原理</div>
+  <a class="nav-item" href="#state-machine">⚙️ 状态机设计</a>
+  <a class="nav-item" href="#cognitive">🧩 认知架构对比</a>
+  <a class="nav-item" href="#go-code">💻 Go 实现</a>
+  <a class="nav-item" href="#qa">💬 实战问答</a>
+  <a class="nav-item" href="#summary">🎯 口播总结</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>🤖 AI Agent 架构原理</h2>
+  <p style="color:var(--muted);font-size:13px">2026 · 四大范式 &amp; 状态机设计 &amp; Go 实现 · 共 8 张配图</p>
+
+  <div class="feynman">
+    <p><span class="analogy">🍳 类比：</span>Agent 就像一个厨师。最简单的厨师是"固定菜单"（单一 Prompt 调用），但一个真正能干的厨师会 — <strong>看菜名查菜谱（感知→推理）</strong>，<strong>发现缺食材就去买（工具调用）</strong>，<strong>发现灶台不够就调整顺序（规划）</strong>，<strong>做完尝一尝再调味道（反思→修正）</strong>。Agent 架构就是教厨师怎么做饭的"思维操作系统"。</p>
+    <p>本文会拆解四种主流 Agent 范式：<strong>ReAct</strong>（思考-行动-观察循环）、<strong>Plan-Execute</strong>（计划-执行分离）、<strong>Multi-Agent</strong>（多角色协作）、<strong>Reflection</strong>（自我反思与修正），并深入它们背后的状态机设计和认知架构。</p>
+  </div>
+</section>
+
+<!-- ═══════ 1. ReAct 范式 ═══════ -->
+<section id="react" class="section">
+  <h2>🔄 ReAct 范式 — 思考·行动·观察</h2>
+
+  <p>ReAct（Reasoning + Acting）是 2023 年由 Yao 等人提出的最经典 Agent 范式。它将<strong>推理链</strong>和<strong>工具调用</strong>交织在一起，让模型在"想"和"做"之间切换。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 320" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="ar1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker>
+        <marker id="ar2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#34d399"/></marker>
+        <marker id="ar3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#fb923c"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="300" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+      <!-- Thought -->
+      <rect x="40" y="40" width="200" height="50" rx="8" fill="rgba(34,211,238,0.1)" stroke="#22d3ee"/>
+      <text x="140" y="70" text-anchor="middle" fill="#22d3ee" font-size="13" font-family="sans-serif" font-weight="600">🧠 Thought 思考</text>
+      <!-- Action -->
+      <rect x="310" y="40" width="200" height="50" rx="8" fill="rgba(52,211,153,0.1)" stroke="#34d399"/>
+      <text x="410" y="70" text-anchor="middle" fill="#34d399" font-size="13" font-family="sans-serif" font-weight="600">⚡ Action 行动</text>
+      <!-- Observation -->
+      <rect x="580" y="40" width="200" height="50" rx="8" fill="rgba(251,146,60,0.1)" stroke="#fb923c"/>
+      <text x="680" y="70" text-anchor="middle" fill="#fb923c" font-size="13" font-family="sans-serif" font-weight="600">👁️ Observation 观察</text>
+      <!-- Loop arrows -->
+      <path d="M240,65 L300,65" stroke="#22d3ee" stroke-width="2" marker-end="url(#ar1)"/>
+      <path d="M510,65 L570,65" stroke="#34d399" stroke-width="2" marker-end="url(#ar2)"/>
+      <path d="M680,90 L680,130 L410,130 L410,95" stroke="#fb923c" stroke-width="2" marker-end="url(#ar3)" stroke-dasharray="5,3"/>
+
+      <!-- Example flow -->
+      <rect x="40" y="120" width="740" height="170" rx="8" fill="rgba(255,255,255,0.03)" stroke="#2a2d3a" stroke-dasharray="4,3"/>
+      <text x="60" y="145" fill="#8b949e" font-size="11" font-family="sans-serif">示例流程：</text>
+
+      <rect x="50" y="155" width="340" height="40" rx="6" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="0.5"/>
+      <text x="60" y="180" fill="#c9d1d9" font-size="11" font-family="sans-serif">🧠 用户问"上海今天天气"，我需要查天气工具</text>
+
+      <rect x="410" y="155" width="180" height="40" rx="6" fill="rgba(52,211,153,0.06)" stroke="#34d399" stroke-width="0.5"/>
+      <text x="420" y="180" fill="#c9d1d9" font-size="11" font-family="sans-serif">⚡ call_weather("上海")</text>
+
+      <rect x="610" y="155" width="160" height="40" rx="6" fill="rgba(251,146,60,0.06)" stroke="#fb923c" stroke-width="0.5"/>
+      <text x="620" y="180" fill="#c9d1d9" font-size="11" font-family="sans-serif">👁️ 返回"晴 25°C"</text>
+
+      <path d="M395,175 L405,175" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#ar1)"/>
+      <path d="M595,175 L605,175" stroke="#34d399" stroke-width="1.5" marker-end="url(#ar2)"/>
+
+      <text x="60" y="215" fill="#c9d1d9" font-size="11" font-family="sans-serif">🧠 拿到结果，组织回答..."上海今天晴天，25°C，适合出门"</text>
+      <text x="60" y="240" fill="#c9d1d9" font-size="11" font-family="sans-serif">📤 输出最终回复 → 循环结束</text>
+
+      <text x="60" y="270" fill="#8b949e" font-size="10" font-family="sans-serif">💡 关键：每个 Action 必须紧跟着 Observation，没有 Observation 的 Action 是无效的</text>
+    </svg>
+    <div class="diagram-caption">图 1 · ReAct 范式循环：思考→行动→观察→再思考，直到得到最终答案</div>
+  </div>
+
+  <h3>ReAct 的核心规则</h3>
+  <ul>
+    <li><strong>每步必观察：</strong>每次工具调用后，把结果塞回上下文让模型"看到"</li>
+    <li><strong>思考驱动行动：</strong>模型先想"我需要做什么"，再决定调什么工具</li>
+    <li><strong>最大迭代限制：</strong>防止无限循环（典型值 10-25 步）</li>
+    <li><strong>Early Stopping：</strong>当模型输出"最终答案"标志时提前结束</li>
+  </ul>
+
+  <h3>Prompt 结构</h3>
+  <p>ReAct 的核心 Prompt 模板大概长这样：</p>
+  <pre><code><span class="cm">// System Prompt 中注入的 ReAct 格式</span>
+<span class="tp">Available Tools</span>:
+- get_weather(city: string) <span class="cm">// 查询天气</span>
+- search_web(query: string) <span class="cm">// 搜索互联网</span>
+
+<span class="tp">Format</span>:
+Thought: 你当前的想法和下一步计划
+Action: 工具名称(参数列表)
+Observation: 工具返回的结果
+...（重复 Thought→Action→Observation）...
+Thought: 我现在有足够的信息了
+Final Answer: 对用户的最终回复</code></pre>
+
+  <h3>ReAct 的三大缺陷</h3>
+  <div class="compare">
+    <div>
+      <h4><span class="badge badge-red">问题 1</span> 缺乏全局规划</h4>
+      <p>ReAct 是"走一步看一步"的贪心策略。遇到需要 5 步以上的复杂任务时，容易迷失在局部细节中，忘记最终目标。</p>
+    </div>
+    <div>
+      <h4><span class="badge badge-red">问题 2</span> Token 爆炸</h4>
+      <p>每一步的 Thought + Action + Observation 都累积到上下文中。15 步循环后，光 Agent 的"思考历史"就能吃掉几万 Token。</p>
+    </div>
+  </div>
+  <div class="info-card">
+    <h4><span class="badge badge-orange">问题 3</span> 没有回退机制</h4>
+    <p>一旦选错了工具或理解错了上下文，ReAct 没有"撤销"能力。错误会沿着推理链传播，后面再怎么想也是基于错误前提。</p>
+  </div>
+</section>
+
+<!-- ═══════ 2. Plan-Execute ═══════ -->
+<section id="plan-execute" class="section">
+  <h2>📋 Plan-Execute 范式 — 先规划再执行</h2>
+
+  <p>Plan-Execute 把"想"和"做"彻底分开。Agent 先制定一个多步计划，然后按计划逐个执行，遇到异常再重新规划。这就像你装修房子先画施工图，再按图施工，而不是边想边砸墙。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 380" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="ap1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker>
+        <marker id="ap2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#a78bfa"/></marker>
+        <marker id="ap3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#fbbf24"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="360" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <!-- Planner -->
+      <rect x="40" y="40" width="200" height="60" rx="8" fill="rgba(34,211,238,0.1)" stroke="#22d3ee"/>
+      <text x="140" y="66" text-anchor="middle" fill="#22d3ee" font-size="13" font-family="sans-serif" font-weight="600">📋 Planner 规划器</text>
+      <text x="140" y="86" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">制定多步计划</text>
+
+      <!-- Plan -->
+      <rect x="300" y="40" width="240" height="60" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-dasharray="4,3"/>
+      <text x="420" y="62" text-anchor="middle" fill="#a78bfa" font-size="12" font-family="sans-serif">Step 1: 搜索资料</text>
+      <text x="420" y="80" text-anchor="middle" fill="#a78bfa" font-size="12" font-family="sans-serif">Step 2: 分析数据 → Step 3: 生成报告</text>
+
+      <path d="M245,70 L290,70" stroke="#22d3ee" stroke-width="2" marker-end="url(#ap1)"/>
+
+      <!-- Executor -->
+      <rect x="40" y="130" width="200" height="60" rx="8" fill="rgba(52,211,153,0.1)" stroke="#34d399"/>
+      <text x="140" y="156" text-anchor="middle" fill="#34d399" font-size="13" font-family="sans-serif" font-weight="600">⚡ Executor 执行器</text>
+      <text x="140" y="176" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">逐步执行计划</text>
+
+      <!-- Execute steps -->
+      <rect x="300" y="130" width="120" height="45" rx="6" fill="rgba(52,211,153,0.06)" stroke="#34d399" stroke-width="0.5"/>
+      <text x="360" y="152" text-anchor="middle" fill="#34d399" font-size="11" font-family="sans-serif">Step 1 ✅</text>
+      <text x="360" y="166" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">搜索完成</text>
+
+      <rect x="440" y="130" width="120" height="45" rx="6" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="0.5"/>
+      <text x="500" y="152" text-anchor="middle" fill="#fbbf24" font-size="11" font-family="sans-serif">Step 2 ❌</text>
+      <text x="500" y="166" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">数据不全</text>
+
+      <rect x="580" y="130" width="120" height="45" rx="6" fill="rgba(148,163,184,0.06)" stroke="#64748b" stroke-width="0.5"/>
+      <text x="640" y="158" text-anchor="middle" fill="#64748b" font-size="11" font-family="sans-serif">等待中</text>
+
+      <!-- Replan -->
+      <rect x="40" y="230" width="200" height="50" rx="8" fill="rgba(255,107,107,0.08)" stroke="#f87171"/>
+      <text x="140" y="254" text-anchor="middle" fill="#f87171" font-size="12" font-family="sans-serif" font-weight="600">🔄 Replan 重新规划</text>
+      <text x="140" y="270" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">遇到异常时触发</text>
+
+      <!-- Arrows -->
+      <path d="M245,160 L290,160" stroke="#34d399" stroke-width="1.5" marker-end="url(#ap1)"/>
+      <path d="M565,152 L575,152" stroke="#fbbf24" stroke-width="1.5"/>
+      <path d="M140,190 L140,220" stroke="#f87171" stroke-width="1.5" marker-end="url(#ap1)" stroke-dasharray="5,3"/>
+
+      <!-- Feedback loop -->
+      <path d="M640,175 L640,255 L245,255 L245,235" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#ap3)" stroke-dasharray="5,3"/>
+      <text x="500" y="270" fill="#8b949e" font-size="10" font-family="sans-serif">← Step 2 失败，触发重新规划</text>
+
+      <text x="60" y="310" fill="#8b949e" font-size="10" font-family="sans-serif">💡 Plan vs ReAct 的核心区别：Plan-Execute 有"全局蓝图"，失败时只重做相关步骤</text>
+    </svg>
+    <div class="diagram-caption">图 2 · Plan-Execute 架构：规划器生成多步计划，执行器逐步执行，失败触发重新规划</div>
+  </div>
+
+  <h3>两种实现模式</h3>
+  <table>
+    <tr><th>维度</th><th>单模型内循环</th><th>规划器 + 执行器分离</th></tr>
+    <tr><td>架构</td><td>同一个 LLM 既当 Planner 又当 Executor</td><td>两个独立 LLM 调用（或同模型不同 System Prompt）</td></tr>
+    <tr><td>步骤状态</td><td>存储在上下文窗口中</td><td>存储在外部数据结构（JSON/DAG）中</td></tr>
+    <tr><td>容错</td><td>整个计划重做</td><td>只回滚到失败步骤</td></tr>
+    <tr><td>复杂度</td><td>低，适合简单任务</td><td>高，适合复杂工作流</td></tr>
+    <tr><td>代表框架</td><td>LangChain Plan-and-Execute</td><td>BabyAGI, AutoGPT, Voyager</td></tr>
+  </table>
+
+  <div class="feynman">
+    <p><span class="analogy">🍳 类比：</span>装修房子，ReAct 是"边想边砸墙"——砸错了再糊上。Plan-Execute 是先出设计图（规划），项目经理按图施工（执行），发现管道位置不对就更新图纸（重新规划），而不是继续在那砸。后者成本低 10 倍。</p>
+  </div>
+
+  <h3>Plan-Execute 的陷阱</h3>
+  <ul>
+    <li><strong>计划过时：</strong>如果执行过程中外部环境变化（比如数据源返回了意料之外的结果），原始计划可能已经无效</li>
+    <li><strong>过度规划：</strong>有些任务根本不需要 5 步计划，但 Planner 仍然生成复杂的 DAG，浪费 Token 和时间</li>
+    <li><strong>计划粒度难控：</strong>太粗 → 一步之内还是需要 ReAct 思维；太细 → Token 开销反超 ReAct</li>
+  </ul>
+</section>
+
+<!-- ═══════ 3. Multi-Agent ═══════ -->
+<section id="multi-agent" class="section">
+  <h2>👥 Multi-Agent 范式 — 多角色协作</h2>
+
+  <p>Multi-Agent 不是一个 Agent 单打独斗，而是多个 Agent 各司其职，像一支篮球队有控卫、分卫、中锋，每个人负责不同的战术角色。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 340" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="am1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker>
+        <marker id="am2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#a78bfa"/></marker>
+        <marker id="am3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#fbbf24"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="320" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <!-- Orchestrator -->
+      <rect x="310" y="30" width="200" height="55" rx="8" fill="rgba(34,211,238,0.1)" stroke="#22d3ee"/>
+      <text x="410" y="56" text-anchor="middle" fill="#22d3ee" font-size="13" font-family="sans-serif" font-weight="600">🎯 Orchestrator</text>
+      <text x="410" y="72" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">调度器：分配任务</text>
+
+      <!-- Workers -->
+      <rect x="40" y="140" width="160" height="60" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa"/>
+      <text x="120" y="166" text-anchor="middle" fill="#a78bfa" font-size="12" font-family="sans-serif" font-weight="600">🔍 Searcher</text>
+      <text x="120" y="184" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">搜索信息</text>
+
+      <rect x="330" y="140" width="160" height="60" rx="8" fill="rgba(251,191,36,0.08)" stroke="#fbbf24"/>
+      <text x="410" y="166" text-anchor="middle" fill="#fbbf24" font-size="12" font-family="sans-serif" font-weight="600">✍️ Writer</text>
+      <text x="410" y="184" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">撰写内容</text>
+
+      <rect x="620" y="140" width="160" height="60" rx="8" fill="rgba(52,211,153,0.08)" stroke="#34d399"/>
+      <text x="700" y="166" text-anchor="middle" fill="#34d399" font-size="12" font-family="sans-serif" font-weight="600">🔬 Reviewer</text>
+      <text x="700" y="184" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">审核质量</text>
+
+      <!-- Arrows from orchestrator to workers -->
+      <path d="M380,85 L380,110 L120,110 L120,135" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#am1)"/>
+      <path d="M410,85 L410,135" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#am1)"/>
+      <path d="M440,85 L440,110 L700,110 L700,135" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#am1)"/>
+
+      <!-- Results back -->
+      <path d="M120,200 L120,240 L410,240 L410,250" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#am2)" stroke-dasharray="5,3"/>
+      <path d="M410,200 L410,245" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#am3)" stroke-dasharray="5,3"/>
+      <path d="M700,200 L700,240 L410,240" stroke="#34d399" stroke-width="1.5" marker-end="url(#am2)" stroke-dasharray="5,3"/>
+
+      <!-- Output -->
+      <rect x="310" y="255" width="200" height="45" rx="8" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="0.5"/>
+      <text x="410" y="278" text-anchor="middle" fill="#22d3ee" font-size="11" font-family="sans-serif">📤 综合结果 → 返回用户</text>
+
+      <text x="60" y="310" fill="#8b949e" font-size="10" font-family="sans-serif">💡 Multi-Agent 的核心是"分工"：每个 Agent 只有单一职责，Prompt 更短，幻觉更少</text>
+    </svg>
+    <div class="diagram-caption">图 3 · Multi-Agent 架构：Orchestrator 将大任务拆解，分发给 Specialist Agent，汇总结果</div>
+  </div>
+
+  <h3>三种协作模式</h3>
+  <div class="compare">
+    <div>
+      <h4>👑 编排式 (Orchestrator)</h4>
+      <p>一个中心调度器负责任务分解、分发和汇合。Worker 之间不直接通信。<br><br>
+      <strong>适用：</strong>写作助手（搜索→大纲→撰写→配图）<br>
+      <strong>优势：</strong>流程可控，调试容易</p>
+    </div>
+    <div>
+      <h4>🤝 协商式 (Debate)</h4>
+      <p>多个 Agent 围绕一个问题交换意见，直到达成共识。每个 Agent 有自己的角色偏好。<br><br>
+      <strong>适用：</strong>代码审查、设计评审<br>
+      <strong>优势：</strong>减少偏见，质量更高</p>
+    </div>
+  </div>
+  <div class="info-card">
+    <h4>🏗️ 层级式 (Hierarchical)</h4>
+    <p>Orchestrator 可以再招募 Sub-Orchestrator，形成树的层级结构。每个 Sub-Orchestrator 管理自己的 Worker 团队。这在大型复杂系统中特别有用（比如一个装修管理系统：总调度→水电组、木工组、油漆组→每个组再细分任务）。</p>
+  </div>
+</section>
+
+<!-- ═══════ 4. Reflection ═══════ -->
+<section id="reflection" class="section">
+  <h2>🧠 Reflection 范式 — 自我反思与修正</h2>
+
+  <p>Reflection 是最接近"人类学习方式"的范式。Agent 先完成一个任务，然后自己"回头看"哪里做得不好，再修正。这就像你写完一篇文章先自己读一遍，圈出错别字和逻辑漏洞再改。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 280" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="af1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker>
+        <marker id="af2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#f87171"/></marker>
+        <marker id="af3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#3fb950"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="260" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <!-- Actor -->
+      <rect x="40" y="40" width="180" height="55" rx="8" fill="rgba(34,211,238,0.1)" stroke="#22d3ee"/>
+      <text x="130" y="66" text-anchor="middle" fill="#22d3ee" font-size="13" font-family="sans-serif" font-weight="600">🎭 Actor</text>
+      <text x="130" y="82" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">生成初始输出</text>
+
+      <!-- Critic -->
+      <rect x="320" y="40" width="180" height="55" rx="8" fill="rgba(248,113,113,0.08)" stroke="#f87171"/>
+      <text x="410" y="66" text-anchor="middle" fill="#f87171" font-size="13" font-family="sans-serif" font-weight="600">🔍 Critic</text>
+      <text x="410" y="82" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">检查并反馈问题</text>
+
+      <!-- Actor refine -->
+      <rect x="600" y="40" width="180" height="55" rx="8" fill="rgba(63,185,80,0.1)" stroke="#3fb950"/>
+      <text x="690" y="66" text-anchor="middle" fill="#3fb950" font-size="13" font-family="sans-serif" font-weight="600">🔄 Actor (Refine)</text>
+      <text x="690" y="82" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">根据反馈修正</text>
+
+      <path d="M225,67 L310,67" stroke="#22d3ee" stroke-width="2" marker-end="url(#af1)"/>
+      <path d="M505,67 L590,67" stroke="#f87171" stroke-width="2" marker-end="url(#af2)"/>
+
+      <!-- Feedback loop -->
+      <path d="M690,95 L690,140 L130,140 L130,100" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#af1)" stroke-dasharray="5,3"/>
+      <text x="350" y="155" fill="#8b949e" font-size="10" font-family="sans-serif">检查不通过 → Actor 根据反馈重新生成 → 最多 N 轮</text>
+
+      <!-- Output -->
+      <rect x="600" y="170" width="180" height="45" rx="8" fill="rgba(63,185,80,0.06)" stroke="#3fb950" stroke-width="0.5"/>
+      <text x="690" y="196" text-anchor="middle" fill="#3fb950" font-size="11" font-family="sans-serif">✅ 最终输出</text>
+
+      <!-- Done arrow -->
+      <path d="M690,215 L690,195" stroke="#3fb950" stroke-width="1.5" marker-end="url(#af3)" stroke-dasharray="3,2"/>
+
+      <text x="60" y="210" fill="#8b949e" font-size="10" font-family="sans-serif">💡 关键设计：Actor 和 Critic 可以是同一个模型，但 System Prompt 不同</text>
+    </svg>
+    <div class="diagram-caption">图 4 · Reflection 架构：Actor 生成 → Critic 审查 → 反馈→修正循环</div>
+  </div>
+
+  <h3>Reflection 的实践技巧</h3>
+  <table>
+    <tr><th>技巧</th><th>做法</th><th>效果</th></tr>
+    <tr><td>角色隔离</td><td>Actor 用"自信的专家"Prompt，Critic 用"苛刻的审稿人"Prompt</td><td>减少自我偏差，Critic 更容易发现 Actor 的问题</td></tr>
+    <tr><td>结构化反馈</td><td>Critic 按格式输出：<code>问题类型 | 位置 | 严重程度 | 修改建议</code></td><td>Actor 不需要"猜测"哪里错了，直接执行修改</td></tr>
+    <tr><td>轮次上限</td><td>最多 3 轮反思，否则边际效益递减</td><td>防止无限循环（Reflection 最危险的陷阱）</td></tr>
+    <tr><td>渐进回顾</td><td>先检查语法/格式 → 再检查逻辑 → 最后检查风格</td><td>避免低层次问题干扰高层次思考</td></tr>
+  </table>
+
+  <h3>四种范式的选择矩阵</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 220" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="ax1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#64748b"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="200" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <!-- Axis labels -->
+      <text x="400" y="38" text-anchor="middle" fill="#8b949e" font-size="11" font-family="sans-serif">任务复杂度 →</text>
+      <text x="40" y="120" fill="#8b949e" font-size="11" font-family="sans-serif" transform="rotate(-90,40,120)">质量要求 →</text>
+
+      <!-- Quadrant 1 -->
+      <rect x="60" y="55" width="190" height="65" rx="8" fill="rgba(34,211,238,0.08)" stroke="#22d3ee"/>
+      <text x="155" y="80" text-anchor="middle" fill="#22d3ee" font-size="14" font-family="sans-serif" font-weight="600">🔄 ReAct</text>
+      <text x="155" y="98" text-anchor="middle" fill="#8b949e" font-size="11" font-family="sans-serif">简单 + 低质量</text>
+      <text x="155" y="112" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">单步工具调用</text>
+
+      <!-- Quadrant 2 -->
+      <rect x="270" y="55" width="190" height="65" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa"/>
+      <text x="365" y="80" text-anchor="middle" fill="#a78bfa" font-size="14" font-family="sans-serif" font-weight="600">📋 Plan-Execute</text>
+      <text x="365" y="98" text-anchor="middle" fill="#8b949e" font-size="11" font-family="sans-serif">复杂 + 低质量</text>
+      <text x="365" y="112" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">多步工作流</text>
+
+      <!-- Quadrant 3 -->
+      <rect x="60" y="130" width="190" height="65" rx="8" fill="rgba(248,113,113,0.08)" stroke="#f87171"/>
+      <text x="155" y="155" text-anchor="middle" fill="#f87171" font-size="14" font-family="sans-serif" font-weight="600">🧠 Reflection</text>
+      <text x="155" y="173" text-anchor="middle" fill="#8b949e" font-size="11" font-family="sans-serif">简单 + 高质量</text>
+      <text x="155" y="187" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">内容审查</text>
+
+      <!-- Quadrant 4 -->
+      <rect x="270" y="130" width="190" height="65" rx="8" fill="rgba(57,197,207,0.08)" stroke="#39c5cf"/>
+      <text x="365" y="155" text-anchor="middle" fill="#39c5cf" font-size="14" font-family="sans-serif" font-weight="600">👥 Multi-Agent</text>
+      <text x="365" y="173" text-anchor="middle" fill="#8b949e" font-size="11" font-family="sans-serif">复杂 + 高质量</text>
+      <text x="365" y="187" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">全功能系统</text>
+    </svg>
+    <div class="diagram-caption">图 5 · 范式选择矩阵：根据任务复杂度和质量要求选择最合适的范式</div>
+  </div>
+</section>
+
+<!-- ═══════ 5. 状态机设计 ═══════ -->
+<section id="state-machine" class="section">
+  <h2>⚙️ Agent 状态机设计</h2>
+
+  <p>无论哪种范式，Agent 本质上都是一个<strong>有限状态机（FSM）</strong>。理解状态机设计是构建可靠 Agent 的基石。</p>
+
+  <h3>核心状态定义</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 340" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="as1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker>
+        <marker id="as2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#f87171"/></marker>
+        <marker id="as3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#3fb950"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="320" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <!-- States -->
+      <rect x="30" y="100" width="140" height="55" rx="25" fill="rgba(34,211,238,0.1)" stroke="#22d3ee"/>
+      <text x="100" y="126" text-anchor="middle" fill="#22d3ee" font-size="12" font-family="sans-serif" font-weight="600">IDLE</text>
+      <text x="100" y="142" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">等待输入</text>
+
+      <rect x="220" y="100" width="140" height="55" rx="25" fill="rgba(163,113,247,0.08)" stroke="#a78bfa"/>
+      <text x="290" y="126" text-anchor="middle" fill="#a78bfa" font-size="12" font-family="sans-serif" font-weight="600">THINKING</text>
+      <text x="290" y="142" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">推理/规划</text>
+
+      <rect x="410" y="100" width="140" height="55" rx="25" fill="rgba(251,191,36,0.08)" stroke="#fbbf24"/>
+      <text x="480" y="126" text-anchor="middle" fill="#fbbf24" font-size="12" font-family="sans-serif" font-weight="600">ACTING</text>
+      <text x="480" y="142" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">工具调用</text>
+
+      <rect x="600" y="100" width="140" height="55" rx="25" fill="rgba(63,185,80,0.1)" stroke="#3fb950"/>
+      <text x="670" y="126" text-anchor="middle" fill="#3fb950" font-size="12" font-family="sans-serif" font-weight="600">OBSERVING</text>
+      <text x="670" y="142" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">观察结果</text>
+
+      <!-- Transitions -->
+      <path d="M170,127 L210,127" stroke="#22d3ee" stroke-width="2" marker-end="url(#as1)"/>
+      <text x="190" y="118" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">输入</text>
+
+      <path d="M360,127 L400,127" stroke="#a78bfa" stroke-width="2" marker-end="url(#as1)"/>
+      <text x="380" y="118" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">需工具</text>
+
+      <path d="M550,127 L590,127" stroke="#fbbf24" stroke-width="2" marker-end="url(#as1)"/>
+      <text x="570" y="118" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">调用后</text>
+
+      <!-- Return to THINKING -->
+      <path d="M670,155 L670,210 L290,210 L290,160" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#as1)" stroke-dasharray="5,3"/>
+      <text x="480" y="225" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">观察结果 → 回到思考（ReAct 循环）</text>
+
+      <!-- Done -->
+      <path d="M290,155 L290,260 L670,260 L670,160" stroke="#3fb950" stroke-width="1.5" marker-end="url(#as3)"/>
+      <text x="480" y="275" text-anchor="middle" fill="#3fb950" font-size="10" font-family="sans-serif">有答案 → 输出 → 回到 IDLE</text>
+
+      <!-- Error -->
+      <path d="M480,155 L480,295 L100,295 L100,160" stroke="#f87171" stroke-width="1.5" marker-end="url(#as2)" stroke-dasharray="3,3"/>
+      <text x="290" y="310" text-anchor="middle" fill="#f87171" font-size="10" font-family="sans-serif">错误/超时 → 回到 IDLE（清除状态）</text>
+    </svg>
+    <div class="diagram-caption">图 6 · Agent 核心状态机：IDLE → THINKING → ACTING → OBSERVING → THINKING/IDLE</div>
+  </div>
+
+  <h3>状态管理的三个关键设计</h3>
+
+  <div class="info-card">
+    <h4>1. 幂等性（Idempotency）</h4>
+    <p>工具调用可能在网络超时后重试，同一个 Action 不能被执行两次。实现方式：每个 Action 生成一个唯一 <code>action_id</code>，状态机记录已执行的 ID，遇到重复则直接返回缓存的结果。</p>
+  </div>
+
+  <div class="info-card">
+    <h4>2. 超时处理（Timeout）</h4>
+    <p>每个状态必须有超时保护：</p>
+    <ul>
+      <li>THINKING 超时 → 回到 IDLE，回复"思考超时"</li>
+      <li>ACTING 超时 → 标记工具调用失败，进入 OBSERVING 记录错误</li>
+      <li>总步数超限 → 回到 IDLE，回复"任务太复杂无法完成"</li>
+    </ul>
+  </div>
+
+  <div class="info-card">
+    <h4>3. 上下文压缩（Context Compression）</h4>
+    <p>超过 N 步后，自动压缩历史：保留系统 Prompt + 用户原始问题 + 最近的 M 步记录，中间的步骤用"省略了 K 步中间过程"替代。这是 Multi-Agent 和 Reflection 范式中最容易忽略但最关键的性能优化。</p>
+  </div>
+</section>
+
+<!-- ═══════ 6. 认知架构对比 ═══════ -->
+<section id="cognitive" class="section">
+  <h2>🧩 认知架构对比</h2>
+
+  <p>四种范式可以任意组合，形成混合架构。下面是实际生产中最常见的三种"组合拳"：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" style="max-width:820px;width:100%">
+      <defs>
+        <marker id="ac1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker>
+      </defs>
+      <rect x="10" y="10" width="800" height="280" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <!-- Pattern 1 -->
+      <rect x="30" y="35" width="240" height="100" rx="8" fill="rgba(34,211,238,0.06)" stroke="#22d3ee"/>
+      <text x="150" y="58" text-anchor="middle" fill="#22d3ee" font-size="13" font-family="sans-serif" font-weight="600">🏗️ ReAct + Reflection</text>
+      <text x="150" y="76" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">每一步都检查是否还需要反思</text>
+      <text x="150" y="94" text-anchor="middle" fill="#c9d1d9" font-size="10" font-family="sans-serif">常见于：代码生成 Agent</text>
+      <text x="150" y="110" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">写一段→检查→改→写下一段</text>
+
+      <!-- Pattern 2 -->
+      <rect x="290" y="35" width="240" height="100" rx="8" fill="rgba(163,113,247,0.06)" stroke="#a78bfa"/>
+      <text x="410" y="58" text-anchor="middle" fill="#a78bfa" font-size="13" font-family="sans-serif" font-weight="600">📋 Plan + Multi-Agent</text>
+      <text x="410" y="76" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">规划器制定计划，各Agent执行</text>
+      <text x="410" y="94" text-anchor="middle" fill="#c9d1d9" font-size="10" font-family="sans-serif">常见于：研究报告生成</text>
+      <text x="410" y="110" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">规划→搜索→分析→写报告</text>
+
+      <!-- Pattern 3 -->
+      <rect x="550" y="35" width="240" height="100" rx="8" fill="rgba(63,185,80,0.06)" stroke="#3fb950"/>
+      <text x="670" y="58" text-anchor="middle" fill="#3fb950" font-size="13" font-family="sans-serif" font-weight="600">🔄 全部嵌套</text>
+      <text x="670" y="76" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">Planner→Orchestrator→Agent</text>
+      <text x="670" y="94" text-anchor="middle" fill="#c9d1d9" font-size="10" font-family="sans-serif">常见于：企业级 AI 系统</text>
+      <text x="670" y="110" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">每个 Worker 内部还有 Reflection</text>
+
+      <!-- Comparison table -->
+      <rect x="30" y="155" width="760" height="1" fill="#2a2d3a"/>
+      <text x="30" y="180" fill="#c9d1d9" font-size="12" font-family="sans-serif" font-weight="600">选择指南：</text>
+      <text x="30" y="200" fill="#8b949e" font-size="11" font-family="sans-serif">- 如果你只有一个 API 调用周期 → ReAct 就够了</text>
+      <text x="30" y="218" fill="#8b949e" font-size="11" font-family="sans-serif">- 如果你需要稳定的多步流程 → Plan-Execute</text>
+      <text x="30" y="236" fill="#8b949e" font-size="11" font-family="sans-serif">- 如果你需要多种专业能力 → Multi-Agent</text>
+      <text x="30" y="254" fill="#8b949e" font-size="11" font-family="sans-serif">- 如果输出质量是第一优先级 → 加 Reflection</text>
+    </svg>
+    <div class="diagram-caption">图 7 · 三种主流混合架构与选择指南</div>
+  </div>
+
+  <h3>延迟与成本对比</h3>
+  <table>
+    <tr><th>范式</th><th>单次任务延迟</th><th>Token 消耗</th><th>适合场景</th></tr>
+    <tr><td>ReAct</td><td>低（2-5 轮）</td><td>中</td><td>问答、简单工具调用</td></tr>
+    <tr><td>Plan-Execute</td><td>中（分阶段）</td><td>中高</td><td>数据分析、报告生成</td></tr>
+    <tr><td>Multi-Agent</td><td>高（多模型并行/串行）</td><td>高</td><td>复杂工作流、研究</td></tr>
+    <tr><td>Reflection</td><td>中（2-3 倍单次）</td><td>高</td><td>代码审查、内容优化</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 7. Go 代码实现 ═══════ -->
+<section id="go-code" class="section">
+  <h2>💻 Go 实现 — 从零构建 Agent 状态机</h2>
+
+  <p>下面用 Go 实现一个<strong>可扩展的 Agent 状态机框架</strong>。支持任意范式的核心循环。</p>
+
+  <h3>7.1 状态机核心</h3>
+  <pre><code><span class="kw">package</span> agent
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"time"</span>
+)
+
+<span class="cm">// State 定义 Agent 状态</span>
+<span class="kw">type</span> <span class="tp">State</span> <span class="kw">int</span>
+
+<span class="kw">const</span> (
+    StateIDLE      <span class="tp">State</span> = <span class="num">0</span>
+    StateThinking  <span class="tp">State</span> = <span class="num">1</span>
+    StateActing    <span class="tp">State</span> = <span class="num">2</span>
+    StateObserving <span class="tp">State</span> = <span class="num">3</span>
+    StateDone      <span class="tp">State</span> = <span class="num">4</span>
+    StateError     <span class="tp">State</span> = <span class="num">5</span>
+)
+
+<span class="kw">func</span> <span class="fn">(s State)</span> <span class="fn">String</span>() <span class="tp">string</span> {
+    <span class="kw">return</span> []<span class="tp">string</span>{<span class="str">"IDLE"</span>, <span class="str">"THINKING"</span>, <span class="str">"ACTING"</span>, <span class="str">"OBSERVING"</span>, <span class="str">"DONE"</span>, <span class="str">"ERROR"</span>}[s]
+}
+
+<span class="cm">// Action 记录一次工具调用</span>
+<span class="kw">type</span> <span class="tp">Action</span> <span class="kw">struct</span> {
+    ID        <span class="tp">string</span>        <span class="cm">// 唯一 ID，用于幂等</span>
+    Name      <span class="tp">string</span>        <span class="cm">// 工具名</span>
+    Arguments <span class="tp">map</span>[<span class="tp">string</span>]<span class="kw">any</span> <span class="cm">// 参数</span>
+    Result    <span class="tp">string</span>        <span class="cm">// 结果</span>
+    Error     <span class="tp">error</span>         <span class="cm">// 执行错误</span>
+    Timestamp <span class="tp">time</span>.<span class="tp">Time</span>
+}
+
+<span class="cm">// AgentStatus 包含运行中状态的快照</span>
+<span class="kw">type</span> <span class="tp">AgentStatus</span> <span class="kw">struct</span> {
+    State      <span class="tp">State</span>
+    Step       <span class="kw">int</span>
+    MaxSteps   <span class="kw">int</span>
+    StartTime  <span class="tp">time</span>.<span class="tp">Time</span>
+    LastAction <span class="tp">*Action</span>
+    History    []*<span class="tp">Action</span>  <span class="cm">// 执行历史</span>
+}</code></pre>
+
+  <h3>7.2 Agent 引擎 — 支持任意范式</h3>
+  <pre><code><span class="cm">// Agent 引擎：负责状态转换</span>
+<span class="kw">type</span> <span class="tp">Agent</span> <span class="kw">struct</span> {
+    status    <span class="tp">AgentStatus</span>
+    llm       <span class="tp">LLMProvider</span>     <span class="cm">// 接口化 LLM</span>
+    tools     <span class="tp">map</span>[<span class="tp">string</span>]<span class="tp">Tool</span>   <span class="cm">// 注册工具</span>
+    memory    <span class="tp">MessageStore</span>    <span class="cm">// 消息存储</span>
+    compressor <span class="tp">ContextCompressor</span> <span class="cm">// 上下文压缩</span>
+    stopFunc  <span class="kw">func</span>(<span class="tp">string</span>) <span class="tp">bool</span> <span class="cm">// 提前停止判断</span>
+}
+
+<span class="cm">// Run 运行 Agent 主循环（ReAct 模式）</span>
+<span class="kw">func</span> (a *<span class="tp">Agent</span>) <span class="fn">Run</span>(ctx <span class="tp">context</span>.<span class="tp">Context</span>, userInput <span class="tp">string</span>) (<span class="tp">string</span>, <span class="tp">error</span>) {
+    a.status.State = StateThinking
+    a.status.StartTime = <span class="tp">time</span>.<span class="fn">Now</span>()
+
+    <span class="kw">for</span> a.status.Step &lt; a.status.MaxSteps {
+        <span class="kw">select</span> {
+        <span class="kw">case</span> &lt;-ctx.<span class="fn">Done</span>():
+            <span class="kw">return</span> <span class="str">""</span>, ctx.<span class="fn">Err</span>()
+        <span class="kw">default</span>:
+        }
+
+        <span class="cm">// 1. THINKING — 调用 LLM 决定下一步</span>
+        thought, actionSpec := a.<span class="fn">think</span>(ctx)
+        <span class="kw">if</span> a.<span class="fn">hasFinalAnswer</span>(thought) {
+            a.status.State = StateDone
+            <span class="kw">return</span> a.<span class="fn">extractAnswer</span>(thought), <span class="kw">nil</span>
+        }
+
+        <span class="cm">// 2. ACTING — 执行工具</span>
+        a.status.State = StateActing
+        action := a.<span class="fn">executeAction</span>(ctx, actionSpec)
+        a.status.LastAction = action
+        a.status.History = <span class="fn">append</span>(a.status.History, action)
+
+        <span class="cm">// 3. OBSERVING — 把结果塞回上下文</span>
+        a.status.State = StateObserving
+        a.memory.<span class="fn">AddObservation</span>(action)
+
+        <span class="cm">// 4. 上下文压缩（每 5 步执行一次）</span>
+        <span class="kw">if</span> a.status.Step &gt; <span class="num">0</span> && a.status.Step%<span class="num">5</span> == <span class="num">0</span> {
+            a.memory = a.compressor.<span class="fn">Compress</span>(a.memory)
+        }
+
+        a.status.Step++
+
+        <span class="cm">// 提前停止检查</span>
+        <span class="kw">if</span> a.stopFunc != <span class="kw">nil</span> && a.stopFunc(a.memory.<span class="fn">Latest</span>()) {
+            a.status.State = StateDone
+            <span class="kw">return</span> a.memory.<span class="fn">Latest</span>(), <span class="kw">nil</span>
+        }
+
+        a.status.State = StateThinking
+    }
+
+    a.status.State = StateError
+    <span class="kw">return</span> <span class="str">""</span>, <span class="tp">fmt</span>.<span class="fn">Errorf</span>(<span class="str">"max steps (%d) exceeded without final answer"</span>, a.status.MaxSteps)
+}
+
+<span class="cm">// think 调用 LLM，返回思考内容和 Action 规范</span>
+<span class="kw">func</span> (a *<span class="tp">Agent</span>) <span class="fn">think</span>(ctx <span class="tp">context</span>.<span class="tp">Context</span>) (<span class="tp">string</span>, *<span class="tp">ActionSpec</span>) {
+    msgs := a.memory.<span class="fn">GetMessages</span>()
+    resp, err := a.llm.<span class="fn">Complete</span>(ctx, msgs)
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="kw">return</span> <span class="str">""</span>, <span class="kw">nil</span>
+    }
+    <span class="cm">// 解析输出，提取 Action（如果有）</span>
+    <span class="kw">return</span> <span class="fn">parseThoughtAction</span>(resp)
+}</code></pre>
+
+  <h3>7.3 接口设计 — 替换式架构</h3>
+  <pre><code><span class="cm">// LLMProvider 抽象 — 可替换任意模型</span>
+<span class="kw">type</span> <span class="tp">LLMProvider</span> <span class="kw">interface</span> {
+    <span class="fn">Complete</span>(ctx <span class="tp">context</span>.<span class="tp">Context</span>, msgs []<span class="tp">Message</span>) (<span class="tp">string</span>, <span class="tp">error</span>)
+}
+
+<span class="cm">// Tool 接口 — 所有工具都必须实现</span>
+<span class="kw">type</span> <span class="tp">Tool</span> <span class="kw">interface</span> {
+    <span class="fn">Name</span>() <span class="tp">string</span>
+    <span class="fn">Description</span>() <span class="tp">string</span>
+    <span class="fn">Execute</span>(ctx <span class="tp">context</span>.<span class="tp">Context</span>, args <span class="tp">map</span>[<span class="tp">string</span>]<span class="kw">any</span>) (<span class="tp">string</span>, <span class="tp">error</span>)
+}
+
+<span class="cm">// ContextCompressor 接口 — 控制 Token 消耗</span>
+<span class="kw">type</span> <span class="tp">ContextCompressor</span> <span class="kw">interface</span> {
+    <span class="fn">Compress</span>(ms <span class="tp">MessageStore</span>) <span class="tp">MessageStore</span>
+}
+
+<span class="cm">// 用法示例</span>
+<span class="kw">func</span> <span class="fn">main</span>() {
+    agent := &amp;<span class="tp">Agent</span>{
+        status: <span class="tp">AgentStatus</span>{MaxSteps: <span class="num">15</span>},
+        llm:    <span class="fn">NewOpenAIProvider</span>(<span class="str">"gpt-4"</span>),
+        tools: <span class="tp">map</span>[<span class="tp">string</span>]<span class="tp">Tool</span>{
+            <span class="str">"search"</span>: <span class="fn">NewSearchTool</span>(),
+            <span class="str">"calc"</span>:   <span class="fn">NewCalculator</span>(),
+        },
+        compressor: <span class="fn">NewSlidingWindowCompressor</span>(<span class="num">10</span>), <span class="cm">// 保留最近 10 条</span>
+    }
+
+    result, err := agent.<span class="fn">Run</span>(context.<span class="fn">Background</span>(), <span class="str">"上海今天天气怎么样？需要带伞吗？"</span>)
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="fn">fmt</span>.<span class="fn">Printf</span>(<span class="str">"Agent error: %v\n"</span>, err)
+        <span class="kw">return</span>
+    }
+    <span class="fn">fmt</span>.<span class="fn">Println</span>(result)
+}</code></pre>
+
+  <div class="info-card">
+    <h4>📌 代码设计要点</h4>
+    <ul>
+      <li><strong>LLMProvider 接口</strong> — 可以无缝切换 GPT-4 / Claude / MiniMax 或本地模型</li>
+      <li><strong>Tool 接口</strong> — 每个工具独立测试，通过 <code>Execute</code> 方法隔离副作用</li>
+      <li><strong>ContextCompressor</strong> — 滑动窗口压缩，保留最近的 N 条消息和原始的 System Prompt</li>
+      <li><strong>幂等性</strong> — Action ID 机制保证同一动作不会被执行两次（网络重试安全）</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════ 8. 实战问答 ═══════ -->
+<section id="qa" class="section">
+  <h2>💬 实战问答</h2>
+
+  <div class="qa"><div class="q">Q1: ReAct 和 Plan-Execute 怎么选？分界线在哪里？</div><div class="a"><strong>经验法则：</strong>如果任务能在 5 步以内完成（比如查天气、简单问答），用 ReAct。如果需要 5 步以上且有明确的子任务依赖关系（比如"先搜索三个来源，再对比分析，最后生成报告"），用 Plan-Execute。分界线是"你是否能在写下任务时，就预见到步骤顺序"。</div></div>
+
+  <div class="qa"><div class="q">Q2: Multi-Agent 一定比单 Agent 好吗？</div><div class="a"><strong>不一定。</strong>Multi-Agent 的 Token 消耗是单 Agent 的 3-5 倍，延迟也更高。只在以下情况使用：(1) 任务需要截然不同的专业知识（比如代码 + 设计），(2) 需要多角色交叉验证（写代码 + 安全审查），(3) 单个 Agent 的上下文窗口装不下。一个常见的错误：任务明明是单步 Tool Calling，却搞了 3 个 Agent 来回传消息。</div></div>
+
+  <div class="qa"><div class="q">Q3: Reflection 的 Critic 怎么设计才能有效？</div><div class="a">关键三点：(1) <strong>结构化输出</strong> — Critic 必须按固定格式输出反馈（如 JSON），而不是自由文本。(2) <strong>评分标准明确</strong> — 在 Critic 的 Prompt 里写明检查清单：语法、逻辑、完整性、风格。(3) <strong>多次反思边际递减</strong> — 实测第 3 轮以后改进不到 5%，所以默认最多 3 轮就够了。</div></div>
+
+  <div class="qa"><div class="q">Q4: Agent 上下文窗口满了怎么办？</div><div class="a">三种策略按优先级排列：<br><strong>① 滑动窗口：</strong>保留 System Prompt + 用户问题 + 最近 N 轮交互，中间历史用"省略了 K 步"替代。<br><strong>② 摘要压缩：</strong>用 LLM 把历史浓缩成一段摘要，替换原始对话。<strong>③ 外部记忆：</strong>把关键状态存到数据库，Agent 只在需要时载入。第一种实现成本最低，推荐优先尝试。</div></div>
+
+  <div class="qa"><div class="q">Q5: Agent 调用工具超时了怎么处理？</div><div class="a">三步恢复：(1) 尝试重试 1 次（可能有网络抖动），(2) 如果还是超时，记录错误并告诉 LLM"工具调用失败，原因：超时"，(3) 让 LLM 决定是否换一个工具或换一个策略。不要让 Agent 在同一个工具上无限重试。安全的做法是：每个工具调用设独立超时（默认 10s），超过后触发 fallback。</div></div>
+</section>
+
+<!-- ═══════ 9. 口播总结 ═══════ -->
+<section id="summary" class="section">
+  <h2>🎯 口播总结</h2>
+  <div class="feynman" style="background:linear-gradient(135deg,rgba(163,113,247,0.06),rgba(88,166,255,0.04));border-color:rgba(163,113,247,0.3)">
+    <p style="font-size:11px;color:#c4b5fd;margin-bottom:8px;font-weight:700">📖 本文思想来源</p>
+    <p style="font-size:12px;line-height:1.9">
+      <strong>《AI Agent 设计模式》</strong> — Yao et al., ReAct: Synergizing Reasoning and Acting in Language Models (2023)<br>
+      • <span style="color:#fcd34d">Multi-Agent 架构</span>：来自 AutoGPT, BabyAGI, Microsoft Magentic-One (2025)<br>
+      • <span style="color:#94a3b8">Reflection 模式</span>：Self-Refine (Madaan et al. 2023), Reflexion (Shinn et al. 2023)<br>
+      • <span style="color:#94a3b8">状态机设计</span>：经典 FSM 理论 + LangGraph / DTM 框架实践
+    </p>
+  </div>
+
+  <div class="info-card">
+    <h4>🎤 本文一句话总结</h4>
+    <p>Agent 架构的核心是<strong>状态机</strong>：四种范式（ReAct / Plan-Execute / Multi-Agent / Reflection）是四种不同的"思考→行动→观察"调度策略，可以自由组合。生产级 Agent 需要关心：<strong>幂等性</strong>（同一个 Action 不执行两次）、<strong>超时控制</strong>（每个状态有超时保护）、<strong>上下文压缩</strong>（防止 Token 爆炸）。Go 实现的接口化框架让你一小时内在任何范式之间切换。</p>
+  </div>
+
+  <p style="text-align:center;color:var(--muted);margin-top:60px;padding-bottom:40px;font-size:12px">
+    🤖 AI Agent 架构原理完成 · 共 8 张配图<br>
+    <a href="/" style="color:var(--accent)">← 返回首页</a>
+  </p>
+</section>
+
+</main>
+</div>
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

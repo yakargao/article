@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoSQL 数据库实战 · 从原理到选型 · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .voice-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .voice-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 420px; }
+  }
+
+  /* QA styles */
+  .qa-q { cursor: pointer; user-select: none; }
+  .qa-q::after { content: ' ▾'; opacity: 0.5; }
+  .qa-q.open::after { content: ' ▴'; }
+  .qa-a { display: none; }
+  .qa-a.open { display: block; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">NoSQL</div>
+  <a class="nav-item" href="#why">🤔 为什么NoSQL</a>
+  <a class="nav-item" href="#mongo">🍃 MongoDB</a>
+  <a class="nav-item" href="#es">🔍 ElasticSearch</a>
+  <a class="nav-item" href="#clickhouse">🟢 ClickHouse</a>
+  <a class="nav-item" href="#compare">⚖️ 选型对比</a>
+  <div class="nav-section">实战</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ====== 总览 ====== -->
+<section class="section" id="overview">
+  <h2>📋 总览：NoSQL 是什么</h2>
+  <p>NoSQL（Not Only SQL）是<strong>非关系型数据库</strong>的统称。它打破了关系型数据库（MySQL/PostgreSQL）的"表-行-列"模式，专为<strong>高并发、海量数据、灵活 Schema</strong> 的场景而生。NoSQL 不是要取代 SQL，而是——<strong>用合适的工具解决合适的问题</strong>。</p>
+
+  <div class="feynman">
+    <p>想象一个超级市场：<span class="analogy">传统 SQL 数据库像超市的仓储系统——所有商品按品类、货架号、层数精确登记（严格 Schema），找东西很准但每次都要查登记本（Join），人多就排队。</span></p>
+    <p><span class="analogy">NoSQL 像地摊集市——每个摊位（不同数据库）想怎么摆就怎么摆（灵活 Schema），你直接去对应摊位拿东西（按 Key 查），速度快得多。但代价是——如果你想"找出所有红色的商品"，可能得跑遍全场（缺乏复杂查询能力）。</span></p>
+    <p>所以 NoSQL 和 SQL 是互补关系：<strong>SQL 管精度，NoSQL 管速度；SQL 管关系，NoSQL 管扩展。</strong></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="400" fill="#0f172a" rx="8"/>
+      <text x="400" y="36" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">🗺️ NoSQL 四大类型与选型地图</text>
+
+      <!-- CAP Theorem triangle -->
+      <text x="400" y="68" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">CAP 定理：一致性(C) · 可用性(A) · 分区容错(P) — 最多选两个</text>
+
+      <!-- Document DB -->
+      <rect x="30" y="82" width="230" height="130" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="145" y="108" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">📄 文档型 (Document)</text>
+      <text x="145" y="130" text-anchor="middle" fill="#c9d1d9" font-size="12">代表：<tspan fill="#3fb950">MongoDB</tspan></text>
+      <text x="145" y="150" text-anchor="middle" fill="#94a3b8" font-size="11">JSON/BSON 文档，灵活 Schema</text>
+      <text x="145" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">二级索引 + 复制集 + 分片</text>
+      <text x="145" y="186" text-anchor="middle" fill="#fbbf24" font-size="11">适合：CMS、日志、实时分析</text>
+
+      <!-- Key-Value -->
+      <rect x="285" y="82" width="230" height="130" rx="10" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="400" y="108" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="bold">🔑 键值型 (Key-Value)</text>
+      <text x="400" y="130" text-anchor="middle" fill="#c9d1d9" font-size="12">代表：<tspan fill="#fbbf24">Redis</tspan> / DynamoDB</text>
+      <text x="400" y="150" text-anchor="middle" fill="#94a3b8" font-size="11">纯内存或 SSD，O(1) 读写</text>
+      <text x="400" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">缓存、会话、计数器</text>
+      <text x="400" y="186" text-anchor="middle" fill="#fbbf24" font-size="11">适合：缓存、排行榜、分布式锁</text>
+
+      <!-- Column Family -->
+      <rect x="540" y="82" width="230" height="130" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="655" y="108" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="bold">📊 列族型 (Column)</text>
+      <text x="655" y="130" text-anchor="middle" fill="#c9d1d9" font-size="12">代表：<tspan fill="#22d3ee">ClickHouse</tspan> / HBase</text>
+      <text x="655" y="150" text-anchor="middle" fill="#94a3b8" font-size="11">列式存储，高压缩比</text>
+      <text x="655" y="168" text-anchor="middle" fill="#94a3b8" font-size="11">向量化执行引擎</text>
+      <text x="655" y="186" text-anchor="middle" fill="#22d3ee" font-size="11">适合：OLAP、大数据聚合分析</text>
+
+      <!-- Graph -->
+      <rect x="160" y="232" width="230" height="100" rx="10" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="275" y="258" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="bold">🕸️ 图型 (Graph)</text>
+      <text x="275" y="280" text-anchor="middle" fill="#c9d1d9" font-size="12">代表：Neo4j / NebulaGraph</text>
+      <text x="275" y="300" text-anchor="middle" fill="#a78bfa" font-size="11">适合：社交关系、推荐、知识图谱</text>
+
+      <!-- Full-text Search -->
+      <rect x="410" y="232" width="230" height="100" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="525" y="258" text-anchor="middle" fill="#f87171" font-size="14" font-weight="bold">🔍 搜索引擎 (Search)</text>
+      <text x="525" y="280" text-anchor="middle" fill="#c9d1d9" font-size="12">代表：<tspan fill="#f87171">ElasticSearch</tspan></text>
+      <text x="525" y="300" text-anchor="middle" fill="#f87171" font-size="11">适合：全文检索、日志分析、APM</text>
+
+      <!-- Bottom note -->
+      <rect x="30" y="352" width="740" height="36" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="376" text-anchor="middle" fill="#94a3b8" font-size="12">NoSQL 核心特征：<tspan fill="#3fb950">灵活 Schema</tspan> · <tspan fill="#fbbf24">水平扩展</tspan> · <tspan fill="#22d3ee">高吞吐</tspan> · <tspan fill="#f87171">最终一致性</tspan>（多数场景）</text>
+    </svg>
+  </div>
+  <div class="diagram-caption">图1：NoSQL 四大类型概览，本文重点讲解文档型(MongoDB)、搜索引擎(ES)、列族型(ClickHouse)</div>
+</section>
+
+<!-- ====== 为什么 NoSQL ====== -->
+<section class="section" id="why">
+  <h2>🤔 为什么需要 NoSQL</h2>
+  <p>传统关系型数据库在处理以下场景时力不从心：</p>
+  <ul>
+    <li><strong>高并发写入</strong>：每秒数万条日志写入，MySQL 单库扛不住</li>
+    <li><strong>灵活 Schema</strong>：日志字段不固定，改表结构需要停机</li>
+    <li><strong>海量数据</strong>：PB 级数据，分库分表维护成本高</li>
+    <li><strong>全文检索</strong>：MySQL LIKE '%keyword%' 不走索引，性能差</li>
+    <li><strong>大数据分析</strong>：行式存储对聚合查询不友好</li>
+  </ul>
+
+  <div class="feynman">
+    <p><span class="analogy">想象一个图书馆（SQL）：每本书都要按 ISBN、分类、作者精确登记。找书非常精准。但是——</span></p>
+    <p><span class="analogy">突然来了 100 万本没有 ISBN 的手稿（非结构数据），你没法按老规矩登记了。这时候你需要不同的"知识管理方式"：</span></p>
+    <p>• <strong>MongoDB</strong> = 大箱子，每份手稿随便往里塞，帖个标签就完事（文档存储）</p>
+    <p>• <strong>ElasticSearch</strong> = 把每份手稿的每个字都抄到索引卡上，方便搜索（全文检索）</p>
+    <p>• <strong>ClickHouse</strong> = 把所有手稿按"颜色"分类统计（列式分析）</p>
+    <p><span class="analogy">所以 NoSQL 不是来替代\"图书馆\"的——是来管理那些\"图书馆管不了的东西\"。</span></p>
+  </div>
+</section>
+
+<!-- ====== MongoDB ====== -->
+<section class="section" id="mongo">
+  <h2>🍃 MongoDB — 文档型数据库之王</h2>
+
+  <h3>1. 文档模型（Document Model）</h3>
+  <p>MongoDB 的数据结构是 <strong>BSON</strong>（Binary JSON），每条记录是一个 <strong>Document</strong>，多个 Document 组成 <strong>Collection</strong>（相当于 SQL 的"表"）。最大的特点是：<strong>同一个 Collection 里的文档字段可以不一样</strong>。</p>
+
+  <div class="compare">
+    <div>
+      <h4>📦 SQL（关系模型）</h4>
+      <pre><code>-- 用户表
+CREATE TABLE users (
+  id INT PRIMARY KEY,
+  name VARCHAR(50),
+  email VARCHAR(100),
+  address_id INT
+);
+-- 订单表（需要 JOIN）
+CREATE TABLE orders (...);
+-- 地址表（需要 JOIN）
+CREATE TABLE addresses (...);</code></pre>
+    </div>
+    <div>
+      <h4>🍃 MongoDB（文档模型）</h4>
+      <pre><code>// 一个文档搞定一切！
+{
+  _id: ObjectId("..."),
+  name: "张三",
+  email: "zhang@example.com",
+  orders: [
+    { item: "手机", price: 2999 },
+    { item: "壳", price: 29 }
+  ],
+  address: {
+    city: "北京",
+    street: "长安街"
+  }
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="feynman">
+    <p><span class="analogy">SQL 像\"图书馆登记系统\"——书（订单）和人（用户）分两张表登记，想看谁借了什么书要做 JOIN（关联查询）。</span></p>
+    <p><span class="analogy">MongoDB 像\"每个人的档案袋\"——直接把这个人借的所有书、地址、联系方式都塞进一个档案袋里。想看一个人的全部信息，打开一个档案袋就行，不用翻不同柜子（JOIN）。</span></p>
+    <p>这种 <strong>反范式（Denormalization）</strong> 的设计，适合读多写少、数据关系简单的场景。但如果你需要复杂的多对多关系（社交网络），文档模型就不如关系型或图数据库。</p>
+  </div>
+
+  <h3>2. 复制集（Replica Set）</h3>
+  <p>复制集是 MongoDB 的<strong>高可用</strong>方案。每个复制集通常包含 3 个节点：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="320" fill="#0f172a" rx="8"/>
+      <text x="400" y="36" text-anchor="middle" fill="#3fb950" font-size="17" font-weight="bold">🔄 MongoDB 复制集架构（3 节点）</text>
+
+      <!-- Primary -->
+      <rect x="300" y="60" width="200" height="70" rx="12" fill="#3fb950" opacity="0.15" stroke="#3fb950" stroke-width="2"/>
+      <text x="400" y="88" text-anchor="middle" fill="#3fb950" font-size="15" font-weight="bold">👑 PRIMARY（主）</text>
+      <text x="400" y="110" text-anchor="middle" fill="#94a3b8" font-size="11">读写流量 → 写入 Oplog</text>
+
+      <!-- Arrow -> Secondary 1 -->
+      <line x1="320" y1="130" x2="140" y2="200" stroke="#475569" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="200" y="175" text-anchor="middle" fill="#8b949e" font-size="10">异步复制 Oplog</text>
+
+      <!-- Arrow -> Secondary 2 -->
+      <line x1="480" y1="130" x2="660" y2="200" stroke="#475569" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="600" y="175" text-anchor="middle" fill="#8b949e" font-size="10">异步复制 Oplog</text>
+
+      <!-- Secondary 1 -->
+      <rect x="40" y="200" width="200" height="70" rx="12" fill="#1e293b" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="140" y="228" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="bold">📋 SECONDARY（从1）</text>
+      <text x="140" y="250" text-anchor="middle" fill="#94a3b8" font-size="11">只读（可配置）· 选举候选</text>
+
+      <!-- Secondary 2 -->
+      <rect x="560" y="200" width="200" height="70" rx="12" fill="#1e293b" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="660" y="228" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="bold">📋 SECONDARY（从2）</text>
+      <text x="660" y="250" text-anchor="middle" fill="#94a3b8" font-size="11">只读（可配置）· 仲裁投票</text>
+
+      <!-- Heartbeat arrows -->
+      <line x1="140" y1="270" x2="140" y2="290" stroke="#fbbf24" stroke-width="1"/>
+      <text x="400" y="300" text-anchor="middle" fill="#fbbf24" font-size="11">⏱️ 节点间每 2 秒心跳检测 · 主节点故障自动触发选举</text>
+
+      <!-- Election box -->
+      <rect x="250" y="270" width="300" height="20" rx="4" fill="#f87171" opacity="0.1"/>
+      <text x="400" y="284" text-anchor="middle" fill="#f87171" font-size="10">故障切换：多数派选举 → 新 Primary → 重新同步</text>
+    </svg>
+  </div>
+  <div class="diagram-caption">图2：MongoDB 复制集 — 主节点接收写请求，从节点异步复制 Oplog，主节点宕机后自动选举新主</div>
+
+  <h4>核心机制</h4>
+  <ul>
+    <li><strong>Oplog</strong>（操作日志）：Primary 的所有写操作记录在 Oplog 中，Secondary 不断拉取并重放</li>
+    <li><strong>自动选举</strong>：Primary 宕机后，Secondary 通过 <strong>Raft 协议变种</strong> 选举新 Primary</li>
+    <li><strong>多数派写入</strong>：<code>w: "majority"</code> 保证写操作被多数节点确认后才返回，防止数据丢失</li>
+    <li><strong>读写分离</strong>：读操作可配置为 <code>readPreference: secondaryPreferred</code> 分摊主节点压力</li>
+  </ul>
+
+  <h3>3. 分片集群（Sharding）</h3>
+  <p>当单机无法承载数据量和吞吐量时，MongoDB 通过 <strong>分片（Sharding）</strong> 实现水平扩展。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="340" fill="#0f172a" rx="8"/>
+      <text x="400" y="36" text-anchor="middle" fill="#22d3ee" font-size="17" font-weight="bold">🔀 MongoDB 分片集群架构</text>
+
+      <!-- Top: Application + Router -->
+      <rect x="300" y="55" width="200" height="44" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="400" y="82" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">📱 应用 / Driver</text>
+
+      <!-- Arrow down to mongos -->
+      <line x1="400" y1="99" x2="400" y2="120" stroke="#475569" stroke-width="2"/>
+
+      <!-- mongos router -->
+      <rect x="280" y="120" width="240" height="44" rx="8" fill="#fbbf24" opacity="0.15" stroke="#fbbf24" stroke-width="2"/>
+      <text x="400" y="147" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="bold">🔀 mongos（路由层）</text>
+
+      <!-- Arrow down to Config Server -->
+      <line x1="400" y1="164" x2="400" y2="182" stroke="#475569" stroke-width="1.5"/>
+
+      <!-- Config Server -->
+      <rect x="310" y="182" width="180" height="36" rx="6" fill="#1e293b" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="400" y="205" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="bold">📋 Config Server（元数据）</text>
+
+      <!-- Arrow down to shards -->
+      <line x1="260" y1="218" x2="140" y2="250" stroke="#475569" stroke-width="1.5"/>
+      <line x1="400" y1="218" x2="400" y2="250" stroke="#475569" stroke-width="1.5"/>
+      <line x1="540" y1="218" x2="660" y2="250" stroke="#475569" stroke-width="1.5"/>
+
+      <!-- Shard 1 -->
+      <rect x="40" y="252" width="200" height="70" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="140" y="278" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">📦 Shard 1（分片A）</text>
+      <text x="140" y="298" text-anchor="middle" fill="#94a3b8" font-size="11">Range: [min, 10000)</text>
+      <text x="140" y="312" text-anchor="middle" fill="#8b949e" font-size="10">复制集（P+S+S）</text>
+
+      <!-- Shard 2 -->
+      <rect x="300" y="252" width="200" height="70" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="400" y="278" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">📦 Shard 2（分片B）</text>
+      <text x="400" y="298" text-anchor="middle" fill="#94a3b8" font-size="11">Range: [10000, 50000)</text>
+      <text x="400" y="312" text-anchor="middle" fill="#8b949e" font-size="10">复制集（P+S+S）</text>
+
+      <!-- Shard 3 -->
+      <rect x="560" y="252" width="200" height="70" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="660" y="278" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">📦 Shard 3（分片C）</text>
+      <text x="660" y="298" text-anchor="middle" fill="#94a3b8" font-size="11">Range: [50000, max]</text>
+      <text x="660" y="312" text-anchor="middle" fill="#8b949e" font-size="10">复制集（P+S+S）</text>
+    </svg>
+  </div>
+  <div class="diagram-caption">图3：MongoDB 分片集群 — mongos 路由请求，Config Server 存元数据，每个分片是一个独立复制集</div>
+
+  <h4>分片键（Shard Key）选择</h4>
+  <p>分片键的选择<strong>极其重要</strong>，选错了会导致数据倾斜或性能瓶颈：</p>
+  <ul>
+    <li><span class="badge badge-green">✅ 好</span> <strong>高基数</strong>：如 <code>_id</code>、用户 ID，值分布均匀</li>
+    <li><span class="badge badge-green">✅ 好</span> <strong>单调递增</strong>：如时间戳（需配合 <strong>Hashed Sharding</strong>）</li>
+    <li><span class="badge badge-red">❌ 差</span> <strong>低基数</strong>：如性别（只有男女），数据倾斜严重</li>
+    <li><span class="badge badge-red">❌ 差</span> <strong>纯单调递增</strong>：如自增 ID，所有新数据写入同一个分片</li>
+  </ul>
+
+  <p>分片策略：<strong>Range Sharding</strong>（范围分片，适合范围查询）vs <strong>Hashed Sharding</strong>（哈希分片，适合均匀分布）。</p>
+</section>
+
+<!-- ====== ElasticSearch ====== -->
+<section class="section" id="es">
+  <h2>🔍 ElasticSearch — 搜索引擎的标杆</h2>
+
+  <h3>1. 倒排索引（Inverted Index）</h3>
+  <p>ElasticSearch 的核心数据结构是<strong>倒排索引</strong>。传统 SQL 的索引是"文档→关键词"，而倒排索引是<strong>"关键词→文档"</strong>。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">想象你在图书馆找书：</span></p>
+    <p><span class="analogy">正向索引（SQL）就像——你去书架上一本一本地翻书皮（全表扫描），或者先查目录看哪些页有你要的词（B+树索引）。</span></p>
+    <p><span class="analogy">倒排索引（ES）就像——图书馆门口有个大公告板，上面写着：</span></p>
+    <ul>
+      <li><span class="analogy">"分布式" → 出现在第1、3、7、12本书</span></li>
+      <li><span class="analogy">"数据库" → 出现在第2、3、5、8、11本书</span></li>
+      <li><span class="analogy">"一致性" → 出现在第3、6、9本书</span></li>
+    </ul>
+    <p><span class="analogy">你要找同时包含"分布式"+"数据库"的书——直接在公告板上取交集！第3本书命中。根本不需要翻书！</span></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="340" fill="#0f172a" rx="8"/>
+      <text x="400" y="36" text-anchor="middle" fill="#f87171" font-size="17" font-weight="bold">🔍 倒排索引原理 vs 正向索引</text>
+
+      <!-- Left: Forward Index -->
+      <rect x="20" y="55" width="350" height="270" rx="10" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+      <text x="195" y="80" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="bold">❌ 正向索引（SQL 全表扫描）</text>
+
+      <rect x="40" y="95" width="310" height="36" rx="6" fill="#f87171" opacity="0.08"/>
+      <text x="195" y="117" text-anchor="middle" fill="#94a3b8" font-size="11">Doc1: "MongoDB 是 NoSQL 数据库"</text>
+
+      <rect x="40" y="140" width="310" height="36" rx="6" fill="#f87171" opacity="0.08"/>
+      <text x="195" y="162" text-anchor="middle" fill="#94a3b8" font-size="11">Doc2: "ES 使用倒排索引做全文搜索"</text>
+
+      <rect x="40" y="185" width="310" height="36" rx="6" fill="#f87171" opacity="0.08"/>
+      <text x="195" y="207" text-anchor="middle" fill="#94a3b8" font-size="11">Doc3: "ClickHouse 是列式数据库"</text>
+
+      <text x="195" y="248" text-anchor="middle" fill="#f87171" font-size="11">搜索"数据库" → 逐文档扫描 Doc1, Doc3</text>
+      <text x="195" y="270" text-anchor="middle" fill="#f87171" font-size="11">→ 每次搜索都要 O(n) 扫描所有文档</text>
+      <text x="195" y="295" text-anchor="middle" fill="#8b949e" font-size="10">文档越多越慢 😰</text>
+
+      <!-- Arrow -->
+      <text x="395" y="180" fill="#8b949e" font-size="24">→</text>
+
+      <!-- Right: Inverted Index -->
+      <rect x="430" y="55" width="350" height="270" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="2"/>
+      <text x="605" y="80" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">✅ 倒排索引（ES 搜索）</text>
+
+      <rect x="450" y="95" width="310" height="24" rx="6" fill="#3fb950" opacity="0.12"/>
+      <text x="605" y="112" text-anchor="middle" fill="#3fb950" font-size="11">"MongoDB" → [Doc1]</text>
+
+      <rect x="450" y="125" width="310" height="24" rx="6" fill="#3fb950" opacity="0.12"/>
+      <text x="605" y="142" text-anchor="middle" fill="#3fb950" font-size="11">"NoSQL" → [Doc1]</text>
+
+      <rect x="450" y="155" width="310" height="24" rx="6" fill="#3fb950" opacity="0.12"/>
+      <text x="605" y="172" text-anchor="middle" fill="#3fb950" font-size="11">"数据库" → [Doc1, Doc3]</text>
+
+      <rect x="450" y="185" width="310" height="24" rx="6" fill="#3fb950" opacity="0.12"/>
+      <text x="605" y="202" text-anchor="middle" fill="#3fb950" font-size="11">"倒排索引" → [Doc2]</text>
+
+      <rect x="450" y="215" width="310" height="24" rx="6" fill="#3fb950" opacity="0.12"/>
+      <text x="605" y="232" text-anchor="middle" fill="#3fb950" font-size="11">"列式" → [Doc3]</text>
+
+      <text x="605" y="265" text-anchor="middle" fill="#3fb950" font-size="11">搜索"数据库" → 直接在词典中 O(1) 查找</text>
+      <text x="605" y="287" text-anchor="middle" fill="#3fb950" font-size="11">→ 立即返回 [Doc1, Doc3]</text>
+      <text x="605" y="312" text-anchor="middle" fill="#8b949e" font-size="10">无论多少文档，搜索速度几乎不变 😎</text>
+    </svg>
+  </div>
+  <div class="diagram-caption">图4：正向索引 vs 倒排索引对比 — 倒排索引以"词"为索引，搜索时直接查词典即可</div>
+
+  <h3>2. 分词（Analysis）与聚合（Aggregation）</h3>
+
+  <h4>分词器（Analyzer）</h4>
+  <p>ES 的分词器由三部分组成：<strong>Character Filter</strong>（字符过滤）→ <strong>Tokenizer</strong>（分词器）→ <strong>Token Filter</strong>（词元过滤）。</p>
+  <pre><code>// 中文分词示例
+POST _analyze
+{
+  "analyzer": "ik_smart",  // IK 中文分词器
+  "text": "我是中国人"
+}
+// 结果: ["我", "是", "中国人"]
+
+// 英文分词
+POST _analyze
+{
+  "analyzer": "standard",
+  "text": "I love ElasticSearch"
+}
+// 结果: ["i", "love", "elasticsearch"]  → 小写化</code></pre>
+
+  <h4>聚合（Aggregations）</h4>
+  <p>ES 的聚合分析非常强大，可以替代部分 SQL 的 GROUP BY 功能：</p>
+  <pre><code>// 按价格区间统计订单数
+GET orders/_search
+{
+  "size": 0,
+  "aggs": {
+    "price_ranges": {
+      "range": {
+        "field": "price",
+        "ranges": [
+          { "to": 100 },
+          { "from": 100, "to": 500 },
+          { "from": 500 }
+        ]
+      }
+    }
+  }
+}</code></pre>
+
+  <div class="feynman">
+    <p><span class="analogy">分词 = 把一句话切成有意义的\"积木块\"。</span></p>
+    <p><span class="analogy">"我是中国人" → IK 分词器知道\"中国人\"是一个整体词，而不是切成\"中\"\"国\"\"人\"（那样就失去语义了）。</span></p>
+    <p><span class="analogy">聚合 = 把搜索结果按条件\"分堆\"。就像你在水果摊问\"帮我统计一下每种水果的均价\"——摊主把所有苹果放一堆算均价，所有香蕉放一堆算均价。这就是 ES 的 Terms Aggregation。</span></p>
+  </div>
+
+  <h3>3. 集群架构</h3>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="340" fill="#0f172a" rx="8"/>
+      <text x="400" y="36" text-anchor="middle" fill="#f87171" font-size="17" font-weight="bold">🏗️ ElasticSearch 集群架构</text>
+
+      <!-- Client -->
+      <rect x="290" y="50" width="220" height="40" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="400" y="74" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">📱 Client / Kibana / Logstash</text>
+
+      <!-- Load Balancer -->
+      <rect x="310" y="100" width="180" height="34" rx="6" fill="#fbbf24" opacity="0.12" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="400" y="121" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">🌐 Load Balancer</text>
+
+      <!-- Arrows to nodes -->
+      <line x1="340" y1="134" x2="140" y2="170" stroke="#475569" stroke-width="1.5"/>
+      <line x1="400" y1="134" x2="400" y2="170" stroke="#475569" stroke-width="1.5"/>
+      <line x1="460" y1="134" x2="660" y2="170" stroke="#475569" stroke-width="1.5"/>
+
+      <!-- Node 1 - Master eligible -->
+      <rect x="40" y="172" width="200" height="70" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="2"/>
+      <text x="140" y="198" text-anchor="middle" fill="#f87171" font-size="13" font-weight="bold">👑 Node 1（Master）</text>
+      <text x="140" y="218" text-anchor="middle" fill="#94a3b8" font-size="11">集群管理 + 分片分配</text>
+      <text x="140" y="234" text-anchor="middle" fill="#8b949e" font-size="10">Index: Product（P0, R0）</text>
+
+      <!-- Node 2 - Data + Ingest -->
+      <rect x="300" y="172" width="200" height="70" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="400" y="198" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">📦 Node 2（Data+Ingest）</text>
+      <text x="400" y="218" text-anchor="middle" fill="#94a3b8" font-size="11">数据存储 + 预处理</text>
+      <text x="400" y="234" text-anchor="middle" fill="#8b949e" font-size="10">Index: Product（P1, R1）</text>
+
+      <!-- Node 3 - Data -->
+      <rect x="560" y="172" width="200" height="70" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="660" y="198" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">📦 Node 3（Data）</text>
+      <text x="660" y="218" text-anchor="middle" fill="#94a3b8" font-size="11">数据存储 + 搜索</text>
+      <text x="660" y="234" text-anchor="middle" fill="#8b949e" font-size="10">Index: Product（R0, R1）</text>
+
+      <!-- Bottom explanation -->
+      <rect x="40" y="262" width="720" height="65" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="284" text-anchor="middle" fill="#94a3b8" font-size="11">Index = 逻辑上的\"数据库\"，由多个 <tspan fill="#fbbf24">Shard（分片）</tspan> 组成</text>
+      <text x="400" y="302" text-anchor="middle" fill="#94a3b8" font-size="11">每个 Shard 是一个完整的 <tspan fill="#fbbf24">Lucene 索引</tspan>，有 <tspan fill="#3fb950">Primary Shard</tspan>（写）和 <tspan fill="#3fb950">Replica Shard</tspan>（读冗余）</text>
+      <text x="400" y="320" text-anchor="middle" fill="#8b949e" font-size="10">P=Primary Shard, R=Replica Shard, 编号表示属于哪个 Shard</text>
+    </svg>
+  </div>
+  <div class="diagram-caption">图5：ES 集群架构 — 每个 Index 分为多个 Shard，Shard 有 Primary/Replica 副本，分布在多个节点上</div>
+
+  <h4>节点角色</h4>
+  <ul>
+    <li><strong>Master Node</strong>：管理集群状态、分片分配。建议 3 个专用 Master 节点（奇数）</li>
+    <li><strong>Data Node</strong>：存储数据、执行搜索和聚合。核心节点，需要大内存+快速磁盘</li>
+    <li><strong>Ingest Node</strong>：文档写入前的预处理管道（数据清洗、字段提取）</li>
+    <li><strong>Coordinating Node</strong>：仅做请求转发和结果归并，不存数据</li>
+  </ul>
+
+  <h4>写入流程</h4>
+  <ul>
+    <li>Client 向任意节点发送写请求 → 协调节点计算文档属于哪个 Shard → 转发到 Primary Shard</li>
+    <li>Primary Shard 写入 Lucene 的 <strong>Memory Buffer</strong>（内存缓冲区）</li>
+    <li>定时 <strong>Refresh</strong>（默认 1s）→ 生成 <strong>Segment</strong>（段），此时文档才可被搜索</li>
+    <li>定时 <strong>Flush</strong> → 将 Segment 持久化到磁盘并写入 <strong>Commit Point</strong> + <strong>Translog</strong></li>
+  </ul>
+
+  <div class="feynman">
+    <p><span class="analogy">ES 写入就像餐厅出菜流程：</span></p>
+    <p><span class="analogy">• Memory Buffer = 厨师的案板（还没下锅，别人吃不到）</span></p>
+    <p><span class="analogy">• Refresh = 把菜倒进展示柜（虽然还没完全凝固，但客人可以看到了）</span></p>
+    <p><span class="analogy">• Flush = 做好的菜摆到正式冷柜（不怕停电丢了）</span></p>
+    <p><span class="analogy">所以 ES 是<strong>近实时</strong>搜索（默认 1 秒后可见），不是实时！如果写完后立刻搜索不到，很正常。</span></p>
+  </div>
+</section>
+
+<!-- ====== ClickHouse ====== -->
+<section class="section" id="clickhouse">
+  <h2>🟢 ClickHouse — 列式存储的扛把子</h2>
+
+  <h3>1. 列式存储（Columnar Storage）</h3>
+  <p>ClickHouse 的核心是<strong>列式存储</strong>——数据按<strong>列</strong>而不是按<strong>行</strong>组织。这和 MySQL/PostgreSQL 的行式存储有本质区别：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="320" fill="#0f172a" rx="8"/>
+      <text x="400" y="36" text-anchor="middle" fill="#22d3ee" font-size="17" font-weight="bold">📊 行式存储 vs 列式存储</text>
+
+      <!-- Row-based -->
+      <rect x="20" y="55" width="370" height="250" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="1.5"/>
+      <text x="205" y="80" text-anchor="middle" fill="#f87171" font-size="14" font-weight="bold">❌ 行式存储（MySQL/PostgreSQL）</text>
+
+      <!-- Table header -->
+      <rect x="35" y="95" width="340" height="24" rx="4" fill="#252830"/>
+      <text x="55" y="112" fill="#fbbf24" font-size="11" font-weight="bold">ID</text>
+      <text x="130" y="112" fill="#fbbf24" font-size="11" font-weight="bold">Name</text>
+      <text x="210" y="112" fill="#fbbf24" font-size="11" font-weight="bold">City</text>
+      <text x="290" y="112" fill="#fbbf24" font-size="11" font-weight="bold">Salary</text>
+
+      <rect x="35" y="123" width="340" height="22" rx="2" fill="#f87171" opacity="0.08"/>
+      <text x="55" y="139" fill="#94a3b8" font-size="11">1</text>
+      <text x="130" y="139" fill="#94a3b8" font-size="11">张三</text>
+      <text x="210" y="139" fill="#94a3b8" font-size="11">北京</text>
+      <text x="290" y="139" fill="#94a3b8" font-size="11">15000</text>
+
+      <rect x="35" y="147" width="340" height="22" rx="2" fill="#f87171" opacity="0.08"/>
+      <text x="55" y="163" fill="#94a3b8" font-size="11">2</text>
+      <text x="130" y="163" fill="#94a3b8" font-size="11">李四</text>
+      <text x="210" y="163" fill="#94a3b8" font-size="11">上海</text>
+      <text x="290" y="163" fill="#94a3b8" font-size="11">22000</text>
+
+      <rect x="35" y="171" width="340" height="22" rx="2" fill="#f87171" opacity="0.08"/>
+      <text x="55" y="187" fill="#94a3b8" font-size="11">3</text>
+      <text x="130" y="187" fill="#94a3b8" font-size="11">王五</text>
+      <text x="210" y="187" fill="#94a3b8" font-size="11">深圳</text>
+      <text x="290" y="187" fill="#94a3b8" font-size="11">18000</text>
+
+      <line x1="36" y1="205" x2="374" y2="205" stroke="#f87171" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="205" y="225" text-anchor="middle" fill="#f87171" font-size="11">SUM(Salary) → 需读取整行数据</text>
+      <text x="205" y="245" text-anchor="middle" fill="#f87171" font-size="11">→ 浪费大量 I/O 读取无关字段</text>
+      <text x="205" y="268" text-anchor="middle" fill="#8b949e" font-size="10">❌ 聚合查询时 ~70% I/O 浪费</text>
+
+      <!-- Arrow -->
+      <text x="400" y="175" fill="#8b949e" font-size="24">→</text>
+
+      <!-- Column-based -->
+      <rect x="420" y="55" width="360" height="250" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="2"/>
+      <text x="600" y="80" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">✅ 列式存储（ClickHouse）</text>
+
+      <!-- ID column -->
+      <rect x="440" y="95" width="72" height="98" rx="4" fill="#3fb950" opacity="0.08"/>
+      <text x="476" y="112" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">ID</text>
+      <text x="476" y="133" text-anchor="middle" fill="#94a3b8" font-size="11">1</text>
+      <text x="476" y="153" text-anchor="middle" fill="#94a3b8" font-size="11">2</text>
+      <text x="476" y="173" text-anchor="middle" fill="#94a3b8" font-size="11">3</text>
+
+      <!-- Name column -->
+      <rect x="520" y="95" width="72" height="98" rx="4" fill="#3fb950" opacity="0.08"/>
+      <text x="556" y="112" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">Name</text>
+      <text x="556" y="133" text-anchor="middle" fill="#94a3b8" font-size="11">张三</text>
+      <text x="556" y="153" text-anchor="middle" fill="#94a3b8" font-size="11">李四</text>
+      <text x="556" y="173" text-anchor="middle" fill="#94a3b8" font-size="11">王五</text>
+
+      <!-- Salary column (highlighted) -->
+      <rect x="600" y="95" width="80" height="98" rx="4" fill="#3fb950" opacity="0.2" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="640" y="112" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold">Salary</text>
+      <text x="640" y="133" text-anchor="middle" fill="#3fb950" font-size="11">15000</text>
+      <text x="640" y="153" text-anchor="middle" fill="#3fb950" font-size="11">22000</text>
+      <text x="640" y="173" text-anchor="middle" fill="#3fb950" font-size="11">18000</text>
+
+      <line x1="421" y1="205" x2="778" y2="205" stroke="#3fb950" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="600" y="225" text-anchor="middle" fill="#3fb950" font-size="11">SUM(Salary) → 只读取 Salary 这一列！</text>
+      <text x="600" y="245" text-anchor="middle" fill="#3fb950" font-size="11">→ 大幅减少 I/O，同列数据连续存储</text>
+      <text x="600" y="268" text-anchor="middle" fill="#8b949e" font-size="10">✅ 聚合查询快 10-100 倍</text>
+    </svg>
+  </div>
+  <div class="diagram-caption">图6：行式存储 vs 列式存储 — 列存只读取需要的列，I/O 减少 + 高压缩比</div>
+
+  <div class="feynman">
+    <p><span class="analogy">行式存储就像\"每个人的档案袋\"——想看工资总和？你得把所有人的档案袋拆开，只看工资那一行，其他信息（姓名、地址、爱好）都白白读了。</span></p>
+    <p><span class="analogy">列式存储就像\"把所有工资写在同一张纸上\"——想看工资总和？直接拿这张纸加一下就行，根本不用碰其他信息。</span></p>
+    <p><span class="analogy">而且同一列的数据类型相同（全是数字），压缩率极高——比如\"性别\"列全是\"男\"\"女\"，可以压缩到原始大小的 1/10。</span></p>
+  </div>
+
+  <h3>2. 向量化执行（Vectorized Execution）</h3>
+  <p>ClickHouse 的执行引擎不是逐行处理，而是<strong>批量（Block）</strong>处理——一次处理一批数据（默认 4096 行），利用 CPU 的 <strong>SIMD（单指令多数据）</strong> 指令集并行计算。</p>
+
+  <pre><code>-- 逐行处理（传统数据库）
+for each row: result += row.salary
+
+-- 向量化处理（ClickHouse）
+-- 一次加载 4096 个 salary 值到 CPU 寄存器
+-- 一条 SIMD 指令完成 4096 次加法
+-- 效率提升数十倍</code></pre>
+
+  <h3>3. 查询优化技巧</h3>
+  <ul>
+    <li><strong>分区（Partition）</strong>：按日期分区，查询时直接裁剪不相关分区。如 <code>PARTITION BY toYYYYMM(date)</code></li>
+    <li><strong>排序键（ORDER BY）</strong>：数据按指定列物理排序，范围查询极快。如 <code>ORDER BY (date, city)</code></li>
+    <li><strong>物化视图（Materialized View）</strong>：预聚合加速，写入时实时计算。如每分钟统计一次 PV/UV</li>
+    <li><strong>稀疏索引</strong>：每 8192 行记录一个 Mark，避免全表扫描</li>
+    <li><strong>采样查询</strong>：<code>SAMPLE 0.1</code> 只查 10% 数据，快速获取近似结果</li>
+  </ul>
+
+  <div class="info-card">
+    <h4>🛠️ ClickHouse vs MySQL 聚合速度对比</h4>
+    <p>场景：对 10 亿行日志按日期统计 PV</p>
+    <ul>
+      <li><strong>MySQL</strong>：扫描 10 亿行，读整个行 → 耗时约 <strong>30-60 秒</strong></li>
+      <li><strong>ClickHouse</strong>：只读 3 列（日期、URL），列存压缩后仅扫描 1/10 数据，向量化执行 → 耗时 <strong>0.3-1 秒</strong></li>
+    </ul>
+    <p>这个量级的差距，正是列式存储 + 向量化执行带来的红利。</p>
+  </div>
+</section>
+
+<!-- ====== 选型对比 ====== -->
+<section class="section" id="compare">
+  <h2>⚖️ 选型对比：MongoDB vs ES vs ClickHouse vs Redis</h2>
+
+  <p>四种 NoSQL 数据库各有侧重，选型的关键是匹配<strong>业务场景</strong>：</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="400" fill="#0f172a" rx="8"/>
+      <text x="400" y="36" text-anchor="middle" fill="#22d3ee" font-size="17" font-weight="bold">⚡ NoSQL 四巨头选型对比</text>
+
+      <!-- Dimension labels -->
+      <text x="80" y="70" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">维度</text>
+      <text x="260" y="70" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">🍃 MongoDB</text>
+      <text x="400" y="70" text-anchor="middle" fill="#f87171" font-size="12" font-weight="bold">🔍 ES</text>
+      <text x="540" y="70" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="bold">🟢 ClickHouse</text>
+      <text x="700" y="70" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold">🔑 Redis</text>
+
+      <line x1="30" y1="80" x2="770" y2="80" stroke="#334155" stroke-width="1"/>
+
+      <!-- Row 1: 存储模型 -->
+      <text x="80" y="108" text-anchor="middle" fill="#94a3b8" font-size="11">存储模型</text>
+      <text x="260" y="108" text-anchor="middle" fill="#c9d1d9" font-size="11">文档（JSON/BSON）</text>
+      <text x="400" y="108" text-anchor="middle" fill="#c9d1d9" font-size="11">倒排索引 + 文档</text>
+      <text x="540" y="108" text-anchor="middle" fill="#c9d1d9" font-size="11">列式存储</text>
+      <text x="700" y="108" text-anchor="middle" fill="#c9d1d9" font-size="11">键值（内存）</text>
+
+      <line x1="30" y1="118" x2="770" y2="118" stroke="#1e293b" stroke-width="1"/>
+
+      <!-- Row 2: 查询能力 -->
+      <text x="80" y="146" text-anchor="middle" fill="#94a3b8" font-size="11">查询能力</text>
+      <text x="260" y="146" text-anchor="middle" fill="#c9d1d9" font-size="11">二级索引、聚合管道</text>
+      <text x="400" y="146" text-anchor="middle" fill="#c9d1d9" font-size="11">全文搜索、聚合、过滤</text>
+      <text x="540" y="146" text-anchor="middle" fill="#c9d1d9" font-size="11">SQL、聚合分析</text>
+      <text x="700" y="146" text-anchor="middle" fill="#c9d1d9" font-size="11">简单 Key 查询</text>
+
+      <line x1="30" y1="156" x2="770" y2="156" stroke="#1e293b" stroke-width="1"/>
+
+      <!-- Row 3: 写入性能 -->
+      <text x="80" y="184" text-anchor="middle" fill="#94a3b8" font-size="11">写入性能</text>
+      <rect x="220" y="172" width="80" height="20" rx="4" fill="#3fb950" opacity="0.15"/>
+      <text x="260" y="184" text-anchor="middle" fill="#3fb950" font-size="11">⭐ 万级/s</text>
+      <rect x="365" y="172" width="70" height="20" rx="4" fill="#fbbf24" opacity="0.15"/>
+      <text x="400" y="184" text-anchor="middle" fill="#fbbf24" font-size="11">⭐ 万级/s</text>
+      <rect x="505" y="172" width="70" height="20" rx="4" fill="#3fb950" opacity="0.15"/>
+      <text x="540" y="184" text-anchor="middle" fill="#3fb950" font-size="11">⭐ 百万/s</text>
+      <rect x="665" y="172" width="70" height="20" rx="4" fill="#f87171" opacity="0.15"/>
+      <text x="700" y="184" text-anchor="middle" fill="#f87171" font-size="11">⭐ 千万/s</text>
+
+      <line x1="30" y1="202" x2="770" y2="202" stroke="#1e293b" stroke-width="1"/>
+
+      <!-- Row 4: 聚合分析 -->
+      <text x="80" y="230" text-anchor="middle" fill="#94a3b8" font-size="11">聚合分析</text>
+      <text x="260" y="230" text-anchor="middle" fill="#c9d1d9" font-size="11">MongoDB Agg Pipeline</text>
+      <text x="400" y="230" text-anchor="middle" fill="#c9d1d9" font-size="11">ES Aggregations</text>
+      <text x="540" y="230" text-anchor="middle" fill="#c9d1d9" font-size="11">🏆 最强 OLAP</text>
+      <text x="700" y="230" text-anchor="middle" fill="#c9d1d9" font-size="11">❌ 不支持</text>
+
+      <line x1="30" y1="240" x2="770" y2="240" stroke="#1e293b" stroke-width="1"/>
+
+      <!-- Row 5: 数据一致性 -->
+      <text x="80" y="268" text-anchor="middle" fill="#94a3b8" font-size="11">一致性</text>
+      <text x="260" y="268" text-anchor="middle" fill="#c9d1d9" font-size="11">强/最终一致可选</text>
+      <text x="400" y="268" text-anchor="middle" fill="#c9d1d9" font-size="11">近实时（秒级）</text>
+      <text x="540" y="268" text-anchor="middle" fill="#c9d1d9" font-size="11">最终一致性</text>
+      <text x="700" y="268" text-anchor="middle" fill="#c9d1d9" font-size="11">强一致性</text>
+
+      <line x1="30" y1="278" x2="770" y2="278" stroke="#1e293b" stroke-width="1"/>
+
+      <!-- Row 6: 扩展性 -->
+      <text x="80" y="306" text-anchor="middle" fill="#94a3b8" font-size="11">扩展性</text>
+      <text x="260" y="306" text-anchor="middle" fill="#c9d1d9" font-size="11">复制集 + 分片</text>
+      <text x="400" y="306" text-anchor="middle" fill="#c9d1d9" font-size="11">Shard + Replica</text>
+      <text x="540" y="306" text-anchor="middle" fill="#c9d1d9" font-size="11">分布式（天然）</text>
+      <text x="700" y="306" text-anchor="middle" fill="#c9d1d9" font-size="11">Cluster + 哨兵</text>
+
+      <line x1="30" y1="316" x2="770" y2="316" stroke="#1e293b" stroke-width="1"/>
+
+      <!-- Row 7: 最佳场景 -->
+      <text x="80" y="344" text-anchor="middle" fill="#94a3b8" font-size="11">最佳场景</text>
+      <text x="260" y="340" text-anchor="middle" fill="#3fb950" font-size="10">CMS、用户资料</text>
+      <text x="400" y="340" text-anchor="middle" fill="#f87171" font-size="10">全文搜索、日志</text>
+      <text x="540" y="340" text-anchor="middle" fill="#22d3ee" font-size="10">数据分析、BI</text>
+      <text x="700" y="340" text-anchor="middle" fill="#fbbf24" font-size="10">缓存、计数器</text>
+      <text x="260" y="360" text-anchor="middle" fill="#3fb950" font-size="10">实时分析</text>
+      <text x="400" y="360" text-anchor="middle" fill="#f87171" font-size="10">APM、安全分析</text>
+      <text x="540" y="360" text-anchor="middle" fill="#22d3ee" font-size="10">事件追踪</text>
+      <text x="700" y="360" text-anchor="middle" fill="#fbbf24" font-size="10">分布式锁</text>
+
+      <line x1="30" y1="370" x2="770" y2="370" stroke="#1e293b" stroke-width="1"/>
+
+      <!-- Row 8: 不适合 -->
+      <text x="80" y="392" text-anchor="middle" fill="#94a3b8" font-size="11">不适合</text>
+      <text x="260" y="392" text-anchor="middle" fill="#f87171" font-size="10">复杂 JOIN</text>
+      <text x="400" y="392" text-anchor="middle" fill="#f87171" font-size="10">频繁更新</text>
+      <text x="540" y="392" text-anchor="middle" fill="#f87171" font-size="10">小量数据</text>
+      <text x="700" y="392" text-anchor="middle" fill="#f87171" font-size="10">持久化存储</text>
+    </svg>
+  </div>
+  <div class="diagram-caption">图7：NoSQL 四巨头全维度对比 — 红色标⭐为优势领域</div>
+
+  <h3>🔍 选型决策树</h3>
+  <div class="info-card">
+    <ul>
+      <li><strong>需要全文搜索 + 日志分析？</strong> → <span class="badge badge-red">ES</span></li>
+      <li><strong>需要灵活 Schema + 高速读写 + 复制集高可用？</strong> → <span class="badge badge-green">MongoDB</span></li>
+      <li><strong>需要海量数据聚合分析（OLAP）？</strong> → <span class="badge badge-cyan">ClickHouse</span></li>
+      <li><strong>需要微秒级缓存 + 计数器 + 分布式锁？</strong> → <span class="badge badge-orange">Redis</span></li>
+      <li><strong>既需要搜索又需要存储？</strong> → MongoDB（存）+ ES（搜），使用 <strong>MongoDB Connector for ES</strong> 同步</li>
+      <li><strong>实时分析 + 大屏展示？</strong> → Kafka → ClickHouse 是经典组合</li>
+    </ul>
+  </div>
+
+  <div class="feynman">
+    <p><span class="analogy">选数据库就像选择交通工具：</span></p>
+    <p><span class="analogy">🍃 MongoDB = SUV（家庭用车，啥都能干一点，但不是最强的）</span></p>
+    <p><span class="analogy">🔍 ES = 搜索救援队（专精找东西，其他方面一般）</span></p>
+    <p><span class="analogy">🟢 ClickHouse = 货运卡车（专拉数据分析这趟活，超强）</span></p>
+    <p><span class="analogy">🔑 Redis = 跑车（速度就是一切，但装不了多少东西）</span></p>
+    <p><span class="analogy">没有最好的数据库，只有最合适的。一个成熟的业务通常会同时使用 2-3 种 NoSQL + SQL 组合。</span></p>
+  </div>
+</section>
+
+<!-- ====== 实战问答 ====== -->
+<section class="section" id="qa">
+  <h2>❓ 实战问答</h2>
+  <p>以下 8 道题覆盖 NoSQL 实战的常见考点：</p>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q1：MongoDB 复制集如何实现故障自动切换？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">MongoDB 复制集通过 <strong>Raft 协议变种</strong> 实现自动选主：</p>
+      <ol class="a">
+        <li>所有 Secondary 节点每 <strong>2 秒</strong> 向 Primary 发送心跳</li>
+        <li>如果 <strong>10 秒</strong> 内未收到心跳响应，Secondary 认为 Primary 已宕机</li>
+        <li>触发选举：剩余节点通过 <strong>多数派投票</strong>（需要超过半数节点同意）选出新 Primary</li>
+        <li>新 Primary 开始接受写入，从节点切换 Oplog 同步源</li>
+        <li>旧 Primary 恢复后，自动降级为 Secondary 并重新同步</li>
+      </ol>
+      <p class="a">关键参数：<code>electionTimeoutMillis</code>（默认 10s）可调整切换灵敏度。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q2：MongoDB 分片键如何选择？分片策略有哪些？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">分片键是分片集群的<strong>最关键决策</strong>，直接影响性能和扩展能力。</p>
+      <p class="a"><strong>好分片键的特征</strong>：高基数（值分布广泛）、写入均匀、查询带分片键。</p>
+      <p class="a"><strong>分片策略</strong>：</p>
+      <ul class="a">
+        <li><strong>Range Sharding</strong>：按值范围分片（如 0-100 → Shard A, 100-200 → Shard B）。适合范围查询，但可能导致数据倾斜</li>
+        <li><strong>Hashed Sharding</strong>：对分片键 Hash 后取模。写入均匀分布，但不支持范围查询</li>
+        <li><strong>Zone Sharding</strong>：按地域或标签分片（如中国用户存国内节点，美国用户存美西节点）</li>
+      </ul>
+      <p class="a">注意：分片键一旦选定，<strong>不能修改</strong>！所以需要在业务设计阶段就规划好。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q3：ElasticSearch 写入后为什么不能立即搜索到？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">ES 是<strong>近实时（NRT, Near Real-Time）</strong>搜索，写入到可搜索之间有 <strong>Refresh Interval</strong>（默认 1秒）的延迟。</p>
+      <p class="a">原因在于 Lucene 的写入流程：</p>
+      <ol class="a">
+        <li>写请求 → <strong>Memory Buffer</strong>（内存缓冲区，此时不可搜索）</li>
+        <li>定时 <strong>Refresh</strong>（默认 1s）→ 生成内存中的 <strong>Segment</strong>，此时文档被"刷入"索引，立即可搜</li>
+        <li>定时 <strong>Flush</strong> → 将 Segment 持久化到磁盘</li>
+      </ol>
+      <p class="a">如果需要写入即搜索，可以通过 <code>?refresh=true</code> 强制 Refresh，但会显著降低写入吞吐量。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q4：ES 的倒排索引是什么？为什么搜索比 MySQL LIKE 快？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>倒排索引</strong>是以"词"为核心组织文档的索引结构：</p>
+      <ul class="a">
+        <li>将每个文档的文本内容<strong>分词</strong>成一个个 Term（词条）</li>
+        <li>建立 Term → 文档列表（Posting List）的映射</li>
+        <li>搜索时直接查词典找到对应的文档列表，不需要遍历所有文档</li>
+      </ul>
+      <p class="a">而 MySQL 的 <code>LIKE '%keyword%'</code> 无法使用 B+树索引，必须<strong>全表扫描</strong>，走磁盘 I/O 逐行匹配。</p>
+      <p class="a">所以 ES 搜索的速度与文档总量无关，只取决于<strong>词典的查找效率</strong>（通常是 O(1) 或 O(log n)）。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q5：ClickHouse 的列式存储为什么比行式存储快那么多？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：三个层面</p>
+      <p class="a">① <strong>I/O 大幅减少</strong>：聚合查询只读取需要的列，行式存储需要读取整行（所有列）。假设 20 列的表、只查 2 列，I/O 减少 90%。</p>
+      <p class="a">② <strong>高压缩比</strong>：同一列数据类型相同，压缩率极高（通常 5-10 倍）。如性别列只有"男/女"，用字典编码可压缩到极小的体积。</p>
+      <p class="a">③ <strong>向量化执行</strong>：ClickHouse 一次处理 4096 行数据，利用 CPU 的 SIMD 指令集并行计算。相比传统的逐行处理，指令级并行效率高数倍。</p>
+      <p class="a">实际效果：对 10 亿行数据的聚合查询，CK 通常比 MySQL 快 <strong>50-100 倍</strong>。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q6：MongoDB 和 ElasticSearch 如何选择？什么场景两者一起用？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>维度</th><th>MongoDB</th><th>ElasticSearch</th></tr>
+        <tr><td>数据存储</td><td>✅ 强（文档可靠性高）</td><td>❌ 弱（不支持事务，有丢数据风险）</td></tr>
+        <tr><td>全文搜索</td><td>❌ 弱（正则匹配，不索引分词）</td><td>✅ 强（倒排索引 + 分词器）</td></tr>
+        <tr><td>聚合分析</td><td>⚠️ 中等（Agg Pipeline）</td><td>✅ 强（各种 Bucket/Metric）</td></tr>
+        <tr><td>数据一致性</td><td>✅ 强</td><td>⚠️ 近实时</td></tr>
+      </table>
+      <p class="a"><strong>一起用</strong>：MongoDB 作为主存储（Source of Truth），ES 作为搜索/分析引擎。通过 MongoDB Connector for ES 或 CDC 工具实时同步。</p>
+      <p class="a">典型架构：写入走 MongoDB → Oplog Tailer → ES → 查询走 ES。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q7：ClickHouse 的分区键和排序键有什么区别？如何优化查询？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>分区键（PARTITION BY）</strong>：影响数据在磁盘上的<strong>目录结构</strong>，查询时通过<strong>分区裁剪</strong>跳过不相关的分区目录。如 <code>PARTITION BY toYYYYMM(date)</code> 按年月分区，查询单月数据只扫描一个目录。</p>
+      <p class="a"><strong>排序键（ORDER BY）</strong>：影响数据在<strong>每个分区内部</strong>的物理存储顺序，ClickHouse 利用稀疏索引（每 8192 行一个 Mark）快速定位数据范围。</p>
+      <p class="a"><strong>优化技巧</strong>：分区键粒度不要太小（避免太多小文件），排序键要包含高频过滤字段，且<strong>列的排列顺序</strong>非常重要——最常过滤的列放最前面。</p>
+      <p class="a">例如 <code>ORDER BY (date, city, user_id)</code> — 如果经常按 date 范围查询，date 放在第一位能使稀疏索引发挥最大作用。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q8：你们项目里实际用什么数据库组合？为什么要这样搭？</h4>
+    <div class="qa-a">
+      <p class="q">参考答案（示例）：</p>
+      <p class="a">在我们生产环境中，采用 <strong>PostgreSQL + MongoDB + ES + Redis</strong> 的组合：</p>
+      <ul class="a">
+        <li><strong>PostgreSQL</strong>：核心业务数据（订单、用户、财务）——需要事务、强一致性、复杂关联查询</li>
+        <li><strong>MongoDB</strong>：用户资料、内容管理（CMS）——字段灵活、不需要 JOIN、读写频繁</li>
+        <li><strong>ElasticSearch</strong>：商品搜索、日志分析——全文检索是核心需求</li>
+        <li><strong>Redis</strong>：缓存（热点数据）、计数器（PV/UV）、分布式锁（Redlock）</li>
+      </ul>
+      <p class="a">关键设计原则：<strong>每种数据库只做它最擅长的事</strong>。PGSQL 管"钱"和"关系"，Mongo 管"灵活内容"，ES 管"搜"，Redis 管"快"。不混用、不滥用。</p>
+      <p class="a">数据同步方面：通过 CDC（Debezium + Kafka）实现跨数据库的数据流转，保证最终一致性。</p>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>📌 核心要点</h4>
+    <p>读者问 NoSQL 时最看重的：</p>
+    <ul>
+      <li><strong>选型能力</strong>：能不能根据不同场景说出选哪个以及为什么——比背诵 API 更重要</li>
+      <li><strong>原理理解</strong>：倒排索引为什么快、列存为什么省 I/O、哈希分片和范围分片的区别</li>
+      <li><strong>实战经验</strong>：分片键选错过吗？ES 写入延迟遇到过吗？怎么解决的？</li>
+      <li><strong>CAP 理解</strong>：能说出 MongoDB/ES/CK各自在 CAP 中的定位</li>
+      <li><strong>组合思维</strong>：知道 NoSQL 之间以及 NoSQL+SQL 如何搭配使用</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== 口播总结 ====== -->
+<section class="section" id="summary">
+  <h2>🎙️ 口播总结</h2>
+  <div class="voice-summary">
+    <p>好，我们来快速捋一遍 NoSQL 数据库的实战知识体系。</p>
+    <p><strong>第一，NoSQL 不是"没有 SQL"，而是"Not Only SQL"</strong>——文档型、键值型、列族型、图型、搜索引擎，每种解决不同的问题。核心特征：灵活 Schema、水平扩展、高吞吐。</p>
+    <p><strong>第二，MongoDB（文档型）</strong>的核心是 JSON/BSON 文档模型，支持二级索引和聚合管道。高可用靠复制集（Raft 选举），水平扩展靠分片集群（Range/Hashed 分片）。分片键的选择是最关键的决策——选错了数据会倾斜。</p>
+    <p><strong>第三，ElasticSearch（搜索引擎）</strong>的核心是倒排索引——以"词"为索引，搜索速度与数据量无关。写入是近实时的（默认 1 秒后可见），因为有 Refresh 机制的延迟。中文搜索需要搭配 IK 分词器。集群架构分 Master、Data、Ingest、Coordinating 四种角色。</p>
+    <p><strong>第四，ClickHouse（列式存储）</strong>是 OLAP 场景的天花板——列式存储只读需要的列，加上向量化执行引擎（SIMD），聚合查询比 MySQL 快 50-100 倍。核心优化：分区键裁剪、排序键稀疏索引、物化视图预聚合。</p>
+    <p><strong>第五，选型没有银弹</strong>——业务往往需要 2-3 种数据库组合。关键是每种数据库做它最擅长的事：MongoDB 管灵活内容，ES 管搜索，ClickHouse 管分析，Redis 管缓存。实战时展示你的选型思路和实战经验，比背语法加分得多。</p>
+    <p>下一篇我们聊聊 <strong>消息队列（Kafka/RocketMQ/RabbitMQ）对比与实战</strong>——看看如何在高吞吐、削峰填谷、数据管道之间做选择。敬请期待！🎯</p>
+  </div>
+</section>
+
+</main>
+
+</div><!-- .app -->
+
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

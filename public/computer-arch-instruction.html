@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>计算机组成原理 · 指令系统 · 指令格式/寻址方式/CISC-RISC/流水线/ISA · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .voice-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .voice-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 420px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">指令系统</div>
+  <a class="nav-item" href="#format">📝 指令格式</a>
+  <a class="nav-item" href="#addressing">🎯 寻址方式</a>
+  <a class="nav-item" href="#cisc-risc">⚔️ CISC vs RISC</a>
+  <a class="nav-item" href="#pipeline">🏭 指令流水线</a>
+  <a class="nav-item" href="#isa">🏛️ ISA对比</a>
+  <div class="nav-section">练习</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ================================================================== -->
+<!-- 总览 -->
+<!-- ================================================================== -->
+<section id="overview" class="section">
+  <h2>📋 指令系统总览</h2>
+
+  <div class="feynman">
+    <p><strong>一句话：</strong>指令系统（Instruction Set Architecture, ISA）是 <span class="handwritten">软件和硬件之间的契约</span>——它定义了 CPU 能理解的所有指令、数据怎么找（寻址方式）、指令长什么样（格式）。对上层（编译器/汇编程序员）来说，ISA 是可见的接口；对下层（硬件设计者）来说，ISA 是必须实现的承诺。本文从指令的\"长相\"到\"用法\"再到\"流派\"，一次讲透。</p>
+  </div>
+
+  <table>
+    <tr><th>章节</th><th>核心问题</th><th>一句话回答</th></tr>
+    <tr><td><span class="badge badge-cyan">① 指令格式</span></td><td>一条指令在内存里长什么样？</td><td>操作码告诉CPU做什么，地址码告诉CPU找谁——定长译码简单，变长节省空间</td></tr>
+    <tr><td><span class="badge badge-orange">② 寻址方式</span></td><td>CPU怎么找到要操作的数据？</td><td>7种主要寻址：立即数、直接、间接、寄存器、寄存器间接、变址、基址+相对偏移</td></tr>
+    <tr><td><span class="badge badge-green">③ CISC vs RISC</span></td><td>为什么ARM和x86设计哲学完全不同？</td><td>CISC指令复杂多变，硬件复杂；RISC指令精简规整，靠编译器优化——一个灵活一个高效</td></tr>
+    <tr><td><span class="badge badge-purple">④ 指令流水线</span></td><td>CPU怎么同时处理多条指令？</td><td>取指→译码→执行→访存→写回，五级流水让CPI趋近1</td></tr>
+    <tr><td><span class="badge badge-red">⑤ ISA对比</span></td><td>x86/ARM/RISC-V有何不同？</td><td>x86靠微码兼容40年历史，ARM用精简指令统治移动端，RISC-V开源自由正挑战双雄</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================== -->
+<!-- 指令格式 -->
+<!-- ================================================================== -->
+<section id="format" class="section">
+  <h2>📝 指令格式——操作码+地址码</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🥘 类比：航空公司的登机牌</span></p>
+    <p>一条指令就像一张登机牌：<strong>操作码（Opcode）</strong> = 航班号（\"去北京\"的指令是 ADD、去上海的是 SUB）；<strong>地址码（Operand）</strong> = 登机口和座位号（\"数据在哪\"）。</p>
+    <p>不同航空公司的登机牌格式不同，但都包含这两个信息。同样，不同 ISA 的指令格式不同，但都是 <strong>操作码 + 操作数</strong>。操作码决定做什么，操作数决定对谁做。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 480" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="fmt-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+      </defs>
+      <rect x="10" y="5" width="780" height="470" rx="10" fill="url(#fmt-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">指令格式分类</text>
+
+      <!-- 定长指令 -->
+      <rect x="40" y="50" width="340" height="190" rx="8" fill="rgba(30,41,59,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="210" y="74" text-anchor="middle" fill="#22d3ee" font-size="14" font-weight="700" font-family="sans-serif">定长指令格式（RISC 风格）</text>
+      <text x="210" y="92" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">所有指令长度相同，译码简单，流水线友好</text>
+
+      <!-- R-Type -->
+      <rect x="55" y="105" width="310" height="32" rx="4" fill="rgba(57,197,207,0.1)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="60" y="125" fill="#22d3ee" font-size="10" font-weight="700" font-family="sans-serif">R-Type (寄存器-寄存器)</text>
+      <rect x="55" y="137" width="21" height="28" rx="3" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="65" y="155" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="sans-serif">op</text>
+      <rect x="79" width="21" y="137" height="28" rx="3" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="89" y="155" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="sans-serif">rd</text>
+      <rect x="103" width="21" y="137" height="28" rx="3" fill="rgba(210,153,34,0.15)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="113" y="155" text-anchor="middle" fill="#fbbf24" font-size="8" font-family="sans-serif">rs1</text>
+      <rect x="127" width="21" y="137" height="28" rx="3" fill="rgba(210,153,34,0.15)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="137" y="155" text-anchor="middle" fill="#fbbf24" font-size="8" font-family="sans-serif">rs2</text>
+      <rect x="151" width="73" y="137" height="28" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="1"/>
+      <text x="187" y="155" text-anchor="middle" fill="#3fb950" font-size="8" font-family="sans-serif">funct3+funct7</text>
+      <text x="240" y="155" fill="#64748b" font-size="8" font-family="sans-serif">32位 = 4字节</text>
+
+      <!-- I-Type -->
+      <rect x="55" y="170" width="310" height="32" rx="4" fill="rgba(57,197,207,0.1)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="60" y="190" fill="#22d3ee" font-size="10" font-weight="700" font-family="sans-serif">I-Type (立即数/访存)</text>
+      <rect x="55" y="202" width="21" height="28" rx="3" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="65" y="220" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="sans-serif">op</text>
+      <rect x="79" width="21" y="202" height="28" rx="3" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="89" y="220" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="sans-serif">rd</text>
+      <rect x="103" width="21" y="202" height="28" rx="3" fill="rgba(210,153,34,0.15)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="113" y="220" text-anchor="middle" fill="#fbbf24" font-size="8" font-family="sans-serif">rs1</text>
+      <rect x="127" width="73" y="202" height="28" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="1"/>
+      <text x="163" y="220" text-anchor="middle" fill="#3fb950" font-size="8" font-family="sans-serif">12位立即数 imm</text>
+
+      <!-- 变长指令 -->
+      <rect x="420" y="50" width="340" height="190" rx="8" fill="rgba(30,41,59,0.4)" stroke="#f87171" stroke-width="1.5"/>
+      <text x="590" y="74" text-anchor="middle" fill="#f87171" font-size="14" font-weight="700" font-family="sans-serif">变长指令格式（CISC 风格）</text>
+      <text x="590" y="92" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">指令 1~15 字节不等，节省空间但译码复杂</text>
+
+      <!-- CISC 短指令 -->
+      <rect x="435" y="105" width="310" height="28" rx="4" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1"/>
+      <text x="440" y="123" fill="#f87171" font-size="10" font-family="sans-serif">短指令 (1~2 字节)</text>
+      <rect x="435" y="133" width="62" height="24" rx="3" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="466" y="149" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="sans-serif">op</text>
+      <rect x="500" width="62" y="133" height="24" rx="3" fill="rgba(210,153,34,0.15)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="531" y="149" text-anchor="middle" fill="#fbbf24" font-size="8" font-family="sans-serif">modrm</text>
+
+      <!-- CISC 中指令 -->
+      <rect x="435" y="162" width="310" height="28" rx="4" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1"/>
+      <text x="440" y="180" fill="#f87171" font-size="10" font-family="sans-serif">中指令 (3~6 字节)</text>
+      <rect x="435" y="190" width="42" height="24" rx="3" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="456" y="206" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="sans-serif">op</text>
+      <rect x="480" width="36" y="190" height="24" rx="3" fill="rgba(210,153,34,0.15)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="498" y="206" text-anchor="middle" fill="#fbbf24" font-size="8" font-family="sans-serif">mod</text>
+      <rect x="519" width="60" y="190" height="24" rx="3" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="1"/>
+      <text x="549" y="206" text-anchor="middle" fill="#3fb950" font-size="8" font-family="sans-serif">disp/imm</text>
+
+      <!-- 图示: 操作码 vs 操作数 -->
+      <rect x="40" y="260" width="720" height="85" rx="8" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="282" text-anchor="middle" fill="#e2e8f0" font-size="13" font-weight="700" font-family="sans-serif">一条指令的两大部分</text>
+      
+      <!-- 操作码 -->
+      <rect x="60" y="295" width="160" height="38" rx="6" fill="rgba(163,113,247,0.12)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="140" y="310" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700" font-family="sans-serif">操作码 (Opcode)</text>
+      <text x="140" y="326" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">ADD · SUB · LOAD · JMP</text>
+      
+      <text x="240" y="318" text-anchor="middle" fill="#e2e8f0" font-size="18" font-family="sans-serif">+</text>
+
+      <!-- 地址码 -->
+      <rect x="270" y="295" width="240" height="38" rx="6" fill="rgba(210,153,34,0.12)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="390" y="310" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700" font-family="sans-serif">地址码 / 操作数 (Operand)</text>
+      <text x="390" y="326" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">寄存器编号 · 内存地址 · 立即数</text>
+
+      <text x="530" y="318" text-anchor="middle" fill="#e2e8f0" font-size="18" font-family="sans-serif">=</text>
+      
+      <!-- 完整指令 -->
+      <rect x="560" y="295" width="180" height="38" rx="6" fill="rgba(57,197,207,0.12)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="650" y="313" text-anchor="middle" fill="#22d3ee" font-size="13" font-weight="700" font-family="'Ma Shan Zheng',cursive,sans-serif">ADD R1, R2</text>
+      <text x="650" y="327" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">操作码+操作数=一条指令</text>
+
+      <!-- 零地址/一地址/二地址/三地址 -->
+      <rect x="40" y="360" width="720" height="95" rx="8" fill="rgba(30,41,59,0.25)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="380" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700" font-family="sans-serif">按操作数个数分类</text>
+
+      <rect x="55" y="392" width="160" height="28" rx="5" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="135" y="411" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="sans-serif">零地址: HALT</text>
+      <rect x="230" y="392" width="160" height="28" rx="5" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1"/>
+      <text x="310" y="411" text-anchor="middle" fill="#3fb950" font-size="10" font-family="sans-serif">一地址: INC R1</text>
+      <rect x="405" y="392" width="160" height="28" rx="5" fill="rgba(210,153,34,0.08)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="485" y="411" text-anchor="middle" fill="#fbbf24" font-size="10" font-family="sans-serif">二地址: ADD R1,R2</text>
+      <rect x="580" y="392" width="160" height="28" rx="5" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="660" y="411" text-anchor="middle" fill="#a78bfa" font-size="10" font-family="sans-serif">三地址: ADD R1,R2,R3</text>
+
+      <text x="400" y="448" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">地址码越多 → 指令越长 → 能表达更复杂的操作，但占用更多内存和译码时间</text>
+    </svg>
+    <div class="diagram-caption">图1：指令格式全景 —— 定长（RISC风格，32位固定长度）vs 变长（CISC风格，1~15字节），以及按操作数个数分类</div>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4>📏 定长指令优势</h4>
+      <ul>
+        <li>译码简单：<strong>取指宽度固定</strong>，不需要判断指令边界</li>
+        <li>流水线友好：<strong>PC 增量固定</strong>，无需复杂的分支预测</li>
+        <li>硬件实现简单：<strong>没有微码</strong>，直接硬连线译码</li>
+        <li>典型：RISC-V、ARM（AArch64）、MIPS</li>
+      </ul>
+    </div>
+    <div>
+      <h4>📐 变长指令优势</h4>
+      <ul>
+        <li>代码密度高：<strong>常用短指令</strong>，少用内存（对40年前的MB级内存很重要）</li>
+        <li>指令集丰富：可支持<strong>复杂操作</strong>（如 x86 的 REP MOVS 块拷贝）</li>
+        <li>向后兼容：可不断<strong>"加补丁"扩展</strong>（x86的MMX/SSE/AVX）</li>
+        <li>代价：译码器复杂，<strong>功耗高</strong>（x86前端消耗大量芯片面积）</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h4>🔬 为什么现代 x86 内部还是"变长译码 → 定长微操作"？</h4>
+    <p>x86 是典型的 CISC，指令长度 1~15 字节不等。但现代 x86 CPU 内部实际执行的是 <strong>微操作（μops）</strong>——比 x86 指令更简单、长度固定的内部指令。</p>
+    <p>流程：<strong>x86 变长指令 → 前端译码器（复杂！）→ μop Cache（缓存翻译结果）→ 定长 μop 流水线（类似 RISC）</strong>。这样既保持了 CISC 的代码密度和兼容性，又获得了 RISC 的流水线效率。这也叫 <strong>CISC 的 RISC 内核化</strong>。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 寻址方式 -->
+<!-- ================================================================== -->
+<section id="addressing" class="section">
+  <h2>🎯 寻址方式——CPU如何找到数据</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🗺️ 类比：找到你的朋友</span></p>
+    <p>你想找你的朋友小张：<strong>立即寻址</strong> = 小张就在你面前（数据在指令里）；<strong>直接寻址</strong> = 你知道他家的门牌号（内存地址直接给出）；<strong>间接寻址</strong> = 你只知道他邻居是谁，邻居知道他家在哪；<strong>寄存器寻址</strong> = 你知道他办公室的座位号（寄存器编号）；<strong>变址寻址</strong> = 你在数组里找第 N 个座位的朋友。</p>
+    <p>寻址方式的核心问题就是：<strong>"数据在哪？"</strong> 不同方式有不同的灵活性和速度。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 500" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="addr-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+        <marker id="ad-arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5">
+          <path d="M0,0 L7,2.5 L0,5Z" fill="#58a6ff"/>
+        </marker>
+      </defs>
+      <rect x="10" y="5" width="780" height="490" rx="10" fill="url(#addr-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">七种主要寻址方式</text>
+
+      <!-- 顶部行: 三种基础 -->
+      <!-- 立即 -->
+      <rect x="30" y="45" width="240" height="85" rx="6" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="1.2"/>
+      <text x="150" y="65" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700" font-family="sans-serif">① 立即寻址 (Immediate)</text>
+      <text x="150" y="82" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">数据 = 指令中的立即数字段</text>
+      <text x="150" y="98" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">MOV R1, #100</text>
+      <text x="150" y="115" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">优点：最快，无需访存 | 缺点：常数范围有限</text>
+
+      <!-- 直接 -->
+      <rect x="280" y="45" width="240" height="85" rx="6" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="400" y="65" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="700" font-family="sans-serif">② 直接寻址 (Direct)</text>
+      <text x="400" y="82" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">指令给出内存地址，取该地址的数据</text>
+      <text x="400" y="98" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">LOAD R1, [1000]</text>
+      <text x="400" y="115" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">1次访存 | 地址范围受指令字长限制</text>
+
+      <!-- 间接 -->
+      <rect x="530" y="45" width="240" height="85" rx="6" fill="rgba(210,153,34,0.08)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="650" y="65" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="700" font-family="sans-serif">③ 间接寻址 (Indirect)</text>
+      <text x="650" y="82" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">指令给出→地址A→地址A的内容是地址B→取B</text>
+      <text x="650" y="98" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">LOAD R1, [[1000]]</text>
+      <text x="650" y="115" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">2次访存 | 灵活但慢，支持指针/链表操作</text>
+
+      <!-- 中间行: 寄存器型 -->
+      <!-- 寄存器 -->
+      <rect x="30" y="145" width="240" height="85" rx="6" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="150" y="165" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700" font-family="sans-serif">④ 寄存器寻址 (Register)</text>
+      <text x="150" y="182" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">操作数在寄存器中</text>
+      <text x="150" y="198" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">ADD R1, R2</text>
+      <text x="150" y="215" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">优点：最快之一，不访存 | 寄存器数量有限</text>
+
+      <!-- 寄存器间接 -->
+      <rect x="280" y="145" width="240" height="85" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="400" y="165" text-anchor="middle" fill="#f87171" font-size="12" font-weight="700" font-family="sans-serif">⑤ 寄存器间接 (Reg Indirect)</text>
+      <text x="400" y="182" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">寄存器存放内存地址，取该地址数据</text>
+      <text x="400" y="198" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">LOAD R1, [R2]</text>
+      <text x="400" y="215" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">1次访存 | 支持指针、数组遍历</text>
+
+      <!-- 变址 -->
+      <rect x="530" y="145" width="240" height="85" rx="6" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="1.2"/>
+      <text x="650" y="165" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700" font-family="sans-serif">⑥ 变址寻址 (Indexed)</text>
+      <text x="650" y="182" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">地址 = 基址寄存器 + 变址寄存器 × 比例因子</text>
+      <text x="650" y="198" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">LOAD R1, [R2 + R3×4]</text>
+      <text x="650" y="215" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">适合数组/结构体访问</text>
+
+      <!-- 第七种: 基址+相对 -->
+      <rect x="30" y="245" width="740" height="85" rx="6" fill="rgba(210,153,34,0.08)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="400" y="268" text-anchor="middle" fill="#fbbf24" font-size="13" font-weight="700" font-family="sans-serif">⑦ 基址寻址 + 相对寻址 (Base + PC-relative)</text>
+
+      <!-- 基址 -->
+      <rect x="50" y="282" width="340" height="38" rx="5" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="1"/>
+      <text x="220" y="300" text-anchor="middle" fill="#3fb950" font-size="10" font-weight="700" font-family="sans-serif">基址: 地址 = 基址寄存器 + 偏移量</text>
+      <text x="220" y="314" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">LOAD R1, [BP + 8] → 局部变量/栈帧访问</text>
+
+      <!-- 相对 -->
+      <rect x="410" y="282" width="340" height="38" rx="5" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="580" y="300" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="700" font-family="sans-serif">相对: 地址 = PC (程序计数器) + 偏移量</text>
+      <text x="580" y="314" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">JMP +100 → 位置无关代码 (PIC)</text>
+
+      <!-- 总结表 -->
+      <rect x="30" y="345" width="740" height="130" rx="8" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="368" text-anchor="middle" fill="#e2e8f0" font-size="13" font-weight="700" font-family="sans-serif">寻址方式速度 & 灵活性对比</text>
+
+      <text x="60" y="393" fill="#22d3ee" font-size="10" font-weight="700" font-family="sans-serif">寻址方式</text>
+      <text x="200" y="393" fill="#22d3ee" font-size="10" font-weight="700" font-family="sans-serif">访存次数</text>
+      <text x="340" y="393" fill="#22d3ee" font-size="10" font-weight="700" font-family="sans-serif">速度</text>
+      <text x="480" y="393" fill="#22d3ee" font-size="10" font-weight="700" font-family="sans-serif">灵活性</text>
+      <text x="620" y="393" fill="#22d3ee" font-size="10" font-weight="700" font-family="sans-serif">典型场景</text>
+
+      <line x1="50" y1="400" x2="750" y2="400" stroke="#334155" stroke-width="0.5"/>
+
+      <text x="60" y="416" fill="#94a3b8" font-size="9" font-family="sans-serif">立即</text><text x="200" y="416" fill="#94a3b8" font-size="9" font-family="sans-serif">0</text><text x="340" y="416" fill="#3fb950" font-size="9" font-family="sans-serif">⭐⭐⭐</text><text x="480" y="416" fill="#f87171" font-size="9" font-family="sans-serif">低</text><text x="620" y="416" fill="#64748b" font-size="9" font-family="sans-serif">常量</text>
+      <text x="60" y="432" fill="#94a3b8" font-size="9" font-family="sans-serif">直接</text><text x="200" y="432" fill="#94a3b8" font-size="9" font-family="sans-serif">1</text><text x="340" y="432" fill="#3fb950" font-size="9" font-family="sans-serif">⭐⭐</text><text x="480" y="432" fill="#fbbf24" font-size="9" font-family="sans-serif">中</text><text x="620" y="432" fill="#64748b" font-size="9" font-family="sans-serif">全局变量</text>
+      <text x="60" y="448" fill="#94a3b8" font-size="9" font-family="sans-serif">寄存器</text><text x="200" y="448" fill="#94a3b8" font-size="9" font-family="sans-serif">0</text><text x="340" y="448" fill="#3fb950" font-size="9" font-family="sans-serif">⭐⭐⭐</text><text x="480" y="448" fill="#fbbf24" font-size="9" font-family="sans-serif">中</text><text x="620" y="448" fill="#64748b" font-size="9" font-family="sans-serif">局部变量</text>
+      <text x="60" y="464" fill="#94a3b8" font-size="9" font-family="sans-serif">间接/变址</text><text x="200" y="464" fill="#94a3b8" font-size="9" font-family="sans-serif">1~2</text><text x="340" y="464" fill="#f87171" font-size="9" font-family="sans-serif">⭐</text><text x="480" y="464" fill="#3fb950" font-size="9" font-family="sans-serif">高</text><text x="620" y="464" fill="#64748b" font-size="9" font-family="sans-serif">数组/指针</text>
+    </svg>
+    <div class="diagram-caption">图2：七种寻址方式分类 —— 从最快的（立即/寄存器，0次访存）到最灵活但最慢的（间接，2次访存）</div>
+  </div>
+
+  <h3>寻址方式的硬件含义</h3>
+  <table>
+    <tr><th>寻址方式</th><th>有效地址 EA 计算</th><th>硬件代价</th><th>实际应用</th></tr>
+    <tr><td><strong>立即</strong></td><td>EA = 指令中的 imm 字段（数据本身）</td><td>极小</td><td>初始化常量、掩码</td></tr>
+    <tr><td><strong>直接</strong></td><td>EA = 地址码字段</td><td>小</td><td>访问已知地址的全局变量</td></tr>
+    <tr><td><strong>间接</strong></td><td>EA = Mem[地址码]</td><td>中（需要额外访存）</td><td>指针解引用</td></tr>
+    <tr><td><strong>寄存器</strong></td><td>EA = 寄存器编号（数据在寄存器中）</td><td>极小</td><td>大部分算术运算</td></tr>
+    <tr><td><strong>寄存器间接</strong></td><td>EA = R[rs]</td><td>小</td><td>指针、链表遍历</td></tr>
+    <tr><td><strong>变址</strong></td><td>EA = R[base] + R[index] × scale</td><td>大（需要加法器+乘法器）</td><td>数组 a[i] 访问</td></tr>
+    <tr><td><strong>基址+相对</strong></td><td>EA = R[base] + offset / PC + offset</td><td>中</td><td>栈帧、位置无关代码</td></tr>
+  </table>
+</section>
+
+<!-- ================================================================== -->
+<!-- CISC vs RISC -->
+<!-- ================================================================== -->
+<section id="cisc-risc" class="section">
+  <h2>⚔️ CISC vs RISC——两种设计哲学</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🔧 类比：瑞士军刀 vs 专用工具套装</span></p>
+    <p><strong>CISC（复杂指令集）</strong> 像瑞士军刀——一把刀集成几十种功能（开瓶器、剪子、锯子等），任何小任务都能一个工具搞定，但每个功能都不那么高效。<strong>RISC（精简指令集）</strong> 像专业厨师的全套刀具——一把主厨刀、一把剔骨刀、一把削皮刀，每把只做一件事但做得极快，但复杂任务需要多把刀配合。</p>
+    <p>CISC 哲学是：<strong>"让硬件做复杂的事，指令少但每条指令能干很多"</strong>；RISC 哲学是：<strong>"让软件（编译器）做复杂的事，指令简单但执行快"</strong>。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 480" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="cr-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+      </defs>
+      <rect x="10" y="5" width="780" height="470" rx="10" fill="url(#cr-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">CISC vs RISC 全方位对比</text>
+
+      <!-- CISC 左侧 -->
+      <rect x="30" y="50" width="360" height="150" rx="8" fill="rgba(248,81,73,0.06)" stroke="#f87171" stroke-width="2"/>
+      <text x="210" y="78" text-anchor="middle" fill="#f87171" font-size="16" font-weight="700" font-family="sans-serif">🟥 CISC (Complex)</text>
+      <text x="210" y="98" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">Intel x86 · VAX · Z80 · 68000</text>
+
+      <rect x="45" y="110" width="330" height="28" rx="5" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1"/>
+      <text x="210" y="129" text-anchor="middle" fill="#f87171" font-size="11" font-family="sans-serif">✅ 代码密度高 · 指令数少 · 兼容性好</text>
+      <rect x="45" y="144" width="330" height="28" rx="5" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1"/>
+      <text x="210" y="163" text-anchor="middle" fill="#f87171" font-size="11" font-family="sans-serif">❌ 译码复杂 · 功耗高 · 流水线设计难</text>
+
+      <!-- RISC 右侧 -->
+      <rect x="410" y="50" width="360" height="150" rx="8" fill="rgba(57,197,207,0.06)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="590" y="78" text-anchor="middle" fill="#22d3ee" font-size="16" font-weight="700" font-family="sans-serif">🟦 RISC (Reduced)</text>
+      <text x="590" y="98" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">ARM · RISC-V · MIPS · PowerPC</text>
+
+      <rect x="425" y="110" width="330" height="28" rx="5" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="590" y="129" text-anchor="middle" fill="#22d3ee" font-size="11" font-family="sans-serif">✅ 译码简单 · 流水线高效 · 低功耗</text>
+      <rect x="425" y="144" width="330" height="28" rx="5" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="590" y="163" text-anchor="middle" fill="#22d3ee" font-size="11" font-family="sans-serif">❌ 代码密度低 · 依赖编译器优化</text>
+
+      <!-- 详细对比表 -->
+      <rect x="30" y="215" width="740" height="240" rx="8" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="1"/>
+
+      <text x="130" y="242" text-anchor="middle" fill="#f87171" font-size="12" font-weight="700" font-family="sans-serif">对比维度</text>
+      <text x="400" y="242" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700" font-family="sans-serif">CISC</text>
+      <text x="670" y="242" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700" font-family="sans-serif">RISC</text>
+
+      <line x1="40" y1="250" x2="760" y2="250" stroke="#334155" stroke-width="0.5"/>
+
+      <text x="60" y="270" fill="#64748b" font-size="9" font-family="sans-serif">指令长度</text>
+      <text x="400" y="270" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">变长 1~15 字节</text>
+      <text x="670" y="270" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">定长 4 字节</text>
+
+      <text x="60" y="290" fill="#64748b" font-size="9" font-family="sans-serif">指令数量</text>
+      <text x="400" y="290" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">1000+ 条</text>
+      <text x="670" y="290" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">~50~100 条</text>
+
+      <text x="60" y="310" fill="#64748b" font-size="9" font-family="sans-serif">寻址方式</text>
+      <text x="400" y="310" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">10+ 种复杂寻址</text>
+      <text x="670" y="310" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">1~3 种简单寻址</text>
+
+      <text x="60" y="330" fill="#64748b" font-size="9" font-family="sans-serif">寄存器操作</text>
+      <text x="400" y="330" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">指令可直接操作内存</text>
+      <text x="670" y="330" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">LOAD/STORE 架构</text>
+
+      <text x="60" y="350" fill="#64748b" font-size="9" font-family="sans-serif">CPI (每指令周期)</text>
+      <text x="400" y="350" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">2~20 (复杂指令多周期)</text>
+      <text x="670" y="350" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">1 (流水线化后)</text>
+
+      <text x="60" y="370" fill="#64748b" font-size="9" font-family="sans-serif">译码器复杂度</text>
+      <text x="400" y="370" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">高 (微码 + 硬连线)</text>
+      <text x="670" y="370" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">低 (硬连线)</text>
+
+      <text x="60" y="390" fill="#64748b" font-size="9" font-family="sans-serif">功耗效率</text>
+      <text x="400" y="390" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">~5~65W (桌面/服务器)</text>
+      <text x="670" y="390" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">~0.1~15W (移动/嵌入)</text>
+
+      <text x="60" y="410" fill="#64748b" font-size="9" font-family="sans-serif">典型代表</text>
+      <text x="400" y="410" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">x86 (Intel/AMD)</text>
+      <text x="670" y="410" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">ARM · RISC-V · MIPS</text>
+
+      <text x="60" y="430" fill="#64748b" font-size="9" font-family="sans-serif">设计年代</text>
+      <text x="400" y="430" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">1970s (内存贵，希望指令少)</text>
+      <text x="670" y="430" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">1980s (编译器成熟，追求流水线)</text>
+
+      <!-- 中间融合区域 -->
+      <rect x="100" y="215" width="600" height="240" rx="0" fill="none"/>
+      <line x1="265" y1="215" x2="265" y2="455" stroke="#334155" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="535" y1="215" x2="535" y2="455" stroke="#334155" stroke-width="1" stroke-dasharray="3,3"/>
+    </svg>
+    <div class="diagram-caption">图3：CISC vs RISC 全方位对比 —— 左中右三列清晰展示每个维度的差异，以及中间的"灰色区域"</div>
+  </div>
+
+  <h3>CISC 和 RISC 的界限正在模糊</h3>
+  <table>
+    <tr><th>趋势</th><th>CISC 学 RISC</th><th>RISC 学 CISC</th></tr>
+    <tr><td><strong>指令译码</strong></td><td>x86 内部将变长指令翻译为定长 μop（RISC化）</td><td>ARMv8 AArch64 固定 32 位指令</td></tr>
+    <tr><td><strong>硬件复杂度</strong></td><td>现代 x86 有乱序执行、ROB、寄存器重命名</td><td>ARM Cortex-X 系列加入乱序执行（曾经是 CISC 专利）</td></tr>
+    <tr><td><strong>指令扩展</strong></td><td>—</td><td>RISC-V 支持可选扩展（压缩指令、向量、加密）</td></tr>
+    <tr><td><strong>代码密度</strong></td><td>—</td><td>ARM Thumb、RISC-V C 扩展（16位压缩指令）</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🔬 为什么"纯"CISC 和"纯"RISC 都不存在了？</h4>
+    <p>纯 CISC（CDC 6600 时代）——所有指令可以操作内存。纯 RISC（MIPS R2000）——只有 LOAD/STORE 能访存。现在？</p>
+    <p><strong>x86 (CISC 阵营)</strong>：前端把复杂 x86 指令拆成 μop，再用 RISC 内核执行。典型 x86 指令 <code>ADD [mem], R1</code> 分解为：LOAD μop → ALU μop → STORE μop。可以说是 <strong>"CISC 外皮 + RISC 内核"</strong>。</p>
+    <p><strong>ARM (RISC 阵营)</strong>：从 v8.2 开始加入点积指令（DOT）、矩阵乘法（SME）、SVE 向量——越来越"复杂"。RISC-V 的可选扩展也允许加入乘加（FMA）、位操作等复杂指令。</p>
+    <p>结论：<strong>两种哲学在互相学习，殊途同归</strong>——既要硬件高效，又要软件友好。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 指令流水线 -->
+<!-- ================================================================== -->
+<section id="pipeline" class="section">
+  <h2>🏭 指令流水线——让 CPI 趋近 1</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🚿 类比：洗车流水线</span></p>
+    <p>如果一个人洗一辆车：冲水→打泡沫→擦洗→冲洗→擦干，五步顺序做，洗一辆要 20 分钟，每小时只能洗 3 辆（CPI = 5）。</p>
+    <p>但如果是一条流水线：<strong>第一辆车在擦干时，第二辆车在冲洗，第三辆车在擦洗……</strong> 五个人各负责一个步骤，虽然第一辆车仍要 20 分钟，但之后每 4 分钟就出一辆（CPI ≈ 1）。</p>
+    <p>这就是指令流水线的核心思想：<strong>让 CPU 的不同硬件单元同时处理不同指令的不同阶段</strong>。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 480" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="pipe-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+      </defs>
+      <rect x="10" y="5" width="780" height="470" rx="10" fill="url(#pipe-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">经典五级指令流水线</text>
+
+      <!-- 流水线阶段标题 -->
+      <rect x="40" y="45" width="120" height="30" rx="5" fill="rgba(57,197,207,0.12)" stroke="#22d3ee" stroke-width="1.2"/>
+      <text x="100" y="65" text-anchor="middle" fill="#22d3ee" font-size="10" font-weight="700" font-family="sans-serif">IF 取指</text>
+      <rect x="170" y="45" width="120" height="30" rx="5" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1.2"/>
+      <text x="230" y="65" text-anchor="middle" fill="#3fb950" font-size="10" font-weight="700" font-family="sans-serif">ID 译码</text>
+      <rect x="300" y="45" width="120" height="30" rx="5" fill="rgba(210,153,34,0.12)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="360" y="65" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="700" font-family="sans-serif">EX 执行</text>
+      <rect x="430" y="45" width="120" height="30" rx="5" fill="rgba(163,113,247,0.12)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="490" y="65" text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="700" font-family="sans-serif">MEM 访存</text>
+      <rect x="560" y="45" width="120" height="30" rx="5" fill="rgba(248,81,73,0.12)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="620" y="65" text-anchor="middle" fill="#f87171" font-size="10" font-weight="700" font-family="sans-serif">WB 写回</text>
+
+      <!-- Cycle 1 -->
+      <rect x="40" y="90" width="120" height="32" rx="4" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="100" y="110" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I1 IF</text>
+      <rect x="170" y="90" width="120" height="32" rx="4" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="0.5"/>
+      <rect x="300" y="90" width="120" height="32" rx="4" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="0.5"/>
+      <rect x="430" y="90" width="120" height="32" rx="4" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="0.5"/>
+      <rect x="560" y="90" width="120" height="32" rx="4" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="0.5"/>
+      <text x="700" y="108" fill="#64748b" font-size="8" font-family="sans-serif">Cycle 1</text>
+
+      <!-- Cycle 2 -->
+      <rect x="40" y="125" width="120" height="32" rx="4" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="100" y="145" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I2 IF</text>
+      <rect x="170" y="125" width="120" height="32" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="230" y="145" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I1 ID</text>
+      <rect x="300" y="125" width="120" height="32" rx="4" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="0.5"/>
+      <rect x="430" y="125" width="120" height="32" rx="4" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="0.5"/>
+      <rect x="560" y="125" width="120" height="32" rx="4" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="0.5"/>
+      <text x="700" y="143" fill="#64748b" font-size="8" font-family="sans-serif">Cycle 2</text>
+
+      <!-- Cycle 3 -->
+      <rect x="40" y="160" width="120" height="32" rx="4" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="100" y="180" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I3 IF</text>
+      <rect x="170" y="160" width="120" height="32" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="230" y="180" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I2 ID</text>
+      <rect x="300" y="160" width="120" height="32" rx="4" fill="rgba(210,153,34,0.15)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="360" y="180" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I1 EX</text>
+      <rect x="430" y="160" width="120" height="32" rx="4" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="0.5"/>
+      <rect x="560" y="160" width="120" height="32" rx="4" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="0.5"/>
+      <text x="700" y="178" fill="#64748b" font-size="8" font-family="sans-serif">Cycle 3</text>
+
+      <!-- Cycle 4 -->
+      <rect x="40" y="195" width="120" height="32" rx="4" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="100" y="215" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I4 IF</text>
+      <rect x="170" y="195" width="120" height="32" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="230" y="215" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I3 ID</text>
+      <rect x="300" y="195" width="120" height="32" rx="4" fill="rgba(210,153,34,0.15)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="360" y="215" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I2 EX</text>
+      <rect x="430" y="195" width="120" height="32" rx="4" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="490" y="215" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I1 MEM</text>
+      <rect x="560" y="195" width="120" height="32" rx="4" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="0.5"/>
+      <text x="700" y="213" fill="#64748b" font-size="8" font-family="sans-serif">Cycle 4</text>
+
+      <!-- Cycle 5 -->
+      <rect x="40" y="230" width="120" height="32" rx="4" fill="rgba(57,197,207,0.15)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="100" y="250" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I5 IF</text>
+      <rect x="170" y="230" width="120" height="32" rx="4" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1"/>
+      <text x="230" y="250" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I4 ID</text>
+      <rect x="300" y="230" width="120" height="32" rx="4" fill="rgba(210,153,34,0.15)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="360" y="250" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I3 EX</text>
+      <rect x="430" y="230" width="120" height="32" rx="4" fill="rgba(163,113,247,0.15)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="490" y="250" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I2 MEM</text>
+      <rect x="560" y="230" width="120" height="32" rx="4" fill="rgba(248,81,73,0.15)" stroke="#f87171" stroke-width="1"/>
+      <text x="620" y="250" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="sans-serif">I1 WB</text>
+      <text x="700" y="248" fill="#64748b" font-size="8" font-family="sans-serif">Cycle 5</text>
+
+      <!-- 流水线收益说明 -->
+      <rect x="40" y="275" width="720" height="55" rx="8" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="296" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700" font-family="sans-serif">理想情况：CPI = 1（每个周期有一条指令完成）</text>
+      <text x="400" y="316" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">吞吐量提升 = 流水线级数倍。5级流水 → 理论吞吐 5x，但被 hazards 降低</text>
+
+      <!-- 三类流水线冒险 -->
+      <rect x="40" y="345" width="720" height="110" rx="8" fill="rgba(30,41,59,0.25)" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="368" text-anchor="middle" fill="#e2e8f0" font-size="13" font-weight="700" font-family="sans-serif">三类流水线冒险 (Pipeline Hazards)</text>
+
+      <rect x="55" y="382" width="220" height="60" rx="6" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="1.2"/>
+      <text x="165" y="402" text-anchor="middle" fill="#f87171" font-size="11" font-weight="700" font-family="sans-serif">🔴 结构冒险</text>
+      <text x="165" y="418" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">硬件资源竞争</text>
+      <text x="165" y="434" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">如: Cache 取指和取数据冲突</text>
+
+      <rect x="290" y="382" width="220" height="60" rx="6" fill="rgba(210,153,34,0.08)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="400" y="402" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700" font-family="sans-serif">🟡 数据冒险</text>
+      <text x="400" y="418" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">指令依赖上条结果</text>
+      <text x="400" y="434" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">方案: 转发/旁路 + 插入气泡</text>
+
+      <rect x="525" y="382" width="220" height="60" rx="6" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.2"/>
+      <text x="635" y="402" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="700" font-family="sans-serif">🟣 控制冒险</text>
+      <text x="635" y="418" text-anchor="middle" fill="#94a3b8" font-size="9" font-family="sans-serif">分支/跳转破坏流水线</text>
+      <text x="635" y="434" text-anchor="middle" fill="#64748b" font-size="8" font-family="sans-serif">方案: 分支预测 + 延迟槽</text>
+    </svg>
+    <div class="diagram-caption">图4：经典五级流水线（IF→ID→EX→MEM→WB）的时空图，以及三类流水线冒险的解决方案概览</div>
+  </div>
+
+  <h3>三种流水线冒险详解</h3>
+  <table>
+    <tr><th>冒险类型</th><th>原因</th><th>影响</th><th>解决方案</th></tr>
+    <tr><td><strong>结构冒险</strong></td><td>硬件资源不够同时服务两条指令</td><td>流水线停顿（stall）</td><td>资源分离（如 L1i/L1d 分开）、增加硬件单元</td></tr>
+    <tr><td><strong>数据冒险</strong></td><td>下一条指令要用上条的运算结果</td><td>RAW (Read After Write) 依赖</td><td>① 转发（Forwarding）：EX 结果直接送给下条 EX<br>② 插入气泡（stall）：实在无法转发时停顿</td></tr>
+    <tr><td><strong>控制冒险</strong></td><td>分支/跳转指令改变 PC 流向</td><td>流水线中的指令可能错误</td><td>① 分支预测（静态/动态）<br>② 延迟槽（Delay Slot）<br>③ 预测失败后冲刷流水线</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🔬 现代 CPU 的深流水线（Deep Pipeline）</h4>
+    <p>经典五级流水线是教学模型。现代 CPU 的流水线深度可达 <strong>14~20 级</strong>：</p>
+    <ul>
+      <li><strong>Intel Core (Sunny Cove)</strong>：~14 级流水线，含分支预测（2级BPU）、μop 队列、保留站、ROB 等</li>
+      <li><strong>Apple M1 (Firestorm)</strong>：~9 级解码流水线 + 超大乱序执行窗口 (~630 μops)</li>
+      <li><strong>AMD Zen 4</strong>：~19 级流水线，含 8-wide 解码 + 4级分支预测缓存</li>
+    </ul>
+    <p>深流水线的代价：<strong>分支预测错误的代价更大</strong>（20 级流水线意味着一次错误要浪费 20 个周期）。所以现代 CPU 把 <strong>大量芯片面积花在分支预测上</strong>——准确率 >97% 是常态。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- ISA对比 -->
+<!-- ================================================================== -->
+<section id="isa" class="section">
+  <h2>🏛️ 常见指令集架构对比——x86 vs ARM vs RISC-V</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🌍 类比：三种\"语言\"</span></p>
+    <p><strong>x86</strong> 像英语——全球使用最广，语法复杂（但大家都习惯了），40年兼容性让它像英语一样有很多\"特例\"和\"不规则变化\"。<strong>ARM</strong> 像西班牙语——语法简洁（RISC），在移动市场占据统治地位，近年向桌面/服务器扩张。<strong>RISC-V</strong> 像世界语（Esperanto）——从一开始就设计得干净优雅，完全开源自由，任何人都可以用它造 CPU。</p>
+    <p>三种架构的\"方言\"也很有趣：x86 有 x86-16/32/64、MMX、SSE、AVX、AMX；ARM 有 ARMv7/ARMv8/ARMv9、AArch32/AArch64、Thumb/Thumb-2；RISC-V 有 RV32I/RV64I 加上各种标准扩展。每个架构都在不断演化。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 480" style="max-width:800px;width:100%">
+      <defs>
+        <linearGradient id="isa-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+      </defs>
+      <rect x="10" y="5" width="780" height="470" rx="10" fill="url(#isa-bg)" stroke="#334155" stroke-width="1"/>
+
+      <text x="400" y="28" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="700" font-family="sans-serif">三大指令集架构对比全景</text>
+
+      <!-- x86 -->
+      <rect x="30" y="50" width="240" height="150" rx="8" fill="rgba(248,81,73,0.06)" stroke="#f87171" stroke-width="2"/>
+      <text x="150" y="78" text-anchor="middle" fill="#f87171" font-size="16" font-weight="700" font-family="sans-serif">x86</text>
+      <text x="150" y="98" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">桌面 · 服务器 · 高性能</text>
+      <text x="150" y="118" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">Intel / AMD</text>
+      <rect x="45" y="130" width="210" height="24" rx="4" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="0.8"/>
+      <text x="150" y="147" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">CISC · 变长 1~15B</text>
+      <rect x="45" y="158" width="210" height="24" rx="4" fill="rgba(248,81,73,0.08)" stroke="#f87171" stroke-width="0.8"/>
+      <text x="150" y="175" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">1978年 (8086) · 40年+ 兼容</text>
+
+      <!-- ARM -->
+      <rect x="280" y="50" width="240" height="150" rx="8" fill="rgba(57,197,207,0.06)" stroke="#22d3ee" stroke-width="2"/>
+      <text x="400" y="78" text-anchor="middle" fill="#22d3ee" font-size="16" font-weight="700" font-family="sans-serif">ARM</text>
+      <text x="400" y="98" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">移动 · 嵌入式 · 笔记本 · 云</text>
+      <text x="400" y="118" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">Arm Ltd. (授权)</text>
+      <rect x="295" y="130" width="210" height="24" rx="4" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="0.8"/>
+      <text x="400" y="147" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="sans-serif">RISC · 定长 4B (A64)</text>
+      <rect x="295" y="158" width="210" height="24" rx="4" fill="rgba(57,197,207,0.08)" stroke="#22d3ee" stroke-width="0.8"/>
+      <text x="400" y="175" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="sans-serif">1985年 (ARM1) · 移动霸主</text>
+
+      <!-- RISC-V -->
+      <rect x="530" y="50" width="240" height="150" rx="8" fill="rgba(163,113,247,0.06)" stroke="#a78bfa" stroke-width="2"/>
+      <text x="650" y="78" text-anchor="middle" fill="#a78bfa" font-size="16" font-weight="700" font-family="sans-serif">RISC-V</text>
+      <text x="650" y="98" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">新兴 · 开源 · AI · IoT · 学术</text>
+      <text x="650" y="118" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">RISC-V Intl. (开源)</text>
+      <rect x="545" y="130" width="210" height="24" rx="4" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="0.8"/>
+      <text x="650" y="147" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">RISC · 定长 4B (基础)</text>
+      <rect x="545" y="158" width="210" height="24" rx="4" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="0.8"/>
+      <text x="650" y="175" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">2010年 · 模块化可扩展</text>
+
+      <!-- 详细对比表 -->
+      <rect x="30" y="215" width="740" height="240" rx="8" fill="rgba(30,41,59,0.3)" stroke="#334155" stroke-width="1"/>
+
+      <text x="100" y="242" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="700" font-family="sans-serif">对比维度</text>
+      <text x="280" y="242" text-anchor="middle" fill="#f87171" font-size="12" font-weight="700" font-family="sans-serif">x86</text>
+      <text x="460" y="242" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700" font-family="sans-serif">ARM</text>
+      <text x="640" y="242" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700" font-family="sans-serif">RISC-V</text>
+
+      <line x1="40" y1="250" x2="760" y2="250" stroke="#334155" stroke-width="0.5"/>
+
+      <text x="50" y="270" fill="#64748b" font-size="9" font-family="sans-serif">指令长度</text>
+      <text x="280" y="270" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">1~15 字节</text>
+      <text x="460" y="270" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="sans-serif">2 或 4 字节</text>
+      <text x="640" y="270" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">2 或 4 字节</text>
+
+      <text x="50" y="290" fill="#64748b" font-size="9" font-family="sans-serif">寄存器数量</text>
+      <text x="280" y="290" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">8 (16-bit) → 16 (32-bit) → 16 (64-bit)</text>
+      <text x="460" y="290" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="sans-serif">16 (32-bit) → 31 (64-bit)</text>
+      <text x="640" y="290" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">32 (整型) + 32 (浮点)</text>
+
+      <text x="50" y="310" fill="#64748b" font-size="9" font-family="sans-serif">设计哲学</text>
+      <text x="280" y="310" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">兼容优先 · 微码封装</text>
+      <text x="460" y="310" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="sans-serif">精简优先 · 低功耗</text>
+      <text x="640" y="310" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">极简优先 · 可扩展</text>
+
+      <text x="50" y="330" fill="#64748b" font-size="9" font-family="sans-serif">访存方式</text>
+      <text x="280" y="330" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">任何指令可访存</text>
+      <text x="460" y="330" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="sans-serif">仅 LOAD/STORE</text>
+      <text x="640" y="330" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">仅 LOAD/STORE</text>
+
+      <text x="50" y="350" fill="#64748b" font-size="9" font-family="sans-serif">许可证</text>
+      <text x="280" y="350" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">Intel/AMD 专有</text>
+      <text x="460" y="350" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="sans-serif">Arm Ltd. 授权</text>
+      <text x="640" y="350" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">开源 · 免授权费</text>
+
+      <text x="50" y="370" fill="#64748b" font-size="9" font-family="sans-serif">生态成熟度</text>
+      <text x="280" y="370" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">⭐⭐⭐⭐⭐ 最成熟</text>
+      <text x="460" y="370" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="sans-serif">⭐⭐⭐⭐ 很成熟</text>
+      <text x="640" y="370" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">⭐⭐⭐ 发展中</text>
+
+      <text x="50" y="390" fill="#64748b" font-size="9" font-family="sans-serif">典型功耗</text>
+      <text x="280" y="390" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">15~250W</text>
+      <text x="460" y="390" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="sans-serif">0.1~15W (手机) ~30W (笔记本)</text>
+      <text x="640" y="390" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">0.01~100W (可配置)</text>
+
+      <text x="50" y="410" fill="#64748b" font-size="9" font-family="sans-serif">AI/向量扩展</text>
+      <text x="280" y="410" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">AVX-512 · AMX · VNNI</text>
+      <text x="460" y="410" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="sans-serif">NEON · SVE · SME</text>
+      <text x="640" y="410" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">V 向量扩展 · 可定制</text>
+
+      <text x="50" y="430" fill="#64748b" font-size="9" font-family="sans-serif">未来趋势</text>
+      <text x="280" y="430" text-anchor="middle" fill="#f87171" font-size="9" font-family="sans-serif">混合架构 (P核+E核)</text>
+      <text x="460" y="430" text-anchor="middle" fill="#22d3ee" font-size="9" font-family="sans-serif">笔记本/服务器扩张</text>
+      <text x="640" y="430" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="sans-serif">AI加速器 · 中国自主</text>
+    </svg>
+    <div class="diagram-caption">图5：x86 / ARM / RISC-V 三大 ISA 的全方位对比 —— 从指令长度、寄存器、设计哲学到功耗、生态和未来趋势</div>
+  </div>
+
+  <h3>三大 ISA 生态现状</h3>
+  <table>
+    <tr><th>方面</th><th>x86</th><th>ARM</th><th>RISC-V</th></tr>
+    <tr><td><strong>市场统治</strong></td><td>桌面 ~80% · 服务器 ~90%+</td><td>移动 ~99% · 嵌入式 ~50%</td><td>IoT · AI 加速器 · 新兴市场</td></tr>
+    <tr><td><strong>代表性 CPU</strong></td><td>Core Ultra · Ryzen · Xeon · EPYC</td><td>Cortex-X/A/M · Apple M系列 · 鲲鹏</td><td>SiFive · 香山 · StarFive · THead</td></tr>
+    <tr><td><strong>软件生态</strong></td><td>Windows/Linux/几乎所有软件都有 x86 版</td><td>macOS ARM · Android · iOS · Linux</td><td>Linux 内核支持 · 编译器(GCC/LLVM) · 工具链逐步成熟</td></tr>
+    <tr><td><strong>定制性</strong></td><td>封闭，只有 Intel/AMD 能做</td><td>授权设计，Apple/高通/联发科可自研核心</td><td>完全开放，任何人都可以设计自己的 RISC-V 核心</td></tr>
+    <tr><td><strong>中国自主化</strong></td><td>受出口管制影响</td><td>ARM v9 授权受限</td><td>完全自主可控（龙芯LoongArch也有自主ISA）</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🔬 RISC-V 为什么会成为\"第三极\"？</h4>
+    <p>RISC-V 最大的优势不是技术上的——技术上它和 ARM 一样是 RISC，设计得更干净而已。真正改变游戏规则的是 <strong>开源</strong>：</p>
+    <ul>
+      <li><strong>零授权费</strong>：ARM 对 SoC 收 ~1-2% 的版税，x86 根本不对外授权。RISC-V 完全免费。</li>
+      <li><strong>可修改</strong>：你可以为你的芯片添加自定义指令。Google 的 AI 芯片、中国的一些自主 CPU 都基于 RISC-V 加定制扩展。</li>
+      <li><strong>模块化</strong>：基础指令集（RV32I/RV64I）只有 ~50 条指令，但可以按需添加扩展（M=乘除、F=单精度浮点、D=双精度浮点、V=向量、C=压缩等）。想省面积？只实现 I+M 就够了。</li>
+      <li><strong>学术友好</strong>：几乎所有计算机体系结构课程都在转向 RISC-V——因为它简单、干净、开放。</li>
+    </ul>
+    <p>当然，挑战也很大：<strong>生态仍在早期</strong>，软件兼容性、性能对标 x86/ARM 还有差距。但趋势已经形成——RISC-V 是 ISA 界的 Linux。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 实战问答 -->
+<!-- ================================================================== -->
+<section id="qa" class="section">
+  <h2>❓ 实战问答</h2>
+
+  <div class="qa-box">
+    <h4>Q1</h4>
+    <p class="q">CISC 和 RISC 的核心区别是什么？为什么现在界限越来越模糊？</p>
+    <p class="a">核心区别：<strong>CISC 靠硬件做复杂的事</strong>（指令功能丰富、变长、可操作内存），<strong>RISC 靠编译器做复杂的事</strong>（指令简单规整、定长、只有 LOAD/STORE 能访存）。<br>
+    界限模糊的原因：<strong>两种哲学在互相学习</strong>。CISC 内核转用 RISC 风格的 μop（x86 的微码翻译），RISC 加入更复杂的指令扩展（ARM 的 SVE/SME、RISC-V 的 V 扩展）。现代 CPU 其实是 <strong>"CISC 外包装 + RISC 内核"</strong> 的混合体。当前趋势是 <strong>ISA 越来越不重要</strong>——微架构和 μop 的实现质量才是关键。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q2</h4>
+    <p class="q">什么是流水线数据冒险？请用例子说明转发的原理。</p>
+    <p class="a">数据冒险就是：<strong>下一条指令需要上条指令的结果，但上条结果还没写回寄存器</strong>。<br>
+    例子：<br>
+    <code>ADD R1, R2, R3   ; R1 = R2 + R3</code><br>
+    <code>SUB R4, R1, R5   ; 需要 R1 的值</code><br>
+    在五级流水线中，ADD 的 R1 在 WB 阶段（Cycle 5）才写回，但 SUB 在 ID 阶段（Cycle 4）就需要读 R1。<br>
+    <strong>转发（Forwarding/Bypass）的原理</strong>：不用等写回，直接把 EX 阶段 ALU 的输出通过旁路送到下一条指令的 EX 输入。硬件上是一个多路选择器——检查当前 EX 阶段的结果寄存器是否和下一指令的源寄存器匹配，匹配就截胡（forward），不匹配才走寄存器读。这种方案可以 <strong>消除大部分 RAW 冒险</strong>，只有 LOAD→ALU 这种无法转发的情况才需要插入气泡。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q3</h4>
+    <p class="q">分支预测是怎么工作的？为什么现代 CPU 花那么多面积做它？</p>
+    <p class="a">分支预测是解决 <strong>控制冒险</strong> 的核心技术。流水线越深，分支预测错误的代价越大（20 级流水线一次预测错误浪费 20 个周期）。<br>
+    主要技术：<br>
+    <strong>① 静态预测</strong>：简单规则（如"向后跳转预测为真"对应循环，向前预测为假）。<br>
+    <strong>② 动态预测</strong>：用历史表（Branch History Table）记录最近分支的跳转/不跳转模式。<br>
+    <strong>③ 两级自适应预测</strong>：记录 <strong>全局历史</strong> + <strong>模式表</strong>，能识别复杂模式（如 TNTN 交替模式）。<br>
+    <strong>④ TAGE 预测器</strong>（现代 CPU 标准）：用多个不同长度的历史表投票，准确率 >97%。<br>
+    现代 CPU 花 <strong>~10-20% 的芯片面积</strong> 在分支预测上，因为每 1% 的预测准确率提升就能带来若干百分点的 IPC 提升。<br>
+    <strong>典型数据</strong>：Intel Skylake 的分支预测准确率 ~97.5%，但 mispredict 代价 ~15-20 周期。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q4</h4>
+    <p class="q">RISC-V 正在挑战 x86 和 ARM，它的核心优势在哪里？挑战又是什么？</p>
+    <p class="a"><strong>核心优势</strong>：<br>
+    ① <strong>开源免费</strong>——零授权费，任何人都可以设计 RISC-V 核心，适合定制芯片（AI 加速器、IoT 传感器）。<br>
+    ② <strong>模块化设计</strong>——基础指令集 RV32I 只有 ~50 条指令，按需添加 M/F/D/V/C 等扩展，面积灵活可控。<br>
+    ③ <strong>学术生态</strong>——几乎成为计算机体系结构教学的默认选择（取代 MIPS）。<br>
+    ④ <strong>地缘政治</strong>——中国等国家把 RISC-V 作为自主可控的替代方案。<br>
+    <strong>挑战</strong>：<br>
+    ① <strong>生态差距大</strong>——软件兼容性、操作系统支持、应用适配远不如 x86 和 ARM。<br>
+    ② <strong>性能追逐</strong>——目前缺少高性能核心（单核性能 ~Cortex-A78 级别，还比不上 x86 旗舰）。<br>
+    ③ <strong>碎片化</strong>——谁都"可以加自定义指令"意味着谁都可能加，兼容性是个隐患。<br>
+    ④ <strong>基金会治理</strong>——RISC-V Intl. 的治理问题（尤其是中国 vs 美国的参与度）仍有不确定性。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q5</h4>
+    <p class="q">LOAD 指令在流水线中的执行过程是什么？为什么 LOAD→ALU 的数据冒险需要插入气泡？</p>
+    <p class="a">LOAD 指令过程：<br>
+    <strong>IF</strong> → 从 L1i Cache 取指令<br>
+    <strong>ID</strong> → 译码，识别为 LOAD，读取基址寄存器<br>
+    <strong>EX</strong> → ALU 计算有效地址（Addr = Base + Offset）<br>
+    <strong>MEM</strong> → 访问 L1d Cache / 主存，取回数据（<strong>关键阶段</strong>，耗时）<br>
+    <strong>WB</strong> → 把数据写回目标寄存器<br>
+    <strong>为什么 LOAD→ALU 不能转发？</strong><br>
+    因为转发需要 <strong>数据在 EX 阶段结束时就可用</strong>。但 LOAD 的数据只在 MEM 阶段结束时才从 Cache 返回（多了一个访存周期）。所以紧跟着 LOAD 的 ALU 指令即使使用转发，也需要 <strong>插入一个气泡（stall）</strong> 等待 LOAD 完成 MEM 阶段，才能转发数据。这称为 <strong>LOAD-use 延迟</strong>，编译器会尽量在 LOAD 后插入不相关的指令来避免 stall（指令调度）。</p>
+  </div>
+
+  <div class="qa-box">
+    <h4>Q6</h4>
+    <p class="q">什么是\"寻址方式\"？为什么 RISC 通常只用 1~3 种，而 CISC 有 10+ 种？</p>
+    <p class="a">寻址方式就是 <strong>CPU 根据指令中的地址信息计算出操作数真实位置（有效地址 EA）的方式</strong>。<br>
+    <strong>CISC 多寻址的原因</strong>：CISC 诞生于 1970s，当时内存极其昂贵（1KB 就要几百美元），编译器不成熟。为了让汇编程序员能写出更紧凑的代码，硬件提供了大量寻址方式——一条指令可以用基址+变址+偏移量一次性算出一个复杂地址。代码密度高，但硬件译码器极其复杂。<br>
+    <strong>RISC 少寻址的原因</strong>：1980s 内存变便宜，编译器成熟。RISC 设计者发现绝大多数寻址方式在编译器中很少使用，反而是最简的几种（寄存器、立即数、基址+偏移）覆盖了 99% 的场景。于是 RISC 砍掉了复杂寻址，简化了硬件，把组合多种寻址方式的"任务"交给了编译器——编译器用多条简单指令完成复杂寻址的功能。<br>
+    <strong>关键权衡</strong>：寻址方式多 = 代码密度高 + 译码复杂 + 功耗高；寻址方式少 = 代码密度低 + 译码简单 + 功耗低。这就是为什么 ARM 统治手机（低功耗）而 x86 统治桌面（性能优先）。</p>
+  </div>
+</section>
+
+<!-- ================================================================== -->
+<!-- 口播总结 -->
+<!-- ================================================================== -->
+<section class="section">
+  <div class="voice-summary">
+    <p><strong>朋友，我们来总结一下今天关于指令系统的知识。</strong></p>
+    <p>第一，<strong>指令格式</strong> 是 CPU 和软件之间的"语法约定"。定长指令（RISC）像整齐排列的小格子，译码简单、流水线友好；变长指令（CISC）像不同大小的箱子，代码密度高但译码复杂。一条指令由<strong>操作码（做什么）+ 地址码（对谁做）</strong>组成。</p>
+    <p>第二，<strong>七种寻址方式</strong> 的本质是"数据在哪"。最快的立即和寄存器寻址不需要访存，最灵活的间接和变址寻址需要 1-2 次访存。这就是为什么编译器会尽量把变量放在寄存器里——<strong>一次寄存器访问 ~1ns，一次主存访问 ~100ns</strong>，差了 100 倍！</p>
+    <p>第三，<strong>CISC 和 RISC</strong> 不是非此即彼的对立。CISC 想用更少的指令做事（内存便宜 40 年前是关键），RISC 想用更快的指令做事（让编译器来组合）。现在两者殊途同归——x86 用 μop 转成 RISC 内核，ARM 加上了复杂指令扩展，RISC-V 用模块化扩展来平衡。</p>
+    <p>第四，<strong>五级流水线</strong> 让 CPU 的 CPI 趋近 1，但带来了三类冒险——结构冒险（硬件竞争）、数据冒险（指令依赖）、控制冒险（分支打乱流水线）。现代 CPU 用 <strong>转发、分支预测、乱序执行</strong> 来应对这些挑战，分支预测器甚至占了芯片面积的 10-20%。</p>
+    <p>第五，<strong>x86、ARM 和 RISC-V</strong> 三足鼎立的格局正在形成。x86 是性能霸主但封闭，ARM 是移动之王但授权贵，RISC-V 是开源新星但生态弱。对学习者来说：<strong>理解 ISA 的设计哲学比记住具体指令更重要</strong>——因为思想比细节更持久。</p>
+    <p>这是指令系统的全部内容，下一篇我们会深入 <strong>存储系统与 Cache</strong>——看 CPU 怎么用几 MB 的快速缓存解决几十 GB 的内存墙问题，敬请期待！🎯</p>
+  </div>
+</section>
+
+</main>
+
+</div><!-- .app -->
+
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

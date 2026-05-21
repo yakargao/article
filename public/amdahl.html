@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>阿姆达尔定律 · 并行计算的数学天花板 · 费曼学习法</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149;
+    --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  .kw { color: #ff7b72; }
+  .str { color: #a5d6ff; }
+  .num { color: #79c0ff; }
+  .cm, .comment { color: #8b949e; font-style: italic; }
+  .fn { color: #d2a8ff; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .sidebar-logo-link { text-decoration: none; }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; text-decoration: none; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa { margin: 20px 0; border-left: 3px solid var(--accent); padding-left: 16px; }
+  .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .qa .a { font-size: 14px; }
+
+  .formula { background: linear-gradient(135deg, rgba(251,191,36,0.08), rgba(248,113,73,0.04)); border: 1px solid rgba(251,191,36,0.3); border-radius: 12px; padding: 24px; margin: 20px 0; text-align: center; font-family: 'JetBrains Mono', monospace; }
+  .formula .big { font-size: 28px; font-weight: 700; color: #fbbf24; letter-spacing: 0.02em; }
+  .formula .desc { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic > summary::-webkit-details-marker { display: none; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic[open] > summary::after { transform: rotate(90deg); }
+  details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
+  .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
+  .socratic-a .highlight { color: #3fb950; font-weight: 600; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+
+  @media (max-width: 768px) {
+    .sidebar { width: 200px; }
+    .main { margin-left: 200px; padding: 20px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+</style>
+<script src="mobile.js" defer></script>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" class="sidebar-logo-link"><div class="sidebar-logo">⚡ 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">核心理论</div>
+  <a class="nav-item" href="#amdahl-law">📐 阿姆达尔定律</a>
+  <a class="nav-item" href="#speedup-curve">📈 加速比曲线</a>
+  <a class="nav-item" href="#implications">💡 工程启示</a>
+  <div class="nav-section">延伸</div>
+  <a class="nav-item" href="#gustafson">🔄 古斯塔夫森定律</a>
+  <a class="nav-item" href="#universal-law">🌌 通用可扩展性定律</a>
+  <div class="nav-section">实战</div>
+  <a class="nav-item" href="#examples">🎯 实际案例分析</a>
+  <a class="nav-item" href="#qa-section">❓ 核心题</a>
+  <a class="nav-item" href="#socratic">💬 苏格拉底提问</a>
+  <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+</aside>
+
+<main class="main">
+
+<section id="overview" class="section">
+  <h2>⚡ 阿姆达尔定律</h2>
+  <div class="feynman">
+    <p><strong>一句话：</strong>阿姆达尔定律告诉你——<strong>程序的串行部分决定了并行加速的上限</strong>。加再多 CPU 核心，只要程序里有 5% 必须串行执行，加速比永远不会超过 20 倍。它是对"堆硬件就能无限快"的最优雅的数学反驳。</p>
+    <p>1967 年，IBM 工程师 Gene Amdahl 在论文中提出了这个定律，原本是为了论证"单处理器才是正道"，结果却成了并行计算领域最基础的约束公式。实战中，这个定律常和 <a href="/scalability.html" style="color:var(--accent)">可扩展性</a> 一起出现。</p>
+  </div>
+</section>
+
+<!-- ═══════ 1. 阿姆达尔定律 ═══════ -->
+<section id="amdahl-law" class="section">
+  <h2>📐 阿姆达尔定律：公式推导与直觉</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏗️ 类比：</span>盖一栋楼。打地基需要 10 天（串行，只能一个施工队干），地上部分可以用 N 个施工队同时干（并行）。不管雇多少个施工队，楼至少需要 <strong>10 天</strong>才能盖好——地基时间决定了总工期下限。</p>
+  </div>
+
+  <div class="formula">
+    <div class="big">S(n) = ──────────</div>
+    <div style="margin-top:4px; font-size:22px; color:#fcd34d;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1</div>
+    <div style="margin-top:2px; font-size:22px; color:#fcd34d;">&nbsp;&nbsp;&nbsp;(1 − p) + p/n</div>
+    <div class="desc">S(n) = 加速比 · n = 处理器数量 · p = 可并行化的比例（0~1）</div>
+  </div>
+
+  <h4>参数拆解</h4>
+  <table>
+    <tr><th style="width:12%">符号</th><th>含义</th><th>示例</th></tr>
+    <tr><td><strong>p</strong></td><td>程序中<strong>可并行化</strong>的比例</td><td>p=0.95 表示 95% 的代码可以并行</td></tr>
+    <tr><td><strong>1 − p</strong></td><td>程序中<strong>必须串行执行</strong>的比例</td><td>1−p=0.05 表示 5% 的代码无法并行</td></tr>
+    <tr><td><strong>n</strong></td><td>处理器（核心）数量</td><td>n=8 表示 8 核 CPU</td></tr>
+    <tr><td><strong>S(n)</strong></td><td>相对单核的加速比</td><td>S(8)=5.9 表示 8 核只比单核快 5.9 倍</td></tr>
+  </table>
+
+  <h4>手动推一遍：p=0.95，n=8</h4>
+  <pre><code>S(<span class="num">8</span>) = <span class="num">1</span> / ((<span class="num">1</span> − <span class="num">0.95</span>) + <span class="num">0.95</span>/<span class="num">8</span>)
+     = <span class="num">1</span> / (<span class="num">0.05</span> + <span class="num">0.11875</span>)
+     = <span class="num">1</span> / <span class="num">0.16875</span>
+     ≈ <strong><span class="num">5.93</span></strong></code></pre>
+  <p>8 核并行，95% 的代码可并行 → 加速比只有 <strong>5.93x</strong>，远不到理论上的 8x。<strong>串行的 5% 吃掉了一半的加速潜力。</strong></p>
+
+  <h4>极限加速比：当 n → ∞</h4>
+  <div class="formula">
+    <div class="big">S(∞) = ────</div>
+    <div style="margin-top:4px; font-size:22px; color:#f87171;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1</div>
+    <div style="margin-top:2px; font-size:22px; color:#f87171;">&nbsp;&nbsp;1 − p</div>
+    <div class="desc">无论有多少核心，加速比的上限由串行部分决定</div>
+  </div>
+
+  <table>
+    <tr><th>串行比例 (1−p)</th><th>10%</th><th>5%</th><th>2%</th><th>1%</th><th>0.5%</th></tr>
+    <tr><td><strong>理论上限 S(∞)</strong></td><td><span class="badge-red">10x</span></td><td><span class="badge-orange">20x</span></td><td><span class="badge-purple">50x</span></td><td><span class="badge-green">100x</span></td><td>200x</td></tr>
+  </table>
+  <p>💡 <strong>5% 的串行代码 → 最多 20x 加速，无论多少核。</strong>这就是阿姆达尔定律的核心洞察。</p>
+</section>
+
+<!-- ═══════ 2. 加速比曲线 ═══════ -->
+<section id="speedup-curve" class="section">
+  <h2>📈 加速比曲线：为什么"收益递减"来得这么快</h2>
+  <div class="feynman">
+    <p><span class="analogy">📉 类比：</span>给工地加施工队。从 1 队到 2 队，工期大幅缩短。从 10 队到 20 队，新增的人只能帮很小的忙（并行部分已经瓜分完了）。从 100 队到 200 队——地基还是那 10 天，加多少人也没用。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 460" style="max-width:820px; width:100%">
+      <defs>
+        <linearGradient id="gradP90" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#3fb950" stop-opacity="0.15"/>
+          <stop offset="100%" stop-color="#3fb950" stop-opacity="0.01"/>
+        </linearGradient>
+        <linearGradient id="gradP75" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.15"/>
+          <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.01"/>
+        </linearGradient>
+        <linearGradient id="gradP50" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#f87171" stop-opacity="0.15"/>
+          <stop offset="100%" stop-color="#f87171" stop-opacity="0.01"/>
+        </linearGradient>
+      </defs>
+
+      <!-- Grid -->
+      <g stroke="#1e293b" stroke-width="0.5">
+        <line x1="50" y1="20" x2="50" y2="380"/>
+        <line x1="50" y1="380" x2="780" y2="380"/>
+        <!-- Horizontal grid lines -->
+        <line x1="50" y1="308" x2="780" y2="308"/>
+        <line x1="50" y1="236" x2="780" y2="236"/>
+        <line x1="50" y1="164" x2="780" y2="164"/>
+        <line x1="50" y1="92" x2="780" y2="92"/>
+        <line x1="50" y1="20" x2="780" y2="20"/>
+        <!-- Vertical grid lines -->
+        <line x1="123" y1="20" x2="123" y2="380"/>
+        <line x1="196" y1="20" x2="196" y2="380"/>
+        <line x1="269" y1="20" x2="269" y2="380"/>
+        <line x1="342" y1="20" x2="342" y2="380"/>
+        <line x1="415" y1="20" x2="415" y2="380"/>
+        <line x1="488" y1="20" x2="488" y2="380"/>
+        <line x1="561" y1="20" x2="561" y2="380"/>
+        <line x1="634" y1="20" x2="634" y2="380"/>
+        <line x1="707" y1="20" x2="707" y2="380"/>
+        <line x1="780" y1="20" x2="780" y2="380"/>
+      </g>
+
+      <!-- Y-axis labels -->
+      <text x="40" y="384" text-anchor="end" fill="#64748b" font-size="9">0</text>
+      <text x="40" y="312" text-anchor="end" fill="#64748b" font-size="9">5</text>
+      <text x="40" y="240" text-anchor="end" fill="#64748b" font-size="9">10</text>
+      <text x="40" y="168" text-anchor="end" fill="#64748b" font-size="9">15</text>
+      <text x="40" y="96" text-anchor="end" fill="#64748b" font-size="9">20</text>
+      <text x="40" y="24" text-anchor="end" fill="#64748b" font-size="9">25</text>
+      <text x="50" y="398" text-anchor="middle" fill="#64748b" font-size="9">加速比 S(n)</text>
+
+      <!-- X-axis labels -->
+      <text x="123" y="395" text-anchor="middle" fill="#64748b" font-size="8">2</text>
+      <text x="269" y="395" text-anchor="middle" fill="#64748b" font-size="8">4</text>
+      <text x="415" y="395" text-anchor="middle" fill="#64748b" font-size="8">8</text>
+      <text x="561" y="395" text-anchor="middle" fill="#64748b" font-size="8">16</text>
+      <text x="707" y="395" text-anchor="middle" fill="#64748b" font-size="8">32</text>
+      <text x="780" y="395" text-anchor="middle" fill="#64748b" font-size="8">64</text>
+
+      <!-- X-axis title -->
+      <text x="415" y="418" text-anchor="middle" fill="#64748b" font-size="9">处理器数量 n</text>
+
+      <!-- Horizontal asymptote labels -->
+      <line x1="50" y1="56" x2="780" y2="56" stroke="#3fb950" stroke-width="0.8" stroke-dasharray="5,4"/>
+      <text x="785" y="60" fill="#4ade80" font-size="9">S(∞)=20 (p=95%)</text>
+
+      <line x1="50" y1="164" x2="780" y2="164" stroke="#fbbf24" stroke-width="0.8" stroke-dasharray="5,4"/>
+      <text x="785" y="168" fill="#fcd34d" font-size="9">S(∞)=4 (p=75%)</text>
+
+      <line x1="50" y1="308" x2="780" y2="308" stroke="#f87171" stroke-width="0.8" stroke-dasharray="5,4"/>
+      <text x="785" y="312" fill="#fca5a5" font-size="9">S(∞)=2 (p=50%)</text>
+
+      <!-- p=95% curve: S(n) = 1/(0.05 + 0.95/n) -->
+      <polyline fill="url(#gradP90)" stroke="#3fb950" stroke-width="2.5" points="
+        50,308
+        123,210  269,147  415,98   488,80   561,69   634,63   707,58   780,56
+      "/>
+
+      <!-- p=75% curve: S(n) = 1/(0.25 + 0.75/n) -->
+      <polyline fill="url(#gradP75)" stroke="#fbbf24" stroke-width="2" points="
+        50,308
+        123,273  269,234  415,200  488,186  561,178  634,173  707,170  780,168
+      "/>
+
+      <!-- p=50% curve: S(n) = 1/(0.5 + 0.5/n) -->
+      <polyline fill="url(#gradP50)" stroke="#f87171" stroke-width="2" points="
+        50,308
+        123,300  269,290  415,280  488,276  561,273  634,271  707,270  780,269
+      "/>
+
+      <!-- Key insight boxes -->
+      <rect x="53" y="82" width="130" height="22" rx="4" fill="rgba(63,185,80,0.12)"/>
+      <text x="118" y="97" text-anchor="middle" fill="#4ade80" font-size="9">4核→8核：+1.3x</text>
+      <rect x="53" y="68" width="100" height="22" rx="4" fill="rgba(63,185,80,0.06)"/>
+      <text x="103" y="83" text-anchor="middle" fill="#86efac" font-size="8">1核→8核：+5.9x</text>
+
+      <!-- p=95% data points -->
+      <circle cx="123" cy="210" r="3.5" fill="#3fb950"/>
+      <circle cx="269" cy="147" r="3.5" fill="#3fb950"/>
+      <circle cx="415" cy="98" r="3.5" fill="#3fb950"/>
+      <circle cx="488" cy="80" r="3.5" fill="#3fb950"/>
+      <circle cx="561" cy="69" r="3.5" fill="#3fb950"/>
+      <circle cx="634" cy="63" r="3" fill="#3fb950"/>
+      <circle cx="707" cy="58" r="3" fill="#3fb950"/>
+      <circle cx="780" cy="56" r="3" fill="#3fb950"/>
+
+      <!-- p=75% data points -->
+      <circle cx="415" cy="200" r="3.5" fill="#fbbf24"/>
+
+      <!-- Choke point callout -->
+      <rect x="580" y="230" width="230" height="140" rx="8" fill="rgba(30,41,59,0.5)" stroke="#475569" stroke-width="1"/>
+      <text x="695" y="255" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="600">🔑 关键观察</text>
+      <text x="595" y="278" fill="#94a3b8" font-size="9">• n 从 1→8，加速比涨得快</text>
+      <text x="595" y="298" fill="#94a3b8" font-size="9">• n 从 8→64，加速比几乎不走</text>
+      <text x="595" y="318" fill="#94a3b8" font-size="9">• 三条曲线的上限分别是：</text>
+      <text x="595" y="338" fill="#4ade80" font-size="9">  20x (5%串行) · 4x (25%串行) · 2x (50%串行)</text>
+      <text x="595" y="358" fill="#fbbf24" font-size="9">• 结论：<tspan fill="#fff" font-weight="600">先优化串行部分，再加核</tspan></text>
+    </svg>
+    <div class="diagram-caption">三条加速比曲线：p=95%/75%/50%。n 越大，边际收益越低，最终被串行瓶颈死死按住</div>
+  </div>
+</section>
+
+<!-- ═══════ 3. 工程启示 ═══════ -->
+<section id="implications" class="section">
+  <h2>💡 工程启示：阿姆达尔定律教给我们的 5 件事</h2>
+
+  <table>
+    <tr><th style="width:5%">#</th><th style="width:25%">启示</th><th>解释</th></tr>
+    <tr>
+      <td>①</td>
+      <td><strong>先优化串行，再加核心</strong></td>
+      <td>把串行比例从 5% 降到 1%，上限从 20x 变 100x。这比从 8 核升到 64 核有用得多。</td>
+    </tr>
+    <tr>
+      <td>②</td>
+      <td><strong>边际收益递减是铁律</strong></td>
+      <td>p=95% 时：1→2 核 +1.9x，2→4 核 +1.4x，4→8 核 +1.1x，8→16 核 +0.7x……越往后越不值。</td>
+    </tr>
+    <tr>
+      <td>③</td>
+      <td><strong>锁、IO、同步 = 串行的主要来源</strong></td>
+      <td>数据库事务等锁、文件 IO、网络 RPC 等待、goroutine 同步——这些就是你的"1−p"。优化方向：异步 IO、无锁数据结构、批处理减少 RPC 次数。</td>
+    </tr>
+    <tr>
+      <td>④</td>
+      <td><strong>不是所有问题都适合并行</strong></td>
+      <td>任务之间有数据依赖（下一个计算依赖上一个结果）→ 串行比例接近 100% → 并行几乎无收益。这类问题要考虑算法层面优化而非堆核心。</td>
+    </tr>
+    <tr>
+      <td>⑤</td>
+      <td><strong>"线性扩展"是营销话术</strong></td>
+      <td>当有人说"我们的系统可以线性扩展"→ 问他串行比例多少。没有程序能做到 100% 并行。任何声称无限扩展的系统，要么在撒谎，要么没测到大负载。</td>
+    </tr>
+  </table>
+
+  <h4>实际串行来源速查</h4>
+  <table>
+    <tr><th>串行来源</th><th>典型占比</th><th>优化手段</th></tr>
+    <tr><td>锁竞争（Mutex/RWMutex）</td><td>1-10%</td><td>分段锁、Lock-Free、COW</td></tr>
+    <tr><td>同步 RPC 调用</td><td>5-30%</td><td>异步化、批量合并、冗余请求</td></tr>
+    <tr><td>数据库事务</td><td>10-50%</td><td>读写分离、分库分表、乐观锁</td></tr>
+    <tr><td>数据依赖（流水线瓶颈）</td><td>不定</td><td>算法重构、流水线并行、Speculative Execution</td></tr>
+    <tr><td>单线程初始化/序列化</td><td>1-5%</td><td>惰性初始化、并行反序列化</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 4. 古斯塔夫森定律 ═══════ -->
+<section id="gustafson" class="section">
+  <h2>🔄 古斯塔夫森定律：对阿姆达尔的"乐观反驳"</h2>
+  <div class="feynman">
+    <p><span class="analogy">🔭 类比：</span>阿姆达尔说"给你固定大小的望远镜，加再多镜片也看不到更远"。古斯塔夫森说"但如果望远镜变大了呢？"——他换了个前提：<strong>问题规模随处理器数量一起增长</strong>。</p>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h4><span class="badge-orange">阿姆达尔定律 (1967)</span></h4>
+      <p><strong>前提：固定问题规模</strong></p>
+      <p style="font-family:JetBrains Mono;color:#fcd34d">S(n) = 1 / ((1−p) + p/n)</p>
+      <p>串行部分是瓶颈。n→∞ 时加速比趋于 1/(1−p)。对"大核心数无意义"持悲观态度。</p>
+    </div>
+    <div>
+      <h4><span class="badge-green">古斯塔夫森定律 (1988)</span></h4>
+      <p><strong>前提：问题规模随 n 增长</strong></p>
+      <p style="font-family:JetBrains Mono;color:#4ade80">S(n) = n − p·(n − 1)</p>
+      <p>串行时间是固定的，并行部分可以无限放大。n 很大时 S(n) ≈ p·n。对并行持乐观态度。</p>
+    </div>
+  </div>
+
+  <h4>什么时候用哪个定律？</h4>
+  <table>
+    <tr><th>场景</th><th>适用定律</th><th>理由</th></tr>
+    <tr><td>固定大小的批处理任务（如编译一个项目）</td><td><span class="badge-orange">阿姆达尔</span></td><td>问题规模固定，串行比例是真实瓶颈</td></tr>
+    <tr><td>随用户增长的 Web 服务（更多用户→更多请求→更多可并行的任务）</td><td><span class="badge-green">古斯塔夫森</span></td><td>问题规模随负载增长，并行部分占比增加</td></tr>
+    <tr><td>科学计算/模拟（更大网格→更多并行）</td><td><span class="badge-green">古斯塔夫森</span></td><td>典型"大规模并行"场景</td></tr>
+    <tr><td>单个 API 请求的延迟优化</td><td><span class="badge-orange">阿姆达尔</span></td><td>请求延迟是固定的端到端约束</td></tr>
+  </table>
+
+  <div class="info-card">
+    <h4>🎯 实战中的正确回答</h4>
+    <p>"阿姆达尔定律用于分析<strong>固定问题的延迟加速</strong>，古斯塔夫森定律用于分析<strong>可扩展问题的吞吐量增长</strong>。两者不矛盾——前者告诉你单次请求的延迟下限，后者告诉你水平扩展后的吞吐量上限。考官想听的是你理解两者的<strong>前提假设不同</strong>，而不是背公式。"</p>
+  </div>
+</section>
+
+<!-- ═══════ 5. 通用可扩展性定律 ═══════ -->
+<section id="universal-law" class="section">
+  <h2>🌌 通用可扩展性定律：把"协调成本"也考虑进来</h2>
+  <div class="feynman">
+    <p><span class="analogy">🏢 类比：</span>阿姆达尔只考虑了"打地基要 10 天"，但没考虑"施工队越多，每天早上的协调会也越长"。通用可扩展性定律把<strong>协调开销</strong>纳入了公式——当 n 过大时，协调成本超过并行收益，加速比反而<strong>下降</strong>。</p>
+  </div>
+
+  <div class="formula">
+    <div class="big">S(n) = ─────────────────</div>
+    <div style="margin-top:4px; font-size:22px; color:#c4b5fd;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;n</div>
+    <div style="margin-top:2px; font-size:22px; color:#c4b5fd;">&nbsp;&nbsp;1 + σ·(n−1) + κ·n·(n−1)</div>
+    <div class="desc">σ = 争用系数（阿姆达尔的部分）· κ = 一致性/协调开销系数（新增）</div>
+  </div>
+
+  <p><strong>κ 的物理意义：</strong>线程间的同步开销、缓存一致性协议（MESI）、分布式系统的共识开销——这些成本随 n <strong>二次增长</strong>（n·(n−1) 项）。当 n 足够大时，κ 项主导，加速比<strong>开始下降</strong>——这就是"过度并行反而变慢"的数学解释。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" style="max-width:820px; width:100%">
+      <defs>
+        <linearGradient id="gradUSL" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.12"/>
+          <stop offset="45%" stop-color="#a78bfa" stop-opacity="0.02"/>
+          <stop offset="100%" stop-color="#f87171" stop-opacity="0.10"/>
+        </linearGradient>
+      </defs>
+      <!-- Grid -->
+      <g stroke="#1e293b" stroke-width="0.5">
+        <line x1="50" y1="30" x2="50" y2="250"/>
+        <line x1="50" y1="250" x2="780" y2="250"/>
+        <line x1="50" y1="206" x2="780" y2="206"/>
+        <line x1="50" y1="162" x2="780" y2="162"/>
+        <line x1="50" y1="118" x2="780" y2="118"/>
+        <line x1="50" y1="74" x2="780" y2="74"/>
+        <line x1="50" y1="30" x2="780" y2="30"/>
+        <line x1="196" y1="30" x2="196" y2="250"/>
+        <line x1="342" y1="30" x2="342" y2="250"/>
+        <line x1="488" y1="30" x2="488" y2="250"/>
+        <line x1="634" y1="30" x2="634" y2="250"/>
+      </g>
+
+      <!-- Labels -->
+      <text x="50" y="270" text-anchor="middle" fill="#64748b" font-size="9">n=1</text>
+      <text x="196" y="270" text-anchor="middle" fill="#64748b" font-size="9">n=8</text>
+      <text x="342" y="270" text-anchor="middle" fill="#64748b" font-size="9">n=16</text>
+      <text x="488" y="270" text-anchor="middle" fill="#64748b" font-size="9">n=32</text>
+      <text x="634" y="270" text-anchor="middle" fill="#64748b" font-size="9">n=64</text>
+      <text x="415" y="292" text-anchor="middle" fill="#64748b" font-size="9">处理器数量 n</text>
+
+      <!-- USL curve (with knee and decline) -->
+      <polyline fill="url(#gradUSL)" stroke="#a78bfa" stroke-width="2.5" points="
+        50,250
+        196,118  342,78   488,58   587,54   634,58   698,70   780,90
+      "/>
+
+      <!-- Annotations -->
+      <!-- Sweet spot -->
+      <circle cx="488" cy="58" r="12" fill="none" stroke="#4ade80" stroke-width="2" stroke-dasharray="3,2"/>
+      <text x="488" y="40" text-anchor="middle" fill="#4ade80" font-size="11" font-weight="600">⚡ 最佳点 n≈32</text>
+      <line x1="488" y1="64" x2="488" y2="88" stroke="#4ade80" stroke-width="0.8" stroke-dasharray="3,2"/>
+      <text x="488" y="102" text-anchor="middle" fill="#86efac" font-size="9">收益区：加核心→加速</text>
+
+      <!-- Decline zone -->
+      <rect x="580" y="68" width="200" height="80" rx="6" fill="rgba(248,113,113,0.06)" stroke="#f87171" stroke-width="1"/>
+      <text x="680" y="90" text-anchor="middle" fill="#fca5a5" font-size="10" font-weight="600">📉 衰退区</text>
+      <text x="595" y="108" fill="#94a3b8" font-size="9">n>64：协调开销 > 并行收益</text>
+      <text x="595" y="126" fill="#94a3b8" font-size="9">→ 加速比反而下降！</text>
+      <text x="595" y="142" fill="#64748b" font-size="8">这就是"过度并行"的代价</text>
+
+      <!-- Amdahl comparison -->
+      <line x1="50" y1="78" x2="780" y2="78" stroke="#fbbf24" stroke-width="1" stroke-dasharray="6,4"/>
+      <text x="785" y="82" fill="#fcd34d" font-size="9">阿姆达尔上限</text>
+
+      <!-- Legend -->
+      <rect x="580" y="170" width="14" height="10" fill="#a78bfa" opacity="0.4" rx="2"/>
+      <text x="598" y="179" fill="#94a3b8" font-size="8">通用可扩展性定律 (USL)</text>
+      <rect x="580" y="190" width="14" height="1" fill="#fbbf24" rx="2"/>
+      <text x="598" y="194" fill="#94a3b8" font-size="8">阿姆达尔定律（纯串行限制）</text>
+    </svg>
+    <div class="diagram-caption">通用可扩展性定律(USL)：超越最佳点后，协调开销反噬加速比——"更多不一定更好"</div>
+  </div>
+</section>
+
+<!-- ═══════ 6. 实际案例 ═══════ -->
+<section id="examples" class="section">
+  <h2>🎯 实际案例分析：把公式代入真实系统</h2>
+
+  <h3>案例 1：Web 服务器处理静态文件</h3>
+  <div class="info-card">
+    <p><strong>场景：</strong>Nginx 用 4 个 worker 处理 10000 个并发请求。<br>
+    <strong>分析：</strong>静态文件之间无依赖 → p ≈ 0.98。每个 worker 的协调开销（accept 锁）仅约 2%。</p>
+    <pre><code>p = <span class="num">0.98</span>, n = <span class="num">4</span>
+S(<span class="num">4</span>) = <span class="num">1</span> / (<span class="num">0.02</span> + <span class="num">0.98</span>/<span class="num">4</span>) = <span class="num">1</span> / (<span class="num">0.02</span> + <span class="num">0.245</span>) = <span class="num">1</span> / <span class="num">0.265</span> ≈ <strong><span class="num">3.77</span>x</strong>
+n→∞ 时上限 S(∞) = <span class="num">1</span>/<span class="num">0.02</span> = <strong><span class="num">50</span>x</strong></code></pre>
+    <p>结论：4 核就有接近 4x 加速（很好！），天花板 50x（扩展空间大）。这就是为什么 Nginx 的 worker 数通常等于 CPU 核数——再多也没用。</p>
+  </div>
+
+  <h3>案例 2：数据库事务的悲观场景</h3>
+  <div class="info-card">
+    <p><strong>场景：</strong>MySQL 大量 UPDATE 竞争同一行锁。<br>
+    <strong>分析：</strong>行锁导致大量请求串行等待 → p ≈ 0.3（只有 30% 的逻辑是真正独立的）。</p>
+    <pre><code>p = <span class="num">0.3</span>, n = <span class="num">8</span>
+S(<span class="num">8</span>) = <span class="num">1</span> / (<span class="num">0.7</span> + <span class="num">0.3</span>/<span class="num">8</span>) = <span class="num">1</span> / (<span class="num">0.7</span> + <span class="num">0.0375</span>) ≈ <strong><span class="num">1.36</span>x</span>
+n→∞ 时上限 S(∞) = <span class="num">1</span>/<span class="num">0.7</span> ≈ <strong><span class="num">1.43</span>x</span></code></pre>
+    <p>结论：<strong>8 核只比 1 核快 36%！</strong>再多的核心也没用——锁竞争决定了天花板。解决方案不是加核，而是<strong>减少锁竞争</strong>（分库分表、乐观锁、异步写入）。</p>
+  </div>
+
+  <h3>案例 3：微服务链式调用的隐藏串行瓶颈</h3>
+  <div class="info-card">
+    <p><strong>场景：</strong>API Gateway → Service A → Service B → Service C（串行调用链）。<br>
+    <strong>分析：</strong>即使每个服务内部完全并行（p=1.0），但 A 必须等 B、B 必须等 C——这条<strong>调用链本身就是串行瓶颈</strong>。</p>
+    <pre><code><span class="comment">// 请求总延迟 = 串行瓶颈</span>
+Latency = L(gateway) + L(service_a) + L(service_b) + L(service_c)
+<span class="comment">// 即使每个服务部署 100 个实例——它们还是依次调用！</span>
+
+<span class="comment">// 优化：把没有数据依赖的调用改成并行</span>
+<span class="kw">go</span> fetchServiceA()  <span class="comment">// A 和 B 没有依赖，同时发</span>
+<span class="kw">go</span> fetchServiceB()
+<span class="comment">// T = max(T_A, T_B) 而不是 T_A + T_B</span></code></pre>
+    <p>结论：微服务架构里，服务间的<strong>同步调用拓扑</strong>就是你的"1−p"。优化方向：并行化无依赖调用、异步消息队列解耦、CQRS 读写分离。</p>
+  </div>
+</section>
+
+<!-- ═══════ 7. 核心题 ═══════ -->
+<section id="qa-section" class="section">
+  <h2>❓ 高频考题</h2>
+
+  <div class="qa"><div class="q">Q1: 用阿姆达尔定律解释——为什么单线程 JavaScript（Node.js）能处理高并发？</div><div class="a">
+    阿姆达尔定律关心的是 <strong>CPU 并行</strong>。Node.js 的高并发秘诀是 <strong>异步 IO</strong>——它在等待 IO 时不占 CPU，把时间片让给其他请求。公式里 p=0.99（大部分逻辑无数据依赖），串行的 1% 是 Event Loop 单线程执行 JS 的部分。IO 密集型场景下这个瓶颈很低，所以单线程也能高并发。<br><br>
+    <strong>但它遇到 CPU 密集型任务（p 接近 0）就崩了</strong>——这就是为什么 Node.js 不适合做图像处理、密码学运算。
+  </div></div>
+
+  <div class="qa"><div class="q">Q2: 给你一个程序，4 核加速比 3x，8 核加速比 4x。估算串行比例。</div><div class="a">
+    代入公式反推：<br>
+    S(4) = 1/((1−p) + p/4) = 3 → (1−p) + p/4 = 1/3 → 1 − 0.75p = 1/3 → p ≈ <strong>0.89</strong><br>
+    验证：S(8) = 1/(0.11 + 0.89/8) = 1/(0.11 + 0.111) ≈ <strong>4.5x</strong>。实际 4x 说明有<strong>额外的协调开销</strong>（κ>0）——单纯串行比例解释不了，需要通用可扩展性定律。
+  </div></div>
+
+  <div class="qa"><div class="q">Q3: 阿姆达尔定律和"线性扩展"（linear scalability）的关系？</div><div class="a">
+    线性扩展 = S(n) = n，即 4 核快 4 倍。阿姆达尔定律说只有 p=1（100% 可并行）才能做到线性扩展。现实中没有任何程序能做到 p=1，所以<strong>线性扩展在数学上不可能</strong>。能接近线性扩展已经很优秀了——通常 p≥0.95 就算是"可线性扩展"的系统。
+  </div></div>
+</section>
+
+<!-- ═══════ 8. 苏格拉底提问 ═══════ -->
+<section id="socratic" class="section">
+  <h2>💬 苏格拉底式提问 —— 检验真理解</h2>
+
+  <details class="socratic">
+    <summary>阿姆达尔定律假设"问题规模固定"。在云计算时代，这个假设还成立吗？<span class="socratic-num">Q1</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">部分成立，但不是全部。</span><br><br>
+      对于<strong>延迟敏感</strong>的场景（如 API 响应时间），问题规模是固定的——一个请求的处理时间。阿姆达尔直接适用：串行部分（认证、DB 查询、序列化）决定了延迟下限。<br><br>
+      对于<strong>吞吐量敏感</strong>的场景（如批处理、流处理），问题规模随负载变化——古斯塔夫森更适用。云计算恰恰擅长吞吐量场景：用弹性扩容来"放大并行部分"（p 的比例随规模上升）。<br><br>
+      真正让这个假设受到挑战的是 <strong>Serverless</strong>——它把问题拆成了无数个独立的小"请求"，每个独立调度，几乎消除了串行依赖。但 Serverless 引入了新的协调成本（冷启动、API Gateway 限流），只是把瓶颈从"CPU 串行"转移到了"系统协调"。
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>有人说"GPU 有几千个核心，阿姆达尔定律不适用于 GPU"。你同意吗？<span class="socratic-num">Q2</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">不同意。阿姆达尔定律完全适用于 GPU，只是它的表现方式不同。</span><br><br>
+      GPU 的"几千个核心"不是独立 CPU 核心——它们是 SIMD 架构（单指令多数据），一个 Warp（32 个线程）执行同一条指令。GPU 的串行瓶颈不是"锁"，而是：<br>
+      ① <strong>分支发散</strong>：Warp 内的线程走不同分支 → 串行执行两条路径 → p 下降。<br>
+      ② <strong>全局内存访问</strong>：线程等待显存数据 → 类似 IO 的串行等待。<br>
+      ③ <strong>CPU→GPU 数据传输</strong>：PCIe 带宽是死瓶颈。<br><br>
+      实际上，GPU 编程的核心优化（减少分支、合并内存访问、重叠传输与计算）就是对阿姆达尔定律的实践——<strong>降低 1−p</strong>。CUDA 优化指南的本质就是"提高可并行比例 p"。
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>如果你负责的系统出现了"加机器 QPS 不涨"的情况，你如何用这三个定律来诊断？<span class="socratic-num">Q3</span></summary>
+    <div class="socratic-a">
+      <span class="highlight">这是一个经典的性能诊断框架题，回答应该展示你"用理论指导实践"的能力：</span><br><br>
+      <strong>第一步：测 p（串行比例）。</strong>用单核和多核压测反推阿姆达尔公式。如果 p 很低（<0.8），说明代码里存在明显的串行瓶颈——查锁、同步 IO、事务竞争。<br><br>
+      <strong>第二步：测 κ（协调成本）。</strong>增加实例数，观察是否出现 USL 的"加速比下降"——如果是，说明一致性开销（缓存同步、分布式锁、数据库连接竞争）超过了并行收益。需要减少共享状态。<br><br>
+      <strong>第三步：区分"固定规模"还是"增长规模"。</strong>如果是固定规模问题（如单次定时任务），阿姆达尔主导→先优化串行；如果是增长规模（如用户量翻倍），古斯塔夫森主导→横向扩展即可。<br><br>
+      现实中 90% 的"加机器没用"是第一步的问题——<strong>串行瓶颈</strong>。这通常不是算法问题，而是一个全局锁、一个单点 DB、一个同步 RPC 调用。
+    </div>
+  </details>
+</section>
+
+</main>
+</div>
+
+<script src="/ebbinghaus.js"></script>
+
+
+<script src="/ebbinghaus.js"></script>
+<script>
+(function() {
+  if (!window.Ebbinghaus) return;
+  var articleId = 'ARTICLEID';
+  var REQUIRED = 30;
+  var elapsed = 0;
+  var interval = null;
+
+  // Progress bar under the button
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
+  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
+  document.body.appendChild(progressBar);
+
+  var btn = document.createElement('button');
+  btn.id = 'review-btn';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
+  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
+  btn.disabled = true;
+
+  function updateBtn() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (!s || s.reviewCount === 0) {
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      btn.style.background = '#58a6ff';
+    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
+      btn.textContent = '✅ 已掌握全部轮次';
+      btn.style.background = '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    } else {
+      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
+      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+      progressBar.style.display = 'none';
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+  }
+
+  btn.onclick = function() {
+    if (btn.disabled) return;
+    Ebbinghaus.markReviewed(articleId);
+    updateBtn();
+    btn.style.transform = 'scale(1.1)';
+    setTimeout(function(){ btn.style.transform = ''; }, 150);
+  };
+
+  document.body.appendChild(btn);
+
+  // Start timer only if article not yet reviewed
+  function startTimer() {
+    var s = Ebbinghaus.getAllStatus()[articleId];
+    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
+      updateBtn(); return;
+    }
+    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+
+    progressBar.style.display = 'block';
+    interval = setInterval(function() {
+      elapsed++;
+      var pct = Math.min(elapsed / REQUIRED * 100, 100);
+      document.getElementById('review-progress').style.width = pct + '%';
+      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
+      if (elapsed >= REQUIRED) {
+        clearInterval(interval);
+        interval = null;
+        progressBar.style.display = 'none';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
+        btn.textContent = '✅ 标记已复习';
+        btn.style.background = '#3fb950';
+      }
+    }, 1000);
+  }
+
+  // Delay start to give user time to start reading
+  setTimeout(startTimer, 2000);
+
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) {
+      var s = Ebbinghaus.getAllStatus()[articleId];
+      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
+      if (elapsed < REQUIRED && !interval) startTimer();
+    }
+  });
+  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
+})();
+</script>
+
+</body>
+</html>

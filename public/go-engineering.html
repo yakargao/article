@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go 工程化实战 · 从零到一理解 Go 工程实践 · 费曼学习法</title>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; }
+  * { margin:0; padding:0; box-sizing:border-box }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
+  pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; color: var(--text); padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #21242c; color: #e6edf3; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: var(--card); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; padding: 20px 0; }
+  .main { margin-left: 260px; flex: 1; padding: 32px 40px; max-width: 1000px; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; font-size: 17px; font-weight: 700; color: #fff; }
+  .sidebar-logo span { color: var(--accent); }
+  .nav-section { padding: 4px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  .nav-item { display: block; padding: 7px 20px; font-size: 14px; color: var(--text); border-left: 2px solid transparent; transition: all 0.15s; cursor: pointer; }
+  .nav-item:hover, .nav-item.active { background: rgba(88,166,255,0.08); border-left-color: var(--accent); color: var(--accent); }
+  .section { margin-bottom: 64px; }
+  .section h2 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+  .section h3 { font-size: 19px; font-weight: 600; color: #e6edf3; margin: 32px 0 14px; }
+  .section h4 { font-size: 15px; font-weight: 600; color: var(--accent); margin: 22px 0 10px; }
+  .section p { margin: 10px 0; font-size: 14px; }
+  .section ul, .section ol { margin: 10px 0 10px 20px; font-size: 14px; }
+  .section li { margin-bottom: 8px; }
+  .feynman { background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(163,113,247,0.06)); border: 1px solid rgba(88,166,255,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .feynman::before { content: '💡 费曼理解'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .feynman .analogy { color: var(--green); font-style: italic; }
+  .handwritten { font-family: 'Ma Shan Zheng', cursive; color: var(--accent); font-size: 18px; }
+  .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .compare h4 { margin-top: 0; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 16px 0; }
+  .info-card h4 { margin-top: 0; }
+  .qa-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+  .qa-box h4 { color: var(--green); margin-top: 0; }
+  .qa-box .q { color: var(--orange); font-weight: 600; }
+  .qa-box .a { color: var(--text); margin-left: 12px; }
+  .voice-summary { background: linear-gradient(135deg, rgba(57,197,207,0.08), rgba(163,113,247,0.08)); border: 1px solid rgba(57,197,207,0.2); border-radius: 12px; padding: 20px 24px; margin: 20px 0; position: relative; }
+  .voice-summary::before { content: '🎙️ 口播总结'; position: absolute; top: -11px; left: 20px; background: var(--card); padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--cyan); }
+  .sidebar { transition: width 0.25s ease; }
+  .sidebar.collapsed { width: 48px; }
+  .sidebar.collapsed .sidebar-logo,
+  .sidebar.collapsed .nav-item,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .back-to-home { display: none; }
+  .sidebar.collapsed .toggle-btn { right: auto; left: 0; width: 48px; }
+  .main { transition: margin-left 0.25s ease; }
+  .main.sidebar-collapsed { margin-left: 48px; }
+  .toggle-btn {
+    position: absolute; bottom: 16px; right: 12px;
+    width: 32px; height: 32px; line-height: 32px;
+    background: var(--border); border: none; border-radius: 8px;
+    color: var(--muted); cursor: pointer; font-size: 14px;
+    text-align: center; transition: all 0.2s; z-index: 10;
+    user-select: none;
+  }
+  .toggle-btn:hover { background: var(--accent); color: #fff; }
+  @media (max-width: 768px) {
+    .sidebar.collapsed { width: 0; border-right: none; overflow: hidden; padding: 0; }
+    .main.sidebar-collapsed { margin-left: 0; }
+    .toggle-btn { display: none; }
+  }
+  @media (max-width: 768px) {
+    .main { margin-left: 0; padding: 16px 14px; }
+    .sidebar { display: none; }
+    .section h2 { font-size: 20px; }
+    .section h3 { font-size: 17px; }
+    pre { font-size: 12px; padding: 12px 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 10px; }
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* SVG Responsive Protection */
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) {
+    .diagram svg { min-width: 420px; }
+  }
+
+  /* Dialog / Callout */
+  .callout { background: var(--card); border-left: 4px solid var(--accent); border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 14px; }
+  .callout-warn { border-left-color: var(--orange); }
+  .callout-tip { border-left-color: var(--green); }
+
+  /* Grid list for code snippets */
+  .code-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0; }
+  .code-grid pre { margin: 0; }
+  @media (max-width: 768px) { .code-grid { grid-template-columns: 1fr; } }
+
+  .diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diagram svg { min-width: 580px; }
+  @media (max-width: 600px) { .diagram svg { min-width: 420px; } }
+  .qa-q { cursor: pointer; user-select: none; }
+  .qa-q::after { content: ' ▾'; opacity: 0.5; }
+  .qa-q.open::after { content: ' ▴'; }
+  .qa-a { display: none; }
+  .qa-a.open { display: block; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔵 知<span>识库</span></div></a>
+  <a class="nav-item active" href="#overview">📋 总览</a>
+  <div class="nav-section">工程实践</div>
+  <a class="nav-item" href="#structure">📁 项目结构</a>
+  <a class="nav-item" href="#di">💉 依赖注入</a>
+  <a class="nav-item" href="#errors">⚠️ 错误处理模式</a>
+  <a class="nav-item" href="#testing">🧪 测试实战</a>
+  <a class="nav-item" href="#logging">📝 日志与监控</a>
+  <a class="nav-item" href="#config">⚙️ 配置管理</a>
+  <div class="nav-section">实战</div>
+  <a class="nav-item" href="#qa">❓ 实战问答</a>
+  <a class="nav-item back-to-home" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
+  <button class="toggle-btn" onclick="toggleSidebar()" title="收起/展开目录">◀</button>
+</aside>
+
+<main class="main">
+
+<!-- ====== 总览 ====== -->
+<section class="section" id="overview">
+  <h2>📋 总览：Go 工程化是什么</h2>
+  <p>Go 语言以其<strong>简洁、高性能、原生并发</strong>著称，但"写 Go 代码"和"写好 Go 工程"是两回事。<strong>Go 工程化</strong>是一套关于<strong>项目结构、依赖管理、错误处理、测试、日志、配置</strong>的实践体系——它让你从"能跑"到"能维护、能协作、能上生产"。</p>
+
+  <div class="feynman">
+    <p>想象你要建一座房子：<span class="analogy">写 Go 代码就像砌砖——每个人都能学会。但工程化是<strong>整个建筑蓝图</strong>：哪里是承重墙（项目结构），怎么走水电（依赖注入），遇到裂缝怎么修补（错误处理），验收时怎么检查每个房间（测试），装什么传感器（日志监控），电源总闸在哪（配置管理）。</span></p>
+    <p><span class="analogy">没有工程化的 Go 项目就像随意垒起来的砖墙——看着也能用，但风一吹就倒（崩溃），加一层就全塌（无法扩展），别人完全不知道怎么接手（不可维护）。</span></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="380" fill="#0f172a" rx="8"/>
+      <text x="400" y="36" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Go 工程化六大支柱</text>
+
+      <!-- Six pillars -->
+      <rect x="30" y="60" width="110" height="130" rx="8" fill="#1e293b" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="85" y="88" text-anchor="middle" fill="#58a6ff" font-size="24">📁</text>
+      <text x="85" y="115" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="bold">项目结构</text>
+      <text x="85" y="140" text-anchor="middle" fill="#94a3b8" font-size="10">标准布局</text>
+      <text x="85" y="158" text-anchor="middle" fill="#94a3b8" font-size="10">cmd/internal</text>
+      <text x="85" y="176" text-anchor="middle" fill="#94a3b8" font-size="10">pkg 分层</text>
+
+      <rect x="155" y="60" width="110" height="130" rx="8" fill="#1e293b" stroke="#a371f7" stroke-width="1.5"/>
+      <text x="210" y="88" text-anchor="middle" fill="#a371f7" font-size="24">💉</text>
+      <text x="210" y="115" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="bold">依赖注入</text>
+      <text x="210" y="140" text-anchor="middle" fill="#94a3b8" font-size="10">Google Wire</text>
+      <text x="210" y="158" text-anchor="middle" fill="#94a3b8" font-size="10">构造函数</text>
+      <text x="210" y="176" text-anchor="middle" fill="#94a3b8" font-size="10">Provider/Injector</text>
+
+      <rect x="280" y="60" width="110" height="130" rx="8" fill="#1e293b" stroke="#f85149" stroke-width="1.5"/>
+      <text x="335" y="88" text-anchor="middle" fill="#f85149" font-size="24">⚠️</text>
+      <text x="335" y="115" text-anchor="middle" fill="#f85149" font-size="13" font-weight="bold">错误处理</text>
+      <text x="335" y="140" text-anchor="middle" fill="#94a3b8" font-size="10">哨兵错误</text>
+      <text x="335" y="158" text-anchor="middle" fill="#94a3b8" font-size="10">自定义类型</text>
+      <text x="335" y="176" text-anchor="middle" fill="#94a3b8" font-size="10">错误包装</text>
+
+      <rect x="405" y="60" width="110" height="130" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="460" y="88" text-anchor="middle" fill="#3fb950" font-size="24">🧪</text>
+      <text x="460" y="115" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">测试实战</text>
+      <text x="460" y="140" text-anchor="middle" fill="#94a3b8" font-size="10">Table-Driven</text>
+      <text x="460" y="158" text-anchor="middle" fill="#94a3b8" font-size="10">Mock/Testify</text>
+      <text x="460" y="176" text-anchor="middle" fill="#94a3b8" font-size="10">Fuzzing</text>
+
+      <rect x="530" y="60" width="110" height="130" rx="8" fill="#1e293b" stroke="#39c5cf" stroke-width="1.5"/>
+      <text x="585" y="88" text-anchor="middle" fill="#39c5cf" font-size="24">📝</text>
+      <text x="585" y="115" text-anchor="middle" fill="#39c5cf" font-size="13" font-weight="bold">日志监控</text>
+      <text x="585" y="140" text-anchor="middle" fill="#94a3b8" font-size="10">slog/zerolog</text>
+      <text x="585" y="158" text-anchor="middle" fill="#94a3b8" font-size="10">结构化日志</text>
+      <text x="585" y="176" text-anchor="middle" fill="#94a3b8" font-size="10">OpenTelemetry</text>
+
+      <rect x="655" y="60" width="110" height="130" rx="8" fill="#1e293b" stroke="#d29922" stroke-width="1.5"/>
+      <text x="710" y="88" text-anchor="middle" fill="#d29922" font-size="24">⚙️</text>
+      <text x="710" y="115" text-anchor="middle" fill="#d29922" font-size="13" font-weight="bold">配置管理</text>
+      <text x="710" y="140" text-anchor="middle" fill="#94a3b8" font-size="10">Viper</text>
+      <text x="710" y="158" text-anchor="middle" fill="#94a3b8" font-size="10">Envconfig</text>
+      <text x="710" y="176" text-anchor="middle" fill="#94a3b8" font-size="10">多环境</text>
+
+      <!-- Bottom insight -->
+      <line x1="30" y1="220" x2="770" y2="220" stroke="#334155" stroke-width="1"/>
+      <text x="400" y="250" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="bold">核心目标</text>
+      <rect x="100" y="265" width="600" height="50" rx="10" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="400" y="286" text-anchor="middle" fill="#3fb950" font-size="13">可维护 · 可测试 · 可扩展 · 可观测</text>
+      <text x="400" y="306" text-anchor="middle" fill="#94a3b8" font-size="11">"写 Go 代码是砌砖，工程化是建筑蓝图" 🏗️</text>
+
+      <text x="400" y="350" text-anchor="middle" fill="#8b949e" font-size="11">从"能跑"到"能维护、能协作、能上生产"的蜕变之路</text>
+      <text x="400" y="370" text-anchor="middle" fill="#8b949e" font-size="11">适合中级 Go 开发者 · 本文约 8000 字</text>
+    </svg>
+    <div class="diagram-caption">图 1：Go 工程化六大支柱——从项目结构到配置管理的完整实践体系</div>
+  </div>
+</section>
+
+<!-- ====== 项目结构 ====== -->
+<section class="section" id="structure">
+  <h2>📁 项目结构：标准布局 cmd / internal / pkg</h2>
+  <p>Go 社区虽然没有官方强制的项目布局，但经过多年实践，<a href="https://github.com/golang-standards/project-layout" style="color:var(--accent)" target="_blank">golang-standards/project-layout</a> 已成为事实标准。核心是<strong>三个顶级目录</strong>：<code>cmd/</code>（可执行入口）、<code>internal/</code>（私有包）、<code>pkg/</code>（公开库）。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="460" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Go 标准项目结构</text>
+
+      <!-- Tree diagram -->
+      <rect x="30" y="50" width="280" height="390" rx="10" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+
+      <text x="45" y="78" fill="#22d3ee" font-size="14" font-weight="bold">📁 my-project/</text>
+
+      <text x="60" y="108" fill="#58a6ff" font-size="13" font-weight="bold">📁 cmd/</text>
+      <text x="75" y="128" fill="#c9d1d9" font-size="12">├── server/main.go</text>
+      <text x="90" y="145" fill="#94a3b8" font-size="10">│   入口：解析配置、启动服务</text>
+      <text x="75" y="163" fill="#c9d1d9" font-size="12">└── worker/main.go</text>
+      <text x="90" y="180" fill="#94a3b8" font-size="10">        入口：启动后台 worker</text>
+
+      <text x="60" y="208" fill="#f85149" font-size="13" font-weight="bold">📁 internal/</text>
+      <text x="75" y="228" fill="#c9d1d9" font-size="12">├── api/handler.go</text>
+      <text x="75" y="245" fill="#c9d1d9" font-size="12">├── service/user.go</text>
+      <text x="75" y="262" fill="#c9d1d9" font-size="12">├── repository/db.go</text>
+      <text x="75" y="279" fill="#c9d1d9" font-size="12">├── middleware/auth.go</text>
+      <text x="75" y="296" fill="#c9d1d9" font-size="12">└── config/config.go</text>
+
+      <text x="60" y="324" fill="#3fb950" font-size="13" font-weight="bold">📁 pkg/</text>
+      <text x="75" y="344" fill="#c9d1d9" font-size="12">├── httputil/</text>
+      <text x="75" y="361" fill="#c9d1d9" font-size="12">├── validator/</text>
+      <text x="75" y="378" fill="#c9d1d9" font-size="12">└── pagination/</text>
+
+      <!-- Rightside explanation -->
+      <rect x="340" y="50" width="430" height="115" rx="8" fill="#1e293b" stroke="#58a6ff" stroke-width="1"/>
+      <text x="555" y="76" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="bold">📂 cmd/——可执行入口</text>
+      <text x="360" y="100" fill="#94a3b8" font-size="12">每个子目录是一个独立 main package</text>
+      <text x="360" y="120" fill="#94a3b8" font-size="12">代码量极少：解析 flags/配置 → 组装依赖 → 启动</text>
+      <text x="360" y="145" fill="#8b949e" font-size="11">⚠ 不要在这里写业务逻辑！main 只管"组装配件"</text>
+
+      <rect x="340" y="180" width="430" height="100" rx="8" fill="#1e293b" stroke="#f85149" stroke-width="1"/>
+      <text x="555" y="206" text-anchor="middle" fill="#f85149" font-size="14" font-weight="bold">🔒 internal/——私有代码</text>
+      <text x="360" y="230" fill="#94a3b8" font-size="12">Go 编译器强制的访问隔离</text>
+      <text x="360" y="250" fill="#94a3b8" font-size="12">外部项目 import 会编译报错</text>
+      <text x="360" y="270" fill="#8b949e" font-size="11">💡 这是 Go 独有的"最强封装"机制</text>
+
+      <rect x="340" y="295" width="430" height="90" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1"/>
+      <text x="555" y="321" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">📦 pkg/——对外公开库</text>
+      <text x="360" y="345" fill="#94a3b8" font-size="12">可被外部项目引用的通用工具</text>
+      <text x="360" y="365" fill="#94a3b8" font-size="12">只放与业务无关的"工具包"</text>
+
+      <!-- DDD layers -->
+      <rect x="340" y="400" width="430" height="40" rx="8" fill="#0f172a" stroke="#a78bfa" stroke-width="1"/>
+      <text x="555" y="425" text-anchor="middle" fill="#a78bfa" font-size="12">internal 内部建议 DDD 分层：handler → service → repository</text>
+    </svg>
+    <div class="diagram-caption">图 2：Go 标准项目结构——cmd 是入口，internal 是私有核心，pkg 是公开库</div>
+  </div>
+
+  <h3>一个实战的例子</h3>
+  <pre><code>myapp/
+├── cmd/
+│   ├── server/main.go       # HTTP 服务入口
+│   └── migrate/main.go      # 数据库迁移入口
+├── internal/
+│   ├── api/                 # HTTP handlers (gin/echo)
+│   │   ├── user.go
+│   │   └── middleware.go
+│   ├── service/             # 业务逻辑层
+│   │   └── user.go
+│   ├── repository/          # 数据访问层
+│   │   └── user.go
+│   ├── model/               # 领域模型 / DTO
+│   │   └── user.go
+│   └── config/              # 配置结构体
+│       └── config.go
+├── pkg/
+│   ├── httputil/            # HTTP 工具类
+│   └── validator/           # 校验器
+├── go.mod
+└── go.sum</code></pre>
+
+  <div class="callout callout-tip">
+    <strong>💡 最佳实践：</strong><code>internal</code> 是 Go 的"独门武器"——它由编译器强制执行包访问控制。外部项目无法 import <code>internal</code> 下的任何代码，这比 Java 的 <code>private</code> 更安全。把你的<strong>业务核心</strong>全放进去。
+  </div>
+
+  <div class="feynman">
+    <p><span class="analogy">cmd 就像一栋大楼的<strong>正门入口</strong>——每个入口通向不同的功能区（server 入口、worker 入口），但入口本身不生产任何东西，它只是引导你去正确的地方。</span></p>
+    <p><span class="analogy">internal 是<strong>员工专属区域</strong>——门上挂着"非员工禁止入内"的牌子（Go 编译器帮你守着），外部的人想进来？编译报错！</span></p>
+    <p><span class="analogy">pkg 是<strong>公共设施</strong>——楼外的任何人都可以用这里的工具，比如公共自行车、公用电话（httputil、validator）。</span></p>
+  </div>
+
+  <h3>分层架构对比</h3>
+  <table>
+    <tr><th>层</th><th>职责</th><th>目录</th><th>示例</th></tr>
+    <tr><td><span class="badge badge-green">API/Handler</span></td><td>处理 HTTP/gRPC 请求，参数校验，响应返回</td><td><code>internal/api/</code></td><td>gin.Context 处理</td></tr>
+    <tr><td><span class="badge badge-purple">Service</span></td><td>核心业务逻辑，事务管理</td><td><code>internal/service/</code></td><td>CreateUser 流程编排</td></tr>
+    <tr><td><span class="badge badge-cyan">Repository</span></td><td>数据持久化，DB/SQL 封装</td><td><code>internal/repository/</code></td><td>GORM/ent 查询</td></tr>
+    <tr><td><span class="badge badge-orange">Model</span></td><td>领域对象、请求/响应 DTO</td><td><code>internal/model/</code></td><td>User struct</td></tr>
+    <tr><td><span class="badge badge-red">Config</span></td><td>配置结构体定义与加载</td><td><code>internal/config/</code></td><td>viper 加载</td></tr>
+  </table>
+</section>
+
+<!-- ====== 依赖注入 ====== -->
+<section class="section" id="di">
+  <h2>💉 依赖注入：Google Wire</h2>
+  <p>依赖注入（DI）是<strong>控制反转（IoC）</strong>的一种实现方式——对象不再自己创建依赖，而是由外部"注入"。在 Go 中，<strong>Google Wire</strong> 是最主流的编译期 DI 工具。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">想象你去修车厂修车：</span></p>
+    <p><strong>没有 DI：</strong>修车师傅自己炼钢铁、自己做螺丝、自己做轮胎——"一辆车从炼钢开始"，耦合到爆炸。<br>
+    <strong>手动 DI：</strong>修车师傅打电话订零件："我要一个轮胎（NewTire），我要一个引擎（NewEngine）"，然后自己组装（main 里写一堆 NewXxx）。<br>
+    <strong>Wire：</strong>你只告诉 Wire"我要一辆车（Car）"，Wire 自动分析需要什么零件、去哪订，然后帮你一键组装好。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="420" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Wire 依赖注入流程</text>
+
+      <!-- User code -->
+      <rect x="50" y="55" width="220" height="130" rx="8" fill="#1e293b" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="160" y="80" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="bold">👨‍💻 你的代码</text>
+      <text x="65" y="108" fill="#c9d1d9" font-size="12">// Provider 函数</text>
+      <text x="65" y="128" fill="#22d3ee" font-size="12">func NewDB() *DB</text>
+      <text x="65" y="148" fill="#22d3ee" font-size="12">func NewRepo(db *DB) *Repo</text>
+      <text x="65" y="168" fill="#22d3ee" font-size="12">func NewService(r *Repo) *Svc</text>
+
+      <!-- Wire -->>
+      <rect x="300" y="55" width="200" height="80" rx="8" fill="#a78bfa" opacity="0.12" stroke="#a78bfa" stroke-width="2"/>
+      <text x="400" y="85" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="bold">⚡ Wire</text>
+      <text x="400" y="108" text-anchor="middle" fill="#94a3b8" font-size="11">go:generate wire</text>
+      <text x="400" y="125" text-anchor="middle" fill="#94a3b8" font-size="10">编译期代码生成</text>
+
+      <!-- Arrow injection -->
+      <text x="270" y="100" fill="#8b949e" font-size="18">→</text>
+      <text x="510" y="100" fill="#8b949e" font-size="18">→</text>
+
+      <!-- Generated code -->
+      <rect x="530" y="55" width="230" height="130" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="645" y="80" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">🤖 生成的代码</text>
+      <text x="545" y="108" fill="#8b949e" font-size="11">// wire_gen.go</text>
+      <text x="545" y="128" fill="#3fb950" font-size="12">func InitSvc() *Svc {</text>
+      <text x="545" y="148" fill="#c9d1d9" font-size="12">  db := NewDB()</text>
+      <text x="545" y="165" fill="#c9d1d9" font-size="12">  r := NewRepo(db)</text>
+      <text x="545" y="182" fill="#3fb950" font-size="12">  return NewService(r)</text>
+
+      <!-- Wire provider set -->
+      <rect x="50" y="210" width="700" height="80" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+      <text x="60" y="238" fill="#fbbf24" font-size="13" font-weight="bold">wire.go（你写一次就行）</text>
+      <text x="60" y="262" fill="#c9d1d9" font-size="12" font-family="monospace">var SvcSet = wire.NewSet(NewDB, NewRepo, NewService)</text>
+      <text x="60" y="282" fill="#c9d1d9" font-size="12" font-family="monospace">func InitializeService() (*Service, error) {</text>
+      <text x="60" y="299" fill="#c9d1d9" font-size="12" font-family="monospace">    wire.Build(SvcSet); return nil, nil }</text>
+
+      <!-- Benefits -->
+      <rect x="50" y="310" width="700" height="90" rx="8" fill="#0f172a" stroke="#a78bfa" stroke-width="1"/>
+      <text x="400" y="338" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">Wire 的优势</text>
+      <text x="80" y="362" fill="#3fb950" font-size="12">✅ 编译期生成 — 无运行时反射</text>
+      <text x="310" y="362" fill="#3fb950" font-size="12">✅ 依赖图检测 — 缺失/循环提前报错</text>
+      <text x="540" y="362" fill="#3fb950" font-size="12">✅ 零运行时开销</text>
+      <text x="80" y="385" fill="#fbbf24" font-size="11">对比 Uber dig / Facebook inject：那些用反射实现，运行时才报错</text>
+    </svg>
+    <div class="diagram-caption">图 3：Wire 在编译期根据 Provider 函数自动生成依赖注入代码</div>
+  </div>
+
+  <h3>Wire 实战代码</h3>
+  <pre><code>// internal/repository/user.go
+type UserRepo struct { db *sql.DB }
+func NewUserRepo(db *sql.DB) *UserRepo { return &UserRepo{db: db} }
+
+// internal/service/user.go
+type UserService struct { repo *UserRepo }
+func NewUserService(repo *UserRepo) *UserService { return &UserService{repo: repo} }
+
+// internal/wire.go
+//go:build wireinject
+// +build wireinject
+func InitializeUserService(db *sql.DB) *UserService {
+    wire.Build(NewUserRepo, NewUserService)
+    return nil // 仅用于 wire 构建
+}
+
+// cmd/server/main.go
+func main() {
+    svc := InitializeUserService(db)
+    // 直接用 svc
+}</code></pre>
+
+  <div class="callout callout-warn">
+    <strong>⚠️ Wire 的坑：</strong>Provider 函数的<strong>参数名必须和返回值类型匹配</strong>——Wire 通过类型匹配来组装依赖，不是通过变量名。如果两个类型相同（比如都是 <code>string</code>），需要用 <code>wire.Value</code> 或自定义类型区分。
+  </div>
+</section>
+
+<!-- ====== 错误处理模式 ====== -->
+<section class="section" id="errors">
+  <h2>⚠️ 错误处理模式：哨兵 / 自定义 / 包装</h2>
+  <p>Go 的错误处理哲学与主流语言不同——它没有 try-catch，只有明确的 <code>if err != nil</code>。但这不代表"写 Go 就是满屏 if err"。Go 1.13+ 引入了强大的错误包装机制，形成了<strong>三种经典模式</strong>。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="420" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Go 错误处理三种模式</text>
+
+      <!-- Sentinel -->
+      <rect x="25" y="55" width="230" height="155" rx="8" fill="#1e293b" stroke="#f85149" stroke-width="1.5"/>
+      <text x="140" y="80" text-anchor="middle" fill="#f85149" font-size="13" font-weight="bold">🚩 哨兵错误（Sentinel）</text>
+      <text x="40" y="108" fill="#c9d1d9" font-size="11" font-family="monospace">var ErrNotFound =</text>
+      <text x="55" y="125" fill="#c9d1d9" font-size="11" font-family="monospace">    errors.New("not found")</text>
+      <text x="40" y="150" fill="#94a3b8" font-size="11">调用方用 == 比较：</text>
+      <text x="40" y="170" fill="#c9d1d9" font-size="11" font-family="monospace">if err == ErrNotFound {</text>
+      <text x="40" y="190" fill="#c9d1d9" font-size="11" font-family="monospace">    // 处理"未找到"</text>
+      <text x="40" y="205" fill="#f85149" font-size="10">⚠ 不能包装！包装后 == 失效</text>
+
+      <!-- Custom type -->
+      <rect x="285" y="55" width="230" height="155" rx="8" fill="#1e293b" stroke="#d29922" stroke-width="1.5"/>
+      <text x="400" y="80" text-anchor="middle" fill="#d29922" font-size="13" font-weight="bold">🔶 自定义错误类型</text>
+      <text x="300" y="108" fill="#c9d1d9" font-size="11" font-family="monospace">type MyError struct {</text>
+      <text x="315" y="125" fill="#c9d1d9" font-size="11" font-family="monospace">    Code int</text>
+      <text x="315" y="142" fill="#c9d1d9" font-size="11" font-family="monospace">    Msg  string</text>
+      <text x="300" y="159" fill="#c9d1d9" font-size="11" font-family="monospace">}</text>
+      <text x="300" y="180" fill="#94a3b8" font-size="11">调用方用类型断言：</text>
+      <text x="300" y="200" fill="#c9d1d9" font-size="11" font-family="monospace">var e *MyError</text>
+      <text x="300" y="217" fill="#c9d1d9" font-size="11" font-family="monospace">if errors.As(err, &e) { ... }</text>
+
+      <!-- Wrap -->
+      <rect x="545" y="55" width="230" height="155" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="660" y="80" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">📦 错误包装（Wrap）</text>
+      <text x="560" y="108" fill="#c9d1d9" font-size="11" font-family="monospace">// %w 创建包装链</text>
+      <text x="560" y="128" fill="#c9d1d9" font-size="11" font-family="monospace">return fmt.Errorf(</text>
+      <text x="560" y="145" fill="#c9d1d9" font-size="11" font-family="monospace">    "get user %d: %w",</text>
+      <text x="560" y="162" fill="#c9d1d9" font-size="11" font-family="monospace">    id, err)</text>
+      <text x="560" y="187" fill="#94a3b8" font-size="11">errors.Is 遍历链查找</text>
+      <text x="560" y="207" fill="#c9d1d9" font-size="11" font-family="monospace">if errors.Is(err,</text>
+      <text x="560" y="224" fill="#c9d1d9" font-size="11" font-family="monospace">    ErrNotFound) { ... }</text>
+
+      <!-- Comparison -->
+      <rect x="25" y="230" width="750" height="170" rx="10" fill="#0f172a" stroke="#a78bfa" stroke-width="1"/>
+      <text x="400" y="258" text-anchor="middle" fill="#a78bfa" font-size="14" font-weight="bold">费曼类比：错误的三种"沟通方式"</text>
+
+      <rect x="40" y="275" width="225" height="50" rx="6" fill="#f85149" opacity="0.08" stroke="#f85149" stroke-width="1"/>
+      <text x="152" y="295" text-anchor="middle" fill="#f85149" font-size="11" font-weight="bold">🚩 哨兵 = 标准路牌</text>
+      <text x="152" y="313" text-anchor="middle" fill="#94a3b8" font-size="10">"前方施工"——所有人都认识这个标志</text>
+
+      <rect x="285" y="275" width="225" height="50" rx="6" fill="#d29922" opacity="0.08" stroke="#d29922" stroke-width="1"/>
+      <text x="397" y="295" text-anchor="middle" fill="#d29922" font-size="11" font-weight="bold">🔶 自定义 = 定制路牌</text>
+      <text x="397" y="313" text-anchor="middle" fill="#94a3b8" font-size="10">"前方 3 公里处施工，预计延误 15 分钟"</text>
+
+      <rect x="530" y="275" width="225" height="50" rx="6" fill="#3fb950" opacity="0.08" stroke="#3fb950" stroke-width="1"/>
+      <text x="642" y="295" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">📦 包装 = 层层汇报</text>
+      <text x="642" y="313" text-anchor="middle" fill="#94a3b8" font-size="10">"北京路施工→人民路施工→施工队通知"</text>
+
+      <text x="400" y="370" text-anchor="middle" fill="#fbbf24" font-size="12">Go 1.13：errors.Is() 和 errors.As() 让包装链可遍历</text>
+      <text x="400" y="390" text-anchor="middle" fill="#8b949e" font-size="11">%w 包装后，调用方仍可 Is/As 到原始错误</text>
+    </svg>
+    <div class="diagram-caption">图 4：Go 错误处理的三种模式——哨兵、自定义类型、包装链</div>
+  </div>
+
+  <h3>实战代码示例</h3>
+  <pre><code>// ====== 哨兵错误 ======
+var ErrNotFound = errors.New("user not found")
+var ErrDuplicateEmail = errors.New("email already exists")
+
+// ====== 自定义错误类型 ======
+type AppError struct {
+    Code    int    // 业务码：10001 10002
+    Message string
+    Err     error  // 内部错误链
+}
+func (e *AppError) Error() string { return e.Message }
+func (e *AppError) Unwrap() error { return e.Err }
+
+// ====== 包装链 ======
+func GetUser(id int) (*User, error) {
+    user, err := db.FindUser(id)
+    if err != nil {
+        // 包装：加上下文，保留原始错误
+        return nil, fmt.Errorf("get user %d: %w", id, err)
+    }
+    return user, nil
+}
+
+// ====== 调用方 ======
+user, err := GetUser(42)
+if errors.Is(err, ErrNotFound) {
+    // 哨兵匹配（能穿透包装链）
+    return nil, nil
+}
+
+var appErr *AppError
+if errors.As(err, &appErr) {
+    // 自定义类型匹配
+    log.Printf("业务错误 %d: %s", appErr.Code, appErr.Message)
+}</code></pre>
+
+  <div class="callout callout-tip">
+    <strong>💡 实战建议：</strong>
+    <ul>
+      <li><strong>第三方包的错误</strong>——永远用 <code>%w</code> 包装，加业务上下文</li>
+      <li><strong>自己定义错误</strong>——用哨兵 + 自定义类型两种模式互补</li>
+      <li><strong>最外层（HTTP handler）</strong>——统一用 <code>errors.Is/As</code> 判断并转换成 HTTP 错误码</li>
+      <li><strong>只日志记录一次</strong>——在顶层 handler 统一记录，中间层只 <code>%w</code> 不加 log</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== 测试实战 ====== -->
+<section class="section" id="testing">
+  <h2>🧪 测试实战：Table-Driven · Mock · Testify · Fuzzing</h2>
+  <p>Go 标准库自带测试框架，但工程化的测试远不止 <code>go test</code>。你需要<strong>表驱动测试</strong>来批量验证逻辑、<strong>Mock</strong> 来隔离外部依赖、<strong>Testify</strong> 来简化断言、<strong>Fuzzing</strong> 来发现边界漏洞。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="420" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Go 测试四层塔</text>
+
+      <!-- Layer 1: Table-Driven -->
+      <rect x="50" y="55" width="700" height="50" rx="8" fill="#1e293b" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="65" y="85" fill="#58a6ff" font-size="13" font-weight="bold">📊 表驱动测试（Table-Driven）</text>
+      <text x="310" y="85" fill="#94a3b8" font-size="12">批量输入输出 → 覆盖所有分支和边界</text>
+
+      <!-- Layer 2: Mocking -->
+      <rect x="50" y="115" width="700" height="50" rx="8" fill="#1e293b" stroke="#a371f7" stroke-width="1.5"/>
+      <text x="65" y="145" fill="#a371f7" font-size="13" font-weight="bold">🎭 Mock（gomock / miniredis / httptest）</text>
+      <text x="340" y="145" fill="#94a3b8" font-size="12">隔离外部依赖：DB、Redis、HTTP 调用</text>
+
+      <!-- Layer 3: Testify + Suite -->
+      <rect x="50" y="175" width="700" height="50" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="65" y="205" fill="#3fb950" font-size="13" font-weight="bold">✅ Testify（assert / require / suite）</text>
+      <text x="340" y="205" fill="#94a3b8" font-size="12">更优雅的断言 + 测试套件</text>
+
+      <!-- Layer 4: Fuzzing -->
+      <rect x="50" y="235" width="700" height="50" rx="8" fill="#1e293b" stroke="#d29922" stroke-width="1.5"/>
+      <text x="65" y="265" fill="#d29922" font-size="13" font-weight="bold">🎲 Fuzzing（Go 1.18 原生）</text>
+      <text x="340" y="265" fill="#94a3b8" font-size="12">自动生成随机输入寻找漏洞</text>
+
+      <!-- Comparison -->
+      <rect x="50" y="305" width="700" height="100" rx="8" fill="#0f172a" stroke="#a78bfa" stroke-width="1"/>
+      <text x="400" y="330" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">费曼类比：测试四层塔 = 质检体系</text>
+
+      <rect x="65" y="345" width="160" height="48" rx="6" fill="#58a6ff" opacity="0.08" stroke="#58a6ff" stroke-width="1"/>
+      <text x="145" y="365" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="bold">📊 表驱动</text>
+      <text x="145" y="383" text-anchor="middle" fill="#94a3b8" font-size="10">= 批量检查表</text>
+
+      <rect x="240" y="345" width="160" height="48" rx="6" fill="#a371f7" opacity="0.08" stroke="#a371f7" stroke-width="1"/>
+      <text x="320" y="365" text-anchor="middle" fill="#a371f7" font-size="11" font-weight="bold">🎭 Mock</text>
+      <text x="320" y="383" text-anchor="middle" fill="#94a3b8" font-size="10">= 模拟测试仪</text>
+
+      <rect x="415" y="345" width="160" height="48" rx="6" fill="#3fb950" opacity="0.08" stroke="#3fb950" stroke-width="1"/>
+      <text x="495" y="365" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">✅ Suite</text>
+      <text x="495" y="383" text-anchor="middle" fill="#94a3b8" font-size="10">= 批量测试套餐</text>
+
+      <rect x="590" y="345" width="145" height="48" rx="6" fill="#d29922" opacity="0.08" stroke="#d29922" stroke-width="1"/>
+      <text x="662" y="365" text-anchor="middle" fill="#d29922" font-size="11" font-weight="bold">🎲 Fuzzing</text>
+      <text x="662" y="383" text-anchor="middle" fill="#94a3b8" font-size="10">= 随机破坏测试</text>
+    </svg>
+    <div class="diagram-caption">图 5：Go 测试四层塔——从表驱动到模糊测试的完整测试策略</div>
+  </div>
+
+  <h3>表驱动测试</h3>
+  <pre><code>func TestSplit(t *testing.T) {
+    tests := []struct {
+        name  string
+        input string
+        sep   string
+        want  []string
+    }{
+        {name: "正常分割",     input: "a,b,c", sep: ",", want: []string{"a","b","c"}},
+        {name: "空字符串",     input: "",      sep: ",", want: []string{""}},
+        {name: "没有分隔符",    input: "abc",   sep: ",", want: []string{"abc"}},
+        {name: "连续分隔符",    input: "a,,b",  sep: ",", want: []string{"a","","b"}},
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got := strings.Split(tt.input, tt.sep)
+            if !reflect.DeepEqual(got, tt.want) {
+                t.Errorf("Split() = %v, want %v", got, tt.want)
+            }
+        })
+    }
+}</code></pre>
+
+  <h3>Mock + Testify 实战</h3>
+  <pre><code>// 定义接口
+type UserRepo interface {
+    GetByID(id int) (*User, error)
+}
+
+// 用 gomock 生成 mock
+//go:generate mockgen -source=repo.go -destination=mock_repo.go -package=repository
+
+func TestUserService_GetUser(t *testing.T) {
+    ctrl := gomock.NewController(t)
+    defer ctrl.Finish()
+
+    mockRepo := NewMockUserRepo(ctrl)
+    mockRepo.EXPECT().GetByID(1).Return(&User{Name: "Alice"}, nil)
+
+    svc := NewUserService(mockRepo)
+    user, err := svc.GetUser(1)
+
+    assert.NoError(t, err)
+    assert.Equal(t, "Alice", user.Name)
+}
+
+// Testify Suite 示例
+type UserServiceTestSuite struct {
+    suite.Suite
+    svc  *UserService
+    mock *MockUserRepo
+}
+func (s *UserServiceTestSuite) SetupTest() {
+    ctrl := gomock.NewController(s.T())
+    s.mock = NewMockUserRepo(ctrl)
+    s.svc = NewUserService(s.mock)
+}
+func (s *UserServiceTestSuite) TestNotFound() {
+    s.mock.EXPECT().GetByID(999).Return(nil, ErrNotFound)
+    _, err := s.svc.GetUser(999)
+    s.ErrorIs(err, ErrNotFound)
+}</code></pre>
+
+  <h3>Fuzzing（Go 1.18+）</h3>
+  <pre><code>func FuzzParsePhone(f *testing.F) {
+    // 种子语料
+    f.Add("13800138000")
+    f.Add("+86 138-0013-8000")
+    f.Add("invalid!!!")
+
+    f.Fuzz(func(t *testing.T, input string) {
+        result, err := ParsePhone(input)
+        if err != nil {
+            // 验证输入非法时确实返回了错误
+            return
+        }
+        // 验证合法的结果
+        if len(result) != 11 {
+            t.Errorf("ParsePhone(%q) = %q, want 11 digits", input, result)
+        }
+    })
+}</code></pre>
+
+  <div class="callout callout-tip">
+    <strong>💡 测试金字塔：</strong>单元测试（70%）&gt; 集成测试（20%）&gt; E2E 测试（10%）。Go 中 <code>testing/httptest</code> 和 <code>testcontainers-go</code> 是写集成测试的神器。
+  </div>
+</section>
+
+<!-- ====== 日志与监控 ====== -->
+<section class="section" id="logging">
+  <h2>📝 日志与监控：slog · zerolog · OpenTelemetry</h2>
+  <p>没有可观测性的系统就像"盲飞"——你不知道线上发生了什么。<strong>结构化日志</strong>是现代 Go 工程的标配，配合 <strong>OpenTelemetry</strong>（简称 OTel）可以实现追踪、指标、日志三位一体的可观测性。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="400" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">日志与可观测性体系</text>
+
+      <!-- Three log libs -->
+      <text x="400" y="65" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">Go 日志库对比</text>
+
+      <rect x="30" y="80" width="220" height="120" rx="8" fill="#1e293b" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="140" y="105" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="bold">📦 log/slog</text>
+      <text x="140" y="130" text-anchor="middle" fill="#94a3b8" font-size="11">Go 1.21 标准库</text>
+      <text x="140" y="150" text-anchor="middle" fill="#3fb950" font-size="11">✅ 零依赖</text>
+      <text x="140" y="168" text-anchor="middle" fill="#3fb950" font-size="11">✅ 结构化内置</text>
+      <text x="140" y="186" text-anchor="middle" fill="#d29922" font-size="11">⚠️ 性能中等</text>
+
+      <rect x="290" y="80" width="220" height="120" rx="8" fill="#1e293b" stroke="#d29922" stroke-width="1.5"/>
+      <text x="400" y="105" text-anchor="middle" fill="#d29922" font-size="13" font-weight="bold">⚡ zerolog</text>
+      <text x="400" y="130" text-anchor="middle" fill="#94a3b8" font-size="11">零分配 JSON 日志</text>
+      <text x="400" y="150" text-anchor="middle" fill="#3fb950" font-size="11">✅ 极致性能</text>
+      <text x="400" y="168" text-anchor="middle" fill="#3fb950" font-size="11">✅ 零内存分配</text>
+      <text x="400" y="186" text-anchor="middle" fill="#d29922" font-size="11">⚠️ 非标准接口</text>
+
+      <rect x="550" y="80" width="220" height="120" rx="8" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="660" y="105" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">🔄 zap</text>
+      <text x="660" y="130" text-anchor="middle" fill="#94a3b8" font-size="11">Uber 高性能日志</text>
+      <text x="660" y="150" text-anchor="middle" fill="#3fb950" font-size="11">✅ 三种模式</text>
+      <text x="660" y="168" text-anchor="middle" fill="#3fb950" font-size="11">✅ 社区广泛</text>
+      <text x="660" y="186" text-anchor="middle" fill="#d29922" font-size="11">⚠️ 配置稍复杂</text>
+
+      <!-- OTel -->
+      <rect x="30" y="220" width="740" height="160" rx="10" fill="#1e293b" stroke="#39c5cf" stroke-width="1.5"/>
+      <text x="400" y="248" text-anchor="middle" fill="#39c5cf" font-size="14" font-weight="bold">🔭 OpenTelemetry——三支柱模型</text>
+
+      <rect x="50" y="265" width="220" height="50" rx="6" fill="#58a6ff" opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
+      <text x="160" y="287" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="bold">📊 Metrics（指标）</text>
+      <text x="160" y="305" text-anchor="middle" fill="#94a3b8" font-size="10">请求量、延迟、错误率、CPU</text>
+
+      <rect x="290" y="265" width="220" height="50" rx="6" fill="#3fb950" opacity="0.1" stroke="#3fb950" stroke-width="1"/>
+      <text x="400" y="287" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">📝 Logs（日志）</text>
+      <text x="400" y="305" text-anchor="middle" fill="#94a3b8" font-size="10">结构化日志事件</text>
+
+      <rect x="530" y="265" width="220" height="50" rx="6" fill="#a371f7" opacity="0.1" stroke="#a371f7" stroke-width="1"/>
+      <text x="640" y="287" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="bold">🔗 Traces（链路追踪）</text>
+      <text x="640" y="305" text-anchor="middle" fill="#94a3b8" font-size="10">请求在整个系统中的完整路径</text>
+
+      <text x="400" y="360" text-anchor="middle" fill="#fbbf24" font-size="12">🌉 OTel 是标准桥梁：任何语言实现一次，就能接入 Grafana / Prometheus / Jaeger</text>
+    </svg>
+    <div class="diagram-caption">图 6：Go 日志库对比与 OpenTelemetry 三支柱模型</div>
+  </div>
+
+  <h3>slog 实战</h3>
+  <pre><code>import "log/slog"
+
+func main() {
+    // JSON 格式，生产环境标配
+    logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+        Level: slog.LevelInfo,
+    }))
+    slog.SetDefault(logger)
+
+    // 结构化字段
+    slog.Info("user created",
+        "user_id", 42,
+        "name", "Alice",
+        "elapsed_ms", 15.3,
+    )
+    // 输出：{"time":"...","level":"INFO","msg":"user created","user_id":42,"name":"Alice","elapsed_ms":15.3}
+}</code></pre>
+
+  <h3>zerolog 实战</h3>
+  <pre><code>import "github.com/rs/zerolog/log"
+
+func main() {
+    zerolog.TimeFieldFormat = time.RFC3339Nano
+
+    log.Info().
+        Int("user_id", 42).
+        Str("action", "create").
+        Dur("elapsed", 15*time.Millisecond).
+        Msg("user created")
+
+    // 错误级别带堆栈
+    log.Error().Err(err).Stack().Msg("failed to create user")
+}
+// zerolog 核心优势：所有字段在不上日志级别时零开销（通过空方法实现）</code></pre>
+
+  <h3>OTel 集成</h3>
+  <pre><code>import (
+    "go.opentelemetry.io/otel"
+    "go.opentelemetry.io/otel/trace"
+)
+
+func HandleUser(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    tracer := otel.Tracer("user-service")
+
+    ctx, span := tracer.Start(ctx, "HandleUser.GetUser")
+    defer span.End()
+
+    // 在 span 中记录事件
+    span.AddEvent("querying database")
+    user, err := repo.GetUser(ctx, id)
+    if err != nil {
+        span.RecordError(err)
+        span.SetStatus(codes.Error, err.Error())
+        return
+    }
+    span.SetAttributes(
+        attribute.Int("user.id", user.ID),
+        attribute.String("user.name", user.Name),
+    )
+}
+// 配合 OTel Collector → Jaeger/Grafana → 可视化链路追踪</code></pre>
+
+  <div class="feynman">
+    <p><span class="analogy">没有日志和监控的线上系统，就像一个没有仪表盘、黑灯瞎火飞行的飞机——飞行员（开发者）完全不知道高度、油量、引擎状态，只能靠感觉猜。</span></p>
+    <p><span class="analogy">结构化日志 = 黑匣子，记录每个关键事件<br>
+    Metrics（指标）= 仪表盘，告诉你飞机当前的状态<br>
+    Traces（链路）= 飞行路径图，整个请求的完整旅程</span></p>
+    <p>OTel 就是把这三者统一起来的<strong>航空电子标准</strong>——不管你用的什么日志库，都能接入统一的可观测性平台（Grafana / Jaeger / Datadog）。</p>
+  </div>
+</section>
+
+<!-- ====== 配置管理 ====== -->
+<section class="section" id="config">
+  <h2>⚙️ 配置管理：Viper · Envconfig</h2>
+  <p>配置管理是 Go 工程化的"基本功"——你的应用需要从环境变量、配置文件、远程中心等多个来源获取配置。<strong>Viper</strong> 是 Go 生态最流行的全功能配置库，<strong>Envconfig</strong> 是轻量级环境变量专用方案。</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">
+      <rect width="800" height="420" fill="#0f172a" rx="8"/>
+      <text x="400" y="30" text-anchor="middle" fill="#22d3ee" font-size="18" font-weight="bold">Go 配置管理方案</text>
+
+      <!-- Viper -->
+      <rect x="30" y="55" width="350" height="180" rx="10" fill="#1e293b" stroke="#d29922" stroke-width="1.5"/>
+      <text x="205" y="82" text-anchor="middle" fill="#d29922" font-size="14" font-weight="bold">🏔️ Viper——全功能瑞士军刀</text>
+
+      <rect x="45" y="100" width="320" height="40" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="205" y="118" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">支持多种来源</text>
+      <text x="205" y="135" text-anchor="middle" fill="#94a3b8" font-size="10">配置文件 | 环境变量 | 远程 KV | 命令行 flag</text>
+
+      <rect x="45" y="150" width="320" height="40" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="205" y="168" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">支持格式</text>
+      <text x="205" y="185" text-anchor="middle" fill="#94a3b8" font-size="10">JSON | YAML | TOML | HCL | envfile | Java properties</text>
+
+      <rect x="45" y="200" width="320" height="28" rx="6" fill="#d29922" opacity="0.08" stroke="#d29922" stroke-width="1"/>
+      <text x="205" y="219" text-anchor="middle" fill="#d29922" font-size="11">⚠ 值类型为 interface{}，无编译期类型安全</text>
+
+      <!-- Envconfig -->
+      <rect x="420" y="55" width="350" height="180" rx="10" fill="#1e293b" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="595" y="82" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">🌱 Envconfig——轻量环保</text>
+
+      <rect x="435" y="100" width="320" height="40" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="595" y="118" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">只读环境变量</text>
+      <text x="595" y="135" text-anchor="middle" fill="#94a3b8" font-size="10">简洁、类型安全、零依赖</text>
+
+      <rect x="435" y="150" width="320" height="40" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+      <text x="595" y="168" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold">结构体 Tag + 自动解析</text>
+      <text x="595" y="185" text-anchor="middle" fill="#94a3b8" font-size="10">default/required/layout 等 tag</text>
+
+      <rect x="435" y="200" width="320" height="28" rx="6" fill="#3fb950" opacity="0.08" stroke="#3fb950" stroke-width="1"/>
+      <text x="595" y="219" text-anchor="middle" fill="#3fb950" font-size="11">✅ 编译期类型安全 + 零反射解析</text>
+
+      <!-- Code examples -->
+      <rect x="30" y="255" width="740" height="150" rx="8" fill="#0f172a" stroke="#a78bfa" stroke-width="1"/>
+      <text x="400" y="280" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="bold">实战对比</text>
+
+      <text x="45" y="305" fill="#d29922" font-size="12" font-weight="bold">Viper 方式</text>
+      <text x="45" y="325" fill="#c9d1d9" font-size="11" font-family="monospace">viper.SetConfigName("config")   // 找 config.yaml</text>
+      <text x="45" y="342" fill="#c9d1d9" font-size="11" font-family="monospace">viper.AutomaticEnv()            // 读环境变量</text>
+      <text x="45" y="359" fill="#c9d1d9" font-size="11" font-family="monospace">dbHost := viper.GetString("db.host")</text>
+      <text x="45" y="380" fill="#d29922" font-size="10">⚠ 字符串类型，需要手动断言/转换</text>
+
+      <text x="420" y="305" fill="#3fb950" font-size="12" font-weight="bold">Envconfig 方式</text>
+      <text x="420" y="325" fill="#c9d1d9" font-size="11" font-family="monospace">type Config struct {</text>
+      <text x="435" y="342" fill="#c9d1d9" font-size="11" font-family="monospace">    DBHost string `envconfig:"DB_HOST" default:"localhost"`</text>
+      <text x="435" y="359" fill="#c9d1d9" font-size="11" font-family="monospace">    DBPort int    `envconfig:"DB_PORT" default:"5432"`</text>
+      <text x="420" y="376" fill="#c9d1d9" font-size="11" font-family="monospace">}</text>
+      <text x="420" y="395" fill="#3fb950" font-size="10">✅ 编译期类型安全，直接是 int/string 类型</text>
+    </svg>
+    <div class="diagram-caption">图 7：Viper vs Envconfig——全功能 vs 轻量级配置方案</div>
+  </div>
+
+  <h3>Viper 实战</h3>
+  <pre><code>func InitConfig() (*Config, error) {
+    v := viper.New()
+    v.SetConfigName("config")          // 文件名（无后缀）
+    v.SetConfigType("yaml")            // 格式
+    v.AddConfigPath(".")               // 查找路径
+    v.AddConfigPath("/etc/myapp/")
+
+    // 环境变量覆盖：MYAPP_DB_HOST → db.host
+    v.SetEnvPrefix("MYAPP")
+    v.AutomaticEnv()
+    v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+    if err := v.ReadInConfig(); err != nil {
+        // config.yaml 不是必须的，环境变量也可
+        if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+            return nil, fmt.Errorf("read config: %w", err)
+        }
+    }
+
+    var cfg Config
+    if err := v.Unmarshal(&cfg); err != nil {
+        return nil, fmt.Errorf("unmarshal config: %w", err)
+    }
+    return &cfg, nil
+}
+
+// config.yaml
+// db:
+//   host: localhost
+//   port: 5432
+// redis:
+//   addr: localhost:6379</code></pre>
+
+  <h3>Envconfig 实战</h3>
+  <pre><code>type Config struct {
+    // 基础配置
+    ServiceName string `envconfig:"SERVICE_NAME" default:"myapp"`
+    Port        int    `envconfig:"PORT" default:"8080"`
+    Environment string `envconfig:"ENV" default:"development"`
+
+    // 数据库
+    DB struct {
+        Host     string `envconfig:"DB_HOST" default:"localhost"`
+        Port     int    `envconfig:"DB_PORT" default:"5432"`
+        User     string `envconfig:"DB_USER" required:"true"`
+        Password string `envconfig:"DB_PASSWORD" required:"true"`
+        Database string `envconfig:"DB_NAME" default:"myapp"`
+    }
+
+    // Redis
+    RedisAddr string `envconfig:"REDIS_ADDR" default:"localhost:6379"`
+}
+
+func main() {
+    var cfg Config
+    if err := envconfig.Process(context.Background(), &cfg); err != nil {
+        // required 字段缺失会报错（编译期不可用，运行时校验）
+        log.Fatal(err)
+    }
+    // 直接使用 cfg.DB.Host (string), cfg.DB.Port (int)
+}
+
+// % export DB_PASSWORD=secret123
+// % export ENV=production
+// % ./myapp</code></pre>
+
+  <div class="callout callout-tip">
+    <strong>💡 实战建议：</strong>
+    <ul>
+      <li><strong>中小项目</strong> → Envconfig（简洁、类型安全、十二要素应用风格）</li>
+      <li><strong>大项目 / 需要 config file</strong> → Viper（多来源、多格式、远程配置中心）</li>
+      <li><strong>组合使用</strong> → 用 Viper 加载 yaml，用 Envconfig 处理环境变量覆盖</li>
+      <li><strong>关键原则</strong>——12-Factor App：配置与代码严格分离，环境变量是首选</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== 实战问答 ====== -->
+<section class="section" id="qa">
+  <h2>❓ 实战问答（8 题）</h2>
+  <p>点击问题展开答案，先自己想想再看解析 👇</p>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q1：Go 标准项目结构中 cmd、internal、pkg 各自的作用是什么？为什么 Go 的 internal 是"最强封装"？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>cmd/</strong> ——可执行程序入口，每个子目录对应一个二进制文件（<code>cmd/server</code>、<code>cmd/worker</code>）。main 函数只做"组装"：解析配置、注入依赖、启动服务，不写业务逻辑。</p>
+      <p class="a"><strong>internal/</strong> ——私有业务代码，Go 编译器强制隔离。外部项目 import internal 包会直接编译报错。这是 Go 语言的<strong>独特设计</strong>——不像其他语言靠命名规范或 linter 约束，Go 在语言层面就禁止外部访问。</p>
+      <p class="a"><strong>pkg/</strong> ——可对外公开的工具库，如 httputil、validator。只放与业务无关的通用代码。</p>
+      <p class="q">为什么 internal 是"最强封装"？</p>
+      <p class="a">因为它是<strong>编译器强制的</strong>。Java 的 private 靠 JVM 可以反射绕过，Python 的 _ 只是约定，但 Go 的 internal 编译期就报错——比 runtime 检查更安全、更早发现问题。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open'">Q2：Google Wire 和 Uber dig / Facebook inject 有什么区别？为什么 Wire 选择编译期生成？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>特性</th><th>Wire（编译期）</th><th>dig / inject（运行时）</th></tr>
+        <tr><td>实现方式</td><td>代码生成（go generate）</td><td>反射（reflect）</td></tr>
+        <tr><td>报错时机</td><td>编译期</td><td>运行时（panic）</td></tr>
+        <tr><td>性能开销</td><td>零</td><td>有（反射调用）</td></tr>
+        <tr><td>依赖图检测</td><td>编译期静态分析</td><td>运行时构建</td></tr>
+        <tr><td>代码可读性</td><td>生成可读代码</td><td>黑盒调用</td></tr>
+      </table>
+      <p class="a">Wire 的核心思路：<strong>把 DI 的"连线"工作从运行时挪到编译期</strong>。你的代码中先声明 Provider 函数，Wire 分析函数签名（参数 = 依赖，返回值 = 产出），自动生成依赖组装代码。依赖缺失或循环引用在 <code>go generate</code> 时就报错。</p>
+      <p class="a"><span class="handwritten">Wire 选择编译期是因为 Go 哲学：显式优于隐式，错误尽早暴露。</span></p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q3：Go 1.13 引入的错误包装（%w）和旧的 pkg/errors 有什么区别？errors.Is 和 errors.As 怎么用？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>Go 1.13 之前的做法：</strong></p>
+      <ul class="a">
+        <li><code>fmt.Errorf("xxx: %v", err)</code> ——字符串拼接，丢失原始错误类型</li>
+        <li><code>pkg/errors.Wrap(err, "xxx")</code> ——增加堆栈和包装信息</li>
+        <li>判断时只能 <code>==</code> 比较哨兵，无法穿透包装链</li>
+      </ul>
+      <p class="a"><strong>Go 1.13+ 的做法：</strong></p>
+      <ul class="a">
+        <li><code>fmt.Errorf("get user %d: %w", id, err)</code> ——<code>%w</code> 创建包装错误链</li>
+        <li><code>errors.Is(err, ErrNotFound)</code> ——遍历链查找匹配的哨兵错误</li>
+        <li><code>errors.As(err, &target)</code> ——遍历链找到第一个匹配的自定义错误类型</li>
+      </ul>
+      <p class="a"><strong>核心区别：</strong>pkg/errors 提供了堆栈信息但被 Go 官方拒绝加入标准库。Go 1.13 提供了更简洁的包装链机制。现在推荐：<code>fmt.Errorf + %w</code> 做包装，<code>errors.Is/As</code> 做判断。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q4：表驱动测试（Table-Driven Tests）有什么好处？为什么 Go 社区强烈推荐这种模式？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">表驱动测试是 Go 社区最推崇的测试风格，理由：</p>
+      <ol class="a">
+        <li><strong>数据与逻辑分离</strong>——测试输入/期望输出集中在表格中，测试逻辑只写一次</li>
+        <li><strong>覆盖率高</strong>——添加新 case 只需加一行数据，不需要写新函数</li>
+        <li><strong>子测试（t.Run）</strong>——每个 case 独立运行，出错时精确定位</li>
+        <li><strong>文档即测试</strong>——case 的 name 字段就是活的文档</li>
+        <li><strong>容易做边界测试</strong>——空值、负数、极大值等边界 case 轻松添加</li>
+      </ol>
+      <p class="a"><span class="handwritten">表驱动 = 来自数学的"真值表"思想：穷举所有输入组合，验证输出。</span></p>
+      <p class="a">结合 <code>go test -fuzz</code> 和 <code>testify assert</code> 可以写出覆盖全面、可读性高的测试套件。</p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q5：Go Fuzzing（模糊测试）是什么？Go 1.18 引入的原生 Fuzzing 怎么用？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>Fuzzing（模糊测试）</strong>是自动向程序输入大量随机数据来寻找崩溃、断言失败、内存泄漏等问题的测试方法。</p>
+      <p class="a">Go 1.18 将 Fuzzing 直接集成到 <code>testing</code> 包中：</p>
+      <ul class="a">
+        <li>函数名以 <code>FuzzXXX</code> 开头，参数 <code>*testing.F</code></li>
+        <li>用 <code>f.Add()</code> 提供种子语料（初始用例）</li>
+        <li>用 <code>f.Fuzz(func(t *testing.T, input string) { ... })</code> 执行模糊测试</li>
+        <li>运行：<code>go test -fuzz=FuzzXXX -fuzztime=30s</code></li>
+      </ul>
+      <p class="a">发现崩溃后，Go 会将输入写入 <code>testdata/fuzz/</code> 目录，下次普通测试也会自动重放这个输入——确保修复后不再复现。</p>
+      <p class="a"><span class="handwritten">Fuzzing 就像一个"疯狂 QA"——不断乱按按钮、往输入框里塞奇怪的东西，帮你找到你没想到的 bug。</span></p>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q6：log/slog 和 zerolog、zap 有什么区别？什么时候选哪个？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <table style="max-width:700px;margin:10px 0">
+        <tr><th>库</th><th>定位</th><th>最佳场景</th></tr>
+        <tr><td>log/slog</td><td>标准库结构化日志</td><td>不想引入第三方依赖、标准优先</td></tr>
+        <tr><td>zerolog</td><td>零分配 JSON 日志</td><td>高并发、低延迟、日志量大的场景</td></tr>
+        <tr><td>zap</td><td>Uber 的高性能日志</td><td>社区成熟、需要三种编码模式（JSON/console/human）</td></tr>
+      </table>
+      <p class="a"><strong>选型建议：</strong></p>
+      <ul class="a">
+        <li>新项目从 <strong>slog</strong> 开始——Go 1.21+ 标准库，官方维护，够用</li>
+        <li>性能敏感（每秒万级日志）→ <strong>zerolog</strong>（零分配设计）或 <strong>zap</strong></li>
+        <li>同一个应用中通过 OTel 统一输出，日志库的选择不影响可观测性接入</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q7：Viper 和 Envconfig 的设计哲学有什么不同？如何组合使用？</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a"><strong>Viper 的哲学</strong>——"一个配置库统治所有配置来源"：可以读文件、环境变量、远程 KV、命令行 flags，通过优先级覆盖（explicit &gt; env &gt; config file &gt; default）。缺点是值类型 <code>interface{}</code>，非类型安全。</p>
+      <p class="a"><strong>Envconfig 的哲学</strong>——"少即是多"：只做环境变量解析，但做到极致——结构体 tag、required 校验、嵌套结构体重命名、自动类型解析。类型安全，零反射。</p>
+      <p class="a"><strong>组合使用：</strong></p>
+      <pre><code>// 1. Viper 加载 yaml → 解析到 Config 结构体
+// 2. Envconfig 读取环境变量覆盖
+// 3. Viper 的 Unmarshal 负责最终合并
+
+type Config struct {
+    DBHost string `mapstructure:"db_host" envconfig:"DB_HOST" default:"localhost"`
+    DBPort int    `mapstructure:"db_port" envconfig:"DB_PORT" default:"5432"`
+}
+
+cfg := &Config{}
+v.Unmarshal(cfg)             // 从 yaml 加载
+envconfig.Process(ctx, cfg)  // 环境变量覆盖</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <h4 class="qa-q" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Q8：Go 工程化的"十诫"是什么？能说 5 条以上就算你懂 Go 工程化了</h4>
+    <div class="qa-a">
+      <p class="q">核心思路：</p>
+      <p class="a">以下是 Go 工程化的核心原则（能说出 5-6 条就很好，8+ 条是加分项）：</p>
+      <ol class="a">
+        <li><strong>遵循标准项目布局</strong>——cmd / internal / pkg 三层结构，internal 利用编译器强制私有</li>
+        <li><strong>接口在消费方定义</strong>——不要在生产方定义接口，让调用方声明自己要什么</li>
+        <li><strong>用 Wire 做编译期 DI</strong>——不用反射 DI，编译期生成依赖代码</li>
+        <li><strong>错误永远包装上下文</strong>——用 <code>%w</code> 包装，最外层统一处理，只日志记录一次</li>
+        <li><strong>表驱动测试 + Testify + Mock</strong>——数据分离、优雅断言、接口隔离</li>
+        <li><strong>Gofmt + Linter 自动化</strong>——gofmt、golangci-lint、revive 集成到 CI</li>
+        <li><strong>结构化日志 + OTel</strong>——可观测性从第一天就接入，不是事后补的</li>
+        <li><strong>配置与代码分离</strong>——12-Factor App 原则，环境变量首选</li>
+        <li><strong>Makefile 或 Taskfile 自动化</strong>——build/test/lint/gen 等统一入口</li>
+        <li><strong>模块化 + 按需依赖</strong>——go modules 最小依赖，不随便引入第三方包</li>
+      </ol>
+      <p class="a"><span class="handwritten">工程化的核心不是"用更多的工具"，而是"建立让团队高效协作的公约"。</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ====== 口播总结 ====== -->
+<section class="section" id="summary">
+  <h2>🎙️ 口播总结</h2>
+  <div class="voice-summary">
+    <p>好，我们来把 Go 工程化的知识体系快速过一遍。</p>
+    <p><strong>第一，项目结构是地基。</strong>标准布局 <code>cmd/internal/pkg</code> 是 Go 社区多年沉淀的最佳实践。cmd 是入口，只管"组装"；internal 是业务核心，Go 编译器帮你"锁门"；pkg 是公共工具箱。</p>
+    <p><strong>第二，依赖注入推荐 Wire。</strong>它和其他 DI 工具最大的不同是<strong>编译期生成代码</strong>——零运行时开销，依赖缺失在开发阶段就报错。你写 Provider 函数，Wire 自动分析参数的输入输出类型，生成 Injector 代码。</p>
+    <p><strong>第三，错误处理三模式互补。</strong>哨兵错误（<code>var ErrXxx</code>）用 <code>errors.Is</code> 判断，自定义错误类型用 <code>errors.As</code> 提取，<code>%w</code> 包装链让你既能保留上下文又能穿透检查。核心原则：只记录日志一次，在顶层统一处理。</p>
+    <p><strong>第四，测试四层塔。</strong>Table-Driven（批量校验逻辑）、Mock（隔离外部依赖）、Testify Suite（优雅断言）、Fuzzing（边界漏洞发现）。Go 1.18 原生支持 Fuzzing——运行 <code>go test -fuzz</code> 自动生成随机输入。</p>
+    <p><strong>第五，日志和监控。</strong>slog 是标准库结构化日志，zerolog 追求极致性能，OTel 提供 Metrics + Logs + Traces 三支柱模型。用 OTel Collector 统一输出到 Grafana / Jaeger / Prometheus。</p>
+    <p><strong>第六，配置管理。</strong>Viper 是全功能瑞士军刀（多来源、多格式），Envconfig 是轻量的环境变量专精方案。原则：配置与代码分离，环境变量是首选。</p>
+    <p>Go 工程化不是一堆工具的堆砌，而是让你和你的团队<strong>从"能跑"到"能维护、能协作、能上生产"</strong>的一套实践体系。抓住这六大支柱，你就能写出经得起时间考验的 Go 项目。</p>
+    <p>下一篇我们来聊聊 <strong>Go 并发模式深度解析（GMP 模型 + Channel + 并发设计模式）</strong>——看看 Go 的并发到底是怎么"轻量"的。敬请期待！🎯</p>
+  </div>
+</section>
+
+</main>
+
+</div><!-- .app -->
+
+<script src="/mobile.js"></script>
+<script src="/tts.js"></script>
+<script>
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+<script>
+(function(){
+  var key = 'review_sidebar_collapsed';
+  var sidebar = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
+  var btn = document.querySelector('.toggle-btn');
+
+  function apply(state) {
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+      main.classList.add('sidebar-collapsed');
+      if (btn) btn.textContent = '▶';
+    } else {
+      sidebar.classList.remove('collapsed');
+      main.classList.remove('sidebar-collapsed');
+      if (btn) btn.textContent = '◀';
+    }
+  }
+
+  window.toggleSidebar = function() {
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    apply(isCollapsed ? '' : 'collapsed');
+    try { localStorage.setItem(key, isCollapsed ? '' : 'collapsed'); } catch(e) {}
+  };
+
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch(e) {}
+  if (saved === 'collapsed') apply('collapsed');
+})();
+</script>
+
+</body>
+</html>

@@ -4,17 +4,12 @@
 <meta charset="UTF-8">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>高并发系统设计 · 费曼学习法</title>
+<title>高并发系统设计 · 从Go并发到实战场景 · 费曼学习法</title>
 <style>
-  :root {
-    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
-    --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff;
-    --green: #3fb950; --orange: #d29922; --red: #f85149;
-    --purple: #a371f7; --cyan: #39c5cf;
-  }
+  :root { --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #a371f7; --cyan: #39c5cf; --pink: #db61a2; }
   * { margin:0; padding:0; box-sizing:border-box }
   body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
-  code { font-family: 'Cascada Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
+  code { font-family: 'Cascadia Code','Fira Code','JetBrains Mono',monospace; font-size: 13px; }
   p code, li code { background: #252830; color: var(--orange); padding: 2px 6px; border-radius: 4px; }
   pre { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.6; }
   pre code { background: none; color: var(--text); padding: 0; }
@@ -46,6 +41,7 @@
   .feynman .analogy { color: var(--green); font-style: italic; }
 
   .diagram { background: #0a0c13; border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 20px 0; text-align: center; overflow-x: auto; }
+  .diagram svg { min-width: 580px; }
   .diagram-caption { font-size: 12px; color: var(--muted); margin-top: 8px; }
 
   .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
@@ -53,6 +49,7 @@
   .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
   .badge-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
   .badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge-cyan { background: rgba(57,197,207,0.15); color: var(--cyan); }
 
   .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
   .compare > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
@@ -63,709 +60,656 @@
   .qa .q { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; }
   .qa .a { font-size: 14px; }
 
-
-  /* 苏格拉底提问 */
-  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; transition: all 0.2s; }
-  details.socratic[open] { border-color: rgba(163,113,247,0.5); box-shadow: 0 0 20px rgba(163,113,247,0.06); }
-  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; user-select: none; }
+  details.socratic { background: linear-gradient(135deg, rgba(163,113,247,0.06), rgba(88,166,255,0.04)); border: 1px solid rgba(163,113,247,0.25); border-radius: 12px; margin: 14px 0; padding: 0; overflow: hidden; }
+  details.socratic[open] { border-color: rgba(163,113,247,0.5); }
+  details.socratic > summary { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: #c4b5fd; list-style: none; display: flex; align-items: center; gap: 10px; }
   details.socratic > summary::-webkit-details-marker { display: none; }
-  details.socratic > summary::before { content: '🤔'; font-size: 18px; flex-shrink: 0; }
-  details.socratic > summary::after { content: '▸'; margin-left: auto; font-size: 14px; color: var(--muted); transition: transform 0.2s; }
+  details.socratic > summary::before { content: '🤔'; font-size: 18px; }
+  details.socratic > summary::after { content: '▸'; margin-left: auto; color: var(--muted); transition: transform 0.2s; }
   details.socratic[open] > summary::after { transform: rotate(90deg); }
   details.socratic > summary:hover { color: #ddd6fe; background: rgba(163,113,247,0.04); }
   .socratic-a { padding: 0 20px 16px 46px; font-size: 13px; color: var(--text); line-height: 1.9; }
   .socratic-a .highlight { color: #3fb950; font-weight: 600; }
-  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .socratic-num { font-size: 11px; color: var(--muted); font-weight: 400; }
 
-  @media (max-width: 768px) {
-    .sidebar { display: none; }
-    .main { margin-left: 0; padding: 16px; }
-    .compare { grid-template-columns: 1fr; }
-  }
+  .kw { color: #ff7b72; } .fn { color: #d2a8ff; } .str { color: #a5d6ff; } .num { color: #79c0ff; } .cm { color: #8b949e; font-style: italic; } .tp { color: #ffa657; } .op { color: #ff7b72; }
+
+  @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; padding: 16px; } .compare { grid-template-columns: 1fr; } .diagram svg { min-width: 420px; } }
+  @media (max-width: 480px) { .diagram svg { min-width: 340px; } }
 </style>
 </head>
 <body>
 <div class="app">
-
 <aside class="sidebar">
-  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔄 知<span>识库</span></div></a>
+  <a href="/" style="text-decoration:none"><div class="sidebar-logo">🔄 高并发 <span>系统设计</span></div></a>
   <a class="nav-item active" href="#overview">📋 总览</a>
-  <div class="nav-section">第一章：基础</div>
-  <a class="nav-item" href="#cc-basics">🧵 并发 vs 并行</a>
-  <a class="nav-item" href="#cc-model">🏗️ 线程模型演进</a>
-  <div class="nav-section">第二章：同步原语</div>
-  <a class="nav-item" href="#cc-mutex">🔐 Mutex & RWMutex</a>
-  <a class="nav-item" href="#cc-atomic">⚛️ 原子操作 & CAS</a>
-  <a class="nav-item" href="#cc-channel">📨 Channel 通信</a>
-  <div class="nav-section">第三章：Go 并发</div>
-  <a class="nav-item" href="#cc-gmp">⚙️ GMP 调度器</a>
-  <a class="nav-item" href="#cc-select">🔀 select 多路复用</a>
-  <a class="nav-item" href="#cc-sync">🧰 sync 包全家桶</a>
-  <div class="nav-section">第四章：并发模式</div>
-  <a class="nav-item" href="#cc-patterns">🎯 四大并发模式</a>
-  <a class="nav-item" href="#cc-consistency">🔒 数据一致性</a>
-  <a class="nav-item" href="#cc-qa">❓ 核心题</a>
-  <a class="nav-item" href="#cc-summary">🎙️ 口播总结</a>
-  <a class="nav-item" href="#cc-socratic">💬 苏格拉底提问</a>
+  <div class="nav-section">一、并发编程基础</div>
+  <a class="nav-item" href="#basics">🧵 并发 vs 并行 · 线程模型</a>
+  <a class="nav-item" href="#sync">🔐 Go 同步原语</a>
+  <a class="nav-item" href="#patterns">🎯 四大并发模式</a>
+  <div class="nav-section">二、系统级策略</div>
+  <a class="nav-item" href="#ratelimit">🚦 限流策略</a>
+  <a class="nav-item" href="#peaks">⛰️ 削峰填谷</a>
+  <a class="nav-item" href="#circuit">🛡️ 熔断降级</a>
+  <a class="nav-item" href="#cache">🗼 多级缓存</a>
+  <a class="nav-item" href="#hotspot">🔥 热点应对</a>
+  <a class="nav-item" href="#pool">📦 池化技术</a>
+  <div class="nav-section">三、实战案例</div>
+  <a class="nav-item" href="#seckill">⚡ 秒杀系统设计</a>
+  <a class="nav-item" href="#qa">💬 实战问答</a>
+  <a class="nav-item" href="#summary">🎯 口播总结</a>
   <a class="nav-item" href="/" style="margin-top:20px;font-size:12px;color:var(--muted)">← 返回首页</a>
 </aside>
 
 <main class="main">
 
+<!-- ═══════ 总览 ═══════ -->
 <section id="overview" class="section">
   <h2>🔄 高并发系统设计</h2>
+  <p style="color:var(--muted);font-size:13px">从 Go 并发原语到实战场景 · 限流/削峰/熔断/缓存/热点/秒杀 · 12 张配图</p>
+
   <div class="feynman">
-    <p><strong>一句话：</strong>高并发 = 同时处理大量请求。核心挑战：<strong>共享资源冲突 + 协调开销 + 数据一致性</strong>。</p>
-    <p>和高性能的区别：高性能关心"单请求多快"，高并发关心"同时处理多少请求"。两者有交集（如 Worker Pool 既提升并发又提升吞吐），但侧重点不同。</p>
+    <p><span class="analogy">🏃 类比：</span>高并发系统就像一座地铁站。高峰时 10 万人涌入——<strong>限流</strong>（闸机控制进站速度）= 不让站台挤爆。<strong>削峰填谷</strong>（排队缓冲区）= 大家排着队慢慢进。<strong>熔断降级</strong>（某条线故障时跳台换乘）= 一个区域崩了不影响全站。<strong>多级缓存</strong>（电子屏显示车次信息）= 不用每次去调度室问。<strong>热点应对</strong>（热门线路加开班次）= 发现哪条线人多就多派车。</p>
+    <p>本文不只讲 Go 并发原语——那是工具箱里的螺丝刀。我们还要讲<strong>整个工具箱怎么用、什么时候用哪把、遇到突发流量时怎么应变</strong>。</p>
   </div>
 </section>
 
-<!-- ═══════ 1. 并发基础 ═══════ -->
-<section id="cc-basics" class="section">
-  <h2>🧵 并发 vs 并行：一个厨师 vs 多个厨师</h2>
-  <div class="feynman">
-    <p><span class="analogy">🍳 类比：</span><strong>并发</strong> = 一个厨师同时做 3 个菜——切菜时煲汤在煮，抽空翻一下炒锅。时间片轮转，看起来同时在干。<strong>并行</strong> = 三个厨师各做一个菜——真正的同时执行。</p>
-  </div>
+<!-- ═══════ 1. 并发编程基础 (精简) ═══════ -->
+<section id="basics" class="section">
+  <h2>🧵 并发编程基础</h2>
 
+  <h3>并发 vs 并行</h3>
   <div class="compare">
-    <div>
-      <h4>并发 (Concurrency)</h4>
-      <ul><li>逻辑上同时处理</li><li>时间片轮转</li><li>单核也能实现</li><li>关注任务调度</li></ul>
-    </div>
-    <div>
-      <h4>并行 (Parallelism)</h4>
-      <ul><li>物理上同时执行</li><li>需要多核</li><li>真正的"同时"</li><li>关注计算加速</li></ul>
-    </div>
+    <div><h4>并发 (Concurrency)</h4><ul><li>逻辑上同时处理</li><li>时间片轮转</li><li>单核也能实现</li><li>关注任务调度</li></ul></div>
+    <div><h4>并行 (Parallelism)</h4><ul><li>物理上同时执行</li><li>需要多核</li><li>真正的"同时"</li><li>关注计算加速</li></ul></div>
   </div>
 
-  <h3>高并发的核心矛盾</h3>
-  <div class="info-card">
-    <p><strong>共享资源 vs 互斥访问。</strong>100 个请求同时扣减库存 → 必须排队，但排队就降低并发。</p>
-    <p>终极目标：<strong>尽量减少串行部分，最大化并行部分。</strong>（回归阿姆达尔定律）</p>
-  </div>
-</section>
-
-<!-- ═══════ 2. 线程模型 ═══════ -->
-<section id="cc-model" class="section">
-  <h2>🏗️ 线程模型演进：从 1 对 1 到 M 对 N</h2>
-
-  <h3>三代线程模型</h3>
+  <h3>线程模型演进</h3>
   <table>
-    <tr><th>模型</th><th>原理</th><th>代表</th><th>1 万并发</th><th>缺点</th></tr>
-    <tr><td><strong>Thread-per-Request</strong></td><td>每个请求一个 OS 线程</td><td>Tomcat BIO</td><td>❌ 1 万线程 = 内存爆炸</td><td>线程创建/切换开销大</td></tr>
-    <tr><td><strong>Event Loop</strong></td><td>单线程事件循环 + 非阻塞 IO</td><td>Node.js / Redis</td><td>✅ 但 CPU 密集会阻塞</td><td>一个慢任务卡住所有人</td></tr>
-    <tr><td><strong>M:N 调度 (GMP)</strong></td><td>M 个 goroutine 复用 N 个 OS 线程</td><td>Go</td><td>✅ 百万 goroutine</td><td>—</td></tr>
-  </table>
-
-  <div class="feynman">
-    <p><span class="analogy">🎯 Go 的 GMP = 银行柜台的智能排队系统：</span>G（goroutine）= 排队客户。M（Machine/线程）= 营业中的柜台窗口。P（Processor）= 叫号系统，手里拿着排队名单。P 绑定 M → M 从 P 的队列里取 G 来执行。</p>
-  </div>
-</section>
-
-<!-- ═══════ 3. 同步原语 ═══════ -->
-<section id="cc-mutex" class="section">
-  <h2>🔐 Mutex & RWMutex：厕所门锁 vs 阅览室</h2>
-  <div class="feynman">
-    <p><span class="analogy">🚪 类比：</span><strong>Mutex</strong> = 厕所门——一次只能一个人用，别人等。<strong>RWMutex</strong> = 阅览室——多人可以同时看书，但不能有人写黑板（读共享，写互斥）。</p>
-  </div>
-
-  <h3>性能对比（基准测试）</h3>
-  <table>
-    <tr><th>操作</th><th>读多写少</th><th>读写均衡</th><th>写多读少</th></tr>
-    <tr><td><code>sync.Mutex</code></td><td>❌ 慢（读也互斥）</td><td>⭐⭐⭐</td><td>⭐⭐⭐⭐</td></tr>
-    <tr><td><code>sync.RWMutex</code></td><td>✅ 快（读共享）</td><td>⭐⭐⭐⭐</td><td>⭐⭐</td></tr>
-  </table>
-
-  <h4>Mutex 的正确使用姿势</h4>
-  <pre><code><span class="cm">// ✅ 正确：锁的粒度尽量小</span>
-<span class="kw">func</span> <span class="fn">Update</span>() {
-    mu.Lock()
-    data.count++
-    mu.Unlock()
-    <span class="cm">// 耗时操作放在锁外面！</span>
-    sendNotification()
-}
-
-<span class="cm">// ✅ 推荐：defer 防忘解锁</span>
-<span class="kw">func</span> <span class="fn">SafeUpdate</span>() {
-    mu.Lock()
-    <span class="kw">defer</span> mu.Unlock()
-    data.count++
-}
-
-<span class="cm">// ❌ 错误：锁内做 IO——其他 goroutine 全在等</span>
-<span class="kw">func</span> <span class="fn">BadUpdate</span>() {
-    mu.Lock()
-    <span class="kw">defer</span> mu.Unlock()
-    data.count++
-    http.Post(url, body) <span class="cm">// 💀 锁里做网络请求</span>
-}</code></pre>
-</section>
-
-<!-- ═══════ 4. 原子操作 ═══════ -->
-<section id="cc-atomic" class="section">
-  <h2>⚛️ 原子操作 & CAS：锁的终极替代品</h2>
-  <div class="feynman">
-    <p><span class="analogy">🪑 类比：</span><strong>CAS（Compare-And-Swap）</strong> = 抢椅子游戏——你看到一把空椅子（读当前值），走过去想坐（比较），发现被别人抢了（值变了）？没关系，再找下一把（重试）。整个过程不需要换门锁——CPU 指令级原子操作。</p>
-  </div>
-
-  <h3>何时用原子操作代替 Mutex？</h3>
-  <div class="info-card">
-    <p><strong>简单的计数器、标志位 → atomic。</strong>一条 CPU 指令完成，无上下文切换。</p>
-    <p><strong>复杂的多步操作 → Mutex。</strong>原子操作只能保证单次读写是原子的，不能保证"读+改+写"的原子性（除非用 CAS 循环）。</p>
-  </div>
-
-  <pre><code><span class="kw">var</span> counter <span class="kw">int64</span>
-
-<span class="cm">// ❌ counter++ 不是原子的（读→加→写 三步）</span>
-<span class="kw">func</span> <span class="fn">badIncr</span>() { counter++ }
-
-<span class="cm">// ✅ atomic：一条 CPU 指令</span>
-<span class="kw">func</span> <span class="fn">safeIncr</span>() { atomic.AddInt64(&counter, <span class="num">1</span>) }
-
-<span class="cm">// ✅ CAS 循环：无锁更新（乐观锁模式）</span>
-<span class="kw">func</span> <span class="fn">casUpdate</span>() {
-    <span class="kw">for</span> {
-        old := atomic.LoadInt64(&counter)
-        <span class="kw">if</span> atomic.CompareAndSwapInt64(&counter, old, old+<span class="num">1</span>) {
-            <span class="kw">break</span>  <span class="cm">// 成功！没被人抢</span>
-        }
-        <span class="cm">// 失败：值被别人改了，重试</span>
-    }
-}</code></pre>
-
-  <h4>Mutex vs atomic 性能差距</h4>
-  <table>
-    <tr><th>场景</th><th>Mutex</th><th>atomic</th><th>差距</th></tr>
-    <tr><td>简单递增</td><td>~50ns</td><td>~7ns</td><td>7 倍</td></tr>
-  </table>
-</section>
-
-<!-- ═══════ 5. Channel ═══════ -->
-<section id="cc-channel" class="section">
-  <h2>📨 Channel：Go 的传送带</h2>
-  <div class="feynman">
-    <p><span class="analogy">🏭 类比：</span>工厂传送带——工位 A 把零件放上传送带（<code>ch <- data</code>），工位 B 从传送带取走（<code>data := <-ch</code>）。传送带长度有限（buffered channel），满了 A 就等着，空了 B 就等着。天然的生产者-消费者协调。</p>
-  </div>
-
-  <h3>Channel 类型</h3>
-  <table>
-    <tr><th>类型</th><th>声明</th><th>行为</th><th>场景</th></tr>
-    <tr><td><strong>无缓冲</strong></td><td><code>ch := make(chan int)</code></td><td>发送者阻塞直到有人接收（同步）</td><td>精确同步、保证送达</td></tr>
-    <tr><td><strong>有缓冲</strong></td><td><code>ch := make(chan int, 100)</code></td><td>缓冲区满之前不阻塞</td><td>解耦、削峰、限流</td></tr>
-    <tr><td><strong>只读/只写</strong></td><td><code>&lt;-chan int</code> / <code>chan&lt;- int</code></td><td>编译时防止误用</td><td>函数签名约束</td></tr>
-  </table>
-
-  <h4>Channel 三大坑</h4>
-  <div class="info-card">
-    <p><span class="badge badge-red">①</span> <strong>向已关闭的 channel 发送 → panic。</strong>关闭前确保没有发送者还在用。</p>
-    <p><span class="badge badge-red">②</span> <strong>关闭已关闭的 channel → panic。</strong>用 sync.Once 或在生产者端统一关闭。</p>
-    <p><span class="badge badge-red">③</span> <strong>goroutine 泄漏。</strong>channel 的接收端退出了，发送端永远阻塞。</p>
-  </div>
-</section>
-
-<!-- ═══════ 6. GMP ═══════ -->
-<section id="cc-gmp" class="section">
-  <h2>⚙️ GMP 调度器：Go 并发的引擎</h2>
-
-  <div class="diagram">
-    <svg viewBox="0 0 820 240" style="max-width:820px;width:100%">
-      <defs><marker id="aGmp" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
-      <!-- P boxes -->
-      <rect x="30" y="10" width="240" height="100" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
-      <text x="150" y="35" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">P1 (Processor)</text>
-      <rect x="45" y="45" width="45" height="22" rx="4" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="1"/>
-      <text x="67" y="60" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="8">G1</text>
-      <rect x="95" y="45" width="45" height="22" rx="4" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="1"/>
-      <text x="117" y="60" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="8">G2</text>
-      <rect x="145" y="45" width="45" height="22" rx="4" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="1"/>
-      <text x="167" y="60" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="8">G3</text>
-      <rect x="195" y="45" width="45" height="22" rx="4" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,2"/>
-      <text x="217" y="60" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="8">G4</text>
-      <text x="150" y="95" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">本地队列 (runq)</text>
-
-      <rect x="290" y="10" width="240" height="100" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
-      <text x="410" y="35" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono,monospace" font-size="12" font-weight="700">P2 (Processor)</text>
-      <rect x="305" y="45" width="45" height="22" rx="4" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="1"/>
-      <text x="327" y="60" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="8">G5</text>
-      <rect x="355" y="45" width="45" height="22" rx="4" fill="rgba(34,211,238,0.06)" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,2"/>
-      <text x="377" y="60" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="8">G6</text>
-      <text x="410" y="95" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">本地队列</text>
-
-      <!-- M boxes -->
-      <rect x="555" y="10" width="120" height="45" rx="6" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.5"/>
-      <text x="615" y="30" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">M1 (Thread)</text>
-      <text x="615" y="47" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">执行中：G1</text>
-
-      <rect x="695" y="10" width="120" height="45" rx="6" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.5"/>
-      <text x="755" y="30" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">M2 (Thread)</text>
-      <text x="755" y="47" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="9">执行中：G5</text>
-
-      <!-- P→M arrows -->
-      <line x1="270" y1="40" x2="553" y2="32" stroke="#34d399" stroke-width="1.5" marker-end="url(#aGmp)"/>
-      <line x1="530" y1="40" x2="693" y2="32" stroke="#34d399" stroke-width="1.5" marker-end="url(#aGmp)"/>
-
-      <!-- Global queue -->
-      <rect x="30" y="130" width="780" height="35" rx="6" fill="rgba(251,146,60,0.08)" stroke="#fb923c" stroke-width="1"/>
-      <text x="50" y="153" fill="#fb923c" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">全局队列 (Global Run Queue)</text>
-      <rect x="280" y="136" width="40" height="22" rx="3" fill="rgba(251,146,40,0.10)" stroke="#fb923c" stroke-width="1"/>
-      <text x="300" y="151" text-anchor="middle" fill="#fdba74" font-family="JetBrains Mono,monospace" font-size="8">G99</text>
-      <text x="330" y="153" fill="#fdba74" font-family="JetBrains Mono,monospace" font-size="14">...</text>
-
-      <!-- Work stealing -->
-      <path d="M 530 110 Q 500 130 470 130 Q 410 130 410 110" fill="none" stroke="#fbbf24" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#aGmp)"/>
-      <text x="370" y="135" text-anchor="middle" fill="#fbbf24" font-family="JetBrains Mono,monospace" font-size="8">work stealing</text>
-
-      <!-- Key facts -->
-      <text x="30" y="195" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">关键事实：</text>
-      <text x="30" y="215" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9">• GOMAXPROCS 决定 P 的数量（默认=CPU 核数）  • P 的本地队列无锁（快）  • 全局队列有锁（慢）</text>
-    </svg>
-    <div class="diagram-caption">GMP 调度模型：G（goroutine）→ P（本地队列）→ M（OS 线程执行）+ Work Stealing</div>
-  </div>
-
-  <h3>GMP 核心规则</h3>
-  <div class="info-card">
-    <ol>
-      <li><strong>P 的数量 = GOMAXPROCS</strong>（默认 CPU 核数），决定最大并行度</li>
-      <li><strong>M 必须绑定 P 才能执行 G。</strong>没有 P 的 M 休眠</li>
-      <li><strong>G 阻塞在系统调用时</strong> → M 和 P 解绑 → P 找/新建 M 继续执行其他 G</li>
-      <li><strong>work stealing：</strong>P 的本地队列空了 → 从全局队列偷一半 → 还不够就从其他 P 偷</li>
-    </ol>
-  </div>
-</section>
-
-<!-- ═══════ 7. select ═══════ -->
-<section id="cc-select" class="section">
-  <h2>🔀 select：多路复用——同时等好几个 channel</h2>
-  <div class="feynman">
-    <p><span class="analogy">📞 类比：</span>热线接线员——同时守着 3 部电话（3 个 channel），哪部响了接哪部。都响？随机接一部。<code>select</code> = Go 的接线员。</p>
-  </div>
-
-  <pre><code><span class="cm">// select 经典模板：超时控制 + 多 channel 监听</span>
-<span class="kw">select</span> {
-<span class="kw">case</span> result := <-workCh:
-    handle(result)                      <span class="cm">// 工作完成</span>
-<span class="kw">case</span> <-ctx.Done():
-    <span class="kw">return</span> ctx.Err()                    <span class="cm">// 超时/取消</span>
-<span class="kw">case</span> <-ticker.C:
-    log.Println(<span class="str">"心跳"</span>)              <span class="cm">// 定时任务</span>
-<span class="kw">default</span>:
-    <span class="cm">// 非阻塞：哪个都没准备好就做别的</span>
-}</code></pre>
-
-  <h4>select 关键特性</h4>
-  <table>
-    <tr><th>特性</th><th>说明</th></tr>
-    <tr><td>多个 case 同时就绪</td><td><strong>随机选择</strong>一个执行（伪随机，防止饿死）</td></tr>
-    <tr><td>有 default</td><td>非阻塞——没有就绪的 case 就走 default</td></tr>
-    <tr><td>无 default</td><td>阻塞——等到至少一个 case 就绪</td></tr>
-    <tr><td>nil channel</td><td>对 nil channel 的读写永远阻塞——可以用来动态禁用某个 case</td></tr>
+    <tr><th>模型</th><th>原理</th><th>代表</th><th>1 万并发</th></tr>
+    <tr><td>Thread-per-Request</td><td>每个请求一个 OS 线程</td><td>Tomcat BIO</td><td>❌ 线程爆炸</td></tr>
+    <tr><td>Event Loop</td><td>单线程+非阻塞 IO</td><td>Node.js/Redis</td><td>✅ 但 CPU 密集阻塞</td></tr>
+    <tr><td>M:N 调度 (GMP)</td><td>M 个 goroutine 复用到 N 个 OS 线程</td><td>Go</td><td>✅ 百万级</td></tr>
+    <tr><td>Reactor 模型</td><td>多线程 Reactor + Handler Pool</td><td>Netty/Redis 6+</td><td>✅ 高吞吐</td></tr>
   </table>
 
   <div class="diagram">
-    <svg viewBox="0 0 820 280" style="max-width:820px;width:100%">
-      <defs>
-        <marker id="selArr1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker>
-        <marker id="selArr2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#fbbf24"/></marker>
-        <marker id="selArr3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#3fb950"/></marker>
-        <marker id="selArr4" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#f87171"/></marker>
-        <marker id="selArr5" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#a78bfa"/></marker>
-      </defs>
-
-      <!-- Channels on left -->
-      <rect x="15" y="40" width="140" height="45" rx="8" fill="rgba(34,211,238,0.08)" stroke="#22d3ee" stroke-width="2"/>
-      <text x="85" y="57" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">📨 workCh</text>
-      <text x="85" y="75" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="8">计算结果到达</text>
-
-      <rect x="15" y="100" width="140" height="45" rx="8" fill="rgba(251,191,36,0.08)" stroke="#fbbf24" stroke-width="2"/>
-      <text x="85" y="117" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">⏰ ctx.Done()</text>
-      <text x="85" y="135" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="8">超时/取消信号</text>
-
-      <rect x="15" y="160" width="140" height="45" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950" stroke-width="2"/>
-      <text x="85" y="177" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="11" font-weight="700">🔔 ticker.C</text>
-      <text x="85" y="195" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="8">定时心跳</text>
-
-      <!-- Arrows from channels to select -->
-      <line x1="155" y1="62" x2="215" y2="80" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#selArr1)"/>
-      <line x1="155" y1="122" x2="215" y2="115" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#selArr2)"/>
-      <line x1="155" y1="182" x2="215" y2="150" stroke="#3fb950" stroke-width="1.5" marker-end="url(#selArr3)"/>
-
-      <!-- SELECT box -->
-      <rect x="220" y="35" width="260" height="180" rx="14" fill="rgba(88,166,255,0.06)" stroke="#58a6ff" stroke-width="2.5"/>
-      <text x="350" y="62" text-anchor="middle" fill="#58a6ff" font-family="JetBrains Mono,monospace" font-size="16" font-weight="700">🔀 select</text>
-      <text x="350" y="82" text-anchor="middle" fill="#79b8ff" font-family="JetBrains Mono,monospace" font-size="9">多路复用器</text>
-
-      <!-- Case tags -->
-      <rect x="235" y="95" width="230" height="28" rx="6" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="1"/>
-      <text x="350" y="114" text-anchor="middle" fill="#67e8f9" font-family="JetBrains Mono,monospace" font-size="9">case result := &lt;-workCh:</text>
-
-      <rect x="235" y="130" width="230" height="28" rx="6" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1"/>
-      <text x="350" y="149" text-anchor="middle" fill="#fde68a" font-family="JetBrains Mono,monospace" font-size="9">case &lt;-ctx.Done():</text>
-
-      <rect x="235" y="165" width="230" height="28" rx="6" fill="rgba(63,185,80,0.12)" stroke="#3fb950" stroke-width="1"/>
-      <text x="350" y="184" text-anchor="middle" fill="#86efac" font-family="JetBrains Mono,monospace" font-size="9">case &lt;-ticker.C:</text>
-
-      <!-- Result arrow -->
-      <line x1="480" y1="125" x2="540" y2="125" stroke="#58a6ff" stroke-width="2" marker-end="url(#selArr5)"/>
-
-      <!-- Winner highlight -->
-      <rect x="550" y="95" width="80" height="60" rx="10" fill="rgba(163,113,247,0.12)" stroke="#a78bfa" stroke-width="2"/>
-      <text x="590" y="116" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9" font-weight="600">🏆</text>
-      <text x="590" y="135" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono,monospace" font-size="9">随机选</text>
-      <text x="590" y="148" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="7">一个执行</text>
-
-      <!-- Key rules box -->
-      <rect x="15" y="220" width="790" height="52" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
-      <text x="30" y="240" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">⚡ select 四大法则：</text>
-      <text x="30" y="260" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="8">① 多个 case 同时就绪 → 随机选（伪随机防饿死） ② 有 default → 非阻塞 ③ 无 default → 阻塞等 ④ nil channel → 永远阻塞（可动态禁用）</text>
+    <svg viewBox="0 0 820 220" style="max-width:820px;width:100%">
+      <defs><marker id="ccA1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
+      <rect x="10" y="10" width="800" height="200" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+      <!-- Model 1 -->
+      <rect x="30" y="40" width="160" height="55" rx="8" fill="rgba(248,81,73,0.08)" stroke="#f85149"/>
+      <text x="110" y="64" text-anchor="middle" fill="#f85149" font-size="12" font-family="sans-serif" font-weight="600">Thread-per-Request</text>
+      <text x="110" y="82" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">1 请求 = 1 OS 线程</text>
+      <!-- Model 2 -->
+      <rect x="220" y="40" width="160" height="55" rx="8" fill="rgba(210,153,34,0.08)" stroke="#d29922"/>
+      <text x="300" y="64" text-anchor="middle" fill="#d29922" font-size="12" font-family="sans-serif" font-weight="600">Event Loop</text>
+      <text x="300" y="82" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">单线程+非阻塞 IO</text>
+      <!-- Model 3 -->
+      <rect x="410" y="40" width="160" height="55" rx="8" fill="rgba(63,185,80,0.1)" stroke="#3fb950"/>
+      <text x="490" y="64" text-anchor="middle" fill="#3fb950" font-size="12" font-family="sans-serif" font-weight="600">M:N (GMP)</text>
+      <text x="490" y="82" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">M goroutine → N 线程</text>
+      <!-- Model 4 -->
+      <rect x="600" y="40" width="190" height="55" rx="8" fill="rgba(88,166,255,0.08)" stroke="#58a6ff"/>
+      <text x="695" y="64" text-anchor="middle" fill="#58a6ff" font-size="12" font-family="sans-serif" font-weight="600">Reactor 模型</text>
+      <text x="695" y="82" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">多 Reactor + Handler</text>
+      <!-- Evolution arrows -->
+      <path d="M190,67 L210,67" stroke="#64748b" stroke-width="1.5" marker-end="url(#ccA1)"/>
+      <path d="M380,67 L400,67" stroke="#64748b" stroke-width="1.5" marker-end="url(#ccA1)"/>
+      <path d="M570,67 L590,67" stroke="#64748b" stroke-width="1.5" marker-end="url(#ccA1)"/>
+      <text x="410" y="120" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">线程模型演进趋势：更少的线程，更高的并发</text>
+      <text x="410" y="140" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">从 1:1 → Event Loop → N:M → Reactor，核心思路都是减少线程切换开销</text>
+      <text x="410" y="175" text-anchor="middle" fill="#3fb950" font-size="10" font-family="sans-serif">Go 的 GMP = M:N 调度的标杆实现</text>
     </svg>
-    <div class="diagram-caption">select 多路复用：同时监听多个 channel，哪个先到就处理哪个——Go 并发的一等公民</div>
+    <div class="diagram-caption">图 1 · 线程模型演进：从 Thread-per-Request 到 Go GMP，核心是减少 OS 线程数</div>
   </div>
-
 </section>
 
-<!-- ═══════ 8. sync 包 ═══════ -->
-<section id="cc-sync" class="section">
-  <h2>🧰 sync 包全家桶</h2>
+<!-- ═══════ 2. Go 同步原语 (精简) ═══════ -->
+<section id="sync" class="section">
+  <h2>🔐 Go 同步原语速览</h2>
   <table>
-    <tr><th>工具</th><th>用途</th><th>一句话</th></tr>
-    <tr><td><code>sync.Mutex</code></td><td>互斥锁</td><td>一次一个人</td></tr>
-    <tr><td><code>sync.RWMutex</code></td><td>读写锁</td><td>多人读，一人写</td></tr>
-    <tr><td><code>sync.WaitGroup</code></td><td>等待一组 goroutine 完成</td><td>Add + Done + Wait</td></tr>
-    <tr><td><code>sync.Once</code></td><td>只执行一次</td><td>单例初始化</td></tr>
-    <tr><td><code>sync.Pool</code></td><td>对象池</td><td>复用临时对象，减少 GC</td></tr>
-    <tr><td><code>sync.Cond</code></td><td>条件变量</td><td>广播通知等待者</td></tr>
-    <tr><td><code>sync.Map</code></td><td>并发安全 Map</td><td>读多写少场景专用</td></tr>
+    <tr><th>原语</th><th>最佳场景</th><th>性能</th><th>注意</th></tr>
+    <tr><td>atomic</td><td>计数器、标志位</td><td>~7ns</td><td>仅单值、CAS 循环</td></tr>
+    <tr><td>sync.Mutex</td><td>写多、短临界区</td><td>~50ns</td><td>锁内不 IO</td></tr>
+    <tr><td>sync.RWMutex</td><td>读多写少</td><td>读=原子级</td><td>写会饿死</td></tr>
+    <tr><td>chan (无缓冲)</td><td>精确同步</td><td>中等</td><td>发送/接收必须配对</td></tr>
+    <tr><td>chan (有缓冲)</td><td>削峰/解耦</td><td>中等</td><td>注意泄漏</td></tr>
+    <tr><td>sync.Pool</td><td>对象复用</td><td>高</td><td>不保留下次还在</td></tr>
+    <tr><td>sync.Map</td><td>读多写少 Map</td><td>读=原子级</td><td>写频繁别用</td></tr>
   </table>
-
-  <h4>sync.Map vs map+mutex——什么时候用 sync.Map？</h4>
-  <div class="info-card">
-    <p><span class="badge badge-green">推荐 sync.Map</span>：① key 只写一次读很多次 ② 多个 goroutine 读写不同的 key</p>
-    <p><span class="badge badge-orange">推荐 map+Mutex</span>：写操作频繁、需要批量操作（range）</p>
-    <p><strong>经验：</strong>不确定就用 <code>map + sync.RWMutex</code>。sync.Map 是特定场景优化，不是通用替代。</p>
-  </div>
+  <p style="color:var(--muted);font-size:12px;margin-top:8px">💡 详细使用和代码示例参见之前的文章 <a href="/go-concurrency.html" style="color:var(--accent)">Go 并发的艺术</a>。</p>
 </section>
 
-<!-- ═══════ 9. 并发模式 ═══════ -->
-<section id="cc-patterns" class="section">
+<!-- ═══════ 3. 四大并发模式 ═══════ -->
+<section id="patterns" class="section">
   <h2>🎯 四大并发模式</h2>
 
-  <h3>1. Worker Pool（控制并发数）</h3>
+  <h3>Worker Pool</h3>
   <pre><code><span class="kw">func</span> <span class="fn">WorkerPool</span>(tasks []Task, workers <span class="kw">int</span>) {
     ch := <span class="kw">make</span>(<span class="kw">chan</span> Task, len(tasks))
     <span class="kw">var</span> wg sync.WaitGroup
     <span class="kw">for</span> i := <span class="num">0</span>; i < workers; i++ {
         wg.Add(<span class="num">1</span>)
-        <span class="kw">go</span> <span class="kw">func</span>() { <span class="kw">defer</span> wg.Done(); <span class="kw">for</span> t := <span class="kw">range</span> ch { t.Do() } }()
+        <span class="kw">go</span> <span class="kw">func</span>() { <span class="kw">defer</span> wg.Done(); <span class="kw">for</span> t := <span class="kw">range</span> ch { t.Process() } }()
     }
     <span class="kw">for</span> _, t := <span class="kw">range</span> tasks { ch <- t }
     <span class="kw">close</span>(ch); wg.Wait()
 }</code></pre>
 
-  <div class="diagram">
-    <svg viewBox="0 0 820 200" style="max-width:820px;width:100%">
-      <defs><marker id="aWp" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
-      <rect x="15" y="15" width="120" height="40" rx="6" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1.5"/>
-      <text x="75" y="40" text-anchor="middle" fill="#fcd34d" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600">Task Queue</text>
-      <line x1="135" y1="35" x2="175" y2="35" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#aWp)"/>
-      <rect x="180" y="5" width="100" height="60" rx="6" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.5"/>
-      <text x="230" y="28" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700">Worker 1</text>
-      <text x="230" y="50" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">goroutine</text>
-      <rect x="295" y="5" width="100" height="60" rx="6" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.5"/>
-      <text x="345" y="28" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700">Worker 2</text>
-      <text x="345" y="50" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">goroutine</text>
-      <rect x="410" y="5" width="100" height="60" rx="6" fill="rgba(63,185,80,0.15)" stroke="#3fb950" stroke-width="1.5"/>
-      <text x="460" y="28" text-anchor="middle" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="10" font-weight="700">Worker N</text>
-      <text x="460" y="50" text-anchor="middle" fill="#4ade80" font-family="JetBrains Mono,monospace" font-size="8">goroutine</text>
-      <text x="550" y="35" fill="#3fb950" font-family="JetBrains Mono,monospace" font-size="22" font-weight="700">...</text>
-      <line x1="230" y1="65" x2="230" y2="85" stroke="#3fb950" stroke-width="1.2"/>
-      <line x1="345" y1="65" x2="345" y2="85" stroke="#3fb950" stroke-width="1.2"/>
-      <line x1="460" y1="65" x2="460" y2="85" stroke="#3fb950" stroke-width="1.2"/>
-      <rect x="180" y="90" width="430" height="30" rx="5" fill="rgba(34,211,238,0.10)" stroke="#22d3ee" stroke-width="1"/>
-      <text x="395" y="110" text-anchor="middle" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="10">Result Collector (fan-in channel)</text>
-      <rect x="640" y="10" width="170" height="115" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1"/>
-      <text x="725" y="35" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="10" font-weight="600">关键参数</text>
-      <text x="650" y="60" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">workers = CPU核数</text>
-      <text x="650" y="80" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">ch buffer = len(tasks)</text>
-      <text x="650" y="100" fill="#94a3b8" font-family="JetBrains Mono,monospace" font-size="9">sync.WaitGroup 等待</text>
-    </svg>
-    <div class="diagram-caption">Worker Pool 架构：Task Queue → N 个 Worker goroutine → Fan-in 汇聚结果</div>
+  <h3>Pipeline / Fan-Out-Fan-In / Pub-Sub</h3>
+  <div class="info-card">
+    <p><strong>Pipeline：</strong> Stage1→Stage2→Stage3，每阶段用 channel 连接，天然并行。</p>
+    <p><strong>Fan-Out Fan-In：</strong> 一个输入分发到多个 Worker 并行处理，结果汇聚到一个 channel。</p>
+    <p><strong>Pub-Sub：</strong> 一对多广播，用 channel + select 实现，解耦生产者和消费者。</p>
   </div>
-
-  <h3>2. Pipeline（流水线）</h3>
-  <pre><code><span class="cm">// Stage1 → Stage2 → Stage3</span>
-gen := <span class="kw">func</span>(nums ...<span class="kw">int</span>) <-<span class="kw">chan</span> <span class="kw">int</span> {
-    out := <span class="kw">make</span>(<span class="kw">chan</span> <span class="kw">int</span>)
-    <span class="kw">go</span> <span class="kw">func</span>() { <span class="kw">for</span> _, n := <span class="kw">range</span> nums { out <- n }; <span class="kw">close</span>(out) }()
-    <span class="kw">return</span> out
-}
-sq := <span class="kw">func</span>(in <-<span class="kw">chan</span> <span class="kw">int</span>) <-<span class="kw">chan</span> <span class="kw">int</span> {
-    out := <span class="kw">make</span>(<span class="kw">chan</span> <span class="kw">int</span>)
-    <span class="kw">go</span> <span class="kw">func</span>() { <span class="kw">for</span> n := <span class="kw">range</span> in { out <- n*n }; <span class="kw">close</span>(out) }()
-    <span class="kw">return</span> out
-}
-<span class="kw">for</span> n := <span class="kw">range</span> sq(gen(<span class="num">2</span>,<span class="num">3</span>,<span class="num">4</span>)) { fmt.Println(n) }  <span class="cm">// 4, 9, 16</span></code></pre>
-
-  <h3>3. Fan-Out / Fan-In（分发 + 汇聚）</h3>
-  <pre><code><span class="cm">// Fan-Out: 一个输入 channel → 多个 worker</span>
-<span class="kw">func</span> <span class="fn">fanOut</span>(in <-<span class="kw">chan</span> Task, workers <span class="kw">int</span>) []<-<span class="kw">chan</span> Result {
-    outs := <span class="kw">make</span>([]<-<span class="kw">chan</span> Result, workers)
-    <span class="kw">for</span> i := <span class="num">0</span>; i < workers; i++ { outs[i] = worker(in) }
-    <span class="kw">return</span> outs
-}
-<span class="cm">// Fan-In: 多个 channel → 一个</span>
-<span class="kw">func</span> <span class="fn">fanIn</span>(chs ...<-<span class="kw">chan</span> Result) <-<span class="kw">chan</span> Result {
-    out := <span class="kw">make</span>(<span class="kw">chan</span> Result)
-    <span class="kw">var</span> wg sync.WaitGroup
-    <span class="kw">for</span> _, ch := <span class="kw">range</span> chs {
-        wg.Add(<span class="num">1</span>)
-        <span class="kw">go</span> <span class="kw">func</span>(c <-<span class="kw">chan</span> Result) { <span class="kw">defer</span> wg.Done(); <span class="kw">for</span> r := <span class="kw">range</span> c { out <- r } }(ch)
-    }
-    <span class="kw">go</span> <span class="kw">func</span>() { wg.Wait(); <span class="kw">close</span>(out) }()
-    <span class="kw">return</span> out
-}</code></pre>
-
-  <h3>4. Pub/Sub（发布订阅）</h3>
-  <pre><code><span class="kw">type</span> Broker <span class="kw">struct</span> {
-    mu  sync.RWMutex
-    subs <span class="kw">map</span>[<span class="kw">string</span>][]<span class="kw">chan</span> Event
-}
-<span class="kw">func</span> (b *Broker) <span class="fn">Publish</span>(topic <span class="kw">string</span>, evt Event) {
-    b.mu.RLock(); <span class="kw">defer</span> b.mu.RUnlock()
-    <span class="kw">for</span> _, ch := <span class="kw">range</span> b.subs[topic] {
-        <span class="kw">select</span> { <span class="kw">case</span> ch <- evt: <span class="kw">default</span>: }  <span class="cm">// 非阻塞发送</span>
-    }
-}</code></pre>
 </section>
 
-<!-- ═══════ 10. 数据一致性 ═══════ -->
-<section id="cc-consistency" class="section">
-  <h2>🔒 高并发下的数据一致性</h2>
+<!-- ═══════ 5. 限流策略 ═══════ -->
+<section id="ratelimit" class="section">
+  <h2>🚦 限流策略 — 不让系统被流量冲垮</h2>
 
-  <h3>乐观锁 vs 悲观锁</h3>
+  <p>限流是高并发系统的第一道防线。目标是：<strong>系统能处理多少，就放进来多少</strong>。多出来的要么排队等，要么直接拒绝。</p>
+
   <div class="feynman">
-    <p><span class="analogy">🎫 类比：</span><strong>悲观锁</strong> = 买票先锁座位，付款后解锁——假设别人会抢。<strong>乐观锁</strong> = 直接下单，提交时检查座位还在不在——假设没人抢。</p>
+    <p><span class="analogy">🚪 类比：</span>酒吧门口排队——里面满 200 人了，保安（限流器）在外面拦着，出来一个放进去一个。<strong>限流不是拒绝用户，而是保护系统不为用户</strong>。</p>
   </div>
 
+  <h3>四种限流算法</h3>
+  <table>
+    <tr><th>算法</th><th>原理</th><th>优缺点</th><th>适用场景</th></tr>
+    <tr><td>计数器（固定窗口）</td><td>每秒最多 N 请求，过了整秒重置</td><td>简单但窗口边界有突发</td><td>粗粒度限流</td></tr>
+    <tr><td>滑动窗口</td><td>按时间片切割，滑动统计</td><td>比固定窗口精准，内存略高</td><td>API 限流</td></tr>
+    <tr><td>令牌桶（Token Bucket）</td><td>匀速往桶里加令牌，请求消耗令牌</td><td>允许突发（桶里有攒的令牌）</td><td><strong>最常用</strong></td></tr>
+    <tr><td>漏桶（Leaky Bucket）</td><td>请求进桶，匀速流出</td><td>严格平滑，不能突发</td><td>削峰填谷</td></tr>
+  </table>
+
+  <h3>Go 令牌桶实现</h3>
+  <pre><code><span class="kw">type</span> TokenBucket <span class="kw">struct</span> {
+    rate  <span class="kw">float64</span>       <span class="cm">// 每秒放入 rate 个令牌</span>
+    burst <span class="kw">int</span>          <span class="cm">// 桶容量（最多攒多少个）</span>
+    tokens <span class="kw">float64</span>     <span class="cm">// 当前令牌数</span>
+    last   time.Time      <span class="cm">// 上次取令牌时间</span>
+    mu     sync.Mutex
+}
+
+<span class="kw">func</span> <span class="fn">NewTokenBucket</span>(rate <span class="kw">float64</span>, burst <span class="kw">int</span>) <span class="op">*</span>TokenBucket {
+    <span class="kw">return</span> <span class="op">&amp;</span>TokenBucket{rate: rate, burst: burst, last: time.Now()}
+}
+
+<span class="kw">func</span> (tb <span class="op">*</span>TokenBucket) <span class="fn">Allow</span>() <span class="kw">bool</span> {
+    tb.mu.Lock()
+    <span class="kw">defer</span> tb.mu.Unlock()
+
+    now <span class="op">:=</span> time.Now()
+    elapsed <span class="op">:=</span> now.Sub(tb.last).Seconds()
+    tb.tokens = math.Min(<span class="kw">float64</span>(tb.burst), tb.tokens+elapsed*tb.rate)
+    tb.last = now
+
+    <span class="kw">if</span> tb.tokens <span class="op">&gt;=</span> <span class="num">1</span> {
+        tb.tokens<span class="op">--</span>
+        <span class="kw">return</span> <span class="lit">true</span>
+    }
+    <span class="kw">return</span> <span class="lit">false</span>
+}</code></pre>
+
+  <h3>分布式限流</h3>
+  <p>单机限流不够——你有 10 台机器，用户用同一个 IP 刷，每台都放 100/s，实际上 1000/s 打到了 DB。</p>
   <div class="compare">
     <div>
-      <h4>悲观锁</h4>
-      <pre><code>SELECT * FROM stock
-WHERE id=1 FOR UPDATE
-<span class="cm">-- 锁住这一行，别人等</span>
-UPDATE stock SET qty=qty-1
-WHERE id=1</code></pre>
-      <p>适合：冲突概率高</p>
-      <p style="color:var(--red);font-size:12px">性能低（排队等锁）</p>
+      <h4>Redis + Lua 方案</h4>
+      <p>用 Redis 的 INCR + EXPIRE 做滑动窗口，Lua 脚本保证原子性。性能好，但 Redis 本身可能成为瓶颈。</p>
+      <p>适用：<strong>全局限流</strong>（用户级、IP 级）</p>
     </div>
     <div>
-      <h4>乐观锁</h4>
-      <pre><code>UPDATE stock SET qty=qty-1,
-  version=version+1
-WHERE id=1 AND version=5
-<span class="cm">-- rowsAffected=0 = 冲突，重试</span></code></pre>
-      <p>适合：冲突概率低</p>
-      <p style="color:var(--green);font-size:12px">性能高（不加锁）</p>
+      <h4>Sentinel 方案</h4>
+      <p>每个节点本地限流 + 定期同步配额。没有中心化瓶颈，适合大规模集群。</p>
+      <p>适用：<strong>服务级限流</strong>（每个服务实例独立限流）</p>
     </div>
   </div>
-
-  <h4>Go 中的分布式锁（Redis 实现）</h4>
-  <pre><code><span class="kw">func</span> <span class="fn">AcquireLock</span>(ctx context.Context, key <span class="kw">string</span>, ttl time.Duration) <span class="kw">bool</span> {
-    <span class="cm">// SET NX + EXPIRE：原子操作，拿到锁 + 设置过期</span>
-    ok, err := rdb.SetNX(ctx, key, <span class="str">"locked"</span>, ttl).Result()
-    <span class="kw">return</span> err == <span class="kw">nil</span> && ok
-}
-<span class="kw">func</span> <span class="fn">ReleaseLock</span>(ctx context.Context, key <span class="kw">string</span>) {
-    <span class="cm">// Lua 脚本：判断 value 是否是自己，避免误删别人的锁</span>
-    script := <span class="str">`if redis.call("get",KEYS[1])==ARGV[1] then
-               return redis.call("del",KEYS[1]) else return 0 end`</span>
-    rdb.Eval(ctx, script, []<span class="kw">string</span>{key}, <span class="str">"locked"</span>)
-}</code></pre>
 </section>
 
-<!-- ═══════ 11. 核心题 ═══════ -->
-<section id="cc-qa" class="section">
-  <h2>❓ 高频考题</h2>
+<!-- ═══════ 6. 削峰填谷 ═══════ -->
+<section id="peaks" class="section">
+  <h2>⛰️ 削峰填谷 — 让流量变得更平滑</h2>
 
-  <div class="qa"><div class="q">Q1: goroutine 和 OS 线程的区别？</div><div class="a">
-    <strong>大小：</strong>goroutine 初始 2KB 栈（动态扩缩），线程 ~1MB（固定）。<br>
-    <strong>切换：</strong>goroutine 用户态切换 ~几百 ns，线程内核态切换 ~几 μs。<br>
-    <strong>调度：</strong>goroutine 由 Go 运行时调度（GMP），线程由 OS 调度。<br>
-    <strong>数量：</strong>百万 goroutine 没问题，几千线程就内存炸了。
-  </div></div>
+  <p>限流是"不让太多人进来"，削峰是"把高峰期的流量摊平到低谷期处理"。核心思想：<strong>用异步化换时间</strong>。</p>
 
-  <div class="qa"><div class="q">Q2: channel 和 Mutex 怎么选？</div><div class="a">
-    <strong>传递数据所有权 → channel：</strong>"这个数据给你了，我不管了"。数据从一处流向另一处。<br>
-    <strong>保护共享状态 → Mutex：</strong>多个 goroutine 都要读/写同一块内存。<br>
-    <strong>性能敏感 → atomic/Mutex：</strong>channel 底层有锁+内存分配，比 Mutex 慢。<br>
-    Go 谚语："Don't communicate by sharing memory; share memory by communicating." 但不是绝对的。
-  </div></div>
+  <div class="feynman">
+    <p><span class="analogy">💧 类比：</span>城市排水系统——暴雨来临时（流量高峰），雨水先进入蓄水池（消息队列），等雨停了再慢慢排到污水处理厂（后端处理）。如果没有蓄水池，排水管会直接被冲爆。</p>
+  </div>
 
-  <div class="qa"><div class="q">Q3: 用 channel 实现一个无锁的并发安全队列？</div><div class="a">
-    buffered channel 天然就是并发安全的队列——<code>make(chan T, 100)</code>。多生产者安全写入，多消费者安全读取。但注意：① 容量固定 ② 满了会阻塞 ③ 关闭后再发会 panic。
-  </div></div>
+  <div class="diagram">
+    <svg viewBox="0 0 820 260" style="max-width:820px;width:100%">
+      <defs><marker id="cp1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#58a6ff"/></marker></defs>
+      <rect x="10" y="10" width="800" height="240" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+      <!-- Before -->
+      <text x="200" y="35" text-anchor="middle" fill="#f85149" font-size="13" font-family="sans-serif" font-weight="600">削峰前</text>
+      <rect x="50" y="50" width="300" height="30" rx="4" fill="rgba(248,81,73,0.1)" stroke="#f85149"/>
+      <text x="200" y="70" text-anchor="middle" fill="#f85149" font-size="10" font-family="sans-serif">▂▃▄▅▆▇█▇▆▅▄▃▂▁ 流量直接打到后端</text>
+      <!-- After -->
+      <text x="600" y="35" text-anchor="middle" fill="#3fb950" font-size="13" font-family="sans-serif" font-weight="600">削峰后</text>
+      <rect x="450" y="50" width="300" height="30" rx="4" fill="rgba(63,185,80,0.1)" stroke="#3fb950"/>
+      <text x="600" y="70" text-anchor="middle" fill="#3fb950" font-size="10" font-family="sans-serif">▁▁▂▂▂▃▃▃▃▂▂▂▁▁ 队列缓冲区平滑了峰值</text>
+      <!-- Queue -->
+      <rect x="300" y="120" width="220" height="45" rx="8" fill="rgba(210,153,34,0.1)" stroke="#d29922"/>
+      <text x="410" y="140" text-anchor="middle" fill="#d29922" font-size="13" font-family="sans-serif" font-weight="600">📦 消息队列（缓冲区）</text>
+      <text x="410" y="156" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">Producer → Broker → Consumer</text>
+      <!-- Arrows -->
+      <path d="M200,85 L200,110 L300,140 L295,140" stroke="#f85149" stroke-width="1.5" marker-end="url(#cp1)"/>
+      <path d="M525,140 L530,140 L600,110 L600,85" stroke="#3fb950" stroke-width="1.5" marker-end="url(#cp1)"/>
+      <text x="200" y="195" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">高峰时：10,000 qps 涌入</text>
+      <text x="600" y="195" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">消费时：1,000 qps 稳定处理</text>
+      <text x="410" y="225" text-anchor="middle" fill="#3fb950" font-size="10" font-family="sans-serif">✅ 流量从 10,000 降到 1,000，系统不会死，就是多等一会儿</text>
+    </svg>
+    <div class="diagram-caption">图 2 · 削峰填谷：消息队列是蓄水池，把瞬时洪峰变成平缓的流水</div>
+  </div>
 
-  <div class="qa"><div class="q">Q4: sync.WaitGroup 的坑？</div><div class="a">
-    <span class="badge badge-red">①</span> <strong>Add 必须在 goroutine 外部调用</strong>——如果在 goroutine 内部 Add，可能 Wait 先执行完。<br>
-    <span class="badge badge-red">②</span> <strong>不能复制 WaitGroup</strong>——必须传指针。<br>
-    <span class="badge badge-red">③</span> <strong>计数器不能为负</strong>——Done 多于 Add 会 panic。
-  </div></div>
+  <h3>三种削峰方式</h3>
+  <table>
+    <tr><th>方式</th><th>实现</th><th>延迟</th><th>适用</th></tr>
+    <tr><td><strong>MQ 异步化</strong></td><td>请求入队即返回，Worker 消费</td><td>秒级</td><td>下单、发通知、日志</td></tr>
+    <tr><td><strong>请求合并</strong></td><td>攒一批请求再处理（batch）</td><td>毫秒级</td><td>批量写、批量推送</td></tr>
+    <tr><td><strong>本地缓冲</strong></td><td>应用层缓冲队列</td><td>毫秒级</td><td>高频埋点、上报</td></tr>
+  </table>
 
-  <div class="qa"><div class="q">Q5: 怎么限制 goroutine 的并发数量？</div><div class="a">
-    ① <strong>buffered channel 做信号量：</strong><code>sem := make(chan struct{}, 100)</code>，获取信号量再起 goroutine。<br>
-    ② <strong>Worker Pool：</strong>固定 N 个 goroutine 消费 channel。<br>
-    ③ <strong>errgroup.SetLimit：</strong>Go 1.20+ 的 <code>errgroup.SetLimit(n)</code>。
-  </div></div>
-
-  <div class="qa"><div class="q">Q6: GMP 调度中，如果一个 goroutine 执行时间太长怎么办？</div><div class="a">
-    Go 1.14+ 支持<strong>基于信号的异步抢占</strong>。运行超过 10ms 的 goroutine 会被 SIGURG 信号打断，调度器可以把它切走。但要注意：① 在 CGO 或系统调用中的 goroutine 不可抢占 ② 紧循环（<code>for { i++ }</code>）在 1.14 前会饿死其他 goroutine。
-  </div></div>
-</section>
-
-<p style="text-align:center;color:var(--muted);margin-top:60px;padding-bottom:40px;font-size:12px">
-  🔄 高并发系统设计复习完成 · goroutine+channel+sync=Go 并发的三驾马车<br>
-  <a href="/" style="color:var(--accent)">← 返回首页</a>
-</p>
-
-
-<!-- ═══════ 苏格拉底式提问 ═══════ -->
-<section id="cc-socratic" class="section">
-  <h2>💬 苏格拉底式提问 —— 检验真理解</h2>
-  <p style="color:var(--muted);font-size:13px;margin-bottom:20px">以下问题用来逼你追问本质。先自己想 30 秒，再点开验证。</p>
-  <details class="socratic"><summary>goroutine 是越多越好吗？<span class="socratic-num">Q1</span></summary><div class="socratic-a"><span class="highlight">不是。</span>虽然轻量（初始栈 2KB），仍有成本：<br>① <strong>调度开销：</strong>百万 goroutine → 调度器消耗大量 CPU。<br>② <strong>内存：</strong>2KB × 1M = 2GB，仅栈空间。<br>③ <strong>GC 压力：</strong>goroutine 持有的对象越多，GC 扫描越慢。<br>④ <strong>真正瓶颈：</strong>是背后的资源——DB 连接数、文件描述符、网络带宽。<br><span class="highlight">原则：</span>用 Worker Pool 控制上限。不要无脑 go func()。</div></details>
-  <details class="socratic"><summary>channel 一定比 Mutex 好？<span class="socratic-num">Q2</span></summary><div class="socratic-a"><span class="highlight">"share memory by communicating" 是指导原则，不是真理。</span><br><span class="highlight">Mutex：</span>保护数据结构（map、计数器）；性能敏感（低竞争时极快）；缓存管理。<br><span class="highlight">Channel：</span>传递数据所有权；协调多个 goroutine。<br><span class="highlight">Go 官方：</span>"选择最适合的。不明显时用 Mutex（更简单）。"</div></details>
-  <details class="socratic"><summary>GMP 中 P 的数量为什么限制为 GOMAXPROCS？<span class="socratic-num">Q3</span></summary><div class="socratic-a"><span class="highlight">P = 逻辑处理器，决定最大并行度。</span><br>① <strong>物理上限：</strong>每个 P 绑定 OS 线程。M 超过 CPU → 上下文切换。<br>② <strong>伪并行：</strong>P 比 CPU 多 → cache locality 变差。<br>③ <strong>work stealing 效率下降。</strong><br><span class="highlight">调大：</span>IO 密集型 > CPU 核数。<br><span class="highlight">调小：</span>容器环境 → 匹配容器 CPU limit。</div></details>
-</section>
-
-
-<div class="feynman" style="margin-top:40px;background:linear-gradient(135deg,rgba(34,211,238,0.06),rgba(8,51,68,0.04));border-color:rgba(34,211,238,0.3)">
-  <p style="font-size:11px;color:#22d3ee;margin-bottom:8px;font-weight:700">📖 本文思想来源</p>
-  <p style="font-size:12px;line-height:1.9">
-    <strong>《Go 程序设计语言》</strong> —— Donovan &amp; Kernighan（Go 核心团队）<br>
-    • <span style="color:#67e8f9">第 9 章「使用共享变量实现并发」</span>：Mutex、RWMutex、atomic 的权威解释<br>
-    • <span style="color:#67e8f9">第 8 章「Goroutine 和 Channel」</span>：GMP 调度器设计的原始动机<br>
-    <strong>《Concurrency in Go》</strong> —— Katherine Cox-Buday<br>
-    • <span style="color:#67e8f9">第 4-5 章</span>：并发模式（Fan-out/Fan-in、Pipeline、Worker Pool）的实战演练<br>
-    • <span style="color:#94a3b8">另见：</span>Go 官方博客「The Go Memory Model」、Dave Cheney 的并发博客、Uber Go Style Guide
-  </p>
-</div>
-
-<section id="cc-summary" class="section" style="margin-top:40px">
-  <h2>🎙️ 口播总结</h2>
-  <div class="feynman" style="background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(248,81,73,0.04));border-color:rgba(251,191,36,0.3)">
-    <p style="font-size:15px;line-height:2"><strong>这篇文章是 Go 并发的完全指南。</strong></p>
-    <p>并发和并行的区别：并发是逻辑上同时处理、时间片轮转、单核也能做；并行是物理上同时执行、需要多核。Go 的 GMP 调度器是核心——G 是 goroutine，M 是 OS 线程，P 是逻辑处理器。P 的数量等于 GOMAXPROCS，M 必须绑定 P 才能执行 G。work stealing 让空闲的 P 从其他 P 偷任务。</p>
-    <p>同步三件套：Mutex 是厕所门一次一人、RWMutex 是阅览室多人读一人写、atomic 是 CPU 指令级原子操作比 Mutex 快 7 倍。Channel 就像传送带，无缓冲的是同步交接、有缓冲的是队列解耦。</p>
-    <p>Go 的 select 是多路复用，同时监听多个 channel，哪个先到处理哪个。sync 包全家桶里 WaitGroup 和 Once 最常用。四大并发模式：Worker Pool 控制并发数、Pipeline 流水线、Fan-Out/Fan-In 分发汇聚、Pub/Sub 发布订阅。</p>
-    <p>高并发下的数据一致性靠乐观锁和悲观锁——乐观锁用版本号冲突重试，悲观锁用 SELECT FOR UPDATE 排队。</p>
-    <p><strong>如果只能记住一句话，那就是"goroutine+channel+select=Go 并发的三驾马车"。</strong></p>
+  <div class="info-card">
+    <h4>⚡ 实战：一个 HTTP 请求的削峰路径</h4>
+    <p>请求到达 → Nginx 限流（令牌桶）→ 应用层排队（Channel Buffer）→ Worker Pool 处理 → MQ 持久化 → 异步消费。每一层都在"削"——Nginx 削尖峰，应用层削抖动，MQ 削长期波动。三层削峰确保后端永远在安全水位。</p>
   </div>
 </section>
 
+<!-- ═══════ 7. 熔断降级 ═══════ -->
+<section id="circuit" class="section">
+  <h2>🛡️ 熔断降级 — 防雪崩的最后防线</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🔌 类比：</span>家里的空气开关（熔断器）——用电量超过线路负荷时，不是让电线烧起来，而是主动跳闸断电。<strong>熔断 = 牺牲局部保全局</strong>。</p>
+  </div>
+
+  <h3>Circuit Breaker 三态</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 820 210" style="max-width:820px;width:100%">
+      <defs><marker id="cb1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#64748b"/></marker></defs>
+      <rect x="10" y="10" width="800" height="190" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+      <!-- CLOSED -->
+      <rect x="40" y="50" width="180" height="55" rx="8" fill="rgba(63,185,80,0.1)" stroke="#3fb950"/>
+      <text x="130" y="76" text-anchor="middle" fill="#3fb950" font-size="14" font-family="sans-serif" font-weight="600">✅ CLOSED</text>
+      <text x="130" y="94" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">正常：请求直达后端</text>
+      <!-- OPEN -->
+      <rect x="310" y="50" width="180" height="55" rx="8" fill="rgba(248,81,73,0.1)" stroke="#f85149"/>
+      <text x="400" y="76" text-anchor="middle" fill="#f85149" font-size="14" font-family="sans-serif" font-weight="600">❌ OPEN</text>
+      <text x="400" y="94" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">熔断：直接拒绝请求</text>
+      <!-- HALF-OPEN -->
+      <rect x="580" y="50" width="190" height="55" rx="8" fill="rgba(210,153,34,0.1)" stroke="#d29922"/>
+      <text x="675" y="76" text-anchor="middle" fill="#d29922" font-size="14" font-family="sans-serif" font-weight="600">🔓 HALF-OPEN</text>
+      <text x="675" y="94" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">试探：放少量请求试试</text>
+      <!-- Arrows -->
+      <path d="M220,77 L300,77" stroke="#3fb950" stroke-width="1.5" marker-end="url(#cb1)"/>
+      <text x="260" y="45" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">失败率达阈值</text>
+      <path d="M490,77 L570,77" stroke="#d29922" stroke-width="1.5" marker-end="url(#cb1)"/>
+      <text x="530" y="45" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">超时后试探</text>
+      <path d="M580,105 L490,130 L400,130 L400,110" stroke="#3fb950" stroke-width="1.5" marker-end="url(#cb1)" stroke-dasharray="5,3"/>
+      <text x="490" y="145" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">试探成功 → 恢复</text>
+      <text x="490" y="170" text-anchor="middle" fill="#f85149" font-size="9" font-family="sans-serif">试探失败 → 继续 OPEN</text>
+    </svg>
+    <div class="diagram-caption">图 3 · Circuit Breaker 三态：CLOSED → OPEN → HALF-OPEN → CLOSED</div>
+  </div>
+
+  <h3>Go 熔断器实现</h3>
+  <pre><code><span class="kw">type</span> CircuitBreaker <span class="kw">struct</span> {
+    mu            sync.Mutex
+    state         <span class="kw">int</span>        <span class="cm">// 0=CLOSED 1=OPEN 2=HALF-OPEN</span>
+    failures      <span class="kw">int</span>
+    threshold     <span class="kw">int</span>        <span class="cm">// 触发 OPEN 的失败次数</span>
+    timeout       time.Duration <span class="cm">// OPEN→HALF-OPEN 等待时间</span>
+    lastFailTime  time.Time
+}
+
+<span class="kw">func</span> (cb <span class="op">*</span>CircuitBreaker) <span class="fn">Call</span>(fn <span class="kw">func</span>() <span class="tp">error</span>) <span class="tp">error</span> {
+    cb.mu.Lock()
+    <span class="kw">if</span> cb.state <span class="op">==</span> <span class="num">1</span> { <span class="cm">// OPEN</span>
+        <span class="kw">if</span> time.Since(cb.lastFailTime) < cb.timeout {
+            cb.mu.Unlock()
+            <span class="kw">return</span> fmt.Errorf(<span class="str">"circuit breaker is OPEN"</span>)
+        }
+        cb.state = <span class="num">2</span> <span class="cm">// HALF-OPEN</span>
+    }
+    cb.mu.Unlock()
+
+    err <span class="op">:=</span> fn()
+    cb.mu.Lock()
+    <span class="kw">defer</span> cb.mu.Unlock()
+
+    <span class="kw">if</span> err <span class="op">!=</span> <span class="lit">nil</span> {
+        cb.failures<span class="op">++</span>
+        cb.lastFailTime = time.Now()
+        <span class="kw">if</span> cb.failures <span class="op">&gt;=</span> cb.threshold {
+            cb.state = <span class="num">1</span> <span class="cm">// OPEN</span>
+        }
+    } <span class="kw">else</span> {
+        cb.failures = <span class="num">0</span>
+        <span class="kw">if</span> cb.state <span class="op">==</span> <span class="num">2</span> {
+            cb.state = <span class="num">0</span> <span class="cm">// CLOSED</span>
+        }
+    }
+    <span class="kw">return</span> err
+}</code></pre>
+
+  <h3>降级策略</h3>
+  <div class="compare">
+    <div><h4>功能降级</h4><p>推荐页挂了 → 展示静态默认推荐。订单详情页挂了 → 只展示基础信息，不展示推荐商品。核心原则：<strong>主流程必须有降级方案</strong>。</p></div>
+    <div><h4>数据降级</h4><p>DB 挂了 → 读缓存。缓存也挂了 → 返回 5 秒前的快照（stale data）。连快照都没了 → 返回友好的"稍后重试"页面。逐层降级，绝不抛 500。</p></div>
+  </div>
+</section>
+
+<!-- ═══════ 8. 多级缓存 ═══════ -->
+<section id="cache" class="section">
+  <h2>🗼 多级缓存 — 逐层挡，层层过滤</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🏰 类比：</span>城堡的防御体系——外围的护城河挡住大部分人（CDN），过了护城河还有城墙（本地缓存），破了城墙还有内城（Redis），内城攻破了还有王宫（DB）。<strong>每一层都拦截一部分请求，最后一层（DB）永远不被打穿</strong>。</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 300" style="max-width:820px;width:100%">
+      <defs><marker id="cm1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#64748b"/></marker></defs>
+      <rect x="10" y="10" width="800" height="280" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+
+      <rect x="40" y="35" width="200" height="50" rx="8" fill="rgba(57,197,207,0.1)" stroke="#39c5cf"/>
+      <text x="140" y="62" text-anchor="middle" fill="#39c5cf" font-size="13" font-family="sans-serif" font-weight="600">🌐 CDN（静态资源）</text>
+      <text x="140" y="78" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">拦截 ~90% 静态请求</text>
+
+      <rect x="300" y="35" width="200" height="50" rx="8" fill="rgba(63,185,80,0.1)" stroke="#3fb950"/>
+      <text x="400" y="62" text-anchor="middle" fill="#3fb950" font-size="13" font-family="sans-serif" font-weight="600">⚡ 本地缓存（Go Cache）</text>
+      <text x="400" y="78" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">微秒级 · freecache/bigcache</text>
+
+      <rect x="560" y="35" width="200" height="50" rx="8" fill="rgba(210,153,34,0.1)" stroke="#d29922"/>
+      <text x="660" y="62" text-anchor="middle" fill="#d29922" font-size="13" font-family="sans-serif" font-weight="600">🔴 Redis（分布式缓存）</text>
+      <text x="660" y="78" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">毫秒级 · 集群可扩展</text>
+
+      <path d="M240,60 L290,60" stroke="#39c5cf" stroke-width="1.5" marker-end="url(#cm1)"/>
+      <path d="M500,60 L550,60" stroke="#3fb950" stroke-width="1.5" marker-end="url(#cm1)"/>
+
+      <!-- DB -->
+      <rect x="300" y="130" width="200" height="50" rx="8" fill="rgba(248,81,73,0.1)" stroke="#f85149"/>
+      <text x="400" y="157" text-anchor="middle" fill="#f85149" font-size="13" font-family="sans-serif" font-weight="600">🗄️ DB（最后一道防线）</text>
+      <text x="400" y="173" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">全挂之后 ...</text>
+
+      <path d="M660,85 L660,110 L400,110 L400,125" stroke="#d29922" stroke-width="1.5" marker-end="url(#cm1)" stroke-dasharray="5,3"/>
+      <text x="530" y="120" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">缓存都不命中 → 查库</text>
+
+      <!-- Stats -->
+      <rect x="40" y="210" width="740" height="50" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569"/>
+      <text x="60" y="232" fill="#94a3b8" font-size="11" font-family="sans-serif" font-weight="600">请求路径：</text>
+      <text x="60" y="250" fill="#64748b" font-size="10" font-family="sans-serif">用户请求 → CDN(命中90%) → ⚡本地缓存(命中8%) → 🔴Redis(命中1.9%) → 🗄️DB(0.1%)</text>
+    </svg>
+    <div class="diagram-caption">图 4 · 多级缓存架构：CDN → 本地缓存 → Redis → DB，99.9% 的请求在进入 DB 前被拦截</div>
+  </div>
+
+  <h3>缓存更新的经典问题</h3>
+  <table>
+    <tr><th>问题</th><th>现象</th><th>解法</th></tr>
+    <tr><td>缓存穿透</td><td>请求的数据缓存和 DB 都没有</td><td>布隆过滤器 + 空值缓存</td></tr>
+    <tr><td>缓存击穿</td><td>热 key 过期，瞬间打满 DB</td><td>互斥锁重建 + 永不过期</td></tr>
+    <tr><td>缓存雪崩</td><td>大量 key 同时过期</td><td>随机过期时间 + 多级缓存</td></tr>
+    <tr><td>缓存与 DB 不一致</td><td>更新 DB 后缓存没更新</td><td>Cache-Aside + 延时双删</td></tr>
+  </table>
+</section>
+
+<!-- ═══════ 9. 热点应对 ═══════ -->
+<section id="hotspot" class="section">
+  <h2>🔥 热点应对 — 当某个 key 被打爆时</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🎫 类比：</span>某个明星演唱会门票开售（热点 key），几百万人同时抢。如果所有人跑去同一个卖票窗口（单 Redis key），窗口会被挤破。<strong>热点 = 流量全部打到同一个资源上</strong>。</p>
+  </div>
+
+  <h3>热点问题三要素</h3>
+  <table>
+    <tr><th>层次</th><th>热点类型</th><th>典型场景</th></tr>
+    <tr><td>Redis</td><td>热 Key</td><td>一个商品 key 每秒几百万读</td></tr>
+    <tr><td>HTTP</td><td>热点 URL</td><td>秒杀页面、公告页面</td></tr>
+    <tr><td>DB</td><td>热点行</td><td>同一个商品 ID 的库存行</td></tr>
+  </table>
+
+  <h3>热点应对三板斧</h3>
+  <div class="compare">
+    <div>
+      <h4><span class="badge badge-red">①</span> 热 key 发现</h4>
+      <p>在 Redis 侧监控每秒访问量。超过阈值（如 100k/s）自动上报到热点中心。</p>
+      <p>方式：Redis 的 hotkey 命令、本地统计 + 定时上报、代理层拦截</p>
+    </div>
+    <div>
+      <h4><span class="badge badge-orange">②</span> 本地缓存分摊</h4>
+      <p>热 key 缓存到每个节点的本地缓存中。即使 Redis 被打爆，本地缓存还能挡一阵。</p>
+      <p>方式：freecache、bigcache、go-cache</p>
+    </div>
+  </div>
+  <div class="info-card">
+    <h4><span class="badge badge-cyan">③</span> 热 key 散列</h4>
+    <p>把热 key <code>product_123</code> 拆成 <code>product_123_0</code> 到 <code>product_123_9</code> 共 10 个副本。请求随机访问一个副本。<strong>一个 Redis 节点扛 100k qps → 10 个节点各扛 10k qps</strong>。</p>
+    <p>代价：一致性变弱（不同副本可能不同步），读多写少的场景才适用。</p>
+  </div>
+</section>
+
+<!-- ═══════ 10. 池化技术 ═══════ -->
+<section id="pool" class="section">
+  <h2>📦 池化技术 — 不要重复造轮子，要反复用</h2>
+
+  <div class="feynman">
+    <p><span class="analogy">🚗 类比：</span>打车 vs 买车——每次出门买一辆新车（每次 new 对象），还是租共享汽车（对象池复用）？<strong>池化 = 把高频创建/销毁的对象缓存起来重复用</strong>。</p>
+  </div>
+
+  <h3>Go 中的四种池化方式</h3>
+  <table>
+    <tr><th>池类型</th><th>复用对象</th><th>Go 实现</th><th>效果</th></tr>
+    <tr><td>连接池</td><td>DB 连接 / Redis 连接 / HTTP 连接</td><td>database/sql、redis.Pool、http.Transport</td><td>减少 TCP 握手，QPS 提升 10x</td></tr>
+    <tr><td>对象池</td><td>临时对象（protobuf、byte buffer）</td><td>sync.Pool</td><td>减少 GC，延迟降低 50%</td></tr>
+    <tr><td>goroutine 池</td><td>goroutine（避免创建/销毁开销）</td><td>ants、gammazero/workerpool</td><td>控制并发数，防止 goroutine 泄漏</td></tr>
+    <tr><td>内存池</td><td>固定大小内存块</td><td>bytebufferpool、自制 slab pool</td><td>减少内存分配和 GC 压力</td></tr>
+  </table>
+
+  <h3>sync.Pool 最佳实践</h3>
+  <pre><code><span class="kw">var</span> bufPool = sync.Pool{
+    New: <span class="kw">func</span>() <span class="kw">interface</span>{} {
+        <span class="kw">return</span> bytes.NewBuffer(<span class="kw">make</span>([]<span class="kw">byte</span>, <span class="num">0</span>, <span class="num">1024</span>))
+    },
+}
+
+<span class="kw">func</span> <span class="fn">HandleRequest</span>(r Request) {
+    buf <span class="op">:=</span> bufPool.Get().(<span class="op">*</span>bytes.Buffer)
+    buf.Reset()
+    <span class="kw">defer</span> bufPool.Put(buf)
+
+    json.NewEncoder(buf).Encode(r)
+    <span class="cm">// 用 buf 做后面的处理 ...</span>
+    <span class="cm">// 不用每次都 new bytes.Buffer，减少 GC 压力</span>
+}</code></pre>
+
+  <div class="info-card">
+    <h4>💡 池化实战经验</h4>
+    <ul>
+      <li><strong>连接池大小不是越大越好。</strong>太大反而因为线程竞争而降低性能。标准做法：压测找最优值。</li>
+      <li><strong>sync.Pool 不保证对象还在。</strong>GC 会清理 Pool 里的对象。只适合"有就用，没有就新创建"的场景。</li>
+      <li><strong>goroutine 池 vs 按需创建：</strong>短任务（<1ms）用 goroutine 池，长任务（>100ms）按需创建即可。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════ 11. 秒杀系统 ═══════ -->
+<section id="seckill" class="section">
+  <h2>⚡ 秒杀系统设计 — 高并发实战案例</h2>
+
+  <p>秒杀是高并发系统设计的<strong>终极考题</strong>。它同时考验了限流、削峰、熔断、缓存、热点应对——所有策略全上还不够，还要额外加几层。</p>
+
+  <div class="feynman">
+    <p><span class="analogy">🎪 类比：</span>超市搞促销，前 100 名鸡蛋 1 毛钱（秒杀）。门口涌进 10 万人——保安（限流）只看健康码就慢，所以要提前发入场券（预约抢资格）。进去之后不是直接去货架抢鸡蛋，而是先抽号（异步扣库存），抽到了再去领。<strong>秒杀 = 分层削峰 + 异步化 + 最终一致。</strong></p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 820 380" style="max-width:820px;width:100%">
+      <defs><marker id="cs1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#64748b"/></marker></defs>
+      <rect x="10" y="10" width="800" height="360" rx="12" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+      <!-- Layer 1 -->
+      <rect x="40" y="30" width="300" height="55" rx="8" fill="rgba(88,166,255,0.08)" stroke="#58a6ff"/>
+      <text x="190" y="52" text-anchor="middle" fill="#58a6ff" font-size="12" font-family="sans-serif" font-weight="600">L1 · 浏览器端</text>
+      <text x="190" y="70" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">按钮置灰 + 倒计时 + 随机延迟 1-3s</text>
+      <!-- Layer 2 -->
+      <rect x="440" y="30" width="340" height="55" rx="8" fill="rgba(57,197,207,0.08)" stroke="#39c5cf"/>
+      <text x="610" y="52" text-anchor="middle" fill="#39c5cf" font-size="12" font-family="sans-serif" font-weight="600">L2 · Nginx 层</text>
+      <text x="610" y="70" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">令牌桶限流 + 同 IP 限流 + 静态化页面</text>
+      <!-- Layer 3 -->
+      <rect x="40" y="110" width="300" height="55" rx="8" fill="rgba(63,185,80,0.08)" stroke="#3fb950"/>
+      <text x="190" y="132" text-anchor="middle" fill="#3fb950" font-size="12" font-family="sans-serif" font-weight="600">L3 · 应用层</text>
+      <text x="190" y="150" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">本地布隆过滤器 + 请求队列 + 限流</text>
+      <!-- Layer 4 -->
+      <rect x="440" y="110" width="340" height="55" rx="8" fill="rgba(210,153,34,0.08)" stroke="#d29922"/>
+      <text x="610" y="132" text-anchor="middle" fill="#d29922" font-size="12" font-family="sans-serif" font-weight="600">L4 · Redis 层</text>
+      <text x="610" y="150" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">原子扣库存（DECR）+ Lua 脚本保证一致性</text>
+      <!-- Layer 5 -->
+      <rect x="40" y="190" width="300" height="55" rx="8" fill="rgba(163,113,247,0.08)" stroke="#a371f7"/>
+      <text x="190" y="212" text-anchor="middle" fill="#a371f7" font-size="12" font-family="sans-serif" font-weight="600">L5 · MQ 异步化</text>
+      <text x="190" y="230" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">扣库存成功 → 发送下单消息 → 异步落库</text>
+      <!-- Layer 6 -->
+      <rect x="440" y="190" width="340" height="55" rx="8" fill="rgba(248,81,73,0.08)" stroke="#f85149"/>
+      <text x="610" y="212" text-anchor="middle" fill="#f85149" font-size="12" font-family="sans-serif" font-weight="600">L6 · DB 层</text>
+      <text x="610" y="230" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">乐观锁更新（扣库存 WHERE stock>0）</text>
+      <!-- Stack arrows -->
+      <path d="M340,57 L430,57" stroke="#64748b" stroke-width="1" marker-end="url(#cs1)"/>
+      <path d="M340,137 L430,137" stroke="#64748b" stroke-width="1" marker-end="url(#cs1)"/>
+      <path d="M340,217 L430,217" stroke="#64748b" stroke-width="1" marker-end="url(#cs1)"/>
+
+      <text x="410" y="280" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">从上到下层层过滤，每一层挡掉 90% 流量</text>
+      <text x="410" y="305" text-anchor="middle" fill="#64748b" font-size="9" font-family="sans-serif">浏览器 1 亿 → Nginx 1000 万 → 应用 100 万 → Redis 10 万 → MQ 1 万 → DB 1 千</text>
+      <text x="410" y="340" text-anchor="middle" fill="#3fb950" font-size="11" font-family="sans-serif">✅ 最终到 DB 的请求只有原流量的十万分之一</text>
+    </svg>
+    <div class="diagram-caption">图 5 · 秒杀系统多层防御：从浏览器到 DB 共 6 层过滤，每层拦截 90% 以上的请求</div>
+  </div>
+
+  <h3>秒杀核心流程（Go 实现）</h3>
+  <pre><code><span class="cm">// 1. 预热：Redis 提前设置库存</span>
+client.Set(ctx, <span class="str">"stock:1001"</span>, <span class="num">100</span>, <span class="num">0</span>)
+
+<span class="cm">// 2. Lua 脚本：原子扣库存+判断</span>
+luaScript := <span class="str">`
+local stock = redis.call("GET", KEYS[1])
+if not stock or tonumber(stock) &lt;= 0 then
+    return 0  -- 卖光了
+end
+redis.call("DECR", KEYS[1])
+return 1     -- 扣减成功
+`</span>
+
+<span class="cm">// 3. 应用层限流+扣库存</span>
+<span class="kw">func</span> <span class="fn">Seckill</span>(ctx context.Context, userId, skuId <span class="kw">int</span>) <span class="tp">error</span> {
+    <span class="cm">// 第一步：本地限流（令牌桶）</span>
+    <span class="kw">if</span> <span class="op">!</span>limiter.Allow() {
+        <span class="kw">return</span> fmt.Errorf(<span class="str">"请求太频繁"</span>)
+    }
+
+    <span class="cm">// 第二步：布隆过滤器判断用户是否重复抢</span>
+    <span class="kw">if</span> bloom.Test([]<span class="kw">byte</span>(fmt.Sprintf(<span class="str">"%d:%d"</span>, userId, skuId))) {
+        <span class="kw">return</span> fmt.Errorf(<span class="str">"已抢过"</span>)
+    }
+
+    <span class="cm">// 第三步：Redis 原子扣库存</span>
+    script := redis.NewScript(luaScript)
+    ok, _ := script.Run(ctx, client, []<span class="kw">string</span>{<span class="str">"stock:1001"</span>}).<span class="fn">Int</span>()
+    <span class="kw">if</span> ok <span class="op">==</span> <span class="num">0</span> {
+        <span class="kw">return</span> fmt.Errorf(<span class="str">"库存不足"</span>)
+    }
+
+    <span class="cm">// 第四步：异步落库（MQ 削峰）</span>
+    mq.Publish(<span class="str">"order_create"</span>, OrderMsg{UserId: userId, SkuId: skuId})
+    <span class="kw">return</span> <span class="lit">nil</span>
+}</code></pre>
+
+  <div class="info-card">
+    <h4>秒杀设计的核心原则</h4>
+    <ul>
+      <li><strong>不要信任客户端</strong> — 所有限流在后端做，前端只是辅助</li>
+      <li><strong>尽量让流量提前被拦截</strong> — 浏览器→Nginx→应用→Redis→MQ→DB，越早拦截越好</li>
+      <li><strong>Redis 不是万能的</strong> — Redis 热 key 会打爆 Redis 集群，需要用本地缓存分摊</li>
+      <li><strong>最终一致性就够了</strong> — 秒杀不需要强一致。用户扣款成功但订单落库延迟几秒，完全 OK</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════ QA ═══════ -->
+<section id="qa" class="section">
+  <h2>💬 实战问答</h2>
+
+  <div class="qa">
+    <div class="q">🤔 Q：限流和削峰有什么区别？能只用一种吗？</div>
+    <div class="a">限流是<strong>拒绝超额请求</strong>，削峰是<strong>缓冲超额请求</strong>。限流说"不行，你被拒绝了"，削峰说"行，但你要等一下"。两者不是替代关系——限流保护系统不被冲垮，削峰提升系统利用率。正确的做法是两处都用：先用消息队列削峰，队列满了再用限流拒绝新请求。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">🤔 Q：服务挂了怎么快速发现热点 key？有没有自动化的方案？</div>
+    <div class="a">有两种主流方案：① <strong>代理层拦截</strong>（如 Codis、Twemproxy）统计每个 key 的访问频次，超过阈值自动上报。② <strong>客户端采样</strong>（如 Redis 的 hotkey 命令，或 Go 客户端的 local top-k 统计）。更自动化的是基于滑动窗口的实时热点发现：每 1s 统计一次 top keys，超过 N 次/秒就自动标记为热点，触发本地缓存策略。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">🤔 Q：熔断后 HALF-OPEN 阶段放多少请求合适？</div>
+    <div class="a">通常放<strong>少量请求（如 1-5 个）</strong>——只需要验证后端是否恢复。全部成功就关闭熔断器，有一个失败就继续 OPEN。HALF-OPEN 的请求可以用一个单独的 goroutine 定期探测，而不是在正常请求路径上随机放行。这样用户不会偶然体验到"时好时坏"的服务。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">🤔 Q：本地缓存 + Redis 两级缓存，一致性怎么保证？</div>
+    <div class="a">两级缓存的一致性通常做<strong>近似保证</strong>（最终一致性），不追求强一致。常用策略：① <strong>本地短 TTL</strong>（如 10s），过期后重新从 Redis 拉取。② <strong>定时刷新</strong>（每 5s 从 Redis 同步一次热点 key）。③ <strong>消息通知</strong>（更新发生时 MQ 广播通知各节点清除本地缓存）。实际践中，对缓存的期望是"几乎一致"就够了——如果要求强一致，就不用缓存。</div>
+  </div>
+
+  <details class="socratic">
+    <summary>追问：如果同时面临 100 倍流量洪峰，限流/削峰/熔断全部用上还是扛不住，还有什么办法？ <span class="socratic-num">#极限思考</span></summary>
+    <div class="socratic-a">
+      <p>实战中还剩<strong>最后三张底牌</strong>：</p>
+      <ul>
+        <li><span class="highlight">弹性扩容（Auto Scaling）</span> — 流量上来时 K8s HPA 自动加 Pod。配合负载均衡预热，从 10 台扩到 100 台。</li>
+        <li><span class="highlight">静态化 + CDN 扛 99%</span> — 把页面提前生成静态 HTML 推到 CDN。用户看到的就是静态页面，根本不打到后端。秒杀页面提前渲染，"立即抢购"按钮的时间到了才变成可点击，但页面早在 CDN 上了。</li>
+        <li><span class="highlight">请求合并 + 批量写入</span> — 1 万个扣库存请求合并成 1 个批量操作。Redis pipeline + Lua 脚本，从 1 万次网络 IO 变成 1 次。</li>
+      </ul>
+      <p>如果这三张底牌都用了还是扛不住……那就是<strong>资源不够</strong>。这时候不是技术问题，是预算问题了 🙂</p>
+    </div>
+  </details>
+
+  <details class="socratic">
+    <summary>追问：本地缓存怎么保证不成为新的瓶颈？GC 和内存上限怎么处理？ <span class="socratic-num">#Go 性能</span></summary>
+    <div class="socratic-a">
+      <p>本地缓存用不好确实会出问题——比不用缓存还糟糕。几个关键点：</p>
+      <ul>
+        <li><span class="highlight">限制缓存大小（Hard Limit）</span> — 用 freecache 或 bigcache 这种预分配内存的库，不要用 go-cache（无限增长）。给本地缓存分配 512MB 就是 512MB，超出自动淘汰最旧的。</li>
+        <li><span class="highlight">对象复用 + 减少 GC 扫描</span> — bigcache 把数据序列化成字节数组存，GC 不用扫描。freecache 用 ring buffer 预分配，GC 友好。</li>
+        <li><span class="highlight">分 shard 降低锁竞争</span> — freecache 默认 256 个 shard，每个 shard 有自己的锁。热点 key 被散列到不同 shard，多核并发时不会互相等锁。</li>
+        <li><span class="highlight">监控缓存命中率</span> — 命中率低于 50% 说明缓存策略有问题，需要调整 TTL 或扩容。</li>
+      </ul>
+      <p>推荐直接使用 <span class="highlight">freecache</span>（最佳 Go 本地缓存库）：零 GC、预分配内存、分 shard、支持过期。20 万 QPS 毫无压力。</p>
+    </div>
+  </details>
+</section>
+
+<!-- ═══════ 口播总结 ═══════ -->
+<section id="summary" class="section">
+  <h2>🎯 口播总结</h2>
+
+  <div class="feynman">
+    <p>高并发系统设计 = <strong>并发编程原语</strong>（怎么安全地操作共享数据）+ <strong>系统级策略</strong>（怎么让流量在合理范围内）+ <strong>实战组合拳</strong>（具体场景怎么应对）。</p>
+    <p><br>总结成一张速查表：</p>
+    <table>
+      <tr><th>策略</th><th>核心思路</th><th>Go 实现</th></tr>
+      <tr><td>🚦 <strong>限流</strong></td><td>不让人进来</td><td>令牌桶 / 滑动窗口</td></tr>
+      <tr><td>⛰️ <strong>削峰</strong></td><td>让人等一下</td><td>Channel Buffer / MQ</td></tr>
+      <tr><td>🛡️ <strong>熔断</strong></td><td>坏了就跳闸</td><td>Circuit Breaker 三态</td></tr>
+      <tr><td>🗼 <strong>多级缓存</strong></td><td>尽量不查库</td><td>freecache → Redis → DB</td></tr>
+      <tr><td>🔥 <strong>热点应对</strong></td><td>分散压力</td><td>本地缓存 / hash 散列</td></tr>
+      <tr><td>📦 <strong>池化</strong></td><td>重复利用</td><td>sync.Pool / 连接池</td></tr>
+      <tr><td>⚡ <strong>秒杀</strong></td><td>层层过滤</td><td>6 层防御 + Lua 扣库存</td></tr>
+    </table>
+    <p style="margin-top:16px;color:var(--text)">最重要的是记住一句：<strong>不要让任何一层独自扛下所有压力</strong>。从浏览器到 DB，每一层都分担一点点，系统撑住的并发量就是指数级提升。</p>
+  </div>
+</section>
 
 </main>
 </div>
-
-<script src="/mobile.js"></script>
-
-<script src="/ebbinghaus.js"></script>
-
-
-<script src="/ebbinghaus.js"></script>
-<script>
-(function() {
-  if (!window.Ebbinghaus) return;
-  var articleId = 'ARTICLEID';
-  var REQUIRED = 30;
-  var elapsed = 0;
-  var interval = null;
-
-  // Progress bar under the button
-  var progressBar = document.createElement('div');
-  progressBar.style.cssText = 'position:fixed;bottom:74px;right:24px;z-index:999;width:160px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;display:none;';
-  progressBar.innerHTML = '<div id="review-progress" style="height:100%;background:#58a6ff;width:0%;transition:width 1s linear;border-radius:2px;"></div>';
-  document.body.appendChild(progressBar);
-
-  var btn = document.createElement('button');
-  btn.id = 'review-btn';
-  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 20px;border-radius:12px;border:none;background:#58a6ff;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;box-shadow:0 4px 16px rgba(88,166,255,0.3);transition:all 0.2s;opacity:0.7;';
-  btn.textContent = '📖 阅读中... 0/'+REQUIRED+'s';
-  btn.disabled = true;
-
-  function updateBtn() {
-    var s = Ebbinghaus.getAllStatus()[articleId];
-    if (!s || s.reviewCount === 0) {
-      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
-      btn.style.background = '#58a6ff';
-    } else if (s.reviewCount >= Ebbinghaus.INTERVALS.length) {
-      btn.textContent = '✅ 已掌握全部轮次';
-      btn.style.background = '#3fb950';
-      btn.style.opacity = '1';
-      btn.style.cursor = 'pointer';
-      btn.disabled = false;
-      progressBar.style.display = 'none';
-      if (interval) { clearInterval(interval); interval = null; }
-    } else {
-      btn.textContent = '📌 第'+s.reviewCount+'轮 · '+Ebbinghaus.timeUntil(s.nextReview);
-      btn.style.background = s.needsReview ? '#f85149' : '#3fb950';
-      btn.style.opacity = '1';
-      btn.style.cursor = 'pointer';
-      btn.disabled = false;
-      progressBar.style.display = 'none';
-      if (interval) { clearInterval(interval); interval = null; }
-    }
-  }
-
-  btn.onclick = function() {
-    if (btn.disabled) return;
-    Ebbinghaus.markReviewed(articleId);
-    updateBtn();
-    btn.style.transform = 'scale(1.1)';
-    setTimeout(function(){ btn.style.transform = ''; }, 150);
-  };
-
-  document.body.appendChild(btn);
-
-  // Start timer only if article not yet reviewed
-  function startTimer() {
-    var s = Ebbinghaus.getAllStatus()[articleId];
-    if (s && s.reviewCount > 0 && s.reviewCount < Ebbinghaus.INTERVALS.length && !s.needsReview) {
-      updateBtn(); return;
-    }
-    if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
-
-    progressBar.style.display = 'block';
-    interval = setInterval(function() {
-      elapsed++;
-      var pct = Math.min(elapsed / REQUIRED * 100, 100);
-      document.getElementById('review-progress').style.width = pct + '%';
-      btn.textContent = '📖 阅读中... '+elapsed+'/'+REQUIRED+'s';
-      if (elapsed >= REQUIRED) {
-        clearInterval(interval);
-        interval = null;
-        progressBar.style.display = 'none';
-        btn.disabled = false;
-        btn.style.cursor = 'pointer';
-        btn.style.opacity = '1';
-        btn.textContent = '✅ 标记已复习';
-        btn.style.background = '#3fb950';
-      }
-    }, 1000);
-  }
-
-  // Delay start to give user time to start reading
-  setTimeout(startTimer, 2000);
-
-  document.addEventListener('visibilitychange', function(){
-    if (!document.hidden) {
-      var s = Ebbinghaus.getAllStatus()[articleId];
-      if (s && s.reviewCount >= Ebbinghaus.INTERVALS.length) { updateBtn(); return; }
-      if (elapsed < REQUIRED && !interval) startTimer();
-    }
-  });
-  window.addEventListener('storage', function(e){ if(e.key==='ebbinghaus_reviews') updateBtn(); });
-})();
-</script>
-
 </body>
 </html>

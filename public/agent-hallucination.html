@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎭 Agent 幻觉与可靠性 — 工具调用幻觉/推理链幻觉/检测器/Go 实现</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --card: #1a1d27;
+  --border: #2a2d3a;
+  --text: #c9d1d9;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --orange: #d29922;
+  --red: #f85149;
+  --purple: #a371f7;
+  --cyan: #39c5cf;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.8;font-size:16px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.sidebar{position:fixed;top:0;left:0;width:260px;height:100vh;background:var(--card);border-right:1px solid var(--border);padding:24px 16px;overflow-y:auto;z-index:100}
+.sidebar h2{font-size:18px;color:var(--accent);margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid var(--border)}
+.sidebar nav a{display:block;padding:8px 12px;border-radius:6px;font-size:14px;color:var(--text);transition:all .2s}
+.sidebar nav a:hover{background:var(--border);color:var(--accent);text-decoration:none}
+.sidebar .back-home{display:block;margin-top:24px;padding:10px 12px;background:var(--border);border-radius:8px;text-align:center;color:var(--accent);font-weight:600;font-size:14px;transition:all .2s}
+.sidebar .back-home:hover{background:var(--accent);color:var(--bg)}
+.main{margin-left:260px;padding:40px 48px;max-width:960px}
+h1{font-size:32px;margin-bottom:8px;color:#fff}
+.subtitle{color:var(--text);font-size:16px;margin-bottom:40px;opacity:.7}
+h2{font-size:24px;color:var(--accent);margin:48px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+h3{font-size:20px;color:#fff;margin:32px 0 12px}
+p{margin:12px 0}
+.feynman{background:var(--card);border-left:4px solid var(--purple);padding:20px 24px;border-radius:0 12px 12px 0;margin:20px 0}
+.feynman strong{color:var(--purple)}
+.diagram{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:20px 0;overflow-x:auto;text-align:center}
+.diagram svg{max-width:100%;height:auto}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
+.compare > div{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.compare h4{font-size:15px;margin-bottom:8px}
+.info-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0}
+.info-card h4{color:var(--accent);margin-bottom:8px}
+.qa details.socratic{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin:12px 0;cursor:pointer;transition:border-color .2s}
+.qa details.socratic:hover{border-color:var(--accent)}
+.qa details.socratic summary{font-weight:600;color:var(--accent);cursor:pointer;outline:none}
+.qa details.socratic[open]{border-color:var(--accent)}
+.qa details.socratic .answer{padding-top:12px;border-top:1px solid var(--border);margin-top:12px}
+pre{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:16px 20px;overflow-x:auto;font-size:14px;line-height:1.6;margin:16px 0}
+code{font-family:'JetBrains Mono','Fira Code','Consolas',monospace;font-size:.9em}
+p code{background:var(--card);padding:2px 6px;border-radius:4px;color:var(--cyan)}
+.kw{color:var(--purple)}.fn{color:var(--accent)}.str{color:var(--green)}.num{color:var(--orange)}.cm{color:var(--text);opacity:.5}.tp{color:var(--cyan)}.op{color:var(--orange)}
+.tag{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;margin:2px 4px}
+.tag-red{background:var(--red);color:#fff}.tag-orange{background:var(--orange);color:#000}.tag-green{background:var(--green);color:#000}.tag-blue{background:var(--accent);color:#fff}.tag-purple{background:var(--purple);color:#fff}
+@media(max-width:768px){
+  .sidebar{display:none}
+  .main{margin-left:0;padding:20px 16px}
+  .compare{grid-template-columns:1fr}
+  h1{font-size:26px}
+}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <h2>📋 目录</h2>
+  <nav>
+    <a href="#intro">1. Agent 幻觉 vs LLM 幻觉</a>
+    <a href="#tool">2. 工具调用幻觉</a>
+    <a href="#chain">3. 推理链幻觉</a>
+    <a href="#detector">4. 幻觉检测器</a>
+    <a href="#grounding">5. 证据溯源</a>
+    <a href="#defense">6. 防护层设计</a>
+    <a href="#fallback">7. Fallback 策略</a>
+    <a href="#qa">8. QA &amp; 总结</a>
+  </nav>
+  <a href="/" class="back-home">← 返回首页</a>
+</aside>
+
+<div class="main">
+
+<h1>🎭 Agent 幻觉与可靠性</h1>
+<p class="subtitle">工具调用幻觉 · 推理链幻觉 · 检测器 · 防护层 · Go 实现 — 深度技术解析</p>
+
+<!-- ============ 1 ============ -->
+<h2 id="intro">1. Agent 幻觉比 LLM 幻觉更棘手</h2>
+
+<p>大语言模型（LLM）的幻觉问题早已被广泛讨论：模型"自信地"编造虚假信息，输出看似合理实则错误的文本。但当我们从纯文本模型跨入 <strong>Agent 系统</strong>——即能够调用工具、执行操作、影响现实世界的自主体——幻觉问题的严重性呈指数级上升。</p>
+
+<div class="feynman">
+<strong>🔬 费曼类比：</strong> 想象你问一个朋友"外面在下雨吗？" 一个只会说话的 LLM 相当于——他可能说"是的，在下大雨"即使外面晴空万里。这很糟糕，但伤害有限。<br><br>
+而一个 <strong>Agent</strong> 相当于——他不光回答你，还<strong>拿起伞冲出门、帮你叫了网约车、给花浇水、并且发信息告诉你的同事"今天下雨，会议改线上"</strong>。如果外面根本没下雨，这些行动就是灾难性的。<br><br>
+<em>LLM 幻觉只是说错话；Agent 幻觉是说错话 + 做错事 + 产生不可逆的副作用。</em>
+</div>
+
+<p>Agent 幻觉的独特之处在于它涉及<strong>行动维度</strong>。一个错误的工具调用可能导致：数据被篡改、资源被消耗、API 被误调用、生产环境受损。更重要的是，Agent 的推理链本身可能就有问题，但它仍然能"完成"任务——只是以错误的方式。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 360" xmlns="http://www.w3.org/2000/svg" style="max-width:780px">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f85149"/><stop offset="1" stop-color="#d29922"/></linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f85149"/><stop offset="1" stop-color="#a371f7"/></linearGradient>
+    <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3fb950"/><stop offset="1" stop-color="#39c5cf"/></linearGradient>
+  </defs>
+  <rect x="10" y="10" width="780" height="340" rx="16" fill="#1a1d27" stroke="#2a2d3a" stroke-width="2"/>
+  <text x="400" y="48" text-anchor="middle" fill="#58a6ff" font-size="18" font-weight="bold">LLM 幻觉 vs Agent 幻觉 — 对比</text>
+
+  <!-- LLM side -->
+  <rect x="40" y="70" width="340" height="260" rx="12" fill="#0d1117" stroke="#f85149" stroke-width="1.5" opacity=".9"/>
+  <text x="210" y="100" text-anchor="middle" fill="#f85149" font-size="16" font-weight="bold">🧠 LLM 幻觉（说错话）</text>
+  <text x="60" y="130" fill="#c9d1d9" font-size="13">❌ 输出错误文本信息</text>
+  <text x="60" y="155" fill="#c9d1d9" font-size="13">❌ 编造虚假事实、引用</text>
+  <text x="60" y="180" fill="#c9d1d9" font-size="13">❌ 逻辑断裂或自相矛盾</text>
+  <text x="60" y="210" fill="#8b949e" font-size="12">影响范围：</text>
+  <rect x="60" y="220" width="100" height="24" rx="12" fill="#f85149" opacity=".2"/>
+  <text x="110" y="236" text-anchor="middle" fill="#f85149" font-size="12">信息层面</text>
+  <rect x="170" y="220" width="80" height="24" rx="12" fill="#d29922" opacity=".2"/>
+  <text x="210" y="236" text-anchor="middle" fill="#d29922" font-size="12">可逆</text>
+  <text x="60" y="270" fill="#8b949e" font-size="11">"2024年世界杯冠军是巴西队"</text>
+  <text x="60" y="290" fill="#8b949e" font-size="11">→ 读者被误导，但无实际损失</text>
+  <text x="60" y="315" fill="#f85149" font-size="13" font-weight="bold">⚠ 危险等级：低～中</text>
+
+  <!-- Agent side -->
+  <rect x="420" y="70" width="340" height="260" rx="12" fill="#0d1117" stroke="#a371f7" stroke-width="1.5" opacity=".9"/>
+  <text x="590" y="100" text-anchor="middle" fill="#a371f7" font-size="16" font-weight="bold">🤖 Agent 幻觉（说错话 + 做错事）</text>
+  <text x="440" y="130" fill="#c9d1d9" font-size="13">❌ 输出错误文本信息</text>
+  <text x="440" y="155" fill="#c9d1d9" font-size="13">❌ 调用不该用的工具</text>
+  <text x="440" y="180" fill="#c9d1d9" font-size="13">❌ 传了错误的参数</text>
+  <text x="440" y="205" fill="#c9d1d9" font-size="13">❌ 忽略工具返回的关键信号</text>
+  <text x="440" y="230" fill="#c9d1d9" font-size="13">❌ 产生不可逆副作用</text>
+  <text x="440" y="258" fill="#8b949e" font-size="12">影响范围：</text>
+  <rect x="440" y="268" width="100" height="24" rx="12" fill="#f85149" opacity=".2"/>
+  <text x="490" y="284" text-anchor="middle" fill="#f85149" font-size="12">数据/系统/物理</text>
+  <rect x="550" y="268" width="80" height="24" rx="12" fill="#d29922" opacity=".2"/>
+  <text x="590" y="284" text-anchor="middle" fill="#d29922" font-size="12">不可逆</text>
+  <text x="440" y="315" fill="#a371f7" font-size="13" font-weight="bold">☠ 危险等级：高～严重</text>
+
+  <line x1="390" y1="70" x2="390" y2="340" stroke="#2a2d3a" stroke-width="2" stroke-dasharray="6,4"/>
+  <text x="400" y="200" fill="#8b949e" font-size="11" transform="rotate(90,400,200)">vs</text>
+</svg>
+<p style="font-size:13px;color:#8b949e;margin-top:8px;text-align:center">图1：LLM 幻觉局限于信息输出，Agent 幻觉扩展到了行动层面，影响不可逆</p>
+</div>
+
+<!-- ============ 2 ============ -->
+<h2 id="tool">2. 工具调用幻觉</h2>
+
+<p>工具调用幻觉是 Agent 系统中最常见也最危险的幻觉类型。当 Agent 在推理过程中选择了错误的工具、传入了错误的参数、或者忽略了工具的返回信号，就产生了工具调用幻觉。</p>
+
+<h3>典型场景：Stock Agent 编造数据源</h3>
+<p>考虑一个被赋予查询股票数据的 Agent。用户问："苹果公司今天的股价如何？" 正确做法是调用 <code>get_stock_price("AAPL")</code>。但如果 Agent 无法访问该工具，它可能<strong>编造一个不存在的数据源</strong>，例如调用 <code>query_internal_db("AAPL_price")</code>——而 <code>query_internal_db</code> 是用于查询内部用户数据的工具。这不仅给出错误答案，还可能泄露隐私。</p>
+
+<h3>工具调用幻觉分类</h3>
+
+<div class="diagram">
+<svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="max-width:780px">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#58a6ff"/></marker>
+  </defs>
+  <rect x="10" y="10" width="780" height="400" rx="16" fill="#1a1d27" stroke="#2a2d3a" stroke-width="2"/>
+  <text x="400" y="48" text-anchor="middle" fill="#58a6ff" font-size="18" font-weight="bold">工具调用幻觉分类</text>
+
+  <!-- Center: Agent -->
+  <rect x="320" y="70" width="160" height="50" rx="25" fill="#58a6ff" opacity=".15" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="400" y="98" text-anchor="middle" fill="#58a6ff" font-size="15" font-weight="bold">🤖 Agent</text>
+
+  <!-- Branch 1: Wrong Tool -->
+  <path d="M400,120 L400,160 L180,200" stroke="#f85149" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <rect x="80" y="200" width="200" height="70" rx="10" fill="#0d1117" stroke="#f85149" stroke-width="1.5"/>
+  <text x="180" y="228" text-anchor="middle" fill="#f85149" font-size="14" font-weight="bold">❌ 选错工具</text>
+  <text x="90" y="250" fill="#c9d1d9" font-size="12">需要查天气 → 调了数据库</text>
+  <text x="90" y="268" fill="#8b949e" font-size="11">语义映射错误 / 工具描述混淆</text>
+
+  <!-- Branch 2: Wrong Args -->
+  <path d="M400,120 L400,160 L400,200" stroke="#d29922" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <rect x="300" y="200" width="200" height="70" rx="10" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="400" y="228" text-anchor="middle" fill="#d29922" font-size="14" font-weight="bold">⚠ 参数错误</text>
+  <text x="310" y="250" fill="#c9d1d9" font-size="12">传了 stock_id="苹果公司"</text>
+  <text x="310" y="268" fill="#8b949e" font-size="11">参数类型/格式/语义不匹配</text>
+
+  <!-- Branch 3: Ignore Return -->
+  <path d="M400,120 L400,160 L620,200" stroke="#f85149" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <rect x="520" y="200" width="200" height="70" rx="10" fill="#0d1117" stroke="#f85149" stroke-width="1.5"/>
+  <text x="620" y="228" text-anchor="middle" fill="#f85149" font-size="14" font-weight="bold">❌ 忽略返回</text>
+  <text x="530" y="250" fill="#c9d1d9" font-size="12">API返回 404 → Agent 继续</text>
+  <text x="530" y="268" fill="#8b949e" font-size="11">工具信号被当作噪声过滤</text>
+
+  <!-- Branch 4: Hallucinate Tool -->
+  <path d="M400,120 L400,160 L180,320" stroke="#a371f7" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <rect x="60" y="310" width="240" height="70" rx="10" fill="#0d1117" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="180" y="338" text-anchor="middle" fill="#a371f7" font-size="14" font-weight="bold">🛑 编造工具/数据源</text>
+  <text x="70" y="360" fill="#c9d1d9" font-size="12">调用不存在的 internal_stock_api</text>
+  <text x="70" y="378" fill="#8b949e" font-size="11">最危险：凭空创造不存在的接口</text>
+
+  <!-- Branch 5: Side Effect -->
+  <path d="M400,120 L400,160 L550,320" stroke="#f85149" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <rect x="500" y="310" width="240" height="70" rx="10" fill="#0d1117" stroke="#f85149" stroke-width="1.5"/>
+  <text x="620" y="338" text-anchor="middle" fill="#f85149" font-size="14" font-weight="bold">💥 副作用失控</text>
+  <text x="510" y="360" fill="#c9d1d9" font-size="12">删除操作/写入错误数据</text>
+  <text x="510" y="378" fill="#8b949e" font-size="11">不可逆操作，需谨慎授权</text>
+</svg>
+<p style="font-size:13px;color:#8b949e;margin-top:8px;text-align:center">图2：工具调用幻觉的五种分类，从参数错误到编造数据源</p>
+</div>
+
+<h3>Go 代码：工具调用验证器</h3>
+<p>以下 Go 代码实现了一个工具调用验证器，用于在 Agent 调用工具前进行参数校验和语义匹配检查：</p>
+
+<pre><code><span class="kw">package</span> agent
+
+<span class="kw">import</span> (
+    <span class="str">"fmt"</span>
+    <span class="str">"strings"</span>
+)
+
+<span class="cm">// ToolDef 定义了一个工具的元信息</span>
+<span class="kw">type</span> <span class="tp">ToolDef</span> <span class="kw">struct</span> {
+    Name        <span class="tp">string</span>
+    Description <span class="tp">string</span>
+    Parameters  []<span class="tp">ParamDef</span>
+}
+
+<span class="kw">type</span> <span class="tp">ParamDef</span> <span class="kw">struct</span> {
+    Name     <span class="tp">string</span>
+    Type     <span class="tp">string</span>            <span class="cm">// string, int, float, bool</span>
+    Required <span class="tp">bool</span>
+    Enum     []<span class="tp">string</span>          <span class="cm">// 可选枚举值</span>
+}
+
+<span class="cm">// ToolCall 是 Agent 发起的工具调用</span>
+<span class="kw">type</span> <span class="tp">ToolCall</span> <span class="kw">struct</span> {
+    ToolName   <span class="tp">string</span>
+    Arguments  <span class="kw">map</span>[<span class="tp">string</span>]<span class="kw">interface</span>{}
+}
+
+<span class="cm">// ValidationResult 记录验证结果</span>
+<span class="kw">type</span> <span class="tp">ValidationResult</span> <span class="kw">struct</span> {
+    IsValid     <span class="tp">bool</span>
+    Warnings    []<span class="tp">string</span>
+    Errors      []<span class="tp">string</span>
+    Confidence  <span class="tp">float64</span>  <span class="cm">// 匹配置信度 0.0 ~ 1.0</span>
+}
+
+<span class="cm">// ValidateToolCall 验证工具调用的完整正确性</span>
+<span class="kw">func</span> <span class="fn">ValidateToolCall</span>(call <span class="tp">ToolCall</span>, registry <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">ToolDef</span>) <span class="tp">ValidationResult</span> {
+    result := <span class="tp">ValidationResult</span>{IsValid: <span class="kw">true</span>, Confidence: <span class="num">1.0</span>}
+
+    <span class="cm">// 1. 检查工具是否存在</span>
+    def, exists := registry[call.ToolName]
+    <span class="kw">if</span> !exists {
+        <span class="cm">// 尝试模糊匹配</span>
+        bestMatch, score := <span class="fn">fuzzyMatchTool</span>(call.ToolName, registry)
+        <span class="kw">if</span> score &lt; <span class="num">0.7</span> {
+            result.Errors = append(result.Errors,
+                <span class="fn">fmt.Sprintf</span>(<span class="str">"工具 '%s' 不存在，且未找到相似匹配 (最佳匹配: '%s', 得分: %.2f)"</span>,
+                    call.ToolName, bestMatch, score))
+            result.IsValid = <span class="kw">false</span>
+            result.Confidence = <span class="num">0.0</span>
+            <span class="kw">return</span> result
+        }
+        result.Warnings = append(result.Warnings,
+            <span class="fn">fmt.Sprintf</span>(<span class="str">"工具名 '%s' 模糊匹配到 '%s' (%.2f)，请确认"</span>,
+                call.ToolName, bestMatch, score))
+        result.Confidence = score
+        def = registry[bestMatch]
+    }
+
+    <span class="cm">// 2. 检查必要参数</span>
+    <span class="kw">for</span> _, p := <span class="kw">range</span> def.Parameters {
+        <span class="kw">if</span> p.Required {
+            <span class="kw">if</span> _, ok := call.Arguments[p.Name]; !ok {
+                result.Errors = append(result.Errors,
+                    <span class="fn">fmt.Sprintf</span>(<span class="str">"缺少必要参数 '%s'"</span>, p.Name))
+                result.IsValid = <span class="kw">false</span>
+            }
+        }
+    }
+
+    <span class="cm">// 3. 检查参数类型与枚举值</span>
+    <span class="kw">for</span> k, v := <span class="kw">range</span> call.Arguments {
+        found := <span class="kw">false</span>
+        <span class="kw">for</span> _, p := <span class="kw">range</span> def.Parameters {
+            <span class="kw">if</span> p.Name == k {
+                found = <span class="kw">true</span>
+                <span class="cm">// 枚举值检查</span>
+                <span class="kw">if</span> <span class="fn">len</span>(p.Enum) &gt; <span class="num">0</span> {
+                    valStr := <span class="fn">fmt.Sprintf</span>(<span class="str">"%v"</span>, v)
+                    inEnum := <span class="kw">false</span>
+                    <span class="kw">for</span> _, e := <span class="kw">range</span> p.Enum {
+                        <span class="kw">if</span> valStr == e {
+                            inEnum = <span class="kw">true</span>
+                            <span class="kw">break</span>
+                        }
+                    }
+                    <span class="kw">if</span> !inEnum {
+                        result.Warnings = append(result.Warnings,
+                            <span class="fn">fmt.Sprintf</span>(<span class="str">"参数 '%s' 的值 '%s' 不在枚举范围 %v 内"</span>,
+                                k, valStr, p.Enum))
+                        result.Confidence *= <span class="num">0.8</span>
+                    }
+                }
+                <span class="kw">break</span>
+            }
+        }
+        <span class="kw">if</span> !found {
+            result.Warnings = append(result.Warnings,
+                <span class="fn">fmt.Sprintf</span>(<span class="str">"工具 '%s' 未定义参数 '%s'，将被忽略"</span>,
+                    def.Name, k))
+            result.Confidence *= <span class="num">0.9</span>
+        }
+    }
+
+    <span class="kw">return</span> result
+}
+
+<span class="cm">// fuzzyMatchTool 使用简单的 Levenshtein 距离进行工具名模糊匹配</span>
+<span class="kw">func</span> <span class="fn">fuzzyMatchTool</span>(name <span class="tp">string</span>, registry <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">ToolDef</span>) (<span class="tp">string</span>, <span class="tp">float64</span>) {
+    bestName := <span class="str">""</span>
+    bestScore := <span class="num">0.0</span>
+    <span class="kw">for</span> n := <span class="kw">range</span> registry {
+        score := <span class="fn">similarityScore</span>(name, n)
+        <span class="kw">if</span> score &gt; bestScore {
+            bestScore = score
+            bestName = n
+        }
+    }
+    <span class="kw">return</span> bestName, bestScore
+}
+
+<span class="kw">func</span> <span class="fn">similarityScore</span>(a, b <span class="tp">string</span>) <span class="tp">float64</span> {
+    a, b = <span class="fn">strings.ToLower</span>(a), <span class="fn">strings.ToLower</span>(b)
+    distance := <span class="fn">levenshtein</span>(a, b)
+    maxLen := <span class="fn">len</span>(a)
+    <span class="kw">if</span> <span class="fn">len</span>(b) &gt; maxLen {
+        maxLen = <span class="fn">len</span>(b)
+    }
+    <span class="kw">if</span> maxLen == <span class="num">0</span> {
+        <span class="kw">return</span> <span class="num">1.0</span>
+    }
+    <span class="kw">return</span> <span class="num">1.0</span> - <span class="tp">float64</span>(distance)/<span class="tp">float64</span>(maxLen)
+}
+
+<span class="kw">func</span> <span class="fn">levenshtein</span>(s, t <span class="tp">string</span>) <span class="tp">int</span> {
+    <span class="cm">// 标准 Levenshtein 距离实现</span>
+    n, m := <span class="fn">len</span>(s), <span class="fn">len</span>(t)
+    d := <span class="fn">make</span>([][]<span class="tp">int</span>, n+<span class="num">1</span>)
+    <span class="kw">for</span> i := <span class="kw">range</span> d {
+        d[i] = <span class="fn">make</span>([]<span class="tp">int</span>, m+<span class="num">1</span>)
+        d[i][<span class="num">0</span>] = i
+    }
+    <span class="kw">for</span> j := <span class="num">0</span>; j &lt;= m; j++ {
+        d[<span class="num">0</span>][j] = j
+    }
+    <span class="kw">for</span> i := <span class="num">1</span>; i &lt;= n; i++ {
+        <span class="kw">for</span> j := <span class="num">1</span>; j &lt;= m; j++ {
+            cost := <span class="num">1</span>
+            <span class="kw">if</span> s[i<span class="num">-1</span>] == t[j<span class="num">-1</span>] {
+                cost = <span class="num">0</span>
+            }
+            d[i][j] = <span class="fn">min</span>(
+                d[i<span class="num">-1</span>][j]+<span class="num">1</span>,
+                d[i][j<span class="num">-1</span>]+<span class="num">1</span>,
+                d[i<span class="num">-1</span>][j<span class="num">-1</span>]+cost,
+            )
+        }
+    }
+    <span class="kw">return</span> d[n][m]
+}
+
+<span class="kw">func</span> <span class="fn">min</span>(a ...<span class="tp">int</span>) <span class="tp">int</span> {
+    m := a[<span class="num">0</span>]
+    <span class="kw">for</span> _, v := <span class="kw">range</span> a[<span class="num">1</span>:] {
+        <span class="kw">if</span> v &lt; m {
+            m = v
+        }
+    }
+    <span class="kw">return</span> m
+}
+</code></pre>
+
+<p>这个验证器在 Agent 每次发起工具调用前执行三个层面的校验：(1) 工具名是否存在或模糊匹配；(2) 必要参数是否齐全；(3) 参数值和枚举是否合法。返回的 <code>Confidence</code> 字段可用于后续的阈值判断。</p>
+
+<!-- ============ 3 ============ -->
+<h2 id="chain">3. 推理链幻觉</h2>
+
+<p>推理链幻觉（Reasoning Chain Hallucination）指的是 Agent 在推理过程中的某个环节产生了错误，但整个推理链条看起来是合理的。这种幻觉尤为隐蔽，因为<strong>部分正确的推理会让人相信结论也是正确的</strong>。</p>
+
+<h3>四种推理链状态</h3>
+<p>推理链的正确性可以用两个维度来评估：推理过程的正确性，和最终结论的正确性。这产生了四种组合：</p>
+
+<div class="diagram">
+<svg viewBox="0 0 760 380" xmlns="http://www.w3.org/2000/svg" style="max-width:740px">
+  <rect x="10" y="10" width="740" height="360" rx="16" fill="#1a1d27" stroke="#2a2d3a" stroke-width="2"/>
+  <text x="380" y="48" text-anchor="middle" fill="#58a6ff" font-size="18" font-weight="bold">推理链四象限</text>
+
+  <!-- Axis labels -->
+  <text x="380" y="85" text-anchor="middle" fill="#8b949e" font-size="13">推理过程 →</text>
+  <text x="45" y="225" fill="#8b949e" font-size="13" transform="rotate(-90,45,225)">结论正确 →</text>
+
+  <!-- Quadrant 1: correct reasoning + correct conclusion -->
+  <rect x="80" y="110" width="280" height="100" rx="12" fill="#0d1117" stroke="#3fb950" stroke-width="2"/>
+  <text x="220" y="140" text-anchor="middle" fill="#3fb950" font-size="15" font-weight="bold">✅ 理想态</text>
+  <text x="90" y="165" fill="#c9d1d9" font-size="12">推理正确 · 结论正确</text>
+  <text x="90" y="185" fill="#8b949e" font-size="11">"因为下雨 → 所以地湿" ✓</text>
+  <text x="90" y="200" fill="#8b949e" font-size="11">Agent 信任度：高 ✓</text>
+
+  <!-- Quadrant 2: wrong reasoning + correct conclusion -->
+  <rect x="400" y="110" width="280" height="100" rx="12" fill="#0d1117" stroke="#d29922" stroke-width="2"/>
+  <text x="540" y="140" text-anchor="middle" fill="#d29922" font-size="15" font-weight="bold">⚠ 虚假正确</text>
+  <text x="410" y="165" fill="#c9d1d9" font-size="12">推理错误 · 结论碰对</text>
+  <text x="410" y="185" fill="#8b949e" font-size="11">"因为地湿 → 所以下雨" ✗</text>
+  <text x="410" y="200" fill="#8b949e" font-size="11">蒙对的，下次可能错</text>
+
+  <!-- Quadrant 3: correct reasoning + wrong conclusion -->
+  <rect x="80" y="230" width="280" height="100" rx="12" fill="#0d1117" stroke="#d29922" stroke-width="2"/>
+  <text x="220" y="260" text-anchor="middle" fill="#d29922" font-size="15" font-weight="bold">⚠ 半途而废</text>
+  <text x="90" y="285" fill="#c9d1d9" font-size="12">推理正确 · 结论错误</text>
+  <text x="90" y="305" fill="#8b949e" font-size="11">"下雨→地湿→要带伞" ✓</text>
+  <text x="90" y="320" fill="#8b949e" font-size="11">但最终因为内存溢出输出乱码</text>
+
+  <!-- Quadrant 4: wrong reasoning + wrong conclusion -->
+  <rect x="400" y="230" width="280" height="100" rx="12" fill="#0d1117" stroke="#f85149" stroke-width="2"/>
+  <text x="540" y="260" text-anchor="middle" fill="#f85149" font-size="15" font-weight="bold">❌ 彻底错误</text>
+  <text x="410" y="285" fill="#c9d1d9" font-size="12">推理错误 · 结论错误</text>
+  <text x="410" y="305" fill="#8b949e" font-size="11">"因为下雨 → 所以股票涨" ✗</text>
+  <text x="410" y="320" fill="#8b949e" font-size="11">完全胡说八道</text>
+
+  <!-- Arrows -->
+  <line x1="370" y1="160" x2="390" y2="160" stroke="#2a2d3a" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="220" y1="215" x2="220" y2="225" stroke="#2a2d3a" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <defs>
+    <marker id="arrow2" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><path d="M0,0 L6,2 L0,4" fill="#2a2d3a"/></marker>
+  </defs>
+</svg>
+<p style="font-size:13px;color:#8b949e;margin-top:8px;text-align:center">图3：推理链四象限，最危险的并非"彻底错误"而是"虚假正确"——结论对了但推理错了</p>
+</div>
+
+<h3>因果倒置案例</h3>
+<p>以经典的"下雨→地湿"逻辑链为例：</p>
+
+<div class="info-card">
+<h4>🔍 案例：地湿了 → 所以下雨了？</h4>
+<p>Agent 被问到："为什么操场是湿的？"</p>
+<p><strong>推理链 A（正确）：</strong> 查天气API → 今早8:00有降雨记录 → 操场没有顶棚 → 结论：下雨导致地湿</p>
+<p><strong>推理链 B（幻觉）：</strong> 操场是湿的 → 所有湿的地面都是下雨导致的 → 结论：下雨了 → <span style="color:var(--red)">但实际上可能是洒水车造成的</span></p>
+<p>这种"因果倒置"幻觉在 Agent 系统中非常常见，因为 LLM 倾向于用相关性替代因果性。</p>
+</div>
+
+<!-- ============ 4 ============ -->
+<h2 id="detector">4. 幻觉检测器</h2>
+
+<p>幻觉检测器是 Agent 系统安全性的第二道防线。当 Agent 完成推理后，检测器负责评估输出结果是否存在幻觉。目前主流的检测方法有三种：</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg" style="max-width:780px">
+  <rect x="10" y="10" width="780" height="400" rx="16" fill="#1a1d27" stroke="#2a2d3a" stroke-width="2"/>
+  <text x="400" y="48" text-anchor="middle" fill="#58a6ff" font-size="18" font-weight="bold">三种幻觉检测方法对比</text>
+
+  <!-- Method 1 -->
+  <rect x="30" y="70" width="230" height="310" rx="12" fill="#0d1117" stroke="#58a6ff" stroke-width="1.5"/>
+  <rect x="30" y="70" width="230" height="36" rx="12" fill="#58a6ff" opacity=".15"/>
+  <text x="145" y="93" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="bold">SelfCheck</text>
+  <text x="45" y="125" fill="#c9d1d9" font-size="12">让模型自己检查自己</text>
+  <text x="45" y="150" fill="#8b949e" font-size="11">步骤：</text>
+  <text x="45" y="170" fill="#8b949e" font-size="11">1. Agent 生成输出 O</text>
+  <text x="45" y="190" fill="#8b949e" font-size="11">2. 同模型再生成 O'</text>
+  <text x="45" y="210" fill="#8b949e" font-size="11">3. 对比 O 与 O'</text>
+  <text x="45" y="230" fill="#8b949e" font-size="11">4. 不一致 = 幻觉信号</text>
+  <text x="45" y="260" fill="#3fb950" font-size="12">✅ 优点：</text>
+  <text x="45" y="280" fill="#8b949e" font-size="11">无需外部知识库</text>
+  <text x="45" y="300" fill="#8b949e" font-size="11">实现简单</text>
+  <text x="45" y="330" fill="#f85149" font-size="12">❌ 缺点：</text>
+  <text x="45" y="350" fill="#8b949e" font-size="11">同模型盲区</text>
+  <text x="45" y="370" fill="#8b949e" font-size="11">高置信度幻觉漏检</text>
+
+  <!-- Method 2 -->
+  <rect x="285" y="70" width="230" height="310" rx="12" fill="#0d1117" stroke="#a371f7" stroke-width="1.5"/>
+  <rect x="285" y="70" width="230" height="36" rx="12" fill="#a371f7" opacity=".15"/>
+  <text x="400" y="93" text-anchor="middle" fill="#a371f7" font-size="14" font-weight="bold">Entropy</text>
+  <text x="300" y="125" fill="#c9d1d9" font-size="12">语义熵检测</text>
+  <text x="300" y="150" fill="#8b949e" font-size="11">步骤：</text>
+  <text x="300" y="170" fill="#8b949e" font-size="11">1. 多次采样输出</text>
+  <text x="300" y="190" fill="#8b949e" font-size="11">2. 计算语义空间熵</text>
+  <text x="300" y="210" fill="#8b949e" font-size="11">3. 高熵 → 不一致</text>
+  <text x="300" y="230" fill="#8b949e" font-size="11">4. 标记为潜在幻觉</text>
+  <text x="300" y="260" fill="#3fb950" font-size="12">✅ 优点：</text>
+  <text x="300" y="280" fill="#8b949e" font-size="11">可量化不确定性</text>
+  <text x="300" y="300" fill="#8b949e" font-size="11">理论完备</text>
+  <text x="300" y="330" fill="#f85149" font-size="12">❌ 缺点：</text>
+  <text x="300" y="350" fill="#8b949e" font-size="11">计算成本高</text>
+  <text x="300" y="370" fill="#8b949e" font-size="11">需多次推理</text>
+
+  <!-- Method 3 -->
+  <rect x="540" y="70" width="230" height="310" rx="12" fill="#0d1117" stroke="#3fb950" stroke-width="1.5"/>
+  <rect x="540" y="70" width="230" height="36" rx="12" fill="#3fb950" opacity=".15"/>
+  <text x="655" y="93" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">Consistency</text>
+  <text x="555" y="125" fill="#c9d1d9" font-size="12">一致性检测</text>
+  <text x="555" y="150" fill="#8b949e" font-size="11">步骤：</text>
+  <text x="555" y="170" fill="#8b949e" font-size="11">1. 多模型/多提示采样</text>
+  <text x="555" y="190" fill="#8b949e" font-size="11">2. 提取事实性断言</text>
+  <text x="555" y="210" fill="#8b949e" font-size="11">3. 跨样本交叉验证</text>
+  <text x="555" y="230" fill="#8b949e" font-size="11">4. 多数投票判定</text>
+  <text x="555" y="260" fill="#3fb950" font-size="12">✅ 优点：</text>
+  <text x="555" y="280" fill="#8b949e" font-size="11">鲁棒性强</text>
+  <text x="555" y="300" fill="#8b949e" font-size="11">跨模型泛化</text>
+  <text x="555" y="330" fill="#f85149" font-size="12">❌ 缺点：</text>
+  <text x="555" y="350" fill="#8b949e" font-size="11">延迟高</text>
+  <text x="555" y="370" fill="#8b949e" font-size="11">成本倍增</text>
+</svg>
+<p style="font-size:13px;color:#8b949e;margin-top:8px;text-align:center">图4：三种检测方法的原理、优缺点对比</p>
+</div>
+
+<h3>SelfCheckGPT</h3>
+<p>SelfCheckGPT 是一种"模型自省"方法。其核心思想是：如果一个模型对某个信息有把握，那么多次生成应该得到一致的结果；反之，如果模型在"编造"，不同采样之间的输出会存在分化。具体实现上，通过对比原始输出与条件生成（以原始输出为条件）之间的一致性来打分。</p>
+
+<h3>语义熵检测</h3>
+<p>语义熵（Semantic Entropy）是对 SelfCheck 的数学深化。它不是在 token 层面计算熵（这会被词汇多样性干扰），而是在<strong>语义空间</strong>中计算。具体做法是将多个输出聚类到语义等价类中，然后计算这些等价类的概率分布熵。高语义熵意味着 Agent 对同一问题给出了多种不同含义的回答——这是幻觉的强力指标。</p>
+
+<h3>Go 代码：基于一致性的幻觉检测器</h3>
+
+<pre><code><span class="kw">package</span> detection
+
+<span class="kw">import</span> (
+    <span class="str">"fmt"</span>
+    <span class="str">"math"</span>
+    <span class="str">"strings"</span>
+)
+
+<span class="cm">// Claim 是从 Agent 输出中提取的单个事实性断言</span>
+<span class="kw">type</span> <span class="tp">Claim</span> <span class="kw">struct</span> {
+    Text       <span class="tp">string</span>
+    Confidence <span class="tp">float64</span>
+}
+
+<span class="cm">// DetectionResult 检测结果</span>
+<span class="kw">type</span> <span class="tp">DetectionResult</span> <span class="kw">struct</span> {
+    IsHallucinated <span class="tp">bool</span>
+    Score          <span class="tp">float64</span>  <span class="cm">// 0 = 确定真实, 1 = 确定幻觉</span>
+    Details        []<span class="tp">ClaimDetail</span>
+}
+
+<span class="kw">type</span> <span class="tp">ClaimDetail</span> <span class="kw">struct</span> {
+    Claim     <span class="tp">string</span>
+    Agreement <span class="tp">float64</span>  <span class="cm">// 跨样本一致率 0~1</span>
+    Status    <span class="tp">string</span>     <span class="cm">// "consistent", "contradicted", "unsupported"</span>
+}
+
+<span class="cm">// ConsistencyDetector 基于多采样一致性检测幻觉</span>
+<span class="kw">type</span> <span class="tp">ConsistencyDetector</span> <span class="kw">struct</span> {
+    SampleCount      <span class="tp">int</span>     <span class="cm">// 采样数（默认 5）</span>
+    AgreementThresh  <span class="tp">float64</span> <span class="cm">// 一致性阈值（默认 0.7）</span>
+    EntropyWeight    <span class="tp">float64</span> <span class="cm">// 熵权重</span>
+}
+
+<span class="cm">// NewConsistencyDetector 创建检测器</span>
+<span class="kw">func</span> <span class="fn">NewConsistencyDetector</span>() *<span class="tp">ConsistencyDetector</span> {
+    <span class="kw">return</span> &amp;<span class="tp">ConsistencyDetector</span>{
+        SampleCount:     <span class="num">5</span>,
+        AgreementThresh: <span class="num">0.7</span>,
+        EntropyWeight:   <span class="num">0.5</span>,
+    }
+}
+
+<span class="cm">// Detect 对 Agent 输出执行一致性检测</span>
+<span class="cm">// samples 是多次 Agent 推理的输出结果</span>
+<span class="kw">func</span> (d *<span class="tp">ConsistencyDetector</span>) <span class="fn">Detect</span>(original <span class="tp">string</span>, samples []<span class="tp">string</span>) <span class="tp">DetectionResult</span> {
+    <span class="cm">// 提取断言</span>
+    claims := <span class="fn">extractClaims</span>(original)
+
+    <span class="kw">var</span> details []<span class="tp">ClaimDetail</span>
+    totalScore := <span class="num">0.0</span>
+
+    <span class="kw">for</span> _, claim := <span class="kw">range</span> claims {
+        detail := <span class="fn">evaluateClaim</span>(claim, samples)
+        details = append(details, detail)
+
+        <span class="cm">// 不一致的断言增加幻觉分数</span>
+        <span class="kw">if</span> detail.Status == <span class="str">"contradicted"</span> {
+            totalScore += <span class="num">1.0</span> - detail.Agreement
+        } <span class="kw">else</span> <span class="kw">if</span> detail.Status == <span class="str">"unsupported"</span> {
+            totalScore += <span class="num">0.4</span>
+        }
+    }
+
+    <span class="cm">// 计算语义熵</span>
+    entropy := <span class="fn">computeSemanticEntropy</span>(samples)
+
+    <span class="cm">// 综合评分</span>
+    <span class="kw">var</span> finalScore <span class="tp">float64</span>
+    <span class="kw">if</span> <span class="fn">len</span>(claims) &gt; <span class="num">0</span> {
+        <span class="cm">// 归一化到 0~1</span>
+        claimScore := totalScore / <span class="tp">float64</span>(<span class="fn">len</span>(claims))
+        finalScore = claimScore*d.<span class="tp">EntropyWeight</span> + entropy*(<span class="num">1</span>-d.<span class="tp">EntropyWeight</span>)
+    } <span class="kw">else</span> {
+        finalScore = entropy
+    }
+
+    <span class="kw">return</span> <span class="tp">DetectionResult</span>{
+        IsHallucinated: finalScore &gt; (<span class="num">1.0</span> - d.AgreementThresh),
+        Score:          math.<span class="fn">Round</span>(finalScore*<span class="num">100</span>) / <span class="num">100</span>,
+        Details:        details,
+    }
+}
+
+<span class="cm">// extractClaims 从文本中提取事实性断言</span>
+<span class="kw">func</span> <span class="fn">extractClaims</span>(text <span class="tp">string</span>) []<span class="tp">string</span> {
+    <span class="cm">// 简单实现：按句子分割 + 过滤明显非事实句</span>
+    sentences := <span class="fn">strings.Split</span>(text, <span class="str">"."</span>)
+    <span class="kw">var</span> claims []<span class="tp">string</span>
+    <span class="kw">for</span> _, s := <span class="kw">range</span> sentences {
+        s = <span class="fn">strings.TrimSpace</span>(s)
+        <span class="kw">if</span> <span class="fn">len</span>(s) &gt; <span class="num">10</span> &amp;&amp; !<span class="fn">strings.Contains</span>(s, <span class="str">"?"</span>) &amp;&amp; !<span class="fn">strings.Contains</span>(s, <span class="str">"!"</span>) {
+            claims = append(claims, s)
+        }
+    }
+    <span class="kw">return</span> claims
+}
+
+<span class="cm">// evaluateClaim 评估一个断言在多个采样中的一致性</span>
+<span class="kw">func</span> <span class="fn">evaluateClaim</span>(claim <span class="tp">string</span>, samples []<span class="tp">string</span>) <span class="tp">ClaimDetail</span> {
+    claimLower := <span class="fn">strings.ToLower</span>(claim)
+    found := <span class="num">0</span>
+    contradicted := <span class="num">0</span>
+
+    <span class="kw">for</span> _, sample := <span class="kw">range</span> samples {
+        sampleLower := <span class="fn">strings.ToLower</span>(sample)
+        <span class="kw">if</span> <span class="fn">strings.Contains</span>(sampleLower, claimLower) {
+            found++
+        } <span class="kw">else</span> {
+            <span class="cm">// 检查是否包含否定形式</span>
+            negationWords := []<span class="tp">string</span>{<span class="str">"不是"</span>, <span class="str">"没有"</span>, <span class="str">"错误"</span>, <span class="str">"not"</span>, <span class="str">"no"</span>, <span class="str">"false"</span>, <span class="str">"incorrect"</span>}
+            <span class="kw">for</span> _, neg := <span class="kw">range</span> negationWords {
+                <span class="kw">if</span> <span class="fn">strings.Contains</span>(sampleLower, neg) &amp;&amp;
+                    <span class="fn">strings.Contains</span>(sampleLower, <span class="fn">truncate</span>(claimLower, <span class="num">20</span>)) {
+                    contradicted++
+                    <span class="kw">break</span>
+                }
+            }
+        }
+    }
+
+    total := <span class="fn">len</span>(samples)
+    agreement := <span class="tp">float64</span>(found) / <span class="tp">float64</span>(total)
+
+    status := <span class="str">"consistent"</span>
+    <span class="kw">if</span> contradicted &gt; found {
+        status = <span class="str">"contradicted"</span>
+    } <span class="kw">else</span> <span class="kw">if</span> agreement &lt; <span class="num">0.5</span> {
+        status = <span class="str">"unsupported"</span>
+    }
+
+    <span class="kw">return</span> <span class="tp">ClaimDetail</span>{
+        Claim:     claim,
+        Agreement: math.<span class="fn">Round</span>(agreement*<span class="num">100</span>) / <span class="num">100</span>,
+        Status:    status,
+    }
+}
+
+<span class="cm">// computeSemanticEntropy 计算多个采样的语义熵</span>
+<span class="kw">func</span> <span class="fn">computeSemanticEntropy</span>(samples []<span class="tp">string</span>) <span class="tp">float64</span> {
+    <span class="kw">if</span> <span class="fn">len</span>(samples) &lt; <span class="num">2</span> {
+        <span class="kw">return</span> <span class="num">0</span>
+    }
+
+    <span class="cm">// 计算两两相似度矩阵（简化版：用词袋 Jaccard）</span>
+    n := <span class="fn">len</span>(samples)
+    <span class="kw">var</span> totalSim <span class="tp">float64</span>
+    pairCount := <span class="num">0</span>
+
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; n; i++ {
+        <span class="kw">for</span> j := i + <span class="num">1</span>; j &lt; n; j++ {
+            totalSim += <span class="fn">jaccardSimilarity</span>(samples[i], samples[j])
+            pairCount++
+        }
+    }
+
+    <span class="cm">// 平均相似度 → 熵映射</span>
+    avgSim := totalSim / <span class="tp">float64</span>(pairCount)
+    <span class="cm">// 熵高 = 相似度低（不一致）</span>
+    entropy := <span class="num">1.0</span> - avgSim
+    <span class="kw">return</span> math.<span class="fn">Round</span>(entropy*<span class="num">100</span>) / <span class="num">100</span>
+}
+
+<span class="kw">func</span> <span class="fn">jaccardSimilarity</span>(a, b <span class="tp">string</span>) <span class="tp">float64</span> {
+    setA := <span class="fn">wordSet</span>(a)
+    setB := <span class="fn">wordSet</span>(b)
+
+    intersection, union := <span class="num">0</span>, <span class="fn">len</span>(setA)
+    <span class="kw">for</span> k := <span class="kw">range</span> setB {
+        <span class="kw">if</span> setA[k] {
+            intersection++
+        } <span class="kw">else</span> {
+            union++
+        }
+    }
+
+    <span class="kw">if</span> union == <span class="num">0</span> {
+        <span class="kw">return</span> <span class="num">1.0</span>
+    }
+    <span class="kw">return</span> <span class="tp">float64</span>(intersection) / <span class="tp">float64</span>(union)
+}
+
+<span class="kw">func</span> <span class="fn">wordSet</span>(s <span class="tp">string</span>) <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">bool</span> {
+    set := <span class="fn">make</span>(<span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">bool</span>)
+    <span class="kw">for</span> _, w := <span class="kw">range</span> <span class="fn">strings.Fields</span>(<span class="fn">strings.ToLower</span>(s)) {
+        <span class="cm">// 去除标点</span>
+        w = <span class="fn">strings.Trim</span>(w, <span class="str">".,!?;:\"'()[]"</span>)
+        <span class="kw">if</span> <span class="fn">len</span>(w) &gt; <span class="num">2</span> {
+            set[w] = <span class="kw">true</span>
+        }
+    }
+    <span class="kw">return</span> set
+}
+
+<span class="kw">func</span> <span class="fn">truncate</span>(s <span class="tp">string</span>, n <span class="tp">int</span>) <span class="tp">string</span> {
+    runes := []<span class="tp">rune</span>(s)
+    <span class="kw">if</span> <span class="fn">len</span>(runes) &lt; n {
+        <span class="kw">return</span> s
+    }
+    <span class="kw">return</span> <span class="tp">string</span>(runes[:n])
+}
+
+<span class="cm">// 使用示例</span>
+<span class="kw">func</span> <span class="fn">ExampleUsage</span>() {
+    detector := <span class="fn">NewConsistencyDetector</span>()
+
+    original := <span class="str">"苹果公司（AAPL）今日股价上涨3.2%，市值达到3.5万亿美元。CEO Tim Cook 宣布了新的AI产品。"</span>
+    samples := []<span class="tp">string</span>{
+        <span class="str">"AAPL 今日上涨3.2%，市值3.5万亿美元。Tim Cook 宣布了AI产品。"</span>,
+        <span class="str">"苹果股票涨了3%，市值约3.5万亿。库克发布了AI新品。"</span>,
+        <span class="str">"AAPL 今日下跌1.1%，市值3.2万亿美元。无新产品发布。"</span>,
+    }
+
+    result := detector.<span class="fn">Detect</span>(original, samples)
+    <span class="fn">fmt.Printf</span>(<span class="str">"检测结果: 幻觉=%v, 分数=%.2f\n"</span>, result.IsHallucinated, result.Score)
+    <span class="kw">for</span> _, d := <span class="kw">range</span> result.Details {
+        <span class="fn">fmt.Printf</span>(<span class="str">"  断言: %s | 一致率: %.2f | 状态: %s\n"</span>,
+            d.Claim, d.Agreement, d.Status)
+    }
+}
+</code></pre>
+
+<!-- ============ 5 ============ -->
+<h2 id="grounding">5. 证据溯源（Grounding）</h2>
+
+<p>证据溯源（Grounding）是解决 Agent 幻觉的根本方法之一。其核心原则是：<strong>Agent 的每一个断言都必须能追溯到具体的、可验证的来源</strong>。在工具调用场景中，这意味着 Agent 的输出必须引用它所调用的工具返回的精确数据。</p>
+
+<h3>溯源流程</h3>
+
+<div class="diagram">
+<svg viewBox="0 0 760 400" xmlns="http://www.w3.org/2000/svg" style="max-width:740px">
+  <rect x="10" y="10" width="740" height="380" rx="16" fill="#1a1d27" stroke="#2a2d3a" stroke-width="2"/>
+  <text x="380" y="48" text-anchor="middle" fill="#58a6ff" font-size="18" font-weight="bold">证据溯源流程</text>
+
+  <!-- Step 1 -->
+  <rect x="50" y="70" width="300" height="60" rx="10" fill="#0d1117" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="200" y="95" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="bold">1. 工具调用 → 获取原始数据</text>
+  <text x="60" y="115" fill="#8b949e" font-size="11">get_stock_price("AAPL") → {price: 198.5, timestamp: "2025-05-22T14:30:00Z"}</text>
+
+  <path d="M350,100 L390,100" stroke="#3fb950" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Step 2 -->
+  <rect x="400" y="70" width="300" height="60" rx="10" fill="#0d1117" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="550" y="95" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">2. 提取关键字段并标记来源</text>
+  <text x="410" y="115" fill="#8b949e" font-size="11">price=198.5 [来源: stock_api.AAPL.price]</text>
+
+  <path d="M550,130 L550,160" stroke="#d29922" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Step 3 -->
+  <rect x="400" y="165" width="300" height="60" rx="10" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="550" y="190" text-anchor="middle" fill="#d29922" font-size="14" font-weight="bold">3. 生成带有引用的输出</text>
+  <text x="410" y="210" fill="#8b949e" font-size="11">"AAPL 当前股价 $198.50 ↑" [¹]</text>
+
+  <path d="M400,195 L360,195" stroke="#a371f7" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Step 4 -->
+  <rect x="50" y="165" width="300" height="60" rx="10" fill="#0d1117" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="200" y="190" text-anchor="middle" fill="#a371f7" font-size="14" font-weight="bold">4. 置信度打分</text>
+  <text x="60" y="210" fill="#8b949e" font-size="11">字段级置信度: 0.95 | 来源可信度: 0.98 | 综合: 0.94</text>
+
+  <path d="M200,225 L200,260" stroke="#f85149" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Step 5 -->
+  <rect x="50" y="265" width="640" height="60" rx="10" fill="#0d1117" stroke="#f85149" stroke-width="1.5"/>
+  <text x="370" y="290" text-anchor="middle" fill="#f85149" font-size="14" font-weight="bold">5. 不确定性表达（如果需要）</text>
+  <text x="60" y="312" fill="#8b949e" font-size="11">"AAPL 当前股价约 $198.50（数据延迟 15 分钟），置信度中高 [0.83]"</text>
+
+  <defs>
+    <marker id="arrowg" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#3fb950"/></marker>
+  </defs>
+  <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#58a6ff"/></marker>
+</svg>
+<p style="font-size:13px;color:#8b949e;margin-top:8px;text-align:center">图5：证据溯源的五个步骤——从获取原始数据到带置信度的输出</p>
+</div>
+
+<h3>Go 代码：证据溯源结构</h3>
+
+<pre><code><span class="kw">package</span> grounding
+
+<span class="kw">import</span> <span class="str">"fmt"</span>
+
+<span class="cm">// Source 代表数据来源</span>
+<span class="kw">type</span> <span class="tp">Source</span> <span class="kw">struct</span> {
+    ToolName    <span class="tp">string</span> <span class="cm">// 来源工具名</span>
+    FieldPath   <span class="tp">string</span> <span class="cm">// 字段路径 "response.data.price"</span>
+    RawValue    <span class="kw">interface</span>{} <span class="cm">// 原始值</span>
+    Timestamp   <span class="tp">string</span>
+    Reliability <span class="tp">float64</span> <span class="cm">// 来源可信度 0~1</span>
+}
+
+<span class="cm">// GroundedValue 带溯源的字段值</span>
+<span class="kw">type</span> <span class="tp">GroundedValue</span> <span class="kw">struct</span> {
+    Value     <span class="tp">string</span>
+    Sources   []<span class="tp">Source</span>
+    Certainty <span class="tp">float64</span> <span class="cm">// 综合置信度</span>
+}
+
+<span class="cm">// Assertion 是一个可溯源的断言</span>
+<span class="kw">type</span> <span class="tp">Assertion</span> <span class="kw">struct</span> {
+    Statement   <span class="tp">string</span>
+    GroundedBy  []<span class="tp">GroundedValue</span>
+    Uncertainty <span class="tp">string</span> <span class="cm">// 不确定性表达</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewAssertion</span>(statement <span class="tp">string</span>) *<span class="tp">Assertion</span> {
+    <span class="kw">return</span> &amp;<span class="tp">Assertion</span>{Statement: statement}
+}
+
+<span class="kw">func</span> (a *<span class="tp">Assertion</span>) <span class="fn">AddSource</span>(value <span class="tp">GroundedValue</span>) {
+    a.GroundedBy = append(a.GroundedBy, value)
+    a.<span class="fn">recalculateCertainty</span>()
+}
+
+<span class="kw">func</span> (a *<span class="tp">Assertion</span>) <span class="fn">recalculateCertainty</span>() {
+    <span class="kw">if</span> <span class="fn">len</span>(a.GroundedBy) == <span class="num">0</span> {
+        a.Uncertainty = <span class="str">"无来源支持，置信度极低"</span>
+        <span class="kw">return</span>
+    }
+    avgCertainty := <span class="num">0.0</span>
+    <span class="kw">for</span> _, gv := <span class="kw">range</span> a.GroundedBy {
+        avgCertainty += gv.Certainty
+    }
+    avgCertainty /= <span class="tp">float64</span>(<span class="fn">len</span>(a.GroundedBy))
+
+    <span class="kw">switch</span> {
+    <span class="kw">case</span> avgCertainty &gt;= <span class="num">0.9</span>:
+        a.Uncertainty = <span class="str">"高置信度"</span>
+    <span class="kw">case</span> avgCertainty &gt;= <span class="num">0.7</span>:
+        a.Uncertainty = <span class="str">"中高置信度"</span>
+    <span class="kw">case</span> avgCertainty &gt;= <span class="num">0.4</span>:
+        a.Uncertainty = <span class="str">"中等置信度，建议核实"</span>
+    <span class="kw">default</span>:
+        a.Uncertainty = <span class="str">"低置信度，需要人工确认"</span>
+    }
+}
+
+<span class="kw">func</span> (a *<span class="tp">Assertion</span>) <span class="fn">String</span>() <span class="tp">string</span> {
+    citations := <span class="str">""</span>
+    <span class="kw">for</span> i, gv := <span class="kw">range</span> a.GroundedBy {
+        <span class="kw">for</span> _, src := <span class="kw">range</span> gv.Sources {
+            citations += <span class="fn">fmt.Sprintf</span>(<span class="str">"[%d] %s.%s @ %s\n"</span>,
+                i+<span class="num">1</span>, src.ToolName, src.FieldPath, src.Timestamp)
+        }
+    }
+    <span class="kw">return</span> <span class="fn">fmt.Sprintf</span>(<span class="str">"%s [置信度: %s]\n%s"</span>,
+        a.Statement, a.Uncertainty, citations)
+}
+</code></pre>
+
+<!-- ============ 6 ============ -->
+<h2 id="defense">6. 防护层设计（Multi-layer Defense）</h2>
+
+<p>单一防护措施不足以应对 Agent 幻觉的复杂性。我们需要构建<strong>多层防御</strong>体系：每一层拦截特定类型的幻觉，层与层之间形成互补。以下是三层防护架构：输入验证层 → 工具选择验证层 → 输出验证层。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg" style="max-width:780px">
+  <rect x="10" y="10" width="780" height="440" rx="16" fill="#1a1d27" stroke="#2a2d3a" stroke-width="2"/>
+  <text x="400" y="48" text-anchor="middle" fill="#58a6ff" font-size="18" font-weight="bold">三层防御架构</text>
+
+  <!-- Layer 1: Input -->
+  <rect x="50" y="80" width="700" height="80" rx="12" fill="#0d1117" stroke="#58a6ff" stroke-width="2"/>
+  <rect x="50" y="80" width="700" height="30" rx="12" fill="#58a6ff" opacity=".12"/>
+  <text x="400" y="100" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="bold">🛡️ 第一层：输入验证层</text>
+  <text x="65" y="130" fill="#c9d1d9" font-size="12">恶意提示检测 · Prompt 注入过滤 · 参数边界检查 · 上下文长度控制</text>
+  <text x="65" y="150" fill="#8b949e" font-size="11">拦截目标：注入攻击、越界输入、格式错误</text>
+
+  <!-- Arrow down -->
+  <path d="M400,160 L400,185" stroke="#3fb950" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- Layer 2: Tool -->
+  <rect x="50" y="190" width="700" height="80" rx="12" fill="#0d1117" stroke="#3fb950" stroke-width="2"/>
+  <rect x="50" y="190" width="700" height="30" rx="12" fill="#3fb950" opacity=".12"/>
+  <text x="400" y="210" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">🛡️ 第二层：工具选择验证层</text>
+  <text x="65" y="240" fill="#c9d1d9" font-size="12">工具选择校验 · 参数类型/枚举验证 · 模糊匹配 · 权限检查</text>
+  <text x="65" y="260" fill="#8b949e" font-size="11">拦截目标：工具名编造、参数错误、越权调用</text>
+
+  <path d="M400,270 L400,295" stroke="#d29922" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- Layer 3: Output -->
+  <rect x="50" y="300" width="700" height="80" rx="12" fill="#0d1117" stroke="#d29922" stroke-width="2"/>
+  <rect x="50" y="300" width="700" height="30" rx="12" fill="#d29922" opacity=".12"/>
+  <text x="400" y="320" text-anchor="middle" fill="#d29922" font-size="14" font-weight="bold">🛡️ 第三层：输出验证层</text>
+  <text x="65" y="350" fill="#c9d1d9" font-size="12">一致性检测 · 语义熵分析 · 证据溯源校验 · 置信度打分</text>
+  <text x="65" y="370" fill="#8b949e" font-size="11">拦截目标：推理错误、事实性幻觉、不一致结论</text>
+
+  <!-- Side annotations -->
+  <rect x="160" y="400" width="120" height="28" rx="14" fill="#3fb950" opacity=".15"/>
+  <text x="220" y="418" text-anchor="middle" fill="#3fb950" font-size="12">✅ 通过</text>
+
+  <rect x="330" y="400" width="120" height="28" rx="14" fill="#d29922" opacity=".15"/>
+  <text x="390" y="418" text-anchor="middle" fill="#d29922" font-size="12">⚠ 降级/Fallback</text>
+
+  <rect x="500" y="400" width="120" height="28" rx="14" fill="#f85149" opacity=".15"/>
+  <text x="560" y="418" text-anchor="middle" fill="#f85149" font-size="12">❌ 阻断</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><path d="M0,0 L10,3.5 L0,7" fill="#58a6ff"/></marker>
+  </defs>
+</svg>
+<p style="font-size:13px;color:#8b949e;margin-top:8px;text-align:center">图6：三层防御架构——输入层、工具层、输出层形成完整防护链</p>
+</div>
+
+<h3>Go 代码：三层防护管道</h3>
+
+<pre><code><span class="kw">package</span> defense
+
+<span class="kw">import</span> (
+    <span class="str">"fmt"</span>
+    <span class="str">"strings"</span>
+)
+
+<span class="cm">// DefensePipeline 三层防护管道</span>
+<span class="kw">type</span> <span class="tp">DefensePipeline</span> <span class="kw">struct</span> {
+    InputValidator   *<span class="tp">InputValidator</span>
+    ToolValidator    *<span class="tp">ToolValidator</span>
+    OutputValidator  *<span class="tp">OutputValidator</span>
+}
+
+<span class="cm">// InputValidator 第一层：输入验证</span>
+<span class="kw">type</span> <span class="tp">InputValidator</span> <span class="kw">struct</span> {
+    MaxInputLen  <span class="tp">int</span>
+    BlockedWords []<span class="tp">string</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewInputValidator</span>() *<span class="tp">InputValidator</span> {
+    <span class="kw">return</span> &amp;<span class="tp">InputValidator</span>{
+        MaxInputLen:  <span class="num">4096</span>,
+        BlockedWords: []<span class="tp">string</span>{<span class="str">"忽略之前指令"</span>, <span class="str">"你是AI"</span>, <span class="str">"system prompt"</span>, <span class="str">"ignore all"</span>},
+    }
+}
+
+<span class="kw">func</span> (v *<span class="tp">InputValidator</span>) <span class="fn">Validate</span>(input <span class="tp">string</span>) <span class="kw">error</span> {
+    <span class="kw">if</span> <span class="fn">len</span>(input) &gt; v.MaxInputLen {
+        <span class="kw">return</span> <span class="fn">fmt.Errorf</span>(<span class="str">"输入超限: %d &gt; %d"</span>, <span class="fn">len</span>(input), v.MaxInputLen)
+    }
+    lower := <span class="fn">strings.ToLower</span>(input)
+    <span class="kw">for</span> _, word := <span class="kw">range</span> v.BlockedWords {
+        <span class="kw">if</span> <span class="fn">strings.Contains</span>(lower, <span class="fn">strings.ToLower</span>(word)) {
+            <span class="kw">return</span> <span class="fn">fmt.Errorf</span>(<span class="str">"检测到注入关键词: '%s'"</span>, word)
+        }
+    }
+    <span class="kw">return</span> <span class="kw">nil</span>
+}
+
+<span class="cm">// ToolValidator 第二层：工具选择验证</span>
+<span class="kw">type</span> <span class="tp">ToolValidator</span> <span class="kw">struct</span> {
+    AllowedTools     <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">bool</span>
+    MaxArgsPerCall   <span class="tp">int</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewToolValidator</span>(allowed []<span class="tp">string</span>) *<span class="tp">ToolValidator</span> {
+    m := <span class="fn">make</span>(<span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">bool</span>)
+    <span class="kw">for</span> _, t := <span class="kw">range</span> allowed {
+        m[t] = <span class="kw">true</span>
+    }
+    <span class="kw">return</span> &amp;<span class="tp">ToolValidator</span>{AllowedTools: m, MaxArgsPerCall: <span class="num">10</span>}
+}
+
+<span class="kw">type</span> <span class="tp">ToolCallAttempt</span> <span class="kw">struct</span> {
+    ToolName   <span class="tp">string</span>
+    Args       <span class="kw">map</span>[<span class="tp">string</span>]<span class="kw">interface</span>{}
+}
+
+<span class="kw">func</span> (v *<span class="tp">ToolValidator</span>) <span class="fn">Validate</span>(call <span class="tp">ToolCallAttempt</span>) <span class="kw">error</span> {
+    <span class="kw">if</span> !v.AllowedTools[call.ToolName] {
+        <span class="kw">return</span> <span class="fn">fmt.Errorf</span>(<span class="str">"不允许使用工具: '%s'"</span>, call.ToolName)
+    }
+    <span class="kw">if</span> <span class="fn">len</span>(call.Args) &gt; v.MaxArgsPerCall {
+        <span class="kw">return</span> <span class="fn">fmt.Errorf</span>(<span class="str">"参数过多: %d &gt; %d"</span>, <span class="fn">len</span>(call.Args), v.MaxArgsPerCall)
+    }
+    <span class="kw">for</span> k, val := <span class="kw">range</span> call.Args {
+        <span class="cm">// 检查参数值中是否包含注入尝试</span>
+        strVal := <span class="fn">fmt.Sprintf</span>(<span class="str">"%v"</span>, val)
+        <span class="kw">if</span> <span class="fn">strings.Contains</span>(strVal, <span class="str">";"</span>) || <span class="fn">strings.Contains</span>(strVal, <span class="str">"|"</span>) {
+            <span class="kw">return</span> <span class="fn">fmt.Errorf</span>(<span class="str">"参数 '%s' 包含特殊字符: '%s'"</span>, k, strVal)
+        }
+    }
+    <span class="kw">return</span> <span class="kw">nil</span>
+}
+
+<span class="cm">// OutputValidator 第三层：输出验证</span>
+<span class="kw">type</span> <span class="tp">OutputValidator</span> <span class="kw">struct</span> {
+    MinConfidence    <span class="tp">float64</span>
+    CheckGrounding   <span class="tp">bool</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewOutputValidator</span>() *<span class="tp">OutputValidator</span> {
+    <span class="kw">return</span> &amp;<span class="tp">OutputValidator</span>{MinConfidence: <span class="num">0.6</span>, CheckGrounding: <span class="kw">true</span>}
+}
+
+<span class="kw">type</span> <span class="tp">Output</span> <span class="kw">struct</span> {
+    Text       <span class="tp">string</span>
+    Confidence <span class="tp">float64</span>
+    Sources    []<span class="tp">string</span>
+}
+
+<span class="kw">func</span> (v *<span class="tp">OutputValidator</span>) <span class="fn">Validate</span>(output <span class="tp">Output</span>) <span class="kw">error</span> {
+    <span class="kw">if</span> output.Confidence &lt; v.MinConfidence {
+        <span class="kw">return</span> <span class="fn">fmt.Errorf</span>(<span class="str">"置信度过低: %.2f &lt; %.2f"</span>,
+            output.Confidence, v.MinConfidence)
+    }
+    <span class="kw">if</span> v.CheckGrounding &amp;&amp; <span class="fn">len</span>(output.Sources) == <span class="num">0</span> {
+        <span class="kw">return</span> <span class="fn">fmt.Errorf</span>(<span class="str">"输出缺少来源引用（Grounding）"</span>)
+    }
+    <span class="kw">return</span> <span class="kw">nil</span>
+}
+
+<span class="cm">// RunPipeline 运行完整三层防护</span>
+<span class="kw">func</span> (p *<span class="tp">DefensePipeline</span>) <span class="fn">RunPipeline</span>(
+    input <span class="tp">string</span>,
+    call <span class="tp">ToolCallAttempt</span>,
+    output <span class="tp">Output</span>,
+) []<span class="tp">error</span> {
+    <span class="kw">var</span> errs []<span class="tp">error</span>
+
+    <span class="cm">// 第一层</span>
+    <span class="kw">if</span> err := p.InputValidator.<span class="fn">Validate</span>(input); err != <span class="kw">nil</span> {
+        errs = append(errs, <span class="fn">fmt.Errorf</span>(<span class="str">"输入层: %w"</span>, err))
+        <span class="kw">return</span> errs <span class="cm">// 输入失败直接阻断</span>
+    }
+
+    <span class="cm">// 第二层</span>
+    <span class="kw">if</span> err := p.ToolValidator.<span class="fn">Validate</span>(call); err != <span class="kw">nil</span> {
+        errs = append(errs, <span class="fn">fmt.Errorf</span>(<span class="str">"工具层: %w"</span>, err))
+        <span class="cm">// 工具层失败可以尝试 fallback</span>
+    }
+
+    <span class="cm">// 第三层</span>
+    <span class="kw">if</span> err := p.OutputValidator.<span class="fn">Validate</span>(output); err != <span class="kw">nil</span> {
+        errs = append(errs, <span class="fn">fmt.Errorf</span>(<span class="str">"输出层: %w"</span>, err))
+    }
+
+    <span class="kw">return</span> errs
+}
+</code></pre>
+
+<!-- ============ 7 ============ -->
+<h2 id="fallback">7. Fallback 策略</h2>
+
+<p>即便有了多层防护，幻觉仍然可能发生。关键在于<strong>当检测到幻觉时，系统如何优雅地降级</strong>。一个好的 Fallback 策略可以避免 Agent 输出错误信息，转而采取安全路径。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg" style="max-width:780px">
+  <rect x="10" y="10" width="780" height="440" rx="16" fill="#1a1d27" stroke="#2a2d3a" stroke-width="2"/>
+  <text x="400" y="48" text-anchor="middle" fill="#58a6ff" font-size="18" font-weight="bold">Fallback 策略状态机</text>
+
+  <!-- Start -->
+  <ellipse cx="160" cy="95" rx="70" ry="25" fill="#0d1117" stroke="#3fb950" stroke-width="2"/>
+  <text x="160" y="100" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">🟢 起始</text>
+
+  <path d="M230,95 L280,95" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Detect -->
+  <rect x="290" y="70" width="160" height="50" rx="12" fill="#0d1117" stroke="#58a6ff" stroke-width="2"/>
+  <text x="370" y="98" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="bold">🔍 幻觉检测</text>
+
+  <!-- Branch: no hallucination -->
+  <path d="M450,95 L520,95" stroke="#3fb950" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="530" y="70" width="160" height="50" rx="25" fill="#0d1117" stroke="#3fb950" stroke-width="2"/>
+  <text x="610" y="98" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">✅ 通过→输出</text>
+
+  <!-- Branch: hallucination detected -->
+  <path d="M370,120 L370,160" stroke="#f85149" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="385" y="145" fill="#f85149" font-size="12">检测到幻觉</text>
+
+  <!-- Fallback options -->
+  <rect x="210" y="165" width="330" height="40" rx="10" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="375" y="190" text-anchor="middle" fill="#d29922" font-size="13" font-weight="bold">🚨 Fallback: 选择降级策略</text>
+
+  <!-- Strategy 1 -->
+  <path d="M280,205 L280,240" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="180" y="245" width="200" height="55" rx="10" fill="#0d1117" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="280" y="270" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="bold">🔄 重新推理</text>
+  <text x="190" y="290" fill="#8b949e" font-size="11">修改 prompt 或温度参数重试</text>
+
+  <!-- Strategy 2 -->
+  <path d="M375,205 L375,240" stroke="#a371f7" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="270" y="245" width="200" height="55" rx="10" fill="#0d1117" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="370" y="270" text-anchor="middle" fill="#a371f7" font-size="12" font-weight="bold">🔄 换模型</text>
+  <text x="280" y="290" fill="#8b949e" font-size="11">切换到更强或不同架构模型</text>
+
+  <!-- Strategy 3 -->
+  <path d="M470,205 L470,240" stroke="#d29922" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="360" y="245" width="200" height="55" rx="10" fill="#0d1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="460" y="270" text-anchor="middle" fill="#d29922" font-size="12" font-weight="bold">🧑 求助人类</text>
+  <text x="370" y="290" fill="#8b949e" font-size="11">转交给人工客服/审核</text>
+
+  <!-- Strategy 4 -->
+  <path d="M565,205 L565,240" stroke="#f85149" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="460" y="245" width="200" height="55" rx="10" fill="#0d1117" stroke="#f85149" stroke-width="1.5"/>
+  <text x="560" y="270" text-anchor="middle" fill="#f85149" font-size="12" font-weight="bold">⚠ 不确定声明</text>
+  <text x="470" y="290" fill="#8b949e" font-size="11">"我无法确认，请核实"</text>
+
+  <!-- Final state -->
+  <path d="M280,300 L280,340 L610,340 L610,360" stroke="#3fb950" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <rect x="520" y="365" width="180" height="40" rx="20" fill="#0d1117" stroke="#3fb950" stroke-width="2"/>
+  <text x="610" y="389" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">🔚 安全终止/Fallback输出</text>
+
+  <path d="M280,300 L280,340 L80,340 L80,360" stroke="#f85149" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <rect x="20" y="365" width="120" height="40" rx="20" fill="#0d1117" stroke="#f85149" stroke-width="2"/>
+  <text x="80" y="389" text-anchor="middle" fill="#f85149" font-size="12" font-weight="bold">🔁 重试循环</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#58a6ff"/></marker>
+  </defs>
+</svg>
+<p style="font-size:13px;color:#8b949e;margin-top:8px;text-align:center">图7：Fallback 状态机——从检测到幻觉到选择降级策略的完整流程</p>
+</div>
+
+<h3>四种主要 Fallback 策略</h3>
+
+<div class="compare">
+<div>
+<h4><span class="tag tag-blue">🔄</span> 重新推理</h4>
+<p>修改推理参数后重新生成。具体方法：</p>
+<ul style="padding-left:20px;font-size:14px;color:var(--text)">
+<li>降低温度参数（如 0.7→0.3）</li>
+<li>增加推理步骤的约束</li>
+<li>提供更明确的上下文</li>
+</ul>
+<p style="font-size:13px;color:#8b949e">成本低，适合轻微幻觉</p>
+</div>
+<div>
+<h4><span class="tag tag-purple">🔄</span> 换模型</h4>
+<p>切换到不同架构或更强模型重新推理：</p>
+<ul style="padding-left:20px;font-size:14px;color:var(--text)">
+<li>小型模型 → 大型模型</li>
+<li>通用模型 → 领域特化模型</li>
+<li>相同模型的不同检查点</li>
+</ul>
+<p style="font-size:13px;color:#8b949e">成本高，但效果显著</p>
+</div>
+<div>
+<h4><span class="tag tag-orange">🧑</span> 求助人类</h4>
+<p>将不确定的问题转交给人类处理：</p>
+<ul style="padding-left:20px;font-size:14px;color:var(--text)">
+<li>自动生成问题摘要</li>
+<li>标注不确定的具体点</li>
+<li>提供 Agent 的推理过程供参考</li>
+</ul>
+<p style="font-size:13px;color:#8b949e">最安全，但延迟最高</p>
+</div>
+<div>
+<h4><span class="tag tag-red">⚠</span> 不确定声明</h4>
+<p>直接告知用户 Agent 的不确定性：</p>
+<ul style="padding-left:20px;font-size:14px;color:var(--text)">
+<li>"我无法确认这个信息的准确性"</li>
+<li>"请参考官方数据源核实"</li>
+<li>提供部分可信的信息 + 置信度标签</li>
+</ul>
+<p style="font-size:13px;color:#8b949e">成本最低，维护用户信任</p>
+</div>
+</div>
+
+<h3>Go 代码：Fallback 管理器</h3>
+
+<pre><code><span class="kw">package</span> fallback
+
+<span class="kw">import</span> (
+    <span class="str">"fmt"</span>
+    <span class="str">"log"</span>
+    <span class="str">"strings"</span>
+)
+
+<span class="cm">// FallbackStrategy 降级策略枚举</span>
+<span class="kw">type</span> <span class="tp">FallbackStrategy</span> <span class="tp">int</span>
+
+<span class="kw">const</span> (
+    StrategyRetry          <span class="tp">FallbackStrategy</span> = <span class="num">iota</span> <span class="cm">// 重新推理</span>
+    StrategySwitchModel                                    <span class="cm">// 换模型</span>
+    StrategyHumanHelp                                      <span class="cm">// 求助人类</span>
+    StrategyUncertainty                                    <span class="cm">// 不确定声明</span>
+)
+
+<span class="kw">func</span> (s <span class="tp">FallbackStrategy</span>) <span class="fn">String</span>() <span class="tp">string</span> {
+    <span class="kw">return</span> []<span class="tp">string</span>{<span class="str">"重新推理"</span>, <span class="str">"换模型"</span>, <span class="str">"求助人类"</span>, <span class="str">"不确定声明"</span>}[s]
+}
+
+<span class="cm">// FallbackManager 管理降级策略的选择和执行</span>
+<span class="kw">type</span> <span class="tp">FallbackManager</span> <span class="kw">struct</span> {
+    MaxRetries      <span class="tp">int</span>
+    StrategyChain   []<span class="tp">FallbackStrategy</span> <span class="cm">// 按优先级排序的策略链</span>
+    CurrentAttempt  <span class="tp">int</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewFallbackManager</span>() *<span class="tp">FallbackManager</span> {
+    <span class="kw">return</span> &amp;<span class="tp">FallbackManager</span>{
+        MaxRetries:    <span class="num">3</span>,
+        StrategyChain: []<span class="tp">FallbackStrategy</span>{
+            StrategyRetry,
+            StrategySwitchModel,
+            StrategyHumanHelp,
+            StrategyUncertainty,
+        },
+        CurrentAttempt: <span class="num">0</span>,
+    }
+}
+
+<span class="cm">// FallbackRequest 记录降级请求上下文</span>
+<span class="kw">type</span> <span class="tp">FallbackRequest</span> <span class="kw">struct</span> {
+    OriginalInput    <span class="tp">string</span>
+    HallucinationType <span class="tp">string</span> <span class="cm">// "tool", "reasoning", "factual"</span>
+    Severity          <span class="tp">string</span> <span class="cm">// "low", "medium", "high", "critical"</span>
+    AttemptCount      <span class="tp">int</span>
+}
+
+<span class="cm">// FallbackResult 降级结果</span>
+<span class="kw">type</span> <span class="tp">FallbackResult</span> <span class="kw">struct</span> {
+    StrategyUsed <span class="tp">FallbackStrategy</span>
+    Output       <span class="tp">string</span>
+    Success      <span class="tp">bool</span>
+    NeedsHuman   <span class="tp">bool</span>
+}
+
+<span class="cm">// Execute 根据请求选择并执行合适的降级策略</span>
+<span class="kw">func</span> (m *<span class="tp">FallbackManager</span>) <span class="fn">Execute</span>(req <span class="tp">FallbackRequest</span>) <span class="tp">FallbackResult</span> {
+    <span class="cm">// 根据严重级别选择策略起点</span>
+    startIdx := <span class="num">0</span>
+    <span class="kw">switch</span> req.Severity {
+    <span class="kw">case</span> <span class="str">"critical"</span>:
+        startIdx = <span class="num">2</span> <span class="cm">// 直接求助人类或不确定声明</span>
+    <span class="kw">case</span> <span class="str">"high"</span>:
+        startIdx = <span class="num">1</span> <span class="cm">// 换模型起步</span>
+    <span class="kw">case</span> <span class="str">"medium"</span>:
+        startIdx = <span class="num">0</span> <span class="cm">// 重新推理起步</span>
+    }
+
+    <span class="kw">for</span> i := startIdx; i &lt; <span class="fn">len</span>(m.StrategyChain); i++ {
+        strategy := m.StrategyChain[i]
+
+        <span class="kw">switch</span> strategy {
+        <span class="kw">case</span> StrategyRetry:
+            <span class="kw">if</span> req.AttemptCount &lt; m.MaxRetries {
+                log.<span class="fn">Printf</span>(<span class="str">"[Fallback] 尝试重新推理 (第 %d 次)\n"</span>, req.AttemptCount+<span class="num">1</span>)
+                <span class="cm">// 实际场景中这里会调用 re-inference</span>
+                <span class="kw">return</span> <span class="tp">FallbackResult</span>{
+                    StrategyUsed: strategy,
+                    Output:       <span class="str">"[重新推理中...]"</span>,
+                    Success:      <span class="kw">true</span>,
+                }
+            }
+
+        <span class="kw">case</span> StrategySwitchModel:
+            log.<span class="fn">Println</span>(<span class="str">"[Fallback] 切换到备用模型"</span>)
+            <span class="kw">return</span> <span class="tp">FallbackResult</span>{
+                StrategyUsed: strategy,
+                Output:       <span class="str">"[使用备用模型重新生成中...]"</span>,
+                Success:      <span class="kw">true</span>,
+            }
+
+        <span class="kw">case</span> StrategyHumanHelp:
+            log.<span class="fn">Println</span>(<span class="str">"[Fallback] 转交人工处理"</span>)
+            <span class="kw">return</span> <span class="tp">FallbackResult</span>{
+                StrategyUsed: strategy,
+                Output:       <span class="fn">fmt.Sprintf</span>(<span class="str">"需要人工介入。问题：%s\n幻觉类型：%s\n严重程度：%s"</span>,
+                    req.OriginalInput, req.HallucinationType, req.Severity),
+                Success:    <span class="kw">false</span>,
+                NeedsHuman: <span class="kw">true</span>,
+            }
+
+        <span class="kw">case</span> StrategyUncertainty:
+            log.<span class="fn">Println</span>(<span class="str">"[Fallback] 输出不确定声明"</span>)
+            uncertaintyMsg := <span class="fn">buildUncertaintyMessage</span>(req)
+            <span class="kw">return</span> <span class="tp">FallbackResult</span>{
+                StrategyUsed: strategy,
+                Output:       uncertaintyMsg,
+                Success:      <span class="kw">true</span>,
+            }
+        }
+    }
+
+    <span class="cm">// 所有策略都失败，输出最安全的默认响应</span>
+    <span class="kw">return</span> <span class="tp">FallbackResult</span>{
+        StrategyUsed: StrategyUncertainty,
+        Output:       <span class="str">"我目前无法可靠地回答这个问题。请重新表述或联系人工客服。"</span>,
+        Success:      <span class="kw">false</span>,
+    }
+}
+
+<span class="kw">func</span> <span class="fn">buildUncertaintyMessage</span>(req <span class="tp">FallbackRequest</span>) <span class="tp">string</span> {
+    <span class="kw">var</span> parts []<span class="tp">string</span>
+    parts = append(parts, <span class="str">"⚠️ **不确定性声明**"</span>)
+    parts = append(parts, <span class="str">""</span>)
+
+    <span class="kw">switch</span> req.HallucinationType {
+    <span class="kw">case</span> <span class="str">"tool"</span>:
+        parts = append(parts, <span class="str">"我无法确认所使用的工具是否正确。请手动验证以下信息。"</span>)
+    <span class="kw">case</span> <span class="str">"reasoning"</span>:
+        parts = append(parts, <span class="str">"我的推理过程可能存在错误，结论不可靠。建议独立核实。"</span>)
+    <span class="kw">case</span> <span class="str">"factual"</span>:
+        parts = append(parts, <span class="str">"我无法确认以下事实的准确性，可能与实际情况存在偏差。"</span>)
+    <span class="kw">default</span>:
+        parts = append(parts, <span class="str">"检测到可能的输出不一致，以下内容仅供参考。"</span>)
+    }
+
+    parts = append(parts, <span class="str">""</span>)
+    parts = append(parts, <span class="fn">fmt.Sprintf</span>(<span class="str">"原始问题: %s"</span>, req.OriginalInput))
+    parts = append(parts, <span class="str">""</span>)
+    parts = append(parts, <span class="str">"建议操作：查阅官方文档或联系数据源获取准确信息。"</span>)
+
+    <span class="kw">return</span> <span class="fn">strings.Join</span>(parts, <span class="str">"\n"</span>)
+}
+</code></pre>
+
+<!-- ============ 8 ============ -->
+<h2 id="qa">8. Q&A 与总结</h2>
+
+<h3>常见问题解答</h3>
+
+<div class="qa">
+<details class="socratic">
+<summary>Q1: Agent 幻觉和 LLM 幻觉的根本区别是什么？</summary>
+<div class="answer">
+<p><strong>根本区别在于行动维度。</strong> LLM 幻觉只影响信息输出——它说错了话，但仅此而已。Agent 幻觉则涉及<strong>行动和执行</strong>：Agent 不仅可能输出错误信息，还可能调用错误的工具、传入错误的参数、甚至产生不可逆的副作用（如删除数据、发送邮件、执行支付）。</p>
+<p>用费曼的类比：LLM 幻觉就像天气预报说错了——你可能被淋湿；Agent 幻觉就像天气预报不光说错了，还自动帮你的花园浇了水、给老板发了"今天下雨改线上"的邮件、叫了辆出租车去机场——而外面艳阳高照。</p>
+</div>
+</details>
+</div>
+
+<div class="qa">
+<details class="socratic">
+<summary>Q2: 工具调用验证器如何防止 Agent 编造不存在的工具？</summary>
+<div class="answer">
+<p>工具调用验证器通过三个机制防止编造：</p>
+<ol>
+<li><strong>白名单机制：</strong> 只有预注册的工具才能被调用，任何未注册的工具名都会被拒绝。</li>
+<li><strong>模糊匹配：</strong> 当 Agent 使用的工具名不在白名单中时，验证器使用 Levenshtein 距离或语义相似度进行模糊匹配。如果找到高度相似的已注册工具（得分 &gt; 0.7），给出警告并建议纠正；如果匹配不到任何工具，直接拒绝。</li>
+<li><strong>参数校准：</strong> 即使工具名正确，验证器还会检查参数名和参数值是否在预期范围内，防止 Agent 穿过合法工具名做非法操作。</li>
+</ol>
+<p>三重机制叠加，使得 Agent "编造"工具的难度极大增加。</p>
+</div>
+</details>
+</div>
+
+<div class="qa">
+<details class="socratic">
+<summary>Q3: SelfCheck 和语义熵检测有什么区别？哪个更好？</summary>
+<div class="answer">
+<p><strong>SelfCheck</strong> 的核心思路是"让模型自己检查自己"——先生成一个输出，然后让同一个模型（或另一个实例）判断该输出的每个部分是否与原始上下文一致。它相对简单，实现成本低。</p>
+<p><strong>语义熵（Semantic Entropy）</strong> 则更为数学化：它通过多次采样（通常 5-10 次），将输出聚类到语义等价类中，然后计算这些等价类的概率分布熵。高熵意味着 Agent 在不同采样中给出了<strong>本质上不同的答案</strong>。</p>
+<p><strong>哪个更好？</strong></p>
+<ul>
+<li>SelfCheck 更适合<strong>快速检测</strong>场景，但容易受到同模型"自信的幻觉"（模型对自己编造的内容也很自信）影响。</li>
+<li>语义熵在理论上更完备，能捕获更深层的不一致性，但计算成本约是 SelfCheck 的 5-10 倍。</li>
+</ul>
+<p>实践中，推荐<strong>组合使用</strong>：先用 SelfCheck 做快速筛选，对可疑输出再用语义熵做深度分析。</p>
+</div>
+</details>
+</div>
+
+<div class="qa">
+<details class="socratic">
+<summary>Q4: 证据溯源（Grounding）在实际系统中如何实现？</summary>
+<div class="answer">
+<p>证据溯源在实际系统中的实现通常包含以下几个关键步骤：</p>
+<ol>
+<li><strong>数据层标记：</strong> 工具返回的每个字段都携带元数据——来源工具名、字段路径、时间戳。例如 <code>get_stock_price("AAPL")</code> 返回的数据会标记为 <code>tool:stock_api.field:data.price</code>。</li>
+<li><strong>断言追踪：</strong> Agent 生成输出时，系统拦截并记录每个断言与数据源之间的映射关系。这通常通过<strong>结构化输出格式</strong>（而非自由文本）来实现——例如要求 Agent 输出 JSON 格式的回答，其中每个值都附带来源引用。</li>
+<li><strong>置信度计算：</strong> 每条断言获得一个综合置信度分数，融合了来源可信度、数据时效性、跨样本一致性。</li>
+<li><strong>可视化：</strong> 在最终输出中，通过角标、悬停提示等方式向用户展示来源信息。</li>
+</ol>
+<p>在 Go 实现中，我们使用 <code>Assertion</code> 和 <code>GroundedValue</code> 结构体来维护这些映射关系。</p>
+</div>
+</details>
+</div>
+
+<div class="qa">
+<details class="socratic">
+<summary>Q5: 三层防护层之间如何协同工作？</summary>
+<div class="answer">
+<p>三层防护层形成一个<strong>递进式的安全管道</strong>：</p>
+<ul>
+<li><strong>输入层</strong> 在入口处拦截注入攻击和恶意输入，避免后续层被绕过或攻击。它是"守门员"。</li>
+<li><strong>工具层</strong> 在 Agent 执行具体操作前进行验证，确保工具选择和参数使用的合法性。它是"操作审核员"。</li>
+<li><strong>输出层</strong> 在最终结果交付给用户前进行质量检查，确保输出的一致性和正确性。它是"质量检验员"。</li>
+</ul>
+<p>协同机制：如果<strong>输入层或工具层</strong>检测到问题，系统可以<strong>直接阻断</strong>并进入 Fallback 流程，无需继续执行。如果只有<strong>输出层</strong>检测到问题（工具调用正确但推理出错），则系统可以保留原始工具调用结果，只对输出进行修正或降级处理。</p>
+<p>这种分层设计使得每一层都可以独立优化和迭代，同时作为一个整体提供纵深防御。</p>
+</div>
+</details>
+</div>
+
+<div class="qa">
+<details class="socratic">
+<summary>Q6: Fallback 策略中的"求助人类"和"不确定声明"有什么区别？何时使用哪个？</summary>
+<div class="answer">
+<p><strong>求助人类</strong> 是将整个问题转交给人类处理。Agent 停止输出，系统生成一个问题摘要（包括上下文、检测到的幻觉类型、Agent 的推理过程），然后发送给人工客服或审核系统。人类给出最终回答后，再返回给用户。</p>
+<p><strong>不确定声明</strong> 是 Agent 在自身能力范围内直接向用户表达不确定性。Agent 不会停止工作，而是在输出中明确标注哪些部分不可靠、置信度如何，并建议用户核实。</p>
+<p><strong>选择标准：</strong></p>
+<ul>
+<li><strong>严重程度</strong>：如果幻觉可能导致严重后果（如医疗建议、财务操作、法律判断），使用<strong>求助人类</strong>。如果是一般性信息错误，<strong>不确定声明</strong>即可。</li>
+<li><strong>时效性</strong>：用户需要立即回答 → 不确定声明；可以等待 → 求助人类。</li>
+<li><strong>可用资源</strong>：有人工客服在线 → 求助人类；非工作时间 → 不确定声明。</li>
+</ul>
+<p>在实际系统中，这是一个可配置的策略参数，可以根据业务场景动态调整。</p>
+</div>
+</details>
+</div>
+
+<div class="qa">
+<details class="socratic">
+<summary>Q7: 如何评估一个 Agent 系统的幻觉防护效果？有哪些指标？</summary>
+<div class="answer">
+<p>评估 Agent 防幻觉效果可以从以下维度进行：</p>
+<ol>
+<li><strong>幻觉检出率（Recall）：</strong> 实际存在的幻觉中，检测器成功识别出的比例。目标 &gt; 90%。</li>
+<li><strong>误报率（Precision）：</strong> 检测为幻觉但实际正确的比例。需要警惕过高的误报导致频繁降级。</li>
+<li><strong>工具误调用率：</strong> Agent 调用错误工具的次数占总调用次数的比例。</li>
+<li><strong>Fallback 触发率：</strong> 需要降级处理的比例。过高说明系统基础能力不足。</li>
+<li><strong>Grounding 覆盖率：</strong> Agent 输出中被有效溯源的信息占比。目标 &gt; 95%。</li>
+<li><strong>端到端正确率：</strong> 最终交付给用户的回答中完全正确的比例。</li>
+</ol>
+<p>推荐的评估方法是构建一个<strong>幻觉测试集</strong>，包含已知会触发幻觉的特定场景（工具名混淆、参数边界、因果倒置等），定期进行回归测试。</p>
+</div>
+</details>
+</div>
+
+<h3>🎙️ 口播总结</h3>
+
+<div class="info-card" style="border-left:4px solid var(--cyan);">
+<p>今天我们从 Agent 幻觉的独特挑战出发，深入探讨了以下内容：</p>
+<p><strong>首先</strong>，我们通过费曼类比理解了为什么 Agent 幻觉比单纯的 LLM 幻觉更危险——不光说错话还会做错事。</p>
+<p><strong>接着</strong>，我们剖析了工具调用幻觉的五种形态，并给出了一份完整的 Go 语言工具调用验证器代码。</p>
+<p><strong>然后</strong>，我们探讨了推理链幻觉——特别是"虚假正确"这种最隐蔽的情况——并通过四象限图帮助理解。</p>
+<p><strong>在检测方面</strong>，我们对比了 SelfCheck、语义熵、一致性检测三种主流方法，并实现了一个基于一致性的 Go 幻觉检测器。</p>
+<p><strong>证据溯源</strong>让每一个断言都有据可查，我们展示了从原始数据到带置信度输出的完整流程。</p>
+<p><strong>多层防护</strong>是系统安全的基石，三层架构——输入验证、工具验证、输出验证——形成纵深防御。</p>
+<p><strong>最后</strong>，Fallback 策略确保了当所有防护都失败时，系统仍然能优雅地降级，而不是硬着头皮输出错误信息。</p>
+<p style="margin-top:12px;color:var(--cyan);font-weight:600;">Agent 系统的可靠性不是一个单一问题，而是一个系统工程。没有银弹，但通过工具验证、推理校验、一致性检测、证据溯源和分级降级的组合，我们可以构建出足够可靠的 Agent 系统。</p>
+</div>
+
+<p style="margin-top:48px;padding-top:24px;border-top:1px solid var(--border);text-align:center;color:#8b949e;font-size:14px">
+🎭 Agent 幻觉与可靠性 · 深度技术解析 · 2025
+</p>
+
+</div><!-- .main -->
+</body>
+</html>

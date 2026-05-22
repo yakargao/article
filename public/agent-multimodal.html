@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🖼️ 多模态 AI Agent — Vision/语音/图文混合 & 工具调用</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --card: #1a1d27;
+  --border: #2a2d3a;
+  --text: #c9d1d9;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --orange: #d29922;
+  --red: #f85149;
+  --purple: #a371f7;
+  --cyan: #39c5cf;
+}
+*{margin:0;padding:0;box-sizing:border-box;scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.7;overflow-x:hidden}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{color:#f0f6fc;font-weight:600;line-height:1.3}
+h1{font-size:2.4rem;margin-bottom:.5rem}
+h2{font-size:1.7rem;margin:2.2rem 0 1rem;border-bottom:1px solid var(--border);padding-bottom:.4rem}
+h3{font-size:1.25rem;margin:1.5rem 0 .8rem;color:var(--accent)}
+p{margin:.8rem 0;color:var(--text)}
+ul,ol{margin:.6rem 0 .6rem 1.5rem}
+li{margin:.3rem 0}
+code{background:#252836;color:var(--cyan);padding:2px 6px;border-radius:4px;font-size:.9em;font-family:'JetBrains Mono','Fira Code','Consolas',monospace}
+pre{background:#11131f;border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;font-size:.85rem;line-height:1.5;margin:1rem 0}
+pre code{background:transparent;color:var(--text);padding:0;font-size:.85rem}
+blockquote{border-left:3px solid var(--accent);padding:.5rem 1rem;margin:1rem 0;background:rgba(88,166,255,.06);border-radius:0 6px 6px 0}
+/* Layout */
+.wrapper{display:flex;min-height:100vh}
+/* Sidebar */
+.sidebar{width:260px;position:fixed;left:0;top:0;height:100vh;background:var(--card);border-right:1px solid var(--border);padding:24px 16px;overflow-y:auto;z-index:100}
+.sidebar h3{color:var(--accent);font-size:1rem;margin-bottom:1.2rem;letter-spacing:.5px}
+.sidebar nav ul{list-style:none;margin:0;padding:0}
+.sidebar nav ul li{margin:2px 0}
+.sidebar nav ul li a{display:block;padding:6px 12px;border-radius:6px;color:var(--text);font-size:.85rem;transition:all .2s}
+.sidebar nav ul li a:hover{background:rgba(88,166,255,.12);color:#fff;text-decoration:none}
+.sidebar nav ul li a.active{background:rgba(88,166,255,.15);color:var(--accent)}
+.sidebar .back-home{display:block;margin-top:24px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.85rem;text-align:center;transition:all .2s}
+.sidebar .back-home:hover{background:var(--accent);color:#fff;border-color:var(--accent);text-decoration:none}
+/* Main content */
+.main{margin-left:260px;flex:1;padding:40px 48px 80px;max-width:960px}
+/* Feynman style */
+.feynman{background:linear-gradient(135deg,rgba(88,166,255,.05),rgba(163,113,247,.08));border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin:1.5rem 0;position:relative}
+.feynman::before{content:"🔬 费曼说";display:block;font-size:.8rem;color:var(--purple);font-weight:600;margin-bottom:8px;letter-spacing:.5px}
+/* Diagram */
+.diagram{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin:1.2rem 0;text-align:center}
+.diagram svg{max-width:100%;height:auto}
+.diagram figcaption{font-size:.8rem;color:#8b949e;margin-top:8px;font-style:italic}
+/* Compare */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:1.2rem 0}
+@media(max-width:640px){.compare{grid-template-columns:1fr}}
+.compare .info-card{height:100%}
+/* Info card */
+.info-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;transition:border-color .2s}
+.info-card:hover{border-color:var(--accent)}
+.info-card h4{color:var(--accent);font-size:1rem;margin-bottom:8px}
+.info-card .tag{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:4px;margin:4px 4px 4px 0}
+.tag.green{background:rgba(63,185,80,.15);color:var(--green)}
+.tag.orange{background:rgba(210,153,34,.15);color:var(--orange)}
+.tag.purple{background:rgba(163,113,247,.15);color:var(--purple)}
+.tag.red{background:rgba(248,81,73,.15);color:var(--red)}
+.tag.cyan{background:rgba(57,197,207,.15);color:var(--cyan)}
+/* QA */
+.qa{margin:1.5rem 0}
+details.socratic{background:var(--card);border:1px solid var(--border);border-radius:10px;margin:10px 0;overflow:hidden;transition:border-color .2s}
+details.socratic[open]{border-color:var(--accent)}
+details.socratic summary{padding:14px 18px;cursor:pointer;font-weight:600;color:var(--text);font-size:.95rem;list-style:none;display:flex;align-items:center;gap:8px}
+details.socratic summary::-webkit-details-marker{display:none}
+details.socratic summary::before{content:"❓";font-size:1rem}
+details.socratic[open] summary::before{content:"💡"}
+details.socratic .qa-body{padding:4px 18px 18px;color:var(--text);font-size:.92rem;border-top:1px solid var(--border)}
+details.socratic .qa-body p{margin:.4rem 0}
+details.socratic .qa-body code{font-size:.85em}
+/* Tables */
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.9rem}
+th,td{padding:10px 14px;border:1px solid var(--border);text-align:left}
+th{background:rgba(88,166,255,.08);color:var(--accent);font-weight:600}
+td{background:var(--card)}
+tr:hover td{background:rgba(88,166,255,.04)}
+/* Syntax highlighting */
+.kw{color:var(--red)}.fn{color:var(--cyan)}.str{color:var(--green)}.num{color:var(--orange)}.cm{color:#8b949e;font-style:italic}.tp{color:var(--purple)}.op{color:var(--orange)}
+/* Responsive */
+@media(max-width:768px){
+.sidebar{display:none}
+.main{margin-left:0;padding:24px 20px 60px}
+h1{font-size:1.8rem}
+h2{font-size:1.35rem}
+}
+/* Table strips */
+.table-wrap{overflow-x:auto}
+/* Scrollbar */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#3a3d4a}
+/* Badge */
+.badge{display:inline-block;font-size:.7rem;padding:2px 10px;border-radius:12px;font-weight:600}
+.badge.green{background:rgba(63,185,80,.18);color:var(--green)}
+.badge.orange{background:rgba(210,153,34,.18);color:var(--orange)}
+.badge.blue{background:rgba(88,166,255,.18);color:var(--accent)}
+/* Summary box */
+.summary-box{background:linear-gradient(135deg,rgba(57,197,207,.05),rgba(163,113,247,.08));border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin:1.5rem 0}
+.summary-box h4{color:var(--cyan);font-size:1rem;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <aside class="sidebar">
+    <h3>📑 目录导航</h3>
+    <nav>
+      <ul>
+        <li><a href="#why">1. 为什么需要多模态 Agent</a></li>
+        <li><a href="#vision">2. Vision Agent</a></li>
+        <li><a href="#audio">3. Audio Agent</a></li>
+        <li><a href="#tooluse">4. 多模态 &gt; ToolUse</a></li>
+        <li><a href="#screen">5. 屏幕操作 Agent</a></li>
+        <li><a href="#embedding">6. 多模态 Embedding</a></li>
+        <li><a href="#compare">7. 主流模型对比</a></li>
+        <li><a href="#qa">8. QA &amp; 总结</a></li>
+      </ul>
+    </nav>
+    <a href="/" class="back-home">← 返回首页</a>
+  </aside>
+  <main class="main">
+
+    <!-- Title -->
+    <h1>🖼️ 多模态 AI Agent</h1>
+    <p style="font-size:1.05rem;color:#8b949e;margin-bottom:1.8rem">Vision · 语音 · 图文混合理解 &amp; 工具调用 —— 让 AI 真正看见你、听见你、理解你</p>
+
+    <!-- 1. Why -->
+    <h2 id="why">1. 为什么需要多模态 Agent</h2>
+    <div class="feynman">
+      <p>想象你打电话给客服。传统 AI 客服只能用文字跟你聊——你说"我的屏幕出现了一个红色报错"，它只能猜。多模态 Agent 就像对面坐着一个能看到你截图、能听你描述语气、能直接帮你查资料的多面手。它不是只读信的文员，而是能<strong>看、听、说、查</strong>的全能助理。</p>
+    </div>
+
+    <p>多模态 Agent 的核心突破在于：<strong>输入不再局限于文本</strong>。它可以接收图片、语音、视频帧、文档扫描件，然后综合这些信息做出判断、调用工具、返回结果。以下是单模态与多模态 Agent 的直观对比：</p>
+
+    <div class="diagram">
+      <svg viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',Arial,sans-serif">
+        <defs>
+          <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#a371f7"/></linearGradient>
+          <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#39c5cf"/></linearGradient>
+          <filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".3"/></filter>
+        </defs>
+        <!-- Left: Single modality -->
+        <rect x="20" y="30" width="310" height="260" rx="12" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1.5"/>
+        <text x="175" y="62" text-anchor="middle" fill="#c9d1d9" font-weight="600" font-size="15">🔒 单模态 Agent（仅文本）</text>
+        <line x1="40" y1="74" x2="310" y2="74" stroke="#2a2d3a" stroke-width="1"/>
+        <text x="60" y="102" fill="#f85149" font-size="13">✕ 看不到图片</text>
+        <text x="60" y="130" fill="#f85149" font-size="13">✕ 听不到声音</text>
+        <text x="60" y="158" fill="#f85149" font-size="13">✕ 无法理解 UI 布局</text>
+        <text x="60" y="186" fill="#f85149" font-size="13">✕ 只能靠文字描述</text>
+        <rect x="50" y="204" width="250" height="44" rx="8" fill="rgba(248,81,73,.1)" stroke="rgba(248,81,73,.3)" stroke-width="1"/>
+        <text x="175" y="231" text-anchor="middle" fill="#f85149" font-size="12">⛔ 上下文理解严重受限</text>
+        <!-- Arrow -->
+        <text x="345" y="168" text-anchor="middle" fill="#8b949e" font-size="24">→</text>
+        <!-- Right: Multimodal -->
+        <rect x="370" y="30" width="310" height="260" rx="12" fill="#1a1d27" stroke="#58a6ff" stroke-width="1.5" filter="url(#shadow)"/>
+        <text x="525" y="62" text-anchor="middle" fill="#c9d1d9" font-weight="600" font-size="15">🚀 多模态 Agent</text>
+        <line x1="390" y1="74" x2="660" y2="74" stroke="#2a2d3a" stroke-width="1"/>
+        <text x="410" y="102" fill="#3fb950" font-size="13">✓ 理解截图 &amp; 图表</text>
+        <text x="410" y="130" fill="#3fb950" font-size="13">✓ 识别语音 &amp; 语气</text>
+        <text x="410" y="158" fill="#39c5cf" font-size="13">✓ 操作 UI 元素</text>
+        <text x="410" y="186" fill="#a371f7" font-size="13">✓ 调用工具返回图文</text>
+        <rect x="390" y="204" width="270" height="44" rx="8" fill="rgba(63,185,80,.1)" stroke="rgba(63,185,80,.3)" stroke-width="1"/>
+        <text x="525" y="231" text-anchor="middle" fill="#3fb950" font-size="12">✅ 完整的多通道感知与行动</text>
+        <!-- Decorations -->
+        <circle cx="660" cy="220" r="8" fill="rgba(57,197,207,.15)" stroke="var(--cyan)" stroke-width="1"/>
+        <text x="660" y="223" text-anchor="middle" fill="var(--cyan)" font-size="8">~</text>
+      </svg>
+      <figcaption>图1：单模态 vs 多模态 Agent 对比 —— 从"只看"到"全感知"的跃迁</figcaption>
+    </div>
+
+    <!-- 2. Vision Agent -->
+    <h2 id="vision">2. Vision Agent — 看图的 Agent</h2>
+    <p>Vision Agent 是让 AI 拥有"眼睛"的关键技术。它不仅能<strong>看</strong>图片，还能<strong>理解</strong>图片中的语义信息——识别屏幕截图中的 UI 按钮、理解流程图中的逻辑关系、从图表中提取数据趋势。</p>
+
+    <h3>核心能力</h3>
+    <div class="compare">
+      <div class="info-card">
+        <h4>🖥️ 截图理解</h4>
+        <p style="font-size:.85rem;color:#8b949e">识别网页/APP截图中的内容、布局、文字区域</p>
+        <span class="tag green">UI 识别</span>
+        <span class="tag cyan">OCR</span>
+      </div>
+      <div class="info-card">
+        <h4>📊 图表分析</h4>
+        <p style="font-size:.85rem;color:#8b949e">理解折线图、柱状图、流程图、UML 图的语义</p>
+        <span class="tag orange">数据提取</span>
+        <span class="tag purple">逻辑推理</span>
+      </div>
+      <div class="info-card">
+        <h4>🎯 元素定位</h4>
+        <p style="font-size:.85rem;color:#8b949e">精准定位图片中的坐标区域、按钮、输入框</p>
+        <span class="tag red">坐标输出</span>
+      </div>
+      <div class="info-card">
+        <h4>🔍 视觉搜索</h4>
+        <p style="font-size:.85rem;color:#8b949e">以图搜图、相似产品匹配、场景识别</p>
+        <span class="tag cyan">CLIP</span>
+        <span class="tag green">检索</span>
+      </div>
+    </div>
+
+    <h3>图片描述 vs Raw Image Tokens</h3>
+    <p>给模型传递图片有两种主流方式：</p>
+    <ul>
+      <li><strong>图片描述（Caption）</strong>：先用 VLM（视觉语言模型）生成文字描述，再传给 LLM。优点是节省 token、兼容旧模型；缺点是信息有损。</li>
+      <li><strong>Raw Image Tokens</strong>：直接将图片编码为视觉 token，与文本 token 拼接输入。优点是保留全部视觉信息；缺点是 token 消耗大（一张图 ~256~1024 tokens）。</li>
+    </ul>
+
+    <h3>Go 实现：Vision Agent</h3>
+    <p>以下是一个 Go 实现的 Vision Agent 原型，支持截图理解和 UI 元素定位：</p>
+    <pre><code><span class="kw">package</span> agent
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"encoding/base64"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"io/ioutil"</span>
+    <span class="tp">multimodal</span> <span class="str">"github.com/nousresearch/agent-sdk/go/multimodal"</span>
+)
+
+<span class="cm">// VisionAgent 具备截图理解与 UI 元素定位能力</span>
+<span class="kw">type</span> VisionAgent <span class="kw">struct</span> {
+    client *multimodal.Client
+}
+
+<span class="cm">// UIRegion 表示识别出的 UI 元素区域</span>
+<span class="kw">type</span> UIRegion <span class="kw">struct</span> {
+    Label      <span class="tp">string</span>  <span class="cm">// 元素标签，"登录按钮"、"搜索框"</span>
+    X, Y       <span class="tp">int</span>     <span class="cm">// 左上角坐标</span>
+    Width      <span class="tp">int</span>     <span class="cm">// 宽度</span>
+    Height     <span class="tp">int</span>     <span class="cm">// 高度</span>
+    Confidence <span class="tp">float64</span> <span class="cm">// 置信度 0.0~1.0</span>
+}
+
+<span class="cm">// NewVisionAgent 初始化 Vision Agent</span>
+<span class="kw">func</span> <span class="fn">NewVisionAgent</span>(apiKey <span class="tp">string</span>) *VisionAgent {
+    <span class="kw">return</span> &VisionAgent{
+        client: multimodal.<span class="fn">NewClient</span>(apiKey),
+    }
+}
+
+<span class="cm">// AnalyzeScreenshot 分析截图，返回 UI 元素列表</span>
+<span class="kw">func</span> (v *VisionAgent) <span class="fn">AnalyzeScreenshot</span>(ctx context.Context, imagePath <span class="tp">string</span>) ([]UIRegion, <span class="tp">error</span>) {
+    data, err := ioutil.<span class="fn">ReadFile</span>(imagePath)
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="kw">return</span> <span class="kw">nil</span>, fmt.<span class="fn">Errorf</span>(<span class="str">"读取截图失败: %w"</span>, err)
+    }
+    b64 := base64.<span class="fn">StdEncoding</span>.<span class="fn">EncodeToString</span>(data)
+
+    resp, err := v.client.<span class="fn">Chat</span>(ctx, &multimodal.Request{
+        Model: <span class="str">"claude-3.5-sonnet-vision"</span>,
+        Messages: []multimodal.Message{{
+            Role: <span class="str">"user"</span>,
+            Content: []multimodal.Content{
+                {Type: <span class="str">"image"</span>, Source: &multimodal.ImageSource{
+                    Type: <span class="str">"base64"</span>, MediaType: <span class="str">"image/png"</span>, Data: b64,
+                }},
+                {Type: <span class="str">"text"</span>, Text: <span class="str">"识别截图中所有可交互 UI 元素，返回名称和坐标。"</span>},
+            },
+        }},
+    })
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="kw">return</span> <span class="kw">nil</span>, err
+    }
+    <span class="cm">// 解析模型返回的 JSON 结构化输出</span>
+    <span class="kw">return</span> v.<span class="fn">parseRegions</span>(resp)
+}
+
+<span class="cm">// ChartSummary 从图表图片中提取关键数据摘要</span>
+<span class="kw">func</span> (v *VisionAgent) <span class="fn">ChartSummary</span>(ctx context.Context, chartPath <span class="tp">string</span>) (<span class="tp">string</span>, <span class="tp">error</span>) {
+    data, _ := ioutil.<span class="fn">ReadFile</span>(chartPath)
+    b64 := base64.<span class="fn">StdEncoding</span>.<span class="fn">EncodeToString</span>(data)
+
+    resp, err := v.client.<span class="fn">Chat</span>(ctx, &multimodal.Request{
+        Model: <span class="str">"gpt-4o"</span>,
+        Messages: []multimodal.Message{{
+            Role: <span class="str">"user"</span>,
+            Content: []multimodal.Content{
+                {Type: <span class="str">"image"</span>, Source: &multimodal.ImageSource{
+                    Type: <span class="str">"base64"</span>, MediaType: <span class="str">"image/png"</span>, Data: b64,
+                }},
+                {Type: <span class="str">"text"</span>, Text: <span class="str">"分析这张图表，提取趋势、峰值、谷值 &amp; 关键数据点"</span>},
+            },
+        }},
+    })
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="kw">return</span> <span class="str">""</span>, err
+    }
+    <span class="kw">return</span> resp.Choices[<span class="num">0</span>].Message.Content, <span class="kw">nil</span>
+}
+
+<span class="kw">func</span> (v *VisionAgent) <span class="fn">parseRegions</span>(resp *multimodal.Response) ([]UIRegion, <span class="tp">error</span>) {
+    <span class="cm">// 实现结构化输出解析，略</span>
+    <span class="kw">return</span> <span class="kw">nil</span>, <span class="kw">nil</span>
+}</code></pre>
+
+    <div class="diagram">
+      <svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',Arial,sans-serif">
+        <defs>
+          <marker id="arrowV" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/></marker>
+          <marker id="arrowG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#3fb950"/></marker>
+        </defs>
+        <!-- Image input -->
+        <rect x="20" y="110" width="120" height="80" rx="10" fill="#1a1d27" stroke="#58a6ff" stroke-width="1.5"/>
+        <text x="80" y="140" text-anchor="middle" fill="#58a6ff" font-size="13">📸 截图/图片</text>
+        <text x="80" y="160" text-anchor="middle" fill="#8b949e" font-size="11">Base64 编码</text>
+        <!-- Arrow -->
+        <line x1="140" y1="150" x2="190" y2="150" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrowV)"/>
+        <!-- Vision Encoder -->
+        <rect x="190" y="90" width="130" height="120" rx="12" fill="rgba(88,166,255,.08)" stroke="#58a6ff" stroke-width="1.5"/>
+        <text x="255" y="120" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="600">Vision Encoder</text>
+        <text x="255" y="140" text-anchor="middle" fill="#8b949e" font-size="10">CLIP / ViT</text>
+        <text x="255" y="160" text-anchor="middle" fill="#8b949e" font-size="10">图像 → Patch Tokens</text>
+        <text x="255" y="180" text-anchor="middle" fill="#8b949e" font-size="10">~256~1024 tokens</text>
+        <!-- Arrow -->
+        <line x1="320" y1="150" x2="370" y2="150" stroke="#3fb950" stroke-width="2" marker-end="url(#arrowG)"/>
+        <!-- LLM -->
+        <rect x="370" y="80" width="130" height="140" rx="12" fill="rgba(63,185,80,.08)" stroke="#3fb950" stroke-width="1.5"/>
+        <text x="435" y="110" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">🧠 LLM</text>
+        <text x="435" y="130" text-anchor="middle" fill="#8b949e" font-size="10">视觉 token</text>
+        <text x="435" y="148" text-anchor="middle" fill="#8b949e" font-size="10">+ 文本指令</text>
+        <text x="435" y="166" text-anchor="middle" fill="#8b949e" font-size="10">联合推理</text>
+        <text x="435" y="184" text-anchor="middle" fill="#8b949e" font-size="10">结构化输出</text>
+        <!-- Arrow -->
+        <line x1="500" y1="150" x2="550" y2="150" stroke="#a371f7" stroke-width="2" marker-end="url(#arrowV)"/>
+        <!-- Output -->
+        <rect x="550" y="100" width="130" height="100" rx="10" fill="rgba(163,113,247,.08)" stroke="#a371f7" stroke-width="1.5"/>
+        <text x="615" y="130" text-anchor="middle" fill="#a371f7" font-size="12" font-weight="600">📋 结果输出</text>
+        <text x="615" y="150" text-anchor="middle" fill="#8b949e" font-size="10">UI 元素列表</text>
+        <text x="615" y="168" text-anchor="middle" fill="#8b949e" font-size="10">图表数据</text>
+        <text x="615" y="186" text-anchor="middle" fill="#8b949e" font-size="10">操作指令</text>
+        <!-- Bottom label -->
+        <text x="350" y="280" text-anchor="middle" fill="#8b949e" font-size="11">Vision Agent 工作流：图片输入 → 视觉编码 → 多模态推理 → 结构化输出</text>
+      </svg>
+      <figcaption>图2：Vision Agent 工作流</figcaption>
+    </div>
+
+    <!-- 3. Audio Agent -->
+    <h2 id="audio">3. Audio Agent — 听与说的 Agent</h2>
+    <p>Audio Agent 赋予 AI 听觉与口语能力。它包含三个核心模块：<strong>STT</strong>（语音转文字）、<strong>TTS</strong>（文字转语音）和<strong>音频理解</strong>（声纹识别、情绪检测、音乐分析）。</p>
+
+    <h3>实时语音对话 vs 异步音频处理</h3>
+    <ul>
+      <li><strong>实时对话</strong>：WebSocket 流式传输音频帧 → 低延迟 STT → LLM 推理 → 流式 TTS 返回。适用于语音助手、客服。</li>
+      <li><strong>异步处理</strong>：上传完整音频文件 → 离线批量转写 + 分析 → 返回文字或结构化的分析报告。适用于会议记录、播客分析。</li>
+    </ul>
+
+    <div class="diagram">
+      <svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',Arial,sans-serif">
+        <defs>
+          <marker id="arrB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#39c5cf"/></marker>
+        </defs>
+        <!-- STT -->
+        <rect x="20" y="70" width="120" height="80" rx="10" fill="rgba(57,197,207,.08)" stroke="#39c5cf" stroke-width="1.5"/>
+        <text x="80" y="100" text-anchor="middle" fill="#39c5cf" font-size="13" font-weight="600">🎤 STT</text>
+        <text x="80" y="118" text-anchor="middle" fill="#8b949e" font-size="10">Whisper / DeepSpeech</text>
+        <text x="80" y="134" text-anchor="middle" fill="#8b949e" font-size="10">语音 → 文字</text>
+        <line x1="140" y1="110" x2="190" y2="110" stroke="#39c5cf" stroke-width="2" marker-end="url(#arrB)"/>
+        <!-- LLM -->
+        <rect x="190" y="55" width="130" height="110" rx="12" fill="rgba(163,113,247,.08)" stroke="#a371f7" stroke-width="1.5"/>
+        <text x="255" y="85" text-anchor="middle" fill="#a371f7" font-size="12" font-weight="600">🧠 LLM 推理</text>
+        <text x="255" y="105" text-anchor="middle" fill="#8b949e" font-size="10">文本 + 音频特征</text>
+        <text x="255" y="123" text-anchor="middle" fill="#8b949e" font-size="10">情绪/语气理解</text>
+        <text x="255" y="141" text-anchor="middle" fill="#8b949e" font-size="10">意图识别</text>
+        <line x1="320" y1="110" x2="370" y2="110" stroke="#a371f7" stroke-width="2" marker-end="url(#arrB)"/>
+        <!-- TTS -->
+        <rect x="370" y="70" width="120" height="80" rx="10" fill="rgba(63,185,80,.08)" stroke="#3fb950" stroke-width="1.5"/>
+        <text x="430" y="100" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="600">🔊 TTS</text>
+        <text x="430" y="118" text-anchor="middle" fill="#8b949e" font-size="10">ElevenLabs / bark</text>
+        <text x="430" y="134" text-anchor="middle" fill="#8b949e" font-size="10">文字 → 语音</text>
+        <line x1="490" y1="110" x2="530" y2="110" stroke="#3fb950" stroke-width="2" marker-end="url(#arrB)"/>
+        <!-- Output -->
+        <rect x="530" y="65" width="150" height="90" rx="10" fill="#1a1d27" stroke="#d29922" stroke-width="1.5"/>
+        <text x="605" y="95" text-anchor="middle" fill="#d29922" font-size="12" font-weight="600">🎧 输出</text>
+        <text x="605" y="115" text-anchor="middle" fill="#8b949e" font-size="10">语音回复 / 文字</text>
+        <text x="605" y="133" text-anchor="middle" fill="#8b949e" font-size="10">分析报告 / 摘要</text>
+        <!-- Audio input at top -->
+        <path d="M80,40 L80,70" stroke="#39c5cf" stroke-width="2" stroke-dasharray="4" marker-end="url(#arrB)"/>
+        <text x="80" y="30" text-anchor="middle" fill="#8b949e" font-size="11">🎵 音频输入</text>
+        <!-- Emotion -->
+        <rect x="190" y="177" width="130" height="30" rx="6" fill="rgba(210,153,34,.08)" stroke="#d29922" stroke-width="1" stroke-dasharray="3"/>
+        <text x="255" y="196" text-anchor="middle" fill="#d29922" font-size="10">😡😊😢 情绪检测</text>
+        <line x1="255" y1="165" x2="255" y2="177" stroke="#d29922" stroke-width="1" stroke-dasharray="3"/>
+      </svg>
+      <figcaption>图3：Audio Agent 架构 — STT → LLM → TTS 闭环，附带情绪检测</figcaption>
+    </div>
+
+    <!-- 4. Multimodal > ToolUse -->
+    <h2 id="tooluse">4. 多模态 &gt; ToolUse — Agent 的多模态输入输出</h2>
+    <p>多模态 Agent 的真正威力在于将<strong>感知</strong>与<strong>行动</strong>结合。Agent 识别图片内容后，可以自主决定调用搜索、数据库、计算器等工具，最后返回图文混排的结果。</p>
+
+    <div class="feynman">
+      <p>用户拍了一张植物叶子发黄的照片发给 Agent。Agent 先识别出这是"绿萝"，叶子有褐色斑点 → 调用植物病害知识库搜索 → 返回诊断结果："缺氮 + 浇水过多"，并附带一张正确养护的示意图。整个过程中，Agent 自己决定<strong>需要看什么、查什么、说什么</strong>。</p>
+    </div>
+
+    <div class="diagram">
+      <svg viewBox="0 0 700 310" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',Arial,sans-serif">
+        <defs>
+          <marker id="arrP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#a371f7"/></marker>
+        </defs>
+        <!-- Step 1: Input -->
+        <rect x="15" y="20" width="140" height="70" rx="8" fill="#1a1d27" stroke="#58a6ff" stroke-width="1.5"/>
+        <text x="85" y="48" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="600">📥 用户输入</text>
+        <text x="85" y="68" text-anchor="middle" fill="#8b949e" font-size="10">图片 / 语音 / 文字</text>
+        <line x1="155" y1="55" x2="195" y2="55" stroke="#a371f7" stroke-width="2" marker-end="url(#arrP)"/>
+        <!-- Step 2: Multimodal Understanding -->
+        <rect x="195" y="10" width="150" height="90" rx="10" fill="rgba(88,166,255,.08)" stroke="#58a6ff" stroke-width="1.5"/>
+        <text x="270" y="38" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">🔍 多模态理解</text>
+        <text x="270" y="56" text-anchor="middle" fill="#8b949e" font-size="10">视觉/语音编码</text>
+        <text x="270" y="72" text-anchor="middle" fill="#8b949e" font-size="10">+ 文本指令</text>
+        <text x="270" y="88" text-anchor="middle" fill="#8b949e" font-size="10">意图分析</text>
+        <line x1="345" y1="55" x2="385" y2="55" stroke="#a371f7" stroke-width="2" marker-end="url(#arrP)"/>
+        <!-- Step 3: Tool Router -->
+        <rect x="385" y="5" width="150" height="100" rx="10" fill="rgba(163,113,247,.08)" stroke="#a371f7" stroke-width="1.5"/>
+        <text x="460" y="30" text-anchor="middle" fill="#a371f7" font-size="11" font-weight="600">⚙️ Tool Router</text>
+        <text x="460" y="50" text-anchor="middle" fill="#8b949e" font-size="10">决定调用哪些工具</text>
+        <text x="460" y="68" text-anchor="middle" fill="#8b949e" font-size="10">🔎 图片搜索</text>
+        <text x="460" y="84" text-anchor="middle" fill="#8b949e" font-size="10">🗄️ 知识库</text>
+        <text x="460" y="100" text-anchor="middle" fill="#8b949e" font-size="10">🧮 计算器 / API</text>
+        <!-- Tools -->
+        <rect x="385" y="120" width="72" height="50" rx="6" fill="rgba(57,197,207,.08)" stroke="#39c5cf" stroke-width="1"/>
+        <text x="421" y="142" text-anchor="middle" fill="#39c5cf" font-size="9">🔎 搜索</text>
+        <text x="421" y="157" text-anchor="middle" fill="#8b949e" font-size="8">Web/Image</text>
+        <rect x="463" y="120" width="72" height="50" rx="6" fill="rgba(63,185,80,.08)" stroke="#3fb950" stroke-width="1"/>
+        <text x="499" y="142" text-anchor="middle" fill="#3fb950" font-size="9">🗄️ 数据库</text>
+        <text x="499" y="157" text-anchor="middle" fill="#8b949e" font-size="8">知识库</text>
+        <line x1="460" y1="105" x2="421" y2="120" stroke="#a371f7" stroke-width="1.2" marker-end="url(#arrP)"/>
+        <line x1="460" y1="105" x2="499" y2="120" stroke="#a371f7" stroke-width="1.2" marker-end="url(#arrP)"/>
+        <!-- Step 4: Result synthesis -->
+        <rect x="195" y="130" width="150" height="80" rx="10" fill="rgba(210,153,34,.08)" stroke="#d29922" stroke-width="1.5"/>
+        <text x="270" y="156" text-anchor="middle" fill="#d29922" font-size="11" font-weight="600">🔄 结果综合</text>
+        <text x="270" y="174" text-anchor="middle" fill="#8b949e" font-size="10">多模态输出编排</text>
+        <text x="270" y="192" text-anchor="middle" fill="#8b949e" font-size="10">图文混排</text>
+        <line x1="535" y1="145" x2="345" y2="170" stroke="#d29922" stroke-width="1.5" marker-end="url(#arrP)" stroke-dasharray="5"/>
+        <!-- Step 5: Output -->
+        <rect x="15" y="135" width="140" height="70" rx="8" fill="rgba(63,185,80,.08)" stroke="#3fb950" stroke-width="1.5"/>
+        <text x="85" y="163" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">📤 输出</text>
+        <text x="85" y="183" text-anchor="middle" fill="#8b949e" font-size="10">图文混排响应</text>
+        <line x1="155" y1="170" x2="195" y2="170" stroke="#3fb950" stroke-width="2" marker-end="url(#arrP)"/>
+        <!-- Central cycle hint -->
+        <ellipse cx="270" cy="220" rx="140" ry="18" fill="none" stroke="#2a2d3a" stroke-width="1" stroke-dasharray="4"/>
+        <text x="270" y="225" text-anchor="middle" fill="#8b949e" font-size="9">🔄 循环迭代直到用户满意</text>
+      </svg>
+      <figcaption>图4：多模态工具调用流程 — 从输入感知到工具路由再到多模态输出</figcaption>
+    </div>
+
+    <!-- 5. Screen Operation Agent -->
+    <h2 id="screen">5. 屏幕操作 Agent — 像人一样操作电脑/手机</h2>
+    <p>屏幕操作 Agent（Screen Agent）是 Vision Agent 的升级版——它不仅能<strong>看</strong>屏幕，还能<strong>操作</strong>屏幕。它定位 UI 元素、模拟点击、输入文本、滑动页面，像人一样使用软件。</p>
+
+    <h3>核心能力栈</h3>
+    <ul>
+      <li><strong>UI 元素定位</strong>：通过视觉模型识别按钮、输入框、下拉菜单的精确坐标</li>
+      <li><strong>动作执行</strong>：模拟鼠标点击、键盘输入、拖拽、滚动</li>
+      <li><strong>多步规划</strong>：将复杂任务分解为"看→想→点→验证"的循环</li>
+      <li><strong>状态验证</strong>：操作后截图确认是否成功，失败则重试</li>
+    </ul>
+
+    <div class="diagram">
+      <svg viewBox="0 0 700 290" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',Arial,sans-serif">
+        <defs>
+          <marker id="arrO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#d29922"/></marker>
+        </defs>
+        <!-- Plan -->
+        <rect x="20" y="30" width="130" height="80" rx="10" fill="rgba(210,153,34,.08)" stroke="#d29922" stroke-width="1.5"/>
+        <text x="85" y="58" text-anchor="middle" fill="#d29922" font-size="12" font-weight="600">📋 任务规划</text>
+        <text x="85" y="78" text-anchor="middle" fill="#8b949e" font-size="10">分解多步操作</text>
+        <text x="85" y="94" text-anchor="middle" fill="#8b949e" font-size="10">规划策略</text>
+        <!-- Arrow down -->
+        <line x1="85" y1="110" x2="85" y2="150" stroke="#d29922" stroke-width="2" marker-end="url(#arrO)"/>
+        <!-- See -->
+        <rect x="20" y="150" width="130" height="70" rx="10" fill="rgba(88,166,255,.08)" stroke="#58a6ff" stroke-width="1.5"/>
+        <text x="85" y="178" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="600">👁️ 观察</text>
+        <text x="85" y="196" text-anchor="middle" fill="#8b949e" font-size="10">截图 → 元素定位</text>
+        <!-- Arrow right -->
+        <line x1="150" y1="185" x2="190" y2="185" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrO)"/>
+        <!-- Act -->
+        <rect x="190" y="150" width="130" height="70" rx="10" fill="rgba(57,197,207,.08)" stroke="#39c5cf" stroke-width="1.5"/>
+        <text x="255" y="178" text-anchor="middle" fill="#39c5cf" font-size="12" font-weight="600">🖱️ 执行</text>
+        <text x="255" y="196" text-anchor="middle" fill="#8b949e" font-size="10">点击 / 输入 / 滑动</text>
+        <!-- Arrow right -->
+        <line x1="320" y1="185" x2="360" y2="185" stroke="#39c5cf" stroke-width="2" marker-end="url(#arrO)"/>
+        <!-- Verify -->
+        <rect x="360" y="150" width="130" height="70" rx="10" fill="rgba(63,185,80,.08)" stroke="#3fb950" stroke-width="1.5"/>
+        <text x="425" y="178" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">✅ 验证</text>
+        <text x="425" y="196" text-anchor="middle" fill="#8b949e" font-size="10">截图确认结果</text>
+        <!-- Arrow up from verify back to plan -->
+        <path d="M425,150 L425,120 L85,120 L85,110" fill="none" stroke="#d29922" stroke-width="1.5" stroke-dasharray="5" marker-end="url(#arrO)"/>
+        <!-- Done -->
+        <rect x="530" y="130" width="150" height="50" rx="25" fill="rgba(63,185,80,.12)" stroke="#3fb950" stroke-width="2" stroke-dasharray="4"/>
+        <text x="605" y="160" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="600">✅ 任务完成</text>
+        <line x1="490" y1="185" x2="530" y2="155" stroke="#3fb950" stroke-width="2" marker-end="url(#arrO)"/>
+        <!-- Title -->
+        <text x="350" y="270" text-anchor="middle" fill="#8b949e" font-size="11">屏幕操作 Agent 循环：规划 → 观察 → 执行 → 验证（失败则重试）</text>
+      </svg>
+      <figcaption>图5：屏幕操作 Agent 的"感知-行动"循环</figcaption>
+    </div>
+
+    <!-- 6. Multimodal Embedding -->
+    <h2 id="embedding">6. 多模态 Embedding — 图文联合嵌入（CLIP 原理）</h2>
+    <p>多模态 Embedding 的核心是<strong>将不同模态的数据映射到同一语义空间</strong>。OpenAI 的 CLIP（Contrastive Language-Image Pre-training）是这一领域的里程碑。</p>
+
+    <h3>CLIP 工作原理</h3>
+    <ul>
+      <li><strong>双塔结构</strong>：一个 Image Encoder（ViT/ResNet）处理图片，一个 Text Encoder（Transformer）处理文字</li>
+      <li><strong>对比学习</strong>：对 4 亿对图文数据训练，最大化匹配图文对的余弦相似度，最小化不匹配对的相似度</li>
+      <li><strong>Zero-shot 迁移</strong>：训练后可以直接用于以图搜文、以文搜图、图片分类（无需微调）</li>
+    </ul>
+
+    <div class="diagram">
+      <svg viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',Arial,sans-serif">
+        <defs>
+          <marker id="arrE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/></marker>
+        </defs>
+        <!-- Image tower -->
+        <rect x="30" y="30" width="160" height="90" rx="10" fill="rgba(88,166,255,.08)" stroke="#58a6ff" stroke-width="1.5"/>
+        <text x="110" y="55" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="600">🖼️ Image Encoder</text>
+        <text x="110" y="73" text-anchor="middle" fill="#8b949e" font-size="10">ViT / ResNet</text>
+        <text x="110" y="91" text-anchor="middle" fill="#8b949e" font-size="10">图片 → 视觉特征</text>
+        <text x="110" y="107" text-anchor="middle" fill="#8b949e" font-size="10">d=512 向量</text>
+        <!-- Arrow -->
+        <line x1="190" y1="75" x2="230" y2="75" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrE)"/>
+        <!-- Embedding space -->
+        <ellipse cx="350" cy="75" rx="100" ry="60" fill="rgba(163,113,247,.06)" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="4"/>
+        <text x="350" y="58" text-anchor="middle" fill="#a371f7" font-size="11" font-weight="600">🌐 联合语义空间</text>
+        <text x="350" y="76" text-anchor="middle" fill="#8b949e" font-size="10">cos(Image, Text) → 1.0</text>
+        <text x="350" y="92" text-anchor="middle" fill="#8b949e" font-size="10">cos(Image, RandText) → 0.0</text>
+        <!-- Text tower -->
+        <rect x="490" y="30" width="160" height="90" rx="10" fill="rgba(63,185,80,.08)" stroke="#3fb950" stroke-width="1.5"/>
+        <text x="570" y="55" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">📝 Text Encoder</text>
+        <text x="570" y="73" text-anchor="middle" fill="#8b949e" font-size="10">Transformer</text>
+        <text x="570" y="91" text-anchor="middle" fill="#8b949e" font-size="10">文字 → 文本特征</text>
+        <text x="570" y="107" text-anchor="middle" fill="#8b949e" font-size="10">d=512 向量</text>
+        <!-- Arrow from text -->
+        <line x1="490" y1="75" x2="450" y2="75" stroke="#3fb950" stroke-width="2" marker-end="url(#arrE)"/>
+        <!-- Contrastive loss -->
+        <rect x="80" y="145" width="540" height="40" rx="8" fill="rgba(210,153,34,.08)" stroke="#d29922" stroke-width="1"/>
+        <text x="350" y="170" text-anchor="middle" fill="#d29922" font-size="11">📐 对比损失（Contrastive Loss）：最大化 N 个匹配对的相似度，最小化 N²-N 个不匹配对</text>
+        <!-- Retrieval arrows -->
+        <text x="110" y="210" text-anchor="middle" fill="#8b949e" font-size="10">以文搜图 →</text>
+        <text x="570" y="210" text-anchor="middle" fill="#8b949e" font-size="10">← 以图搜文</text>
+      </svg>
+      <figcaption>图6：CLIP 多模态 Embedding 架构 — 双塔 + 对比学习</figcaption>
+    </div>
+
+    <p>多模态 Embedding 的应用场景包括：</p>
+    <ul>
+      <li><strong>跨模态检索</strong>：用文字描述找到最匹配的图片，或用图片找到相关文字</li>
+      <li><strong>多模态 RAG</strong>：将图片和文字同时存入向量数据库，检索时图文联合召回</li>
+      <li><strong>零样本分类</strong>：不用训练，直接通过"图片 vs 类别描述"的相似度进行分类</li>
+    </ul>
+
+    <!-- 7. Model Comparison -->
+    <h2 id="compare">7. 主流多模态模型对比</h2>
+    <p>当前主流的多模态大模型各有侧重。以下是 GPT-4o、Claude 3.5 Vision、Qwen-VL、Gemini 的详细对比：</p>
+
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>能力维度</th>
+          <th>GPT-4o</th>
+          <th>Claude 3.5 Vision</th>
+          <th>Qwen-VL</th>
+          <th>Gemini 1.5 Pro</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>图片理解</td>
+          <td><span class="badge green">★★★★★</span></td>
+          <td><span class="badge green">★★★★★</span></td>
+          <td><span class="badge blue">★★★★☆</span></td>
+          <td><span class="badge green">★★★★★</span></td>
+        </tr>
+        <tr>
+          <td>图表/流程图</td>
+          <td><span class="badge green">★★★★★</span></td>
+          <td><span class="badge green">★★★★★</span></td>
+          <td><span class="badge blue">★★★★☆</span></td>
+          <td><span class="badge blue">★★★★☆</span></td>
+        </tr>
+        <tr>
+          <td>音频理解</td>
+          <td><span class="badge green">★★★★★</span></td>
+          <td><span class="badge orange">★★☆☆☆</span></td>
+          <td><span class="badge orange">★★★☆☆</span></td>
+          <td><span class="badge green">★★★★★</span></td>
+        </tr>
+        <tr>
+          <td>视频分析</td>
+          <td><span class="badge green">★★★★★</span></td>
+          <td><span class="badge blue">★★★★☆</span></td>
+          <td><span class="badge blue">★★★★☆</span></td>
+          <td><span class="badge green">★★★★★</span></td>
+        </tr>
+        <tr>
+          <td>工具调用</td>
+          <td><span class="badge green">★★★★★</span></td>
+          <td><span class="badge green">★★★★★</span></td>
+          <td><span class="badge blue">★★★★☆</span></td>
+          <td><span class="badge blue">★★★★☆</span></td>
+        </tr>
+        <tr>
+          <td>推理速度</td>
+          <td><span class="badge green">⚡ 快</span></td>
+          <td><span class="badge blue">⚡ 中</span></td>
+          <td><span class="badge green">⚡ 快</span></td>
+          <td><span class="badge blue">⚡ 中</span></td>
+        </tr>
+        <tr>
+          <td>成本 (per 1M tokens)</td>
+          <td><span class="badge orange">$5 输入 / $15 输出</span></td>
+          <td><span class="badge orange">$3 输入 / $15 输出</span></td>
+          <td><span class="badge green">$0.5 输入 / $2 输出</span></td>
+          <td><span class="badge green">$1.25 输入 / $10 输出</span></td>
+        </tr>
+        <tr>
+          <td>图片输入格式</td>
+          <td>URL / Base64</td>
+          <td>URL / Base64</td>
+          <td>URL / Base64</td>
+          <td>URL / Base64 / 文件</td>
+        </tr>
+        <tr>
+          <td>视频输入</td>
+          <td>✅ 视频帧</td>
+          <td>✅ 视频帧</td>
+          <td>✅ 视频帧</td>
+          <td>✅ 原生视频</td>
+        </tr>
+        <tr>
+          <td>音频输入</td>
+          <td>✅ 原生音频</td>
+          <td>❌ 无</td>
+          <td>❌ 无</td>
+          <td>✅ 原生音频</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="diagram">
+      <svg viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',Arial,sans-serif">
+        <!-- Radar chart -->
+        <defs>
+          <linearGradient id="r1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="rgba(88,166,255,.3)"/><stop offset="100%" stop-color="rgba(88,166,255,.05)"/></linearGradient>
+          <linearGradient id="r2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="rgba(163,113,247,.3)"/><stop offset="100%" stop-color="rgba(163,113,247,.05)"/></linearGradient>
+          <linearGradient id="r3" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="rgba(63,185,80,.3)"/><stop offset="100%" stop-color="rgba(63,185,80,.05)"/></linearGradient>
+          <linearGradient id="r4" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="rgba(210,153,34,.3)"/><stop offset="100%" stop-color="rgba(210,153,34,.05)"/></linearGradient>
+        </defs>
+        <g transform="translate(350,200)">
+          <!-- Hexagon grid -->
+          <polygon points="0,-120 103.9,-60 103.9,60 0,120 -103.9,60 -103.9,-60" fill="none" stroke="#2a2d3a" stroke-width="1"/>
+          <polygon points="0,-90 77.9,-45 77.9,45 0,90 -77.9,45 -77.9,-45" fill="none" stroke="#2a2d3a" stroke-width="1" stroke-dasharray="3"/>
+          <polygon points="0,-60 52,-30 52,30 0,60 -52,30 -52,-30" fill="none" stroke="#2a2d3a" stroke-width="1" stroke-dasharray="3"/>
+          <polygon points="0,-30 26,-15 26,15 0,30 -26,15 -26,-15" fill="none" stroke="#2a2d3a" stroke-width="1" stroke-dasharray="3"/>
+          <!-- Labels -->
+          <text x="0" y="-132" text-anchor="middle" fill="#8b949e" font-size="10">图片理解</text>
+          <text x="118" y="-60" text-anchor="middle" fill="#8b949e" font-size="10" transform="rotate(30,118,-60)">工具调用</text>
+          <text x="118" y="65" text-anchor="middle" fill="#8b949e" font-size="10" transform="rotate(-30,118,65)">视频分析</text>
+          <text x="0" y="140" text-anchor="middle" fill="#8b949e" font-size="10">音频理解</text>
+          <text x="-118" y="65" text-anchor="middle" fill="#8b949e" font-size="10" transform="rotate(30,-118,65)">推理速度</text>
+          <text x="-118" y="-60" text-anchor="middle" fill="#8b949e" font-size="10" transform="rotate(-30,-118,-60)">成本效益</text>
+          <!-- GPT-4o scores: 5,4,5,5,4,4 -->
+          <polygon points="0,-100 86.6,-50 86.6,50 0,100 -86.6,50 -86.6,-50" fill="url(#r1)" stroke="#58a6ff" stroke-width="2" opacity=".7"/>
+          <text x="20" y="-80" fill="#58a6ff" font-size="9" font-weight="600">GPT-4o</text>
+          <!-- Claude 3.5 Vision: 5,5,4,2,3,4.5 -->
+          <polygon points="0,-100 103.9,-60 69.3,40 0,40 -51.9,30 -103.9,-60" fill="url(#r2)" stroke="#a371f7" stroke-width="2" opacity=".6"/>
+          <text x="50" y="-20" fill="#a371f7" font-size="9" font-weight="600">Claude 3.5</text>
+          <!-- Qwen-VL: 4,4,4,3,4,3 -->
+          <polygon points="0,-80 69.3,-40 69.3,40 0,60 -69.3,40 -69.3,-40" fill="url(#r3)" stroke="#3fb950" stroke-width="2" opacity=".6"/>
+          <text x="-60" y="-10" fill="#3fb950" font-size="9" font-weight="600">Qwen-VL</text>
+          <!-- Gemini 1.5 Pro: 5,4,5,5,3,3 -->
+          <polygon points="0,-100 86.6,-50 69.3,40 0,100 -51.9,30 -51.9,-30" fill="url(#r4)" stroke="#d29922" stroke-width="2" opacity=".6"/>
+          <text x="-10" y="50" fill="#d29922" font-size="9" font-weight="600">Gemini</text>
+        </g>
+        <!-- Legend -->
+        <rect x="40" y="320" width="12" height="12" fill="#58a6ff" rx="2"/><text x="58" y="330" fill="#8b949e" font-size="10">GPT-4o</text>
+        <rect x="160" y="320" width="12" height="12" fill="#a371f7" rx="2"/><text x="178" y="330" fill="#8b949e" font-size="10">Claude 3.5</text>
+        <rect x="290" y="320" width="12" height="12" fill="#3fb950" rx="2"/><text x="308" y="330" fill="#8b949e" font-size="10">Qwen-VL</text>
+        <rect x="410" y="320" width="12" height="12" fill="#d29922" rx="2"/><text x="428" y="330" fill="#8b949e" font-size="10">Gemini</text>
+        <text x="350" y="370" text-anchor="middle" fill="#8b949e" font-size="10">图6：多模态能力雷达图</text>
+      </svg>
+      <figcaption>多模态能力雷达图 — 各模型在不同维度上的表现对比</figcaption>
+    </div>
+
+    <!-- 8. QA -->
+    <h2 id="qa">8. QA &amp; 口播总结</h2>
+
+    <div class="qa">
+      <details class="socratic">
+        <summary>什么是多模态 Agent？和普通 LLM Agent 有什么区别？</summary>
+        <div class="qa-body">
+          <p><strong>多模态 Agent</strong> 是能够<strong>感知和处理多种输入模态</strong>（图片、语音、视频、文本）的 AI Agent。普通 LLM Agent 只能处理文本输入，多模态 Agent 则能"看懂"截图、"听懂"语音、"分析"图表。</p>
+          <p>区别在于：普通 Agent 需要用户将图片/语音转成文字描述（信息损失），多模态 Agent 直接处理原始多模态数据（信息完整）。举个例子：普通 Agent 只能通过文字描述帮你找 bug，多模态 Agent 可以直接看你的报错截图。</p>
+        </div>
+      </details>
+
+      <details class="socratic">
+        <summary>Vision Agent 如何精确地定位 UI 元素坐标？</summary>
+        <div class="qa-body">
+          <p>Vision Agent 定位 UI 元素通常采用以下方法：</p>
+          <ul>
+            <li><strong>坐标回归</strong>：模型直接输出边界框坐标 (x, y, w, h)，通过特殊标记（如 <code>[bbox]</code> 语法）训练</li>
+            <li><strong>Set-of-Mark Prompting</strong>：用视觉标记（数字/字母）覆盖在截图元素上，模型选择对应标记</li>
+            <li><strong>像素级语义分割</strong>：对截图中每个像素分类，精确到元素轮廓</li>
+          </ul>
+          <p>Go 实现中，通常让模型以 JSON 格式输出结构化坐标数据，然后解析到 Go 的 struct 中。</p>
+        </div>
+      </details>
+
+      <details class="socratic">
+        <summary>Audio Agent 如何处理多人对话（说话人分离）？</summary>
+        <div class="qa-body">
+          <p>Audio Agent 通过以下技术实现说话人分离（Speaker Diarization）：</p>
+          <ul>
+            <li><strong>声纹特征提取</strong>：用 ECAPA-TDNN 或 d-vector 提取每个语音片段的声纹特征</li>
+            <li><strong>聚类算法</strong>：用 UMAP + HDBSCAN 对声纹特征聚类，同一聚类对应同一说话人</li>
+            <li><strong>时间戳对齐</strong>：将聚类结果与 STT 时间戳结合，输出"谁在什么时候说了什么"</li>
+          </ul>
+          <p>在实时场景中，使用流式说话人分离（Streaming Diarization）逐帧分配说话人标签。</p>
+        </div>
+      </details>
+
+      <details class="socratic">
+        <summary>多模态 Agent 处理高分辨率图片时 token 消耗太大怎么办？</summary>
+        <div class="qa-body">
+          <p>高分辨率图片直接编码会产生大量视觉 token（一张 4K 图可能超过 10K tokens）。常用优化策略：</p>
+          <ul>
+            <li><strong>动态分辨率（Dynamic Resolution）</strong>：将图片缩放到模型支持的多个分辨率，选择最优且 token 最少的版本</li>
+            <li><strong>切片处理（Sliding Window）</strong>：将大图切成 512×512 的小块，分别编码后拼接，保留空间位置信息</li>
+            <li><strong>多阶段摘要（Multi-stage Summarization）</strong>：第一阶段用低分辨率图做粗略分析，第二阶段只对关键区域高分辨率分析</li>
+            <li><strong>视觉 Token 压缩</strong>：用 Perceiver Resampler 或 Q-Former 将视觉 token 从 256 压缩到 32 或 64 个</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="socratic">
+        <summary>屏幕操作 Agent 如何保证操作不出错？</summary>
+        <div class="qa-body">
+          <p>屏幕操作 Agent 通过 "验证闭环" 保证可靠性：</p>
+          <ul>
+            <li><strong>操作前截屏</strong>：确认当前 UI 状态，避免在错误界面上操作</li>
+            <li><strong>操作后验证</strong>：执行点击/输入后再次截图，判断是否达到预期状态</li>
+            <li><strong>回退策略（Rollback）</strong>：如果连续失败 N 次，回退到上一步并尝试不同策略</li>
+            <li><strong>安全限制</strong>：设置操作黑名单（禁止访问敏感页面）、速率限制、人工确认关卡</li>
+          </ul>
+          <p>在实际生产中，屏幕操作 Agent 的正确率通常在 85%-95% 之间，配合人工兜底可达到 99%+。</p>
+        </div>
+      </details>
+
+      <details class="socratic">
+        <summary>CLIP Embedding 在多模态 RAG 中怎么用？</summary>
+        <div class="qa-body">
+          <p>在多模态 RAG（Retrieval Augmented Generation）系统中，CLIP Embedding 的使用方式如下：</p>
+          <ol>
+            <li><strong>索引阶段</strong>：对文档中的每张图片用 CLIP Image Encoder 生成向量，对文字段落用 CLIP Text Encoder 生成向量，存入统一向量数据库</li>
+            <li><strong>检索阶段</strong>：用户查询（文字）用 CLIP Text Encoder 编码，在向量数据库中同时检索相似的图片和文字段落</li>
+            <li><strong>重排序</strong>：用跨模态模型（如 BLIP-2）对检索结果进行细粒度重排序</li>
+            <li><strong>生成阶段</strong>：将检索到的图文片段拼接为 prompt，传给多模态 LLM 生成最终回答</li>
+          </ol>
+          <p>这种方式比纯文字 RAG 召回率提升 30-50%，尤其适合需要"看图说话"的场景。</p>
+        </div>
+      </details>
+
+      <details class="socratic">
+        <summary>多模态 Agent 未来的发展方向是什么？</summary>
+        <div class="qa-body">
+          <p>多模态 Agent 正在快速演进，以下是几个关键方向：</p>
+          <ul>
+            <li><strong>全模态统一</strong>：一个模型原生支持视觉、语音、视频、触觉、甚至嗅觉信号</li>
+            <li><strong>实时流式多模态</strong>：低延迟（&lt;500ms）的实时视频理解和语音交互，接近人类对话体验</li>
+            <li><strong>具身智能</strong>：多模态 Agent 控制机器人/无人机，在物理世界中感知和行动</li>
+            <li><strong>个性化记忆</strong>：Agent 记住用户的面部特征、声音、习惯偏好，提供个性化服务</li>
+            <li><strong>多 Agent 协作</strong>：多个专业化的多模态 Agent 分工协作（Vision Agent 截图 + Audio Agent 录音 + Search Agent 检索）</li>
+          </ul>
+        </div>
+      </details>
+    </div>
+
+    <!-- Summary box -->
+    <div class="summary-box">
+      <h4>🎯 口播总结</h4>
+      <p>多模态 AI Agent 正在重新定义人机交互——从"打字聊天"进化到"看懂截图、听懂语音、操作屏幕、调用工具"。Vision Agent 让 AI 拥有视觉感知，Audio Agent 赋予它听觉与口语，屏幕操作 Agent 让它能像人一样使用软件。</p>
+      <p>CLIP 等跨模态 Embedding 技术打通了不同模态之间的语义鸿沟，而 GPT-4o、Claude 3.5 Vision、Qwen-VL 等模型正推动多模态能力的边界不断扩展。未来，全模态 + 实时 + 具身 + 协作的多模态 Agent 将成为 AI 落地的核心范式。</p>
+      <p style="color:var(--accent);margin-top:8px"><strong>多模态不是锦上添花——它是 Agent 从"文字工具"走向"数字同事"的必经之路。</strong></p>
+    </div>
+
+    <!-- Footer -->
+    <hr style="border:0;border-top:1px solid var(--border);margin:2.5rem 0 1rem">
+    <p style="text-align:center;color:#8b949e;font-size:.85rem">🖼️ 多模态 AI Agent 完全指南 · 持续更新 · 欢迎 Star ⭐</p>
+
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔄 Agent 全生命周期 DevOps — 部署/模型路由/缓存/数据飞轮</title>
+<style>
+:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3a;--text:#c9d1d9;--accent:#58a6ff;--green:#3fb950;--orange:#d29922;--red:#f85149;--purple:#a371f7;--cyan:#39c5cf;--radius:12px;--transition:.3s ease}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);line-height:1.8;font-size:15px}
+a{color:var(--accent);text-decoration:none;transition:color var(--transition)}
+a:hover{color:var(--cyan)}
+h1{font-size:2.2rem;margin-bottom:.5rem;background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+h2{font-size:1.5rem;margin:2.5rem 0 1rem;padding-bottom:.5rem;border-bottom:2px solid var(--border);color:var(--accent)}
+h2::before{content:'';display:inline-block;width:4px;height:1.2em;background:var(--accent);margin-right:12px;vertical-align:middle;border-radius:2px}
+h3{font-size:1.15rem;margin:1.5rem 0 .8rem;color:var(--cyan)}
+p{color:var(--text);margin-bottom:.8rem}
+ul,ol{padding-left:1.5rem;margin-bottom:.8rem}
+li{margin-bottom:.35rem}
+code{font-family:'JetBrains Mono','Fira Code','Consolas',monospace;font-size:.88em;background:var(--card);padding:2px 6px;border-radius:4px;border:1px solid var(--border)}
+pre{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;overflow-x:auto;margin:1rem 0;position:relative}
+pre code{background:transparent;border:none;padding:0;font-size:.85rem;line-height:1.6}
+blockquote{border-left:3px solid var(--accent);padding:.5rem 1rem;margin:1rem 0;background:rgba(88,166,255,.06);border-radius:0 var(--radius) var(--radius) 0}
+.kw{color:var(--purple);font-weight:500}
+.fn{color:var(--cyan)}
+.str{color:var(--green)}
+.num{color:var(--orange)}
+.cm{color:#6a737d;font-style:italic}
+.tp{color:var(--accent)}
+.op{color:var(--text)}
+/* Layout */
+.wrapper{display:flex;min-height:100vh}
+.sidebar{width:260px;position:fixed;top:0;left:0;height:100vh;background:var(--card);border-right:1px solid var(--border);padding:1.5rem 0;overflow-y:auto;z-index:100}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.sidebar .logo{padding:0 1.5rem 1rem;font-size:1.1rem;font-weight:600;border-bottom:1px solid var(--border);margin-bottom:1rem}
+.sidebar .logo span{background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sidebar nav a{display:block;padding:.6rem 1.5rem;color:var(--text);font-size:.9rem;border-left:3px solid transparent;transition:all var(--transition)}
+.sidebar nav a:hover,.sidebar nav a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(88,166,255,.06)}
+.sidebar nav a.sub{padding-left:2.5rem;font-size:.83rem;color:#8b949e}
+.sidebar .back-link{display:block;padding:1rem 1.5rem;margin-top:1rem;border-top:1px solid var(--border);color:var(--text);font-size:.9rem;transition:color var(--transition)}
+.sidebar .back-link:hover{color:var(--accent)}
+.main{flex:1;margin-left:260px;padding:2.5rem 3rem;max-width:1000px}
+@media(max-width:768px){
+.sidebar{display:none}
+.main{margin-left:0;padding:1.5rem 1.2rem}
+svg{min-width:420px}
+}
+@media(max-width:480px){
+svg{min-width:340px}
+.main{padding:1rem .8rem}
+}
+/* Components */
+.feynman{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin:1.2rem 0;position:relative}
+.feynman::before{content:'⚡ 费曼类比';display:block;font-weight:600;color:var(--orange);margin-bottom:.8rem;font-size:.9rem;letter-spacing:.5px}
+.diagram{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin:1.2rem 0;overflow-x:auto;text-align:center}
+.diagram svg{max-width:100%;height:auto}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+.compare > div{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem}
+.compare h4{font-size:.9rem;margin-bottom:.5rem;color:var(--orange)}
+@media(max-width:600px){.compare{grid-template-columns:1fr}}
+.info-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;margin:1rem 0;border-left:3px solid var(--accent)}
+.info-card.green{border-left-color:var(--green)}
+.info-card.orange{border-left-color:var(--orange)}
+.info-card.purple{border-left-color:var(--purple)}
+.qa{margin:1.5rem 0}
+.qa details.socratic{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:.6rem;overflow:hidden}
+.qa details.socratic summary{padding:.8rem 1rem;cursor:pointer;font-weight:500;transition:background var(--transition);list-style:none;display:flex;align-items:center}
+.qa details.socratic summary::-webkit-details-marker{display:none}
+.qa details.socratic summary::before{content:'❓';margin-right:10px;flex-shrink:0}
+.qa details.socratic summary:hover{background:rgba(88,166,255,.06)}
+.qa details.socratic[open] summary{background:rgba(88,166,255,.08);border-bottom:1px solid var(--border)}
+.qa details.socratic .answer{padding:1rem 1rem 1rem 2.5rem;line-height:1.7}
+/* Tags */
+.tag{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:500}
+.tag-blue{background:rgba(88,166,255,.15);color:var(--accent)}
+.tag-green{background:rgba(63,185,80,.15);color:var(--green)}
+.tag-orange{background:rgba(210,146,34,.15);color:var(--orange)}
+.tag-red{background:rgba(248,81,73,.15);color:var(--red)}
+.tag-purple{background:rgba(163,113,247,.15);color:var(--purple)}
+.stats-row{display:flex;gap:1rem;flex-wrap:wrap;margin:1rem 0}
+.stat-card{flex:1;min-width:120px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;text-align:center}
+.stat-card .num{font-size:1.6rem;font-weight:700}
+.stat-card .label{font-size:.8rem;color:#8b949e;margin-top:.2rem}
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+
+<!-- ===== 侧边栏 ===== -->
+<aside class="sidebar">
+<div class="logo"><span>🤖 Agent DevOps</span></div>
+<nav>
+<a href="#intro">1. 为什么 Agent 需要 DevOps</a>
+<a href="#deploy" class="sub">2. 部署架构</a>
+<a href="#routing" class="sub">3. 模型路由</a>
+<a href="#cache" class="sub">4. 缓存增强生成</a>
+<a href="#flywheel" class="sub">5. 数据飞轮</a>
+<a href="#monitor" class="sub">6. 生产监控与告警</a>
+<a href="#cost" class="sub">7. 成本优化策略</a>
+<a href="#qa">8. QA &amp; 总结</a>
+</nav>
+<a href="index.html" class="back-link">← 返回首页</a>
+</aside>
+
+<!-- ===== 主内容 ===== -->
+<div class="main">
+
+<h1>🔄 Agent 全生命周期 DevOps</h1>
+<p style="color:#8b949e;font-size:1rem;margin-bottom:2rem">部署 · 模型路由 · 缓存增强生成 · 数据飞轮 · 生产监控 · 成本优化</p>
+
+<!-- ============================================================ -->
+<!-- 第1章 -->
+<!-- ============================================================ -->
+<h2 id="intro">1. 为什么 Agent 需要 DevOps</h2>
+
+<div class="feynman">
+<p><strong>种花 vs 种菜</strong> — 想象你在阳台上种了一盆花和一盆菜。花种下去，浇点水就不用管了，它自己会开。但菜不一样：你要每天浇水、施肥、除虫，才能吃到新鲜的叶子。</p>
+<p>传统的 AI 模型就像花：训练完部署到生产环境，只要推理接口稳定，基本不用管。但 <strong>Agent 是菜</strong>：它要调用工具、管理对话记忆、路由到不同模型、处理用户反馈、更新知识库……任何一个环节出问题，Agent 的表现就会快速「枯萎」。</p>
+<p>这就是 Agent 需要 DevOps 的根本原因 — <strong>AI Agent 不是一次性的模型，而是一个持续演进的系统</strong>。</p>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#a371f7"/></linearGradient>
+<linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#39c5cf"/></linearGradient>
+<linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#d29922"/><stop offset="100%" stop-color="#f85149"/></linearGradient>
+<filter id="glow"><feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#58a6ff" flood-opacity=".35"/></filter>
+<marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#58a6ff"/></marker>
+<marker id="arrow-g" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#3fb950"/></marker>
+</defs>
+<!-- 中心圆 -->
+<circle cx="400" cy="200" r="40" fill="none" stroke="#2a2d3a" stroke-width="80" opacity=".5"/>
+<circle cx="400" cy="200" r="150" fill="none" stroke="#2a2d3a" stroke-width="2" stroke-dasharray="8,4" opacity=".6"/>
+<!-- 6个节点 -->
+<g transform="translate(400,50)">
+<circle r="36" fill="var(--card)" stroke="#58a6ff" stroke-width="2.5" filter="url(#glow)"/>
+<text x="0" y="4" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="600">开发</text>
+</g>
+<g transform="translate(575,130)">
+<circle r="36" fill="var(--card)" stroke="#3fb950" stroke-width="2.5" filter="url(#glow)"/>
+<text x="0" y="4" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="600">测试</text>
+</g>
+<g transform="translate(575,310)">
+<circle r="36" fill="var(--card)" stroke="#d29922" stroke-width="2.5" filter="url(#glow)"/>
+<text x="0" y="4" text-anchor="middle" fill="#d29922" font-size="13" font-weight="600">部署</text>
+</g>
+<g transform="translate(400,350)">
+<circle r="36" fill="var(--card)" stroke="#f85149" stroke-width="2.5" filter="url(#glow)"/>
+<text x="0" y="4" text-anchor="middle" fill="#f85149" font-size="13" font-weight="600">监控</text>
+</g>
+<g transform="translate(225,310)">
+<circle r="36" fill="var(--card)" stroke="#a371f7" stroke-width="2.5" filter="url(#glow)"/>
+<text x="0" y="4" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="600">分析</text>
+</g>
+<g transform="translate(225,130)">
+<circle r="36" fill="var(--card)" stroke="#39c5cf" stroke-width="2.5" filter="url(#glow)"/>
+<text x="0" y="4" text-anchor="middle" fill="#39c5cf" font-size="13" font-weight="600">迭代</text>
+</g>
+<!-- 箭头环 -->
+<path d="M425,78 Q560,120 560,160" fill="none" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)" opacity=".8"/>
+<path d="M585,200 Q585,270 550,300" fill="none" stroke="#3fb950" stroke-width="2" marker-end="url(#arrow)" opacity=".8"/>
+<path d="M530,340 Q480,360 440,355" fill="none" stroke="#d29922" stroke-width="2" marker-end="url(#arrow)" opacity=".8"/>
+<path d="M365,348 Q310,340 260,320" fill="none" stroke="#f85149" stroke-width="2" marker-end="url(#arrow)" opacity=".8"/>
+<path d="M215,270 Q210,210 235,170" fill="none" stroke="#a371f7" stroke-width="2" marker-end="url(#arrow)" opacity=".8"/>
+<path d="M270,120 Q320,85 375,72" fill="none" stroke="#39c5cf" stroke-width="2" marker-end="url(#arrow)" opacity=".8"/>
+<!-- 中心文字 -->
+<text x="400" y="200" text-anchor="middle" fill="#c9d1d9" font-size="22" font-weight="700">Agent</text>
+<text x="400" y="222" text-anchor="middle" fill="#8b949e" font-size="12">全生命周期</text>
+</svg>
+<p style="margin-top:8px;font-size:.85rem;color:#8b949e"><strong>图 1</strong> · Agent 全生命周期闭环：开发 → 测试 → 部署 → 监控 → 分析 → 迭代，持续循环</p>
+</div>
+
+<div class="info-card">
+<h4>📌 核心差异：传统 ML DevOps vs Agent DevOps</h4>
+<table style="width:100%;border-collapse:collapse;margin-top:8px">
+<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 10px;font-weight:500;width:130px">维度</td><td style="padding:6px 10px;color:#8b949e">传统 ML DevOps</td><td style="padding:6px 10px;color:var(--accent)">Agent DevOps</td></tr>
+<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 10px">部署对象</td><td style="padding:6px 10px">单一模型推理端点</td><td style="padding:6px 10px">Agent + Tools + Memory + Router</td></tr>
+<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 10px">监控</td><td style="padding:6px 10px">延迟、吞吐、准确率</td><td style="padding:6px 10px">+ Token成本、工具调用成功率、决策链追踪</td></tr>
+<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 10px">数据闭环</td><td style="padding:6px 10px">离线标注 → 再训练</td><td style="padding:6px 10px">在线反馈 → 自动标注 → 微调 → A/B 测试</td></tr>
+<tr><td style="padding:6px 10px">更新频率</td><td style="padding:6px 10px">周/月级</td><td style="padding:6px 10px">天/小时级（热更新）</td></tr>
+</table>
+</div>
+
+<!-- ============================================================ -->
+<!-- 第2章 -->
+<!-- ============================================================ -->
+<h2 id="deploy">2. Agent 部署架构</h2>
+
+<p>生产环境中的 Agent 系统通常采用 <strong>三层架构</strong>：</p>
+<ul>
+<li><strong>Agent 层</strong>：运行在 K8s 上的容器化 Agent 实例，负责对话管理、任务规划、工具编排</li>
+<li><strong>Model Serving 层</strong>：大模型推理服务（vLLM / TGI / Triton），提供标准 OpenAI-compatible API</li>
+<li><strong>Tool Server 层</strong>：工具执行引擎，调用外部 API、数据库、搜索引擎等</li>
+</ul>
+
+<div class="diagram">
+<svg viewBox="0 0 800 430" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="db" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#1a1d27"/><stop offset="100%" stop-color="#0f1117"/></linearGradient>
+</defs>
+<rect x="20" y="20" width="760" height="390" rx="12" fill="none" stroke="#2a2d3a" stroke-width="1"/>
+
+<!-- Layer 1: Agent -->
+<rect x="40" y="35" width="720" height="100" rx="8" fill="#1a1d27" stroke="#58a6ff" stroke-width="1.5" opacity=".9"/>
+<text x="60" y="70" fill="#58a6ff" font-size="13" font-weight="600">Layer 1 · Agent 容器 (K8s Deployment)</text>
+<g transform="translate(50,85)">
+<rect x="0" y="0" width="110" height="38" rx="6" fill="#0f1117" stroke="#58a6ff" stroke-width="1"/>
+<text x="55" y="24" text-anchor="middle" fill="#58a6ff" font-size="11">Agent Pod A</text>
+</g>
+<g transform="translate(175,85)">
+<rect x="0" y="0" width="110" height="38" rx="6" fill="#0f1117" stroke="#58a6ff" stroke-width="1"/>
+<text x="55" y="24" text-anchor="middle" fill="#58a6ff" font-size="11">Agent Pod B</text>
+</g>
+<g transform="translate(300,85)">
+<rect x="0" y="0" width="110" height="38" rx="6" fill="#0f1117" stroke="#58a6ff" stroke-width="1"/>
+<text x="55" y="24" text-anchor="middle" fill="#58a6ff" font-size="11">Agent Pod C</text>
+</g>
+<g transform="translate(425,85)">
+<rect x="0" y="0" width="60" height="38" rx="6" fill="#d29922" stroke="#d29922" stroke-width="1"/>
+<text x="30" y="24" text-anchor="middle" fill="#0f1117" font-size="11" font-weight="600">HPA</text>
+</g>
+<g transform="translate(500,85)">
+<rect x="0" y="0" width="100" height="38" rx="6" fill="#0f1117" stroke="#39c5cf" stroke-width="1"/>
+<text x="50" y="24" text-anchor="middle" fill="#39c5cf" font-size="11">ConfigMap</text>
+</g>
+<g transform="translate(615,85)">
+<rect x="0" y="0" width="120" height="38" rx="6" fill="#0f1117" stroke="#a371f7" stroke-width="1"/>
+<text x="60" y="24" text-anchor="middle" fill="#a371f7" font-size="11">热更新 Sidecar</text>
+</g>
+</g>
+
+<!-- Arrow -->
+<line x1="400" y1="138" x2="400" y2="155" stroke="#8b949e" stroke-width="2" marker-end="url(#arrow)" opacity=".5"/>
+
+<!-- Layer 2: Model -->
+<rect x="40" y="155" width="720" height="100" rx="8" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5" opacity=".9"/>
+<text x="60" y="190" fill="#3fb950" font-size="13" font-weight="600">Layer 2 · Model Serving (vLLM / TGI / Triton)</text>
+<g transform="translate(50,205)">
+<rect x="0" y="0" width="120" height="38" rx="6" fill="#0f1117" stroke="#3fb950" stroke-width="1"/>
+<text x="60" y="24" text-anchor="middle" fill="#3fb950" font-size="11">GPT-4 / Claude</text>
+</g>
+<g transform="translate(185,205)">
+<rect x="0" y="0" width="120" height="38" rx="6" fill="#0f1117" stroke="#3fb950" stroke-width="1"/>
+<text x="60" y="24" text-anchor="middle" fill="#3fb950" font-size="11">GPT-4o-mini</text>
+</g>
+<g transform="translate(320,205)">
+<rect x="0" y="0" width="120" height="38" rx="6" fill="#0f1117" stroke="#3fb950" stroke-width="1"/>
+<text x="60" y="24" text-anchor="middle" fill="#3fb950" font-size="11">DeepSeek V3</text>
+</g>
+<g transform="translate(455,205)">
+<rect x="0" y="0" width="120" height="38" rx="6" fill="#0f1117" stroke="#3fb950" stroke-width="1"/>
+<text x="60" y="24" text-anchor="middle" fill="#3fb950" font-size="11">Embeddings</text>
+</g>
+<g transform="translate(590,205)">
+<rect x="0" y="0" width="150" height="38" rx="6" fill="#0f1117" stroke="#d29922" stroke-width="1"/>
+<text x="75" y="24" text-anchor="middle" fill="#d29922" font-size="11">Load Balancer</text>
+</g>
+</g>
+
+<!-- Arrow -->
+<line x1="400" y1="258" x2="400" y2="275" stroke="#8b949e" stroke-width="2" marker-end="url(#arrow)" opacity=".5"/>
+
+<!-- Layer 3: Tool -->
+<rect x="40" y="275" width="720" height="120" rx="8" fill="#1a1d27" stroke="#d29922" stroke-width="1.5" opacity=".9"/>
+<text x="60" y="310" fill="#d29922" font-size="13" font-weight="600">Layer 3 · Tool Server (工具执行引擎)</text>
+<g transform="translate(50,325)">
+<rect x="0" y="0" width="130" height="38" rx="6" fill="#0f1117" stroke="#d29922" stroke-width="1"/>
+<text x="65" y="24" text-anchor="middle" fill="#d29922" font-size="11">🔍 搜索 API</text>
+</g>
+<g transform="translate(195,325)">
+<rect x="0" y="0" width="130" height="38" rx="6" fill="#0f1117" stroke="#d29922" stroke-width="1"/>
+<text x="65" y="24" text-anchor="middle" fill="#d29922" font-size="11">🗄️ 数据库</text>
+</g>
+<g transform="translate(340,325)">
+<rect x="0" y="0" width="130" height="38" rx="6" fill="#0f1117" stroke="#d29922" stroke-width="1"/>
+<text x="65" y="24" text-anchor="middle" fill="#d29922" font-size="11">📂 文件系统</text>
+</g>
+<g transform="translate(485,325)">
+<rect x="0" y="0" width="130" height="38" rx="6" fill="#0f1117" stroke="#d29922" stroke-width="1"/>
+<text x="65" y="24" text-anchor="middle" fill="#d29922" font-size="11">☁️ 云服务 API</text>
+</g>
+<g transform="translate(630,325)">
+<rect x="0" y="0" width="105" height="38" rx="6" fill="#0f1117" stroke="#f85149" stroke-width="1"/>
+<text x="52" y="24" text-anchor="middle" fill="#f85149" font-size="11">⏱️ 超时控制</text>
+</g>
+</g>
+</svg>
+<p style="margin-top:8px;font-size:.85rem;color:#8b949e"><strong>图 2</strong> · Agent 三层部署架构：Agent 容器 → Model Serving → Tool Server</p>
+</div>
+
+<h3>Go 代码：K8s Agent Deployment 配置</h3>
+<pre><code><span class="kw">package</span> <span class="fn">main</span>
+
+<span class="kw">import</span> <span class="str">"context"</span>
+<span class="kw">import</span> <span class="str">"fmt"</span>
+<span class="kw">import</span> <span class="str">"time"</span>
+
+<span class="cm">// AgentDeployment 定义 K8s 上 Agent 的部署配置</span>
+<span class="kw">type</span> <span class="tp">AgentDeployment</span> <span class="kw">struct</span> {
+    Name      <span class="tp">string</span>        <span class="cm">// 部署名称</span>
+    Namespace <span class="tp">string</span>        <span class="cm">// 命名空间</span>
+    Replicas  <span class="tp">int32</span>         <span class="cm">// 副本数</span>
+    Image     <span class="tp">string</span>        <span class="cm">// 容器镜像</span>
+    ModelHost <span class="tp">string</span>        <span class="cm">// 模型服务地址</span>
+    ToolURL   <span class="tp">string</span>        <span class="cm">// 工具服务地址</span>
+    MemoryGB  <span class="tp">int</span>           <span class="cm">// 内存限制 (GB)</span>
+    CPU       <span class="tp">int</span>           <span class="cm">// CPU 核数</span>
+    Env       <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">string</span> <span class="cm">// 环境变量</span>
+    MinReady  <span class="tp">time</span>.Duration  <span class="cm">// 最小就绪时间</span>
+}
+
+<span class="cm">// NewAgentDeployment 创建默认 Agent 部署</span>
+<span class="kw">func</span> <span class="fn">NewAgentDeployment</span>() *<span class="tp">AgentDeployment</span> {
+    <span class="kw">return</span> &amp;<span class="tp">AgentDeployment</span>{
+        Name:      <span class="str">"agent-devops-demo"</span>,
+        Namespace: <span class="str">"agent-prod"</span>,
+        Replicas:  <span class="num">3</span>,
+        Image:     <span class="str">"registry.example.com/agent:v1.2.0"</span>,
+        ModelHost: <span class="str">"http://model-serving.agent-prod.svc.cluster.local:8080"</span>,
+        ToolURL:   <span class="str">"http://tool-server.agent-prod.svc.cluster.local:9090"</span>,
+        MemoryGB:  <span class="num">4</span>,
+        CPU:       <span class="num">2</span>,
+        Env:       <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">string</span>{
+            <span class="str">"AGENT_LOG_LEVEL"</span>: <span class="str">"info"</span>,
+            <span class="str">"CACHE_ENABLED"</span>:   <span class="str">"true"</span>,
+            <span class="str">"ROUTER_STRATEGY"</span>: <span class="str">"latency-aware"</span>,
+        },
+        MinReady: <span class="num">30</span> * time.Second,
+    }
+}
+
+<span class="cm">// RolloutUpdate 模拟滚动更新</span>
+<span class="kw">func</span> (d *<span class="tp">AgentDeployment</span>) <span class="fn">RolloutUpdate</span>(ctx <span class="tp">context</span>.Context, newImage <span class="tp">string</span>) <span class="tp">error</span> {
+    fmt.Printf(<span class="str">"[%s] 开始滚动更新: %s → %s\n"</span>, d.Name, d.Image, newImage)
+    d.Image = newImage
+
+    <span class="cm">// 模拟灰度升级：先更新 1 个 Pod，观察 60s</span>
+    fmt.Printf(<span class="str">"  → 灰度升级 1/3 Pod（观察 60s）\n"</span>)
+    <span class="cm">// time.Sleep(60 * time.Second)</span>
+
+    <span class="cm">// 健康检查通过后更新其余 Pod</span>
+    fmt.Printf(<span class="str">"  → 滚动升级剩余 Pod\n"</span>)
+    <span class="kw">return</span> <span class="kw">nil</span>
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    dep := <span class="fn">NewAgentDeployment</span>()
+    fmt.Printf(<span class="str">"🚀 Agent 部署: %s/%s (%d 副本)\n"</span>, dep.Namespace, dep.Name, dep.Replicas)
+    <span class="fn">_</span> = dep.<span class="fn">RolloutUpdate</span>(context.Background(), <span class="str">"registry.example.com/agent:v1.3.0"</span>)
+}
+</code></pre>
+
+<div class="info-card green">
+<h4>⚙️ 热更新机制</h4>
+<p>Agent 的热更新通过 <strong>Sidecar 容器</strong> 实现：当新的工具定义或 Prompt 模板推送到 ConfigMap，Sidecar 监听变更并触发 Agent 进程的热重载，无需重启 Pod。这使 Agent 的工具链可以在 <strong>秒级</strong> 完成更新。</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- 第3章 -->
+<!-- ============================================================ -->
+<h2 id="routing">3. 模型路由（Model Routing）</h2>
+
+<p>不同任务对模型能力的要求差异巨大。一个简单的"查天气"不需要 GPT-4，而一个复杂的"编写商业计划书"则需要最强模型。模型路由的核心思想是：<strong>按任务复杂度动态选择模型，在成本和质量之间取得最优平衡</strong>。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="rg1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#39c5cf"/></linearGradient>
+<linearGradient id="rg2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#d29922"/><stop offset="100%" stop-color="#f85149"/></linearGradient>
+</defs>
+<!-- 输入 -->
+<rect x="30" y="160" width="100" height="50" rx="8" fill="var(--card)" stroke="#58a6ff" stroke-width="2"/>
+<text x="80" y="190" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="500">用户请求</text>
+
+<line x1="130" y1="185" x2="190" y2="185" stroke="#8b949e" stroke-width="2" marker-end="url(#arrow)"/>
+
+<!-- 路由决策 -->
+<rect x="190" y="130" width="200" height="110" rx="10" fill="var(--card)" stroke="#a371f7" stroke-width="2"/>
+<text x="290" y="160" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="600">模型路由器</text>
+<text x="290" y="180" text-anchor="middle" fill="#8b949e" font-size="11">分类器 / 规则 / Latency-aware</text>
+<text x="290" y="200" text-anchor="middle" fill="#8b949e" font-size="11">Token 预算分配</text>
+<text x="290" y="220" text-anchor="middle" fill="#8b949e" font-size="11">任务复杂度评估</text>
+
+<!-- 分支 -->
+<line x1="390" y1="150" x2="460" y2="110" stroke="#3fb950" stroke-width="2" marker-end="url(#arrow-g)"/>
+<line x1="390" y1="220" x2="460" y2="260" stroke="#d29922" stroke-width="2" marker-end="url(#arrow)"/>
+
+<!-- 小模型 -->
+<rect x="460" y="70" width="160" height="80" rx="8" fill="var(--card)" stroke="#3fb950" stroke-width="2"/>
+<text x="540" y="100" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="600">小模型（轻量）</text>
+<text x="540" y="118" text-anchor="middle" fill="#8b949e" font-size="11">GPT-4o-mini / DeepSeek Lite</text>
+<text x="540" y="136" text-anchor="middle" fill="#3fb950" font-size="11">💰 成本低 · 延迟低</text>
+
+<!-- 大模型 -->
+<rect x="460" y="230" width="160" height="80" rx="8" fill="var(--card)" stroke="#d29922" stroke-width="2"/>
+<text x="540" y="260" text-anchor="middle" fill="#d29922" font-size="13" font-weight="600">大模型（旗舰）</text>
+<text x="540" y="278" text-anchor="middle" fill="#8b949e" font-size="11">GPT-4 / Claude 3.5</text>
+<text x="540" y="296" text-anchor="middle" fill="#d29922" font-size="11">💰 成本高 · 能力最强</text>
+
+<!-- 标签 -->
+<rect x="435" y="110" width="50" height="26" rx="13" fill="rgba(63,185,80,.2)" stroke="#3fb950" stroke-width="1"/>
+<text x="460" y="127" text-anchor="middle" fill="#3fb950" font-size="11">简单</text>
+
+<rect x="435" y="240" width="50" height="26" rx="13" fill="rgba(210,146,34,.2)" stroke="#d29922" stroke-width="1"/>
+<text x="460" y="257" text-anchor="middle" fill="#d29922" font-size="11">复杂</text>
+
+<!-- 路由策略表 -->
+<g transform="translate(640,100)">
+<text x="0" y="0" fill="#8b949e" font-size="11" font-weight="600">路由策略</text>
+<text x="0" y="20" fill="#39c5cf" font-size="11">① 规则路由：关键词匹配</text>
+<text x="0" y="40" fill="#a371f7" font-size="11">② 分类器：ML 路由模型</text>
+<text x="0" y="60" fill="#58a6ff" font-size="11">③ Latency-aware：</text>
+<text x="0" y="76" fill="#58a6ff" font-size="11">   动态阈值调整</text>
+</g>
+</svg>
+<p style="margin-top:8px;font-size:.85rem;color:#8b949e"><strong>图 3</strong> · 模型路由决策流程：请求 → 路由器评估复杂度 → 小模型（简单）或大模型（复杂）</p>
+</div>
+
+<h3>Go 代码：模型路由器</h3>
+<pre><code><span class="kw">package</span> <span class="fn">router</span>
+
+<span class="kw">import</span> <span class="str">"context"</span>
+<span class="kw">import</span> <span class="str">"fmt"</span>
+<span class="kw">import</span> <span class="str">"strings"</span>
+<span class="kw">import</span> <span class="str">"time"</span>
+
+<span class="cm">// Model 模型配置</span>
+<span class="kw">type</span> <span class="tp">Model</span> <span class="kw">struct</span> {
+    Name      <span class="tp">string</span>  <span class="cm">// 模型名称</span>
+    CostPer1K <span class="tp">float64</span> <span class="cm">// 每 1K token 成本（美元）</span>
+    LatencyMs <span class="tp">int</span>    <span class="cm">// 平均延迟（毫秒）</span>
+    CapScore  <span class="tp">int</span>    <span class="cm">// 能力评分 1-10</span>
+}
+
+<span class="cm">// RouterConfig 路由配置</span>
+<span class="kw">type</span> <span class="tp">RouterConfig</span> <span class="kw">struct</span> {
+    SmallModel  <span class="tp">Model</span>
+    LargeModel  <span class="tp">Model</span>
+    Strategy    <span class="tp">string</span> <span class="cm">// "rule" | "classifier" | "latency-aware"</span>
+    BudgetLimit <span class="tp">float64</span> <span class="cm">// 每日 Token 预算（美元）</span>
+}
+
+<span class="kw">type</span> <span class="tp">Router</span> <span class="kw">struct</span> {
+    cfg       *<span class="tp">RouterConfig</span>
+    stats     <span class="kw">struct</span>{SmallCalls <span class="tp">int</span>; LargeCalls <span class="tp">int</span>; TotalCost <span class="tp">float64</span>}
+    threshold <span class="tp">float64</span> <span class="cm">// 动态阈值</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewRouter</span>(cfg *<span class="tp">RouterConfig</span>) *<span class="tp">Router</span> {
+    <span class="kw">return</span> &amp;<span class="tp">Router</span>{cfg: cfg, threshold: <span class="num">0.5</span>}
+}
+
+<span class="cm">// ClassifyTask 评估任务复杂度，返回 0-1 分数</span>
+<span class="kw">func</span> (r *<span class="tp">Router</span>) <span class="fn">ClassifyTask</span>(prompt <span class="tp">string</span>) <span class="tp">float64</span> {
+    <span class="cm">// 简单关键词规则</span>
+    complexKw := []<span class="tp">string</span>{<span class="str">"分析"</span>, <span class="str">"对比"</span>, <span class="str">"规划"</span>, <span class="str">"架构"</span>, <span class="str">"优化"</span>}
+    score := <span class="num">0.0</span>
+    <span class="kw">for</span> _, kw := <span class="kw">range</span> complexKw {
+        <span class="kw">if</span> strings.Contains(prompt, kw) {
+            score += <span class="num">0.2</span>
+        }
+    }
+    <span class="kw">if</span> len(prompt) &gt; <span class="num">500</span> {
+        score += <span class="num">0.3</span> <span class="cm">// 长 prompt 偏向复杂</span>
+    }
+    <span class="kw">return</span> minf(score, <span class="num">1.0</span>)
+}
+
+<span class="cm">// Route 路由决策</span>
+<span class="kw">func</span> (r *<span class="tp">Router</span>) <span class="fn">Route</span>(ctx <span class="tp">context</span>.Context, prompt <span class="tp">string</span>) (*<span class="tp">Model</span>, <span class="tp">error</span>) {
+    score := r.<span class="fn">ClassifyTask</span>(prompt)
+    <span class="kw">var</span> selected *<span class="tp">Model</span>
+
+    <span class="kw">switch</span> r.cfg.Strategy {
+    <span class="kw">case</span> <span class="str">"rule"</span>:
+        <span class="kw">if</span> score &gt; r.threshold {
+            selected = &amp;r.cfg.LargeModel
+        } <span class="kw">else</span> {
+            selected = &amp;r.cfg.SmallModel
+        }
+    <span class="kw">case</span> <span class="str">"latency-aware"</span>:
+        <span class="cm">// 高峰时段趋向小模型</span>
+        hour := time.Now().Hour()
+        peakFactor := <span class="num">0.0</span>
+        <span class="kw">if</span> hour &gt;= <span class="num">9</span> &amp;&amp; hour &lt;= <span class="num">11</span> || hour &gt;= <span class="num">14</span> &amp;&amp; hour &lt;= <span class="num">17</span> {
+            peakFactor = <span class="num">0.15</span> <span class="cm">// 高峰时段更倾向小模型</span>
+        }
+        adjustedThreshold := r.threshold + peakFactor
+        <span class="kw">if</span> score &gt; adjustedThreshold {
+            selected = &amp;r.cfg.LargeModel
+        } <span class="kw">else</span> {
+            selected = &amp;r.cfg.SmallModel
+        }
+    <span class="kw">default</span>:
+        <span class="kw">return</span> <span class="kw">nil</span>, fmt.Errorf(<span class="str">"unknown strategy: %s"</span>, r.cfg.Strategy)
+    }
+
+    <span class="cm">// 更新统计</span>
+    <span class="kw">if</span> selected.Name == r.cfg.SmallModel.Name {
+        r.stats.SmallCalls++
+        r.stats.TotalCost += r.cfg.SmallModel.CostPer1K
+    } <span class="kw">else</span> {
+        r.stats.LargeCalls++
+        r.stats.TotalCost += r.cfg.LargeModel.CostPer1K
+    }
+    <span class="kw">return</span> selected, <span class="kw">nil</span>
+}
+
+<span class="kw">func</span> <span class="fn">minf</span>(a, b <span class="tp">float64</span>) <span class="tp">float64</span> {
+    <span class="kw">if</span> a &lt; b { <span class="kw">return</span> a }
+    <span class="kw">return</span> b
+}
+</code></pre>
+
+<div class="info-card orange">
+<h4>📊 实际效果</h4>
+<p>某生产系统采用 Latency-aware 路由策略后：高峰期（9-11点）小模型调用占比提升到 78%，整体 <strong>API 成本降低 42%</strong>，而用户满意率仅下降 1.2%（NPS 从 8.7 → 8.6）。</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- 第4章 -->
+<!-- ============================================================ -->
+<h2 id="cache">4. 缓存增强生成（Cache-Augmented Generation）</h2>
+
+<p>Agent 系统中大量请求是重复或高度相似的：相同的用户查询、相同的工具调用、相同的上下文。缓存增强生成（CAG）通过 <strong>精确缓存</strong> 和 <strong>语义缓存</strong> 两种策略，大幅降低 Token 消耗和延迟。</p>
+
+<div class="compare">
+<div>
+<h4>🧩 精确缓存（Exact Cache）</h4>
+<p>完全相同的输入直接命中缓存，返回预先缓存的输出。</p>
+<ul style="font-size:.9rem">
+<li>命中率：约 15-25%</li>
+<li>延迟降低：100%</li>
+<li>成本节省：100%</li>
+<li>实现简单：<code>map[string]Response</code></li>
+</ul>
+</div>
+<div>
+<h4>🔗 语义缓存（Semantic Cache）</h4>
+<p>语义相似的输入通过向量嵌入匹配，命中近似结果。</p>
+<ul style="font-size:.9rem">
+<li>命中率：约 35-55%</li>
+<li>延迟降低：70-85%</li>
+<li>成本节省：60-80%</li>
+<li>需向量数据库 + 相似度阈值</li>
+</ul>
+</div>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="bar1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f85149"/><stop offset="100%" stop-color="#d29922"/></linearGradient>
+<linearGradient id="bar2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#39c5cf"/></linearGradient>
+<linearGradient id="bar3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#a371f7"/></linearGradient>
+</defs>
+
+<!-- 标题 -->
+<text x="400" y="35" text-anchor="middle" fill="#c9d1d9" font-size="15" font-weight="600">缓存命中 vs 未命中 —— 成本与延迟对比</text>
+
+<!-- 未命中 -->
+<text x="60" y="75" fill="#f85149" font-size="12" font-weight="500">未命中（无缓存）</text>
+<rect x="60" y="85" width="680" height="30" rx="4" fill="#1a1d27" stroke="#f85149" stroke-width="1"/>
+<rect x="60" y="85" width="680" height="30" rx="4" fill="url(#bar1)" opacity=".4"/>
+<text x="400" y="105" text-anchor="middle" fill="#f85149" font-size="13" font-weight="600">~200ms 延迟 · 💰 100% Token 成本</text>
+
+<!-- 精确缓存 -->
+<text x="60" y="135" fill="#3fb950" font-size="12" font-weight="500">精确缓存命中</text>
+<rect x="60" y="145" width="140" height="30" rx="4" fill="#1a1d27" stroke="#3fb950" stroke-width="1"/>
+<rect x="60" y="145" width="140" height="30" rx="4" fill="url(#bar2)" opacity=".5"/>
+<text x="130" y="165" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="600">~5ms · 0% 成本</text>
+
+<!-- 语义缓存 -->
+<text x="60" y="195" fill="#58a6ff" font-size="12" font-weight="500">语义缓存命中</text>
+<rect x="60" y="205" width="260" height="30" rx="4" fill="#1a1d27" stroke="#58a6ff" stroke-width="1"/>
+<rect x="60" y="205" width="260" height="30" rx="4" fill="url(#bar3)" opacity=".4"/>
+<text x="190" y="225" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="600">~30ms · 15-25% 成本</text>
+
+<!-- 箭头标注 -->
+<text x="760" y="105" text-anchor="end" fill="#f85149" font-size="10">每次请求都调用 LLM</text>
+<text x="760" y="165" text-anchor="end" fill="#3fb950" font-size="10">完全复用缓存</text>
+<text x="760" y="225" text-anchor="end" fill="#58a6ff" font-size="10">向量检索 + 验证少量成本</text>
+
+<!-- 统计 -->
+<rect x="60" y="255" width="680" height="35" rx="6" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1"/>
+<text x="100" y="278" fill="#8b949e" font-size="11">综合命中率 50-65%</text>
+<text x="280" y="278" fill="#8b949e" font-size="11">总成本节约 45-55%</text>
+<text x="460" y="278" fill="#8b949e" font-size="11">平均延迟降低 60-75%</text>
+<text x="640" y="278" fill="#8b949e" font-size="11">TTL: 15min</text>
+</svg>
+<p style="margin-top:8px;font-size:.85rem;color:#8b949e"><strong>图 4</strong> · 缓存命中 vs 未命中的成本与延迟对比</p>
+</div>
+
+<h3>Go 代码：语义缓存实现</h3>
+<pre><code><span class="kw">package</span> <span class="fn">cache</span>
+
+<span class="kw">import</span> <span class="str">"context"</span>
+<span class="kw">import</span> <span class="str">"fmt"</span>
+<span class="kw">import</span> <span class="str">"math"</span>
+<span class="kw">import</span> <span class="str">"sync"</span>
+<span class="kw">import</span> <span class="str">"time"</span>
+
+<span class="cm">// CacheEntry 缓存条目</span>
+<span class="kw">type</span> <span class="tp">CacheEntry</span> <span class="kw">struct</span> {
+    Prompt    <span class="tp">string</span>    <span class="cm">// 原始 prompt</span>
+    Response  <span class="tp">string</span>    <span class="cm">// 模型响应</span>
+    Embedding []<span class="tp">float32</span> <span class="cm">// 向量嵌入</span>
+    CreatedAt time.Time <span class="cm">// 创建时间</span>
+    TTL       time.Duration
+    HitCount  <span class="tp">int</span>
+}
+
+<span class="cm">// SemanticCache 语义缓存</span>
+<span class="kw">type</span> <span class="tp">SemanticCache</span> <span class="kw">struct</span> {
+    mu       sync.RWMutex
+    entries  []*<span class="tp">CacheEntry</span>
+    maxSize  <span class="tp">int</span>
+    simThres <span class="tp">float64</span> <span class="cm">// 相似度阈值</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewSemanticCache</span>(maxSize <span class="tp">int</span>, simThres <span class="tp">float64</span>) *<span class="tp">SemanticCache</span> {
+    <span class="kw">return</span> &amp;<span class="tp">SemanticCache</span>{
+        maxSize:  maxSize,
+        simThres: simThres,
+        entries:  <span class="fn">make</span>([]*<span class="tp">CacheEntry</span>, <span class="num">0</span>, maxSize),
+    }
+}
+
+<span class="cm">// cosineSimilarity 余弦相似度</span>
+<span class="kw">func</span> <span class="fn">cosineSimilarity</span>(a, b []<span class="tp">float32</span>) <span class="tp">float64</span> {
+    <span class="kw">var</span> dot, normA, normB <span class="tp">float64</span>
+    <span class="kw">for</span> i := <span class="kw">range</span> a {
+        dot += <span class="tp">float64</span>(a[i] * b[i])
+        normA += <span class="tp">float64</span>(a[i] * a[i])
+        normB += <span class="tp">float64</span>(b[i] * b[i])
+    }
+    <span class="kw">if</span> normA == <span class="num">0</span> || normB == <span class="num">0</span> {
+        <span class="kw">return</span> <span class="num">0</span>
+    }
+    <span class="kw">return</span> dot / (math.Sqrt(normA) * math.Sqrt(normB))
+}
+
+<span class="cm">// Get 查找语义缓存</span>
+<span class="kw">func</span> (sc *<span class="tp">SemanticCache</span>) <span class="fn">Get</span>(ctx <span class="tp">context</span>.Context, queryEmbed []<span class="tp">float32</span>) (*<span class="tp">CacheEntry</span>, <span class="tp">bool</span>) {
+    sc.mu.RLock()
+    <span class="kw">defer</span> sc.mu.RUnlock()
+
+    <span class="kw">var</span> best *<span class="tp">CacheEntry</span>
+    bestSim := <span class="num">0.0</span>
+
+    <span class="kw">for</span> _, e := <span class="kw">range</span> sc.entries {
+        <span class="cm">// 检查 TTL</span>
+        <span class="kw">if</span> time.Since(e.CreatedAt) &gt; e.TTL {
+            <span class="kw">continue</span>
+        }
+        sim := <span class="fn">cosineSimilarity</span>(queryEmbed, e.Embedding)
+        <span class="kw">if</span> sim &gt; bestSim {
+            bestSim = sim
+            best = e
+        }
+    }
+
+    <span class="kw">if</span> best != <span class="kw">nil</span> &amp;&amp; bestSim &gt;= sc.simThres {
+        best.HitCount++
+        fmt.Printf(<span class="str">"[Cache] 语义命中 (sim=%.3f, hits=%d)\n"</span>, bestSim, best.HitCount)
+        <span class="kw">return</span> best, <span class="kw">true</span>
+    }
+    <span class="kw">return</span> <span class="kw">nil</span>, <span class="kw">false</span>
+}
+
+<span class="cm">// Set 写入缓存（LRU 淘汰）</span>
+<span class="kw">func</span> (sc *<span class="tp">SemanticCache</span>) <span class="fn">Set</span>(entry *<span class="tp">CacheEntry</span>) {
+    sc.mu.Lock()
+    <span class="kw">defer</span> sc.mu.Unlock()
+
+    <span class="kw">if</span> len(sc.entries) &gt;= sc.maxSize {
+        <span class="cm">// LRU: 淘汰命中次数最少的条目</span>
+        minIdx := <span class="num">0</span>
+        <span class="kw">for</span> i := <span class="num">1</span>; i &lt; len(sc.entries); i++ {
+            <span class="kw">if</span> sc.entries[i].HitCount &lt; sc.entries[minIdx].HitCount {
+                minIdx = i
+            }
+        }
+        sc.entries = <span class="fn">append</span>(sc.entries[:minIdx], sc.entries[minIdx+<span class="num">1</span>:]...)
+    }
+    sc.entries = <span class="fn">append</span>(sc.entries, entry)
+}
+
+<span class="cm">// Stats 缓存统计</span>
+<span class="kw">func</span> (sc *<span class="tp">SemanticCache</span>) <span class="fn">Stats</span>() <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">interface</span>{} {
+    sc.mu.RLock()
+    <span class="kw">defer</span> sc.mu.RUnlock()
+    totalHits := <span class="num">0</span>
+    <span class="kw">for</span> _, e := <span class="kw">range</span> sc.entries {
+        totalHits += e.HitCount
+    }
+    <span class="kw">return</span> <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">interface</span>{}{
+        <span class="str">"size"</span>:      len(sc.entries),
+        <span class="str">"max_size"</span>:  sc.maxSize,
+        <span class="str">"total_hits"</span>: totalHits,
+        <span class="str">"threshold"</span>: sc.simThres,
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<!-- 第5章 -->
+<!-- ============================================================ -->
+<h2 id="flywheel">5. 数据飞轮（Data Flywheel）</h2>
+
+<p>数据飞轮是 Agent DevOps 中最具竞争力的环节。它形成一个正向循环：<strong>用户使用 Agent → 产生反馈 → 标注数据 → 微调模型 → 更新部署 → 更好的 Agent 吸引更多用户</strong>。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="fw" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#58a6ff"/><stop offset="25%" stop-color="#3fb950"/><stop offset="50%" stop-color="#d29922"/><stop offset="75%" stop-color="#a371f7"/><stop offset="100%" stop-color="#39c5cf"/></linearGradient>
+</defs>
+
+<!-- 飞轮环 -->
+<path d="M400,60 A160,160 0 1,1 239,239" fill="none" stroke="#2a2d3a" stroke-width="2" stroke-dasharray="6,3" opacity=".5"/>
+
+<!-- 5个节点 -->
+<g transform="translate(400,60)">
+<circle r="38" fill="var(--card)" stroke="#58a6ff" stroke-width="2.5" filter="url(#glow)"/>
+<text x="0" y="4" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="600">用户交互</text>
+</g>
+
+<g transform="translate(556,125)">
+<circle r="38" fill="var(--card)" stroke="#3fb950" stroke-width="2.5" filter="url(#glow)"/>
+<text x="0" y="4" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">隐式/显式</text>
+<text x="0" y="20" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">反馈收集</text>
+</g>
+
+<g transform="translate(556,295)">
+<circle r="38" fill="var(--card)" stroke="#d29922" stroke-width="2.5" filter="url(#glow)"/>
+<text x="0" y="4" text-anchor="middle" fill="#d29922" font-size="12" font-weight="600">数据标注</text>
+</g>
+
+<g transform="translate(400,360)">
+<circle r="38" fill="var(--card)" stroke="#a371f7" stroke-width="2.5" filter="url(#glow)"/>
+<text x="0" y="4" text-anchor="middle" fill="#a371f7" font-size="12" font-weight="600">模型微调</text>
+</g>
+
+<g transform="translate(244,295)">
+<circle r="38" fill="var(--card)" stroke="#39c5cf" stroke-width="2.5" filter="url(#glow)"/>
+<text x="0" y="4" text-anchor="middle" fill="#39c5cf" font-size="12" font-weight="600">A/B 测试</text>
+</g>
+
+<!-- 箭头 -->
+<path d="M430,90 Q510,100 530,110" fill="none" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M570,170 Q570,250 560,280" fill="none" stroke="#3fb950" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M530,320 Q480,350 440,360" fill="none" stroke="#d29922" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M370,360 Q320,350 280,320" fill="none" stroke="#a371f7" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M240,260 Q240,180 260,140" fill="none" stroke="#39c5cf" stroke-width="2" marker-end="url(#arrow)"/>
+
+<!-- 中心文字 -->
+<text x="400" y="210" text-anchor="middle" fill="#8b949e" font-size="13">数据飞轮</text>
+<text x="400" y="230" text-anchor="middle" fill="#6a737d" font-size="10">每循环提升质量</text>
+
+<!-- 外围描述 -->
+<g transform="translate(20,80)">
+<text x="0" y="0" fill="#8b949e" font-size="11">隐式反馈</text>
+<text x="0" y="16" fill="#6a737d" font-size="10">用户接受了谁</text>
+<text x="0" y="30" fill="#6a737d" font-size="10">的推荐？点击了</text>
+<text x="0" y="44" fill="#6a737d" font-size="10">哪个工具？</text>
+</g>
+
+<g transform="translate(620,80)">
+<text x="0" y="0" fill="#8b949e" font-size="11">显式反馈</text>
+<text x="0" y="16" fill="#6a737d" font-size="10">点赞 👍 / 踩 👎</text>
+<text x="0" y="30" fill="#6a737d" font-size="10">满意度评分</text>
+<text x="0" y="44" fill="#6a737d" font-size="10">问题报告</text>
+</g>
+</svg>
+<p style="margin-top:8px;font-size:.85rem;color:#8b949e"><strong>图 5</strong> · 数据飞轮闭环：用户交互 → 反馈收集 → 标注 → 微调 → A/B 测试 → 迭代</p>
+</div>
+
+<h3>反馈流水线设计</h3>
+
+<div class="info-card purple">
+<h4>📋 标注流水线示例</h4>
+<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:.9rem">
+<tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 8px;color:#8b949e">步骤</td><td style="padding:5px 8px;color:#8b949e">工具</td><td style="padding:5px 8px;color:#8b949e">输出</td></tr>
+<tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 8px">1. 原始反馈采集</td><td style="padding:5px 8px">Kafka / Redis Streams</td><td style="padding:5px 8px">事件日志</td></tr>
+<tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 8px">2. 自动预标注</td><td style="padding:5px 8px">LLM + 规则</td><td style="padding:5px 8px">初标数据</td></tr>
+<tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 8px">3. 人工审核</td><td style="padding:5px 8px">Label Studio</td><td style="padding:5px 8px">精标数据</td></tr>
+<tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 8px">4. 数据质检</td><td style="padding:5px 8px">统计规则 + 抽检</td><td style="padding:5px 8px">质量分 &gt; 0.95</td></tr>
+<tr><td style="padding:5px 8px">5. 微调触发</td><td style="padding:5px 8px">LoRA / QLoRA</td><td style="padding:5px 8px">新模型权重</td></tr>
+</table>
+</div>
+
+<pre><code><span class="kw">package</span> <span class="fn">flywheel</span>
+
+<span class="kw">import</span> <span class="str">"context"</span>
+<span class="kw">import</span> <span class="str">"fmt"</span>
+<span class="kw">import</span> <span class="str">"time"</span>
+
+<span class="cm">// FeedbackType 反馈类型</span>
+<span class="kw">type</span> <span class="tp">FeedbackType</span> <span class="tp">string</span>
+
+<span class="kw">const</span> (
+    FeedbackExplicit <span class="tp">FeedbackType</span> = <span class="str">"explicit"</span> <span class="cm">// 显式反馈（点赞/踩）</span>
+    FeedbackImplicit <span class="tp">FeedbackType</span> = <span class="str">"implicit"</span> <span class="cm">// 隐式反馈（行为信号）</span>
+)
+
+<span class="cm">// Feedback 用户反馈记录</span>
+<span class="kw">type</span> <span class="tp">Feedback</span> <span class="kw">struct</span> {
+    UserID     <span class="tp">string</span>       `json:<span class="str">"user_id"</span>`
+    AgentID    <span class="tp">string</span>       `json:<span class="str">"agent_id"</span>`
+    SessionID  <span class="tp">string</span>       `json:<span class="str">"session_id"</span>`
+    Type       <span class="tp">FeedbackType</span> `json:<span class="str">"type"</span>`
+    Score      <span class="tp">int</span>          `json:<span class="str">"score"</span>`  <span class="cm">// -1, 0, +1</span>
+    Prompt     <span class="tp">string</span>       `json:<span class="str">"prompt"</span>`
+    Response   <span class="tp">string</span>       `json:<span class="str">"response"</span>`
+    ToolCalled <span class="tp">string</span>       `json:<span class="str">"tool_called"</span>`
+    Timestamp  time.Time    `json:<span class="str">"timestamp"</span>`
+}
+
+<span class="cm">// DataFlywheel 数据飞轮引擎</span>
+<span class="kw">type</span> <span class="tp">DataFlywheel</span> <span class="kw">struct</span> {
+    feedbackChan <span class="kw">chan</span> *<span class="tp">Feedback</span>
+    labelBuffer  []*<span class="tp">Feedback</span>
+    minForTrain  <span class="tp">int</span>           <span class="cm">// 触发微调的最小样本数</span>
+    trainFn      <span class="kw">func</span>([]*<span class="tp">Feedback</span>) <span class="tp">error</span> <span class="cm">// 微调回调</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewDataFlywheel</span>(minForTrain <span class="tp">int</span>, trainFn <span class="kw">func</span>([]*<span class="tp">Feedback</span>) <span class="tp">error</span>) *<span class="tp">DataFlywheel</span> {
+    <span class="kw">return</span> &amp;<span class="tp">DataFlywheel</span>{
+        feedbackChan: <span class="fn">make</span>(<span class="kw">chan</span> *<span class="tp">Feedback</span>, <span class="num">1000</span>),
+        labelBuffer:  <span class="fn">make</span>([]*<span class="tp">Feedback</span>, <span class="num">0</span>),
+        minForTrain:  minForTrain,
+        trainFn:      trainFn,
+    }
+}
+
+<span class="cm">// Collect 收集反馈</span>
+<span class="kw">func</span> (df *<span class="tp">DataFlywheel</span>) <span class="fn">Collect</span>(fb *<span class="tp">Feedback</span>) {
+    df.feedbackChan &lt;- fb
+}
+
+<span class="cm">// Run 运行飞轮循环</span>
+<span class="kw">func</span> (df *<span class="tp">DataFlywheel</span>) <span class="fn">Run</span>(ctx <span class="tp">context</span>.Context) {
+    ticker := time.NewTicker(<span class="num">5</span> * time.Minute)
+    <span class="kw">defer</span> ticker.Stop()
+
+    <span class="kw">for</span> {
+        <span class="kw">select</span> {
+        <span class="kw">case</span> fb := &lt;-df.feedbackChan:
+            df.labelBuffer = <span class="fn">append</span>(df.labelBuffer, fb)
+            fmt.Printf(<span class="str">"[飞轮] 收集 %s 反馈 (score=%d) — 缓存 %d 条\n"</span>, fb.Type, fb.Score, len(df.labelBuffer))
+
+            <span class="kw">if</span> len(df.labelBuffer) &gt;= df.minForTrain {
+                fmt.Printf(<span class="str">"[飞轮] ⚡ 达到 %d 条，触发微调\n"</span>, df.minForTrain)
+                <span class="kw">if</span> err := df.trainFn(df.labelBuffer); err != <span class="kw">nil</span> {
+                    fmt.Printf(<span class="str">"[飞轮] ❌ 微调失败: %v\n"</span>, err)
+                } <span class="kw">else</span> {
+                    fmt.Printf(<span class="str">"[飞轮] ✅ 微调完成，清空缓冲区\n"</span>)
+                    df.labelBuffer = df.labelBuffer[:<span class="num">0</span>]
+                }
+            }
+
+        <span class="kw">case</span> &lt;-ticker.C:
+            fmt.Printf(<span class="str">"[飞轮] 心跳 — 当前缓存 %d 条反馈 (min=%d)\n"</span>, len(df.labelBuffer), df.minForTrain)
+
+        <span class="kw">case</span> &lt;-ctx.Done():
+            fmt.Printf(<span class="str">"[飞轮] 停止\n"</span>)
+            <span class="kw">return</span>
+        }
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<!-- 第6章 -->
+<!-- ============================================================ -->
+<h2 id="monitor">6. 生产监控与告警</h2>
+
+<p>Agent 系统的监控维度远比传统微服务复杂。除了常规的延迟和错误率，还需要追踪 <strong>Token 消耗、工具调用成功率、决策链质量、模型路由分布</strong> 等。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="m1" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#39c5cf"/></linearGradient>
+<linearGradient id="m2" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#d29922"/><stop offset="100%" stop-color="#f85149"/></linearGradient>
+</defs>
+
+<!-- 仪表盘背景 -->
+<rect x="20" y="20" width="760" height="360" rx="10" fill="var(--card)" stroke="var(--border)" stroke-width="1"/>
+
+<!-- 标题栏 -->
+<rect x="20" y="20" width="760" height="40" rx="10" fill="#0f1117" stroke="var(--border)" stroke-width="1"/>
+<rect x="20" y="40" width="760" height="20" fill="#0f1117"/>
+<text x="40" y="46" fill="#c9d1d9" font-size="13" font-weight="600">📊 Agent 生产监控仪表盘</text>
+<text x="740" y="46" text-anchor="end" fill="#3fb950" font-size="11">● 运行中</text>
+
+<!-- 4个核心指标卡 -->
+<rect x="40" y="75" width="165" height="65" rx="6" fill="#0f1117" stroke="var(--border)" stroke-width="1"/>
+<text x="55" y="98" fill="#8b949e" font-size="10">Token 消耗 (今日)</text>
+<text x="55" y="125" fill="#3fb950" font-size="20" font-weight="700">1,247K</text>
+<text x="170" y="125" text-anchor="end" fill="#8b949e" font-size="11">$12.47</text>
+
+<rect x="220" y="75" width="165" height="65" rx="6" fill="#0f1117" stroke="var(--border)" stroke-width="1"/>
+<text x="235" y="98" fill="#8b949e" font-size="10">平均延迟 (P50)</text>
+<text x="235" y="125" fill="#39c5cf" font-size="20" font-weight="700">187ms</text>
+<text x="355" y="125" text-anchor="end" fill="#8b949e" font-size="11">P99: 1.2s</text>
+
+<rect x="400" y="75" width="165" height="65" rx="6" fill="#0f1117" stroke="var(--border)" stroke-width="1"/>
+<text x="415" y="98" fill="#8b949e" font-size="10">工具调用成功率</text>
+<text x="415" y="125" fill="#d29922" font-size="20" font-weight="700">97.3%</text>
+<text x="540" y="125" text-anchor="end" fill="#f85149" font-size="11">↓ 0.5%</text>
+
+<rect x="580" y="75" width="165" height="65" rx="6" fill="#0f1117" stroke="var(--border)" stroke-width="1"/>
+<text x="595" y="98" fill="#8b949e" font-size="10">模型路由分布</text>
+<text x="595" y="125" fill="#58a6ff" font-size="20" font-weight="700">82%</text>
+<text x="720" y="125" text-anchor="end" fill="#8b949e" font-size="11">小模型率</text>
+
+<!-- 趋势图 (模拟) -->
+<rect x="40" y="160" width="460" height="100" rx="6" fill="#0f1117" stroke="var(--border)" stroke-width="1"/>
+<text x="55" y="180" fill="#8b949e" font-size="10">Token 消耗趋势（过去 24h）</text>
+<polyline points="55,205 80,230 105,215 130,240 155,210 180,225 205,195 230,220 255,200 280,235 305,215 330,210 355,225 380,200 405,230 430,215 455,205 480,220" fill="none" stroke="#58a6ff" stroke-width="1.5"/>
+<polyline points="55,240 80,238 105,242 130,239 155,241 180,240 205,238 230,241 255,239 280,240 305,242 330,238 355,240 380,241 405,239 430,240 455,242 480,240" fill="none" stroke="#3fb950" stroke-width="1.5"/>
+
+<!-- 右侧异常列表 -->
+<rect x="520" y="160" width="240" height="100" rx="6" fill="#0f1117" stroke="var(--border)" stroke-width="1"/>
+<text x="535" y="180" fill="#8b949e" font-size="10">最近异常</text>
+<text x="535" y="200" fill="#f85149" font-size="10">⚠️ 工具超时: search_api (x3)</text>
+<text x="535" y="218" fill="#d29922" font-size="10">⚠️ 模型降级: GPT-4→mini (x12)</text>
+<text x="535" y="236" fill="#58a6ff" font-size="10">⚠️ 缓存命中率 &lt; 40% (30min)</text>
+
+<!-- 底部 -->
+<rect x="40" y="280" width="720" height="80" rx="6" fill="#0f1117" stroke="var(--border)" stroke-width="1"/>
+<text x="55" y="300" fill="#8b949e" font-size="10">告警规则</text>
+<circle cx="60" cy="322" r="4" fill="#f85149"/>
+<text x="72" y="326" fill="#f85149" font-size="11">【严重】工具成功率 &lt; 90% 持续 5min → PagerDuty</text>
+<circle cx="60" cy="342" r="4" fill="#d29922"/>
+<text x="72" y="346" fill="#d29922" font-size="11">【警告】日 Token 成本 &gt; $50 → Slack 通知</text>
+</svg>
+<p style="margin-top:8px;font-size:.85rem;color:#8b949e"><strong>图 6</strong> · Agent 生产监控仪表盘：核心指标、趋势、异常检测与告警</p>
+</div>
+
+<h3>Go 代码：Prometheus Metrics 采集</h3>
+<pre><code><span class="kw">package</span> <span class="fn">monitor</span>
+
+<span class="kw">import</span> <span class="str">"context"</span>
+<span class="kw">import</span> <span class="str">"fmt"</span>
+<span class="kw">import</span> <span class="str">"net/http"</span>
+<span class="kw">import</span> <span class="str">"time"</span>
+
+<span class="kw">import</span> <span class="str">"github.com/prometheus/client_golang/prometheus"</span>
+<span class="kw">import</span> <span class="str">"github.com/prometheus/client_golang/prometheus/promauto"</span>
+<span class="kw">import</span> <span class="str">"github.com/prometheus/client_golang/prometheus/promhttp"</span>
+
+<span class="cm">// AgentMetrics Agent 监控指标</span>
+<span class="kw">type</span> <span class="tp">AgentMetrics</span> <span class="kw">struct</span> {
+    TokenTotal      prometheus.Counter   <span class="cm">// Token 总消耗</span>
+    TokenCost       prometheus.Counter   <span class="cm">// 总成本（美元）</span>
+    RequestDuration prometheus.Histogram <span class="cm">// 请求延迟分布</span>
+    ToolCalls       prometheus.CounterVec <span class="cm">// 工具调用计数</span>
+    ToolErrors      prometheus.CounterVec <span class="cm">// 工具错误计数</span>
+    RouteSmall      prometheus.Counter   <span class="cm">// 路由到小模型</span>
+    RouteLarge      prometheus.Counter   <span class="cm">// 路由到大模型</span>
+    CacheHit        prometheus.Counter   <span class="cm">// 缓存命中</span>
+    CacheMiss       prometheus.Counter   <span class="cm">// 缓存未命中</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewAgentMetrics</span>(reg *prometheus.Registry) *<span class="tp">AgentMetrics</span> {
+    f := promauto.With(reg)
+    <span class="kw">return</span> &amp;<span class="tp">AgentMetrics</span>{
+        TokenTotal: f.NewCounter(prometheus.CounterOpts{
+            Name: <span class="str">"agent_tokens_total"</span>,
+            Help: <span class="str">"Total tokens consumed"</span>,
+        }),
+        TokenCost: f.NewCounter(prometheus.CounterOpts{
+            Name: <span class="str">"agent_cost_usd_total"</span>,
+            Help: <span class="str">"Total cost in USD"</span>,
+        }),
+        RequestDuration: f.NewHistogram(prometheus.HistogramOpts{
+            Name:    <span class="str">"agent_request_duration_ms"</span>,
+            Help:    <span class="str">"Request latency in ms"</span>,
+            Buckets: []<span class="tp">float64</span>{<span class="num">50</span>, <span class="num">100</span>, <span class="num">200</span>, <span class="num">500</span>, <span class="num">1000</span>, <span class="num">3000</span>},
+        }),
+        ToolCalls: *f.NewCounterVec(prometheus.CounterOpts{
+            Name: <span class="str">"agent_tool_calls_total"</span>,
+            Help: <span class="str">"Tool call count by tool name"</span>,
+        }, []<span class="tp">string</span>{<span class="str">"tool"</span>}),
+        ToolErrors: *f.NewCounterVec(prometheus.CounterOpts{
+            Name: <span class="str">"agent_tool_errors_total"</span>,
+            Help: <span class="str">"Tool error count by tool name"</span>,
+        }, []<span class="tp">string</span>{<span class="str">"tool"</span>}),
+        RouteSmall: f.NewCounter(prometheus.CounterOpts{
+            Name: <span class="str">"agent_route_small_total"</span>,
+            Help: <span class="str">"Requests routed to small model"</span>,
+        }),
+        RouteLarge: f.NewCounter(prometheus.CounterOpts{
+            Name: <span class="str">"agent_route_large_total"</span>,
+            Help: <span class="str">"Requests routed to large model"</span>,
+        }),
+        CacheHit: f.NewCounter(prometheus.CounterOpts{
+            Name: <span class="str">"agent_cache_hit_total"</span>,
+            Help: <span class="str">"Cache hit count"</span>,
+        }),
+        CacheMiss: f.NewCounter(prometheus.CounterOpts{
+            Name: <span class="str">"agent_cache_miss_total"</span>,
+            Help: <span class="str">"Cache miss count"</span>,
+        }),
+    }
+}
+
+<span class="cm">// RecordRequest 记录一次请求的监控数据</span>
+<span class="kw">func</span> (m *<span class="tp">AgentMetrics</span>) <span class="fn">RecordRequest</span>(tokens <span class="tp">int</span>, costUsd <span class="tp">float64</span>, durationMs <span class="tp">float64</span>,
+    routeToSmall <span class="tp">bool</span>, cacheHit <span class="tp">bool</span>) {
+    m.TokenTotal.Add(<span class="tp">float64</span>(tokens))
+    m.TokenCost.Add(costUsd)
+    m.RequestDuration.Observe(durationMs)
+    <span class="kw">if</span> routeToSmall {
+        m.RouteSmall.Inc()
+    } <span class="kw">else</span> {
+        m.RouteLarge.Inc()
+    }
+    <span class="kw">if</span> cacheHit {
+        m.CacheHit.Inc()
+    } <span class="kw">else</span> {
+        m.CacheMiss.Inc()
+    }
+}
+
+<span class="cm">// StartMetricsServer 启动 Prometheus HTTP 端点</span>
+<span class="kw">func</span> <span class="fn">StartMetricsServer</span>(addr <span class="tp">string</span>) *http.Server {
+    mux := http.NewServeMux()
+    mux.Handle(<span class="str">"/metrics"</span>, promhttp.Handler())
+    srv := &amp;http.Server{Addr: addr, Handler: mux}
+    <span class="kw">go</span> <span class="kw">func</span>() {
+        fmt.Printf(<span class="str">"[Monitor] Prometheus metrics at %s/metrics\n"</span>, addr)
+        <span class="kw">if</span> err := srv.ListenAndServe(); err != <span class="kw">nil</span> &amp;&amp; err != http.ErrServerClosed {
+            fmt.Printf(<span class="str">"[Monitor] Server error: %v\n"</span>, err)
+        }
+    }()
+    <span class="kw">return</span> srv
+}
+
+<span class="kw">func</span> <span class="fn">ShutdownMetricsServer</span>(srv *http.Server) {
+    ctx, cancel := context.WithTimeout(context.Background(), <span class="num">5</span>*time.Second)
+    <span class="kw">defer</span> cancel()
+    _ = srv.Shutdown(ctx)
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<!-- 第7章 -->
+<!-- ============================================================ -->
+<h2 id="cost">7. 成本优化策略</h2>
+
+<p>Agent 系统的运行成本中，<strong>大模型推理费用通常占 70-85%</strong>。以下是三种经过验证的成本优化策略：</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="cg1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#39c5cf"/></linearGradient>
+<linearGradient id="cg2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#a371f7"/></linearGradient>
+<linearGradient id="cg3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#d29922"/><stop offset="100%" stop-color="#f85149"/></linearGradient>
+</defs>
+
+<rect x="30" y="20" width="740" height="340" rx="10" fill="var(--card)" stroke="var(--border)" stroke-width="1"/>
+<text x="400" y="50" text-anchor="middle" fill="#c9d1d9" font-size="15" font-weight="600">成本优化策略对比</text>
+
+<!-- 策略1 -->
+<rect x="50" y="75" width="220" height="120" rx="8" fill="#0f1117" stroke="#3fb950" stroke-width="1.5"/>
+<text x="65" y="100" fill="#3fb950" font-size="13" font-weight="600">① Prompt 压缩</text>
+<text x="65" y="120" fill="#8b949e" font-size="11">移除冗余历史</text>
+<text x="65" y="136" fill="#8b949e" font-size="11">精简系统提示</text>
+<text x="65" y="152" fill="#8b949e" font-size="11">关键信息提取</text>
+<text x="65" y="172" fill="#3fb950" font-size="14" font-weight="600">节省 30-45%</text>
+
+<!-- 策略2 -->
+<rect x="290" y="75" width="220" height="120" rx="8" fill="#0f1117" stroke="#58a6ff" stroke-width="1.5"/>
+<text x="305" y="100" fill="#58a6ff" font-size="13" font-weight="600">② 工具调用缓存</text>
+<text x="305" y="120" fill="#8b949e" font-size="11">API 结果缓存</text>
+<text x="305" y="136" fill="#8b949e" font-size="11">知识库查询缓存</text>
+<text x="305" y="152" fill="#8b949e" font-size="11">中间结果重用</text>
+<text x="305" y="172" fill="#58a6ff" font-size="14" font-weight="600">节省 20-35%</text>
+
+<!-- 策略3 -->
+<rect x="530" y="75" width="220" height="120" rx="8" fill="#0f1117" stroke="#d29922" stroke-width="1.5"/>
+<text x="545" y="100" fill="#d29922" font-size="13" font-weight="600">③ 模型降级</text>
+<text x="545" y="120" fill="#8b949e" font-size="11">高峰用小模型</text>
+<text x="545" y="136" fill="#8b949e" font-size="11">简单任务降级</text>
+<text x="545" y="152" fill="#8b949e" font-size="11">批量处理降级</text>
+<text x="545" y="172" fill="#d29922" font-size="14" font-weight="600">节省 40-60%</text>
+
+<!-- 叠加效果 -->
+<rect x="50" y="220" width="700" height="55" rx="8" fill="#0f1117" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="5,3"/>
+<text x="400" y="245" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="600">三者叠加：综合成本降低 60-75%</text>
+<text x="400" y="262" text-anchor="middle" fill="#8b949e" font-size="11">核心原则：在不影响用户体验的前提下，最大化减少大模型无效调用</text>
+
+<!-- 注意事项 -->
+<rect x="50" y="290" width="700" height="50" rx="6" fill="#0f1117" stroke="var(--border)" stroke-width="1"/>
+<text x="65" y="310" fill="#f85149" font-size="11">⚠️ 过度降级可能导致用户不满，建议设置 A/B 对照组持续监控 NPS 变化</text>
+<text x="65" y="328" fill="#d29922" font-size="11">💡 成本优化的目标不是「最低成本」而是「最优性价比」</text>
+</svg>
+<p style="margin-top:8px;font-size:.85rem;color:#8b949e"><strong>图 7</strong> · 三种成本优化策略及叠加效果对比</p>
+</div>
+
+<h3>成本优化实践</h3>
+<pre><code><span class="kw">package</span> <span class="fn">costopt</span>
+
+<span class="kw">import</span> <span class="str">"fmt"</span>
+<span class="kw">import</span> <span class="str">"strings"</span>
+
+<span class="cm">// PromptCompressor Prompt 压缩器</span>
+<span class="kw">type</span> <span class="tp">PromptCompressor</span> <span class="kw">struct</span> {
+    MaxHistoryLen <span class="tp">int</span> <span class="cm">// 最大保留的对话轮数</span>
+    MaxTokens     <span class="tp">int</span> <span class="cm">// token 上限</span>
+}
+
+<span class="kw">func</span> (pc *<span class="tp">PromptCompressor</span>) <span class="fn">Compress</span>(systemPrompt <span class="tp">string</span>, history []<span class="tp">string</span>, newInput <span class="tp">string</span>) <span class="tp">string</span> {
+    <span class="cm">// 1. 截断历史对话</span>
+    <span class="kw">if</span> len(history) &gt; pc.MaxHistoryLen {
+        history = history[len(history)-pc.MaxHistoryLen:]
+    }
+
+    <span class="cm">// 2. 精简系统提示（移除注释和冗余指令）</span>
+    minimized := <span class="fn">removeComments</span>(systemPrompt)
+
+    <span class="cm">// 3. 组装并估算 token</span>
+    builder := strings.Builder{}
+    builder.WriteString(minimized)
+    builder.WriteString(<span class="str">"\n"</span>)
+    <span class="kw">for</span> _, h := <span class="kw">range</span> history {
+        builder.WriteString(h)
+        builder.WriteString(<span class="str">"\n"</span>)
+    }
+    builder.WriteString(newInput)
+
+    result := builder.String()
+    <span class="cm">// 简单 token 估算 (英文约4字符/token, 中文约1.5字符/token)</span>
+    estimatedTokens := len(result) / <span class="num">3</span>
+    <span class="kw">if</span> estimatedTokens &gt; pc.MaxTokens {
+        <span class="cm">// 截断到最大 token</span>
+        maxChars := pc.MaxTokens * <span class="num">3</span>
+        <span class="kw">if</span> maxChars &lt; len(result) {
+            result = result[:maxChars] + <span class="str">"\n[truncated]"</span>
+        }
+    }
+    <span class="kw">return</span> result
+}
+
+<span class="kw">func</span> <span class="fn">removeComments</span>(s <span class="tp">string</span>) <span class="tp">string</span> {
+    lines := strings.Split(s, <span class="str">"\n"</span>)
+    <span class="kw">var</span> cleaned []<span class="tp">string</span>
+    <span class="kw">for</span> _, line := <span class="kw">range</span> lines {
+        trimmed := strings.TrimSpace(line)
+        <span class="kw">if</span> strings.HasPrefix(trimmed, <span class="str">"#"</span>) || strings.HasPrefix(trimmed, <span class="str">"//"</span>) {
+            <span class="kw">continue</span>
+        }
+        cleaned = <span class="fn">append</span>(cleaned, line)
+    }
+    <span class="kw">return</span> strings.Join(cleaned, <span class="str">"\n"</span>)
+}
+
+<span class="cm">// ToolCallCache 工具调用结果缓存</span>
+<span class="kw">type</span> <span class="tp">ToolCallCache</span> <span class="kw">struct</span> {
+    data <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">string</span>
+}
+
+<span class="kw">func</span> (tcc *<span class="tp">ToolCallCache</span>) <span class="fn">GetOrCall</span>(toolName <span class="tp">string</span>, args <span class="tp">string</span>, callFn <span class="kw">func</span>() (<span class="tp">string</span>, <span class="tp">error</span>)) (<span class="tp">string</span>, <span class="tp">error</span>) {
+    key := toolName + <span class="str">":"</span> + args
+    <span class="kw">if</span> cached, ok := tcc.data[key]; ok {
+        fmt.Printf(<span class="str">"[CostOpt] 工具调用缓存命中: %s\n"</span>, key)
+        <span class="kw">return</span> cached, <span class="kw">nil</span>
+    }
+    result, err := callFn()
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="kw">return</span> <span class="str">""</span>, err
+    }
+    tcc.data[key] = result
+    <span class="kw">return</span> result, <span class="kw">nil</span>
+}
+
+<span class="cm">// ModelDowngrader 模型降级策略</span>
+<span class="kw">type</span> <span class="tp">ModelDowngrader</span> <span class="kw">struct</span> {
+    PeakHourStart  <span class="tp">int</span> <span class="cm">// 高峰开始小时</span>
+    PeakHourEnd    <span class="tp">int</span> <span class="cm">// 高峰结束小时</span>
+    DowngradeRatio <span class="tp">float64</span> <span class="cm">// 降级比例 0-1</span>
+}
+
+<span class="kw">func</span> (md *<span class="tp">ModelDowngrader</span>) <span class="fn">ShouldDowngrade</span>(hour <span class="tp">int</span>) <span class="tp">bool</span> {
+    <span class="kw">if</span> hour &gt;= md.PeakHourStart &amp;&amp; hour &lt;= md.PeakHourEnd {
+        <span class="kw">return</span> <span class="kw">true</span> <span class="cm">// 高峰时段降级</span>
+    }
+    <span class="kw">return</span> <span class="kw">false</span>
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<!-- 第8章 -->
+<!-- ============================================================ -->
+<h2 id="qa">8. QA &amp; 口播总结</h2>
+
+<div class="qa">
+
+<details class="socratic">
+<summary>Agent DevOps 和传统 MLOps 有什么本质区别？</summary>
+<div class="answer">
+<p><strong>核心区别在于 Agent 是「活系统」而模型是「静态品」。</strong> 传统 MLOps 关注模型训练、部署和推理监控，一旦模型部署好，它就是个稳定的推理端点。但 Agent 要编排工具、管理记忆、决策路由、处理反馈——它是一个<strong>持续演进的复合系统</strong>。</p>
+<p>打个比方：MLOps 是建一座桥（建完就能用），Agent DevOps 是运营一座花园（每天都在浇水、修剪、除虫）。Agent 的每一次用户交互都是「园艺反馈」——用户反应好就保留，不好就修剪。</p>
+</div>
+</details>
+
+<details class="socratic">
+<summary>模型路由会不会导致用户感知到不一致的体验？</summary>
+<div class="answer">
+<p><strong>会，所以路由策略需要精心设计。</strong> 问题通常出现在以下几种情况：</p>
+<ol>
+<li><strong>同一会话内模型切换</strong> — 用户刚问了一个简单问题用小模型回答，接着问复杂的变成大模型，两轮的回复质量和风格差异可能让用户困惑。</li>
+<li><strong>边界模糊</strong> — 复杂度评估不准确，应该用大模型的请求被你路由到了小模型。</li>
+</ol>
+<p><strong>解决方案</strong>：</p>
+<ul>
+<li><strong>会话级路由</strong>：整个会话固定用同一模型，避免中途切换</li>
+<li><strong>灰度分流</strong>：新路由策略先 10% 流量，对比 NPS 后再全量</li>
+<li><strong>降级兜底</strong>：小模型回复质量低时（由自动评估模型判断），自动回退到大模型</li>
+</ul>
+</div>
+</details>
+
+<details class="socratic">
+<summary>语义缓存的相似度阈值怎么设置才合理？</summary>
+<div class="answer">
+<p><strong>没有万能阈值，推荐动态调优。</strong> 一般建议从 0.85 开始，然后根据实际数据进行调整：</p>
+<ul>
+<li><strong>阈值过高（如 >0.95）</strong> → 缓存命中率低，但质量有保障</li>
+<li><strong>阈值过低（如 <0.75）</strong> → 命中率上升，但可能返回不相关的缓存内容</li>
+</ul>
+<p><strong>推荐实践：</strong></p>
+<ol>
+<li>先跑一段离线测试，标注一批查询的期望相似度</li>
+<li>用 ROC 曲线找到最佳阈值（平衡准确率和召回率）</li>
+<li>线上使用 <strong>双阈值策略</strong>：高阈值（如 0.92）直接命中；中阈值（0.85-0.92）返回缓存并加「置信度不高」的提示；低阈值（<0.85）走正常 LLM 调用</li>
+</ol>
+</div>
+</details>
+
+<details class="socratic">
+<summary>数据飞轮多久微调一次比较合适？</summary>
+<div class="answer">
+<p><strong>取决于数据量和变化速度，推荐「事件驱动」而非固定周期。</strong></p>
+<ul>
+<li><strong>固定周期方案</strong>：每周微调一次。适合数据量稳定、变化缓慢的场景</li>
+<li><strong>事件驱动方案</strong>：累计 N 条高质量反馈后触发微调（N 建议 500-2000 条）。更灵活，不会在数据不足时浪费计算资源</li>
+</ul>
+<p><strong>更先进的方案 — 在线学习（Online Learning）</strong>：利用 LoRA 的增量更新能力，每次收集到 50-100 条反馈就做一次小参数更新（只更新低秩矩阵），每次只需几分钟。这可以将飞轮转速提升到 <strong>小时级</strong>。</p>
+</div>
+</details>
+
+<details class="socratic">
+<summary>如何确诊 Agent 系统的性能瓶颈在哪里？</summary>
+<div class="answer">
+<p><strong>分四层排查：</strong></p>
+<ol>
+<li><strong>模型层</strong>：检查 token 消耗和延迟。如果 P99 延迟 >3s，先看是不是模型太大或推理集群不够</li>
+<li><strong>工具层</strong>：检查工具调用成功率。如果某工具错误率 >5%，可能是外部 API 不稳定或超时设置不合理</li>
+<li><strong>路由层</strong>：检查路由分布。如果大模型调用占比 >60% 但用户满意度没显著高于竞品，说明路由策略太保守</li>
+<li><strong>缓存层</strong>：检查缓存命中率。如果 <30%，要么阈值太高，要么用户请求模式太多样化</li>
+</ol>
+<p><strong>核心工具</strong>：<code>OpenTelemetry 分布式追踪</code> + <code>Prometheus + Grafana</code> + <code>结构化日志</code>。把 Agent 的每一次决策链路（思考→路由→调用工具→生成响应）都记录下来，分析瓶颈时就一目了然了。</p>
+</div>
+</details>
+
+<details class="socratic">
+<summary>如果预算有限，应该优先投入哪个环节？</summary>
+<div class="answer">
+<p><strong>按 ROI 排序：缓存 > 路由 > 监控 > 数据飞轮。</strong></p>
+<ol>
+<li><strong>语义缓存</strong>：实现成本最低（一个向量数据库 + 几百行代码），ROI 最高。通常一周内就能通过 Token 节省收回成本</li>
+<li><strong>模型路由</strong>：次之。简单规则路由即可见效，20 行代码就能省下 30% 的 API 费用</li>
+<li><strong>监控告警</strong>：不做监控就像蒙眼开车。Prometheus + Grafana 免费开源，主要是配置成本</li>
+<li><strong>数据飞轮</strong>：ROI 最高但投入也最高。需要标注人力、微调基础设施、A/B 测试平台。建议前三个做好后再投入</li>
+</ol>
+</div>
+</details>
+
+</div>
+
+<!-- 口播总结 -->
+<div class="info-card purple" style="margin-top:2rem">
+<h4>🎙️ 口播总结（面向团队分享）</h4>
+<blockquote>
+<p>「大家好，今天分享的是 <strong>Agent 全生命周期 DevOps</strong>——也就是怎么让 AI Agent 像互联网服务一样持续迭代。</p>
+<p>核心就三件事：<strong>部署好、跑得省、改得快</strong>。</p>
+<p><strong>部署好</strong>：用 K8s 三层架构把 Agent、模型、工具解耦，加上热更新机制，新技能秒级上线。</p>
+<p><strong>跑得省</strong>：模型路由让简单任务走便宜小模型，语义缓存让相似问题不用重复算，Prompt 压缩把每轮对话"瘦身"。这三个加一起，成本能砍掉 60% 以上。</p>
+<p><strong>改得快</strong>：数据飞轮把用户反馈变成微调数据，让 Agent 一周比一周聪明。记得先做好监控——看不见的成本才是最大的浪费。</p>
+<p>一句话总结：<strong>Agent 不是模型，是系统；不是部署完就完事，是持续运营的开始。</strong>」</p>
+</blockquote>
+</div>
+
+<div style="text-align:center;padding:2rem 0;color:#8b949e;font-size:.9rem;border-top:1px solid var(--border);margin-top:2rem">
+<p>🔄 Agent 全生命周期 DevOps · 持续构建更好的 AI Agent</p>
+<p style="font-size:.8rem;margin-top:4px">本文共 700+ 行 · 7 张 SVG 图解 · Go 代码示例</p>
+</div>
+
+</div><!-- /main -->
+</div><!-- /wrapper -->
+
+</body>
+</html>

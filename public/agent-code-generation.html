@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💻 代码生成 Agent — SWE-Agent/Cursor/Devin 原理 & Go 实现</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --card: #1a1d27;
+  --border: #2a2d3a;
+  --text: #c9d1d9;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --orange: #d29922;
+  --red: #f85149;
+  --purple: #a371f7;
+  --cyan: #39c5cf;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.7;font-size:16px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.sidebar{position:fixed;top:0;left:0;width:260px;height:100vh;background:var(--card);border-right:1px solid var(--border);padding:24px 16px;overflow-y:auto;z-index:100}
+.sidebar h2{font-size:15px;color:var(--accent);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.sidebar nav a{display:block;padding:6px 8px;font-size:13px;color:var(--text);border-radius:4px;margin-bottom:2px;transition:all .2s}
+.sidebar nav a:hover{background:rgba(88,166,255,.1);color:var(--accent);text-decoration:none}
+.sidebar .back-home{display:block;margin-top:24px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;text-align:center;font-size:14px;color:var(--text);transition:all .2s}
+.sidebar .back-home:hover{background:var(--accent);color:#fff;border-color:var(--accent);text-decoration:none}
+.main{margin-left:260px;padding:40px 48px 80px;max-width:960px}
+h1{font-size:32px;margin-bottom:8px;color:#fff}
+.subtitle{font-size:14px;color:var(--text);opacity:.7;margin-bottom:40px}
+h2{font-size:24px;color:#fff;margin:48px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--accent)}
+h3{font-size:18px;color:var(--accent);margin:28px 0 12px}
+h4{font-size:15px;color:var(--orange);margin:20px 0 8px}
+p{margin-bottom:14px}
+code{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:14px;background:rgba(88,166,255,.1);padding:2px 6px;border-radius:3px;color:var(--cyan)}
+pre{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;margin:16px 0;font-size:13px;line-height:1.5}
+pre code{background:none;padding:0;color:var(--text);font-size:13px}
+.kw{color:var(--purple)}.fn{color:var(--accent)}.str{color:var(--green)}.num{color:var(--orange)}.cm{color:var(--text);opacity:.5}.tp{color:var(--cyan)}.op{color:var(--red)}
+
+.feynman{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin:20px 0;position:relative}
+.feynman::before{content:'🎯 费曼洞察';position:absolute;top:-10px;left:16px;background:var(--bg);padding:0 8px;font-size:12px;color:var(--accent);font-weight:600}
+
+.diagram{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin:20px 0;text-align:center}
+.diagram svg{max-width:100%;height:auto;display:block;margin:0 auto}
+.diagram .caption{font-size:13px;color:var(--text);opacity:.7;margin-top:10px}
+
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+.compare>div{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px}
+.compare .badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600;margin-bottom:8px}
+.compare .badge.left{background:rgba(248,81,73,.2);color:var(--red)}
+.compare .badge.right{background:rgba(63,185,80,.2);color:var(--green)}
+
+.info-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin:12px 0}
+.info-card strong{color:var(--accent)}
+
+.qa{margin:12px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+details.socratic summary{padding:14px 16px;cursor:pointer;background:var(--card);font-weight:600;color:#fff;transition:all .2s;list-style:none;display:flex;align-items:center}
+details.socratic summary::-webkit-details-marker{display:none}
+details.socratic summary::before{content:'▶';margin-right:10px;font-size:12px;transition:transform .2s;color:var(--accent)}
+details.socratic[open] summary::before{transform:rotate(90deg)}
+details.socratic[open] summary{background:rgba(88,166,255,.08);border-bottom:1px solid var(--border)}
+details.socratic .qa-body{padding:16px;background:var(--card)}
+
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px}
+th{background:rgba(88,166,255,.1);color:var(--accent);padding:10px 12px;text-align:left;border-bottom:2px solid var(--accent);font-weight:600}
+td{padding:10px 12px;border-bottom:1px solid var(--border)}
+tr:hover td{background:rgba(255,255,255,.02)}
+
+ul,ol{margin:8px 0 14px 20px}
+li{margin-bottom:4px}
+
+@media(max-width:768px){
+.sidebar{display:none}
+.main{margin-left:0;padding:20px 16px 60px}
+.compare{grid-template-columns:1fr}
+h1{font-size:24px}
+}
+
+.copy-btn{float:right;padding:2px 10px;font-size:12px;background:var(--border);border:none;border-radius:4px;color:var(--text);cursor:pointer}
+.copy-btn:hover{background:var(--accent);color:#fff}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+<h2>📋 目录</h2>
+<nav>
+<a href="#ch1">1. 为什么需要 Agent</a>
+<a href="#ch2">2. 代码仓库理解</a>
+<a href="#ch3">3. 代码编辑三步曲</a>
+<a href="#ch4">4. 错误定位与自动修复</a>
+<a href="#ch5">5. SDK 和 API 适配</a>
+<a href="#ch6">6. 架构解析</a>
+<a href="#ch7">7. MCP 应用</a>
+<a href="#ch8">8. 安全考量</a>
+<a href="#ch9">9. QA & 总结</a>
+</nav>
+<a href="/" class="back-home">← 返回首页</a>
+</div>
+
+<div class="main">
+
+<h1>💻 代码生成 Agent — SWE-Agent/Cursor/Devin 原理 &amp; Go 实现</h1>
+<p class="subtitle">从「补全助手」到「自主程序员」—— 代码生成 Agent 的技术全景与实践</p>
+
+<!-- ==================== 第1章 ==================== -->
+<h2 id="ch1">1. 为什么代码生成需要 Agent</h2>
+
+<div class="feynman">
+<p>想象一家汽车修理厂。传统 AI 编程助手像是一个只会拧螺丝的实习生——你告诉他"拧这个螺栓"，他照做，但不知道为什么要拧、下一步做什么。而 Agent 像一位高级工匠：他看到刹车片磨损、检查制动液、对比维修手册、决策更换方案、执行修复、最后路试验证。</p>
+<p>只会写 <code>Hello World</code> 的程序员和能独立构建微服务架构的程序员之间的差距，就是 <strong>工具调用 → 目标驱动 Agent</strong> 的差距。</p>
+</div>
+
+<p><strong>传统辅助编程 vs Agent 编程：</strong></p>
+
+<div class="compare">
+<div>
+<span class="badge left">❌ 传统 AI 辅助</span>
+<ul>
+<li>单次补全，无上下文记忆</li>
+<li>用户手动定位问题</li>
+<li>不会运行代码验证</li>
+<li>无错误修复闭环</li>
+<li>"问一句答一句"</li>
+</ul>
+</div>
+<div>
+<span class="badge right">✅ Agent 编程</span>
+<ul>
+<li>多步推理，维护对话图</li>
+<li>自动探索仓库结构</li>
+<li>运行测试验证修改</li>
+<li>解析错误 → 自愈循环</li>
+<li>目标驱动，自主规划</li>
+</ul>
+</div>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#f85149" stop-opacity=".15"/><stop offset="100%" stop-color="#f85149" stop-opacity=".05"/></linearGradient>
+    <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3fb950" stop-opacity=".15"/><stop offset="100%" stop-color="#3fb950" stop-opacity=".05"/></linearGradient>
+  </defs>
+  <rect x="10" y="10" width="320" height="260" rx="10" fill="url(#g1)" stroke="#f85149" stroke-width="1.5" stroke-opacity=".4"/>
+  <text x="170" y="38" text-anchor="middle" fill="#f85149" font-size="14" font-weight="bold">传统 AI 辅助</text>
+  <text x="40" y="65" fill="#c9d1d9" font-size="12">用户输入</text>
+  <rect x="40" y="72" width="100" height="28" rx="5" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="90" y="90" text-anchor="middle" fill="#c9d1d9" font-size="11">"写个排序函数"</text>
+  <path d="M140 86 L180 86 L180 100 L200 100" stroke="#f85149" stroke-width="1.5" fill="none" stroke-opacity=".5"/>
+  <rect x="200" y="86" width="110" height="28" rx="5" fill="#1a1d27" stroke="#f85149" stroke-width="1"/>
+  <text x="255" y="104" text-anchor="middle" fill="#f85149" font-size="11">LLM 补全</text>
+  <path d="M255 114 L255 130 L90 130 L90 145" stroke="#f85149" stroke-width="1.5" fill="none" stroke-opacity=".5"/>
+  <rect x="40" y="145" width="100" height="28" rx="5" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="90" y="163" text-anchor="middle" fill="#c9d1d9" font-size="11">粘贴到编辑器</text>
+  <path d="M140 159 L200 159" stroke="#f85149" stroke-width="1.5" fill="none" stroke-opacity=".5"/>
+  <rect x="200" y="145" width="110" height="28" rx="5" fill="#1a1d27" stroke="#f85149" stroke-width="1"/>
+  <text x="255" y="163" text-anchor="middle" fill="#f85149" font-size="11">手动测试</text>
+  <path d="M90 173 L90 200 L255 200 L255 215" stroke="#f85149" stroke-width="1.5" fill="none" stroke-opacity=".5" stroke-dasharray="4,3"/>
+  <text x="170" y="235" text-anchor="middle" fill="#f85149" font-size="11" opacity=".7">有错误？重新问 → 重复循环</text>
+
+  <rect x="360" y="10" width="320" height="260" rx="10" fill="url(#g2)" stroke="#3fb950" stroke-width="1.5" stroke-opacity=".4"/>
+  <text x="520" y="38" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="bold">Agent 编程</text>
+  <text x="380" y="65" fill="#c9d1d9" font-size="12">用户目标</text>
+  <rect x="380" y="72" width="100" height="28" rx="5" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="430" y="90" text-anchor="middle" fill="#c9d1d9" font-size="11">"实现排序模块"</text>
+  <path d="M480 86 L520 86 L520 100 L540 100" stroke="#3fb950" stroke-width="1.5" fill="none"/>
+  <rect x="540" y="86" width="130" height="28" rx="5" fill="#1a1d27" stroke="#3fb950" stroke-width="1"/>
+  <text x="605" y="104" text-anchor="middle" fill="#3fb950" font-size="11">规划拆解任务</text>
+  <path d="M605 114 L605 130 L430 130 L430 145" stroke="#3fb950" stroke-width="1.5" fill="none"/>
+  <rect x="380" y="145" width="120" height="28" rx="5" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="440" y="163" text-anchor="middle" fill="#c9d1d9" font-size="11">搜索相关代码</text>
+  <path d="M500 159 L540 159" stroke="#3fb950" stroke-width="1.5" fill="none"/>
+  <rect x="540" y="145" width="130" height="28" rx="5" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="605" y="163" text-anchor="middle" fill="#c9d1d9" font-size="11">AST 分析依赖</text>
+  <path d="M440 173 L440 200 L605 200 L605 215" stroke="#3fb950" stroke-width="1.5" fill="none"/>
+  <rect x="540" y="215" width="130" height="28" rx="5" fill="#1a1d27" stroke="#3fb950" stroke-width="1"/>
+  <text x="605" y="233" text-anchor="middle" fill="#3fb950" font-size="11">运行测试验证 ✓</text>
+  <path d="M540 229 L500 229 L440 229 L440 173" stroke="#3fb950" stroke-width="1.5" fill="none" stroke-opacity=".5" stroke-dasharray="4,3"/>
+  <text x="390" y="233" fill="#3fb950" font-size="10" opacity=".7">失败则自动修复</text>
+</svg>
+<div class="caption">图1：传统 AI 辅助编程（左）与 Agent 编程（右）的核心流程对比</div>
+</div>
+
+<!-- ==================== 第2章 ==================== -->
+<h2 id="ch2">2. 代码仓库理解</h2>
+<p>Agent 要像资深开发者一样理解仓库，需要三层能力：<strong>AST 解析 → 依赖分析 → 调用链追踪</strong>。</p>
+
+<h3>2.1 AST 解析 + 调用图构建 (Go 实现)</h3>
+<p>以下 Go 代码读取 Go 源文件，提取函数声明和调用关系，构建调用图：</p>
+
+<pre>
+<span class="kw">package</span> codegraph
+
+<span class="kw">import</span> (
+    <span class="str">"go/ast"</span>
+    <span class="str">"go/parser"</span>
+    <span class="str">"go/token"</span>
+    <span class="str">"os"</span>
+    <span class="str">"fmt"</span>
+)
+
+<span class="cm">// FuncNode 代表一个函数节点</span>
+<span class="kw">type</span> FuncNode <span class="kw">struct</span> {
+    Name     <span class="tp">string</span>
+    File     <span class="tp">string</span>
+    Line     <span class="tp">int</span>
+    Calls    []<span class="tp">string</span> <span class="cm">// 调用的函数名列表</span>
+    CalledBy []<span class="tp">string</span> <span class="cm">// 被谁调用</span>
+}
+
+<span class="kw">type</span> CallGraph <span class="kw">struct</span> {
+    Nodes map[<span class="tp">string</span>]<span class="op">*</span>FuncNode
+}
+
+<span class="kw">func</span> <span class="fn">BuildCallGraph</span>(filePath <span class="tp">string</span>) (<span class="op">*</span>CallGraph, <span class="tp">error</span>) {
+    fset := token.<span class="fn">NewFileSet</span>()
+    f, err := parser.<span class="fn">ParseFile</span>(fset, filePath, <span class="kw">nil</span>, parser.ParseComments)
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="kw">return</span> <span class="kw">nil</span>, err
+    }
+
+    cg := <span class="op">&amp;</span>CallGraph{Nodes: <span class="fn">make</span>(map[<span class="tp">string</span>]<span class="op">*</span>FuncNode)}
+
+    <span class="cm">// 第一遍：收集所有函数声明</span>
+    <span class="kw">for</span> _, decl := <span class="kw">range</span> f.Decls {
+        funcDecl, ok := decl.(<span class="op">*</span>ast.FuncDecl)
+        <span class="kw">if</span> !ok { <span class="kw">continue</span> }
+        name := funcDecl.Name.Name
+        pos := fset.<span class="fn">Position</span>(funcDecl.Pos())
+        cg.Nodes[name] = <span class="op">&amp;</span>FuncNode{
+            Name:     name,
+            File:     filePath,
+            Line:     pos.Line,
+            Calls:    []<span class="tp">string</span>{},
+            CalledBy: []<span class="tp">string</span>{},
+        }
+    }
+
+    <span class="cm">// 第二遍：提取调用关系</span>
+    <span class="kw">for</span> _, decl := <span class="kw">range</span> f.Decls {
+        funcDecl, ok := decl.(<span class="op">*</span>ast.FuncDecl)
+        <span class="kw">if</span> !ok { <span class="kw">continue</span> }
+        caller := funcDecl.Name.Name
+        ast.<span class="fn">Inspect</span>(funcDecl.Body, <span class="kw">func</span>(n ast.Node) <span class="tp">bool</span> {
+            callExpr, ok := n.(<span class="op">*</span>ast.CallExpr)
+            <span class="kw">if</span> !ok { <span class="kw">return</span> <span class="kw">true</span> }
+            ident, ok := callExpr.Fun.(<span class="op">*</span>ast.Ident)
+            <span class="kw">if</span> !ok { <span class="kw">return</span> <span class="kw">true</span> }
+            callee := ident.Name
+            <span class="cm">// 跳过自身</span>
+            <span class="kw">if</span> callee == caller { <span class="kw">return</span> <span class="kw">true</span> }
+            <span class="kw">if</span> node, exists := cg.Nodes[callee]; exists {
+                cg.Nodes[caller].Calls = <span class="fn">append</span>(cg.Nodes[caller].Calls, callee)
+                node.CalledBy = <span class="fn">append</span>(node.CalledBy, caller)
+            }
+            <span class="kw">return</span> <span class="kw">true</span>
+        })
+    }
+    <span class="kw">return</span> cg, <span class="kw">nil</span>
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    cg, err := <span class="fn">BuildCallGraph</span>(<span class="str">"main.go"</span>)
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="fn">fmt</span>.<span class="fn">Println</span>(err)
+        <span class="kw">return</span>
+    }
+    <span class="kw">for</span> name, node := <span class="kw">range</span> cg.Nodes {
+        <span class="fn">fmt</span>.<span class="fn">Printf</span>(<span class="str">"%s (%s:%d) calls: %v\n"</span>, name, node.File, node.Line, node.Calls)
+    }
+}
+</pre>
+
+<div class="diagram">
+<svg viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/></marker>
+  </defs>
+  <rect x="10" y="10" width="680" height="200" rx="10" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="350" y="35" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="bold">代码仓库理解层架构</text>
+  <rect x="40" y="55" width="140" height="36" rx="6" fill="#0f1117" stroke="#58a6ff" stroke-width="1"/>
+  <text x="110" y="77" text-anchor="middle" fill="#58a6ff" font-size="12">AST 解析器</text>
+  <path d="M180 73 L220 73" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="220" y="55" width="140" height="36" rx="6" fill="#0f1117" stroke="#3fb950" stroke-width="1"/>
+  <text x="290" y="77" text-anchor="middle" fill="#3fb950" font-size="12">符号表构建</text>
+  <path d="M360 73 L400 73" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="400" y="55" width="140" height="36" rx="6" fill="#0f1117" stroke="#d29922" stroke-width="1"/>
+  <text x="470" y="77" text-anchor="middle" fill="#d29922" font-size="12">依赖分析器</text>
+  <path d="M110 91 L110 115 L290 115 L290 130" stroke="#58a6ff" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+  <rect x="220" y="130" width="140" height="36" rx="6" fill="#0f1117" stroke="#a371f7" stroke-width="1"/>
+  <text x="290" y="152" text-anchor="middle" fill="#a371f7" font-size="12">调用链追踪</text>
+  <path d="M360 148 L400 148" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="400" y="130" width="140" height="36" rx="6" fill="#0f1117" stroke="#39c5cf" stroke-width="1"/>
+  <text x="470" y="152" text-anchor="middle" fill="#39c5cf" font-size="12">修改影响分析</text>
+  <path d="M290 166 L290 180 L110 180 L110 175" stroke="#58a6ff" stroke-width="1.5" fill="none" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+  <text x="60" y="195" fill="#c9d1d9" font-size="11" opacity=".7">迭代直到完整理解</text>
+</svg>
+<div class="caption">图2：代码仓库理解层架构 — 从 AST 到调用链的逐层构建</div>
+</div>
+
+<h3>2.2 依赖分析与调用链追踪</h3>
+<p>理解代码不仅仅是解析语法。Agent 还需：</p>
+<ul>
+<li><strong>模块依赖图</strong>：分析 <code>go.mod</code> / <code>package.json</code> / <code>Cargo.toml</code> 等</li>
+<li><strong>跨文件引用</strong>：追踪类型定义和使用的关系</li>
+<li><strong>数据流分析</strong>：变量从创建到使用的完整路径</li>
+<li><strong>脏数据标记</strong>：当文件 A 修改时，标记所有依赖 A 的文件为"需检查"</li>
+</ul>
+
+<!-- ==================== 第3章 ==================== -->
+<h2 id="ch3">3. 代码编辑三步曲 — 搜索→定位→修改→验证</h2>
+<p>代码编辑是 Agent 的核心能力。我们将其拆解为四个阶段：</p>
+
+<h3>3.1 搜索相关代码片段</h3>
+<p>使用语义搜索 + 关键词 + 正则组合，快速定位相关代码。</p>
+
+<h3>3.2 定位修改点</h3>
+<p>根据搜索到的信息，结合 AST 定位需要修改的精确位置（行号、AST 节点路径）。</p>
+
+<h3>3.3 生成补丁 + 运行测试</h3>
+
+<pre>
+<span class="kw">package</span> codeedit
+
+<span class="kw">import</span> (
+    <span class="str">"bytes"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"os/exec"</span>
+    <span class="str">"regexp"</span>
+    <span class="str">"strings"</span>
+)
+
+<span class="cm">// SearchResult 搜索结果</span>
+<span class="kw">type</span> SearchResult <span class="kw">struct</span> {
+    File    <span class="tp">string</span>
+    Line    <span class="tp">int</span>
+    Content <span class="tp">string</span>
+}
+
+<span class="kw">type</span> EditEngine <span class="kw">struct</span> {
+    workspace <span class="tp">string</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewEditEngine</span>(workspace <span class="tp">string</span>) <span class="op">*</span>EditEngine {
+    <span class="kw">return</span> <span class="op">&amp;</span>EditEngine{workspace: workspace}
+}
+
+<span class="cm">// Search 支持文本搜索和正则搜索</span>
+<span class="kw">func</span> (e <span class="op">*</span>EditEngine) <span class="fn">Search</span>(pattern <span class="tp">string</span>, isRegex <span class="tp">bool</span>) ([]SearchResult, <span class="tp">error</span>) {
+    cmd := exec.<span class="fn">Command</span>(<span class="str">"rg"</span>, <span class="str">"-n"</span>, pattern, e.workspace)
+    <span class="kw">if</span> !isRegex {
+        cmd = exec.<span class="fn">Command</span>(<span class="str">"rg"</span>, <span class="str">"-F"</span>, <span class="str">"-n"</span>, pattern, e.workspace)
+    }
+    out, err := cmd.<span class="fn">Output</span>()
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="kw">return</span> <span class="kw">nil</span>, fmt.<span class="fn">Errorf</span>(<span class="str">"search failed: %w"</span>, err)
+    }
+    <span class="kw">var</span> results []SearchResult
+    <span class="kw">for</span> _, line := <span class="kw">range</span> strings.<span class="fn">Split</span>(<span class="fn">string</span>(out), <span class="str">"\n"</span>) {
+        <span class="kw">if</span> line == <span class="str">""</span> { <span class="kw">continue</span> }
+        parts := strings.<span class="fn">SplitN</span>(line, <span class="str">":"</span>, <span class="num">3</span>)
+        <span class="kw">if</span> <span class="fn">len</span>(parts) &lt; <span class="num">3</span> { <span class="kw">continue</span> }
+        lineNo := <span class="num">0</span>
+        fmt.<span class="fn">Sscanf</span>(parts[<span class="num">1</span>], <span class="str">"%d"</span>, <span class="op">&amp;</span>lineNo)
+        results = <span class="fn">append</span>(results, SearchResult{
+            File:    parts[<span class="num">0</span>],
+            Line:    lineNo,
+            Content: parts[<span class="num">2</span>],
+        })
+    }
+    <span class="kw">return</span> results, <span class="kw">nil</span>
+}
+
+<span class="cm">// Replace 执行文件内替换 — 生成类补丁操作</span>
+<span class="kw">func</span> (e <span class="op">*</span>EditEngine) <span class="fn">Replace</span>(file, oldText, newText <span class="tp">string</span>) <span class="tp">error</span> {
+    cmd := exec.<span class="fn">Command</span>(<span class="str">"sed"</span>, <span class="str">"-i"</span>,
+        fmt.<span class="fn">Sprintf</span>(<span class="str">"s/%s/%s/g"</span>, oldText, newText),
+        file)
+    <span class="kw">return</span> cmd.<span class="fn">Run</span>()
+}
+
+<span class="cm">// RunTests 运行测试并返回结果</span>
+<span class="kw">func</span> (e <span class="op">*</span>EditEngine) <span class="fn">RunTests</span>(pkg <span class="tp">string</span>) (<span class="tp">bool</span>, <span class="tp">string</span>, <span class="tp">error</span>) {
+    cmd := exec.<span class="fn">Command</span>(<span class="str">"go"</span>, <span class="str">"test"</span>, <span class="str">"-v"</span>, <span class="str">"-run"</span>, pkg, e.workspace)
+    <span class="kw">var</span> out bytes.Buffer
+    cmd.Stdout = <span class="op">&amp;</span>out
+    cmd.Stderr = <span class="op">&amp;</span>out
+    err := cmd.<span class="fn">Run</span>()
+    output := out.<span class="fn">String</span>()
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="kw">return</span> <span class="kw">false</span>, output, <span class="kw">nil</span> <span class="cm">// 测试失败但不是 fatal</span>
+    }
+    <span class="cm">// 检查是否全部通过</span>
+    passed := strings.<span class="fn">Contains</span>(output, <span class="str">"PASS"</span>) || !strings.<span class="fn">Contains</span>(output, <span class="str">"FAIL"</span>)
+    <span class="kw">return</span> passed, output, <span class="kw">nil</span>
+}
+</pre>
+
+<div class="diagram">
+<svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#3fb950"/></marker>
+    <marker id="arrowR" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#f85149"/></marker>
+  </defs>
+  <rect x="10" y="10" width="680" height="280" rx="10" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="350" y="35" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="bold">Edit 循环流程 — 搜索→定位→修改→验证</text>
+
+  <rect x="50" y="65" width="130" height="42" rx="8" fill="#0f1117" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="115" y="82" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="bold">🔍 搜索</text>
+  <text x="115" y="98" text-anchor="middle" fill="#c9d1d9" font-size="10">语义/正则/关键词</text>
+
+  <path d="M180 86 L220 86" stroke="#3fb950" stroke-width="2" marker-end="url(#arrow2)"/>
+
+  <rect x="220" y="65" width="130" height="42" rx="8" fill="#0f1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="285" y="82" text-anchor="middle" fill="#d29922" font-size="12" font-weight="bold">📍 定位</text>
+  <text x="285" y="98" text-anchor="middle" fill="#c9d1d9" font-size="10">AST 节点/行号定位</text>
+
+  <path d="M350 86 L390 86" stroke="#3fb950" stroke-width="2" marker-end="url(#arrow2)"/>
+
+  <rect x="390" y="65" width="130" height="42" rx="8" fill="#0f1117" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="455" y="82" text-anchor="middle" fill="#a371f7" font-size="12" font-weight="bold">✏️ 修改</text>
+  <text x="455" y="98" text-anchor="middle" fill="#c9d1d9" font-size="10">生成补丁/替换</text>
+
+  <path d="M520 86 L560 86" stroke="#3fb950" stroke-width="2" marker-end="url(#arrow2)"/>
+
+  <rect x="560" y="65" width="110" height="42" rx="8" fill="#0f1117" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="615" y="82" text-anchor="middle" fill="#39c5cf" font-size="12" font-weight="bold">✅ 验证</text>
+  <text x="615" y="98" text-anchor="middle" fill="#c9d1d9" font-size="10">运行测试</text>
+
+  <rect x="260" y="150" width="160" height="36" rx="8" fill="rgba(63,185,80,.12)" stroke="#3fb950" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="340" y="173" text-anchor="middle" fill="#3fb950" font-size="12">测试全部通过 ✓</text>
+
+  <path d="M615 107 L615 140 L340 140 L340 150" stroke="#3fb950" stroke-width="1.5" fill="none" stroke-dasharray="6,3" marker-end="url(#arrow2)"/>
+
+  <path d="M340 186 L340 210 L615 210 L615 107" stroke="#f85149" stroke-width="1.5" fill="none" stroke-dasharray="6,3" marker-end="url(#arrowR)"/>
+  <text x="475" y="225" text-anchor="middle" fill="#f85149" font-size="11">测试失败 → 重新定位修改</text>
+
+  <rect x="240" y="245" width="200" height="28" rx="6" fill="rgba(162,113,247,.12)" stroke="#a371f7" stroke-width="1"/>
+  <text x="340" y="264" text-anchor="middle" fill="#a371f7" font-size="11">最大重试次数限制</text>
+</svg>
+<div class="caption">图3：Edit 循环流程 — 四个阶段的闭环迭代，失败则回退重试</div>
+</div>
+
+<!-- ==================== 第4章 ==================== -->
+<h2 id="ch4">4. 错误定位与自动修复</h2>
+<p>编译错误和测试失败是软件开发中最耗时的环节。Agent 可以自动化这一过程：</p>
+
+<ol>
+<li><strong>解析错误信息</strong>：从编译器/测试框架输出中提取文件、行号、错误类型</li>
+<li><strong>定位代码</strong>：根据行号和错误类型找到问题代码</li>
+<li><strong>生成修复</strong>：LLM 根据错误上下文生成修复方案</li>
+<li><strong>重跑测试</strong>：应用修复后重新运行验证</li>
+</ol>
+
+<div class="info-card">
+<strong>🔧 实际案例</strong>：SWE-Agent 在 SWE-bench 中通过该循环解决了超过 12% 的 GitHub Issue，完全自主地定位、修改并验证修复。
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 700 250" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow3" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#f85149"/></marker>
+  </defs>
+  <rect x="10" y="10" width="680" height="230" rx="10" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="350" y="35" text-anchor="middle" fill="#f85149" font-size="14" font-weight="bold">自动修复工作流</text>
+
+  <rect x="40" y="60" width="130" height="36" rx="8" fill="#0f1117" stroke="#f85149" stroke-width="1.5"/>
+  <text x="105" y="82" text-anchor="middle" fill="#f85149" font-size="12">1. 解析错误输出</text>
+
+  <path d="M170 78 L210 78" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+  <rect x="210" y="60" width="130" height="36" rx="8" fill="#0f1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="275" y="82" text-anchor="middle" fill="#d29922" font-size="12">2. 定位代码位置</text>
+
+  <path d="M340 78 L380 78" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+  <rect x="380" y="60" width="130" height="36" rx="8" fill="#0f1117" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="445" y="82" text-anchor="middle" fill="#a371f7" font-size="12">3. LLM 生成修复</text>
+
+  <path d="M510 78 L560 78" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+  <rect x="560" y="60" width="110" height="36" rx="8" fill="#0f1117" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="615" y="82" text-anchor="middle" fill="#3fb950" font-size="12">4. 重跑测试</text>
+
+  <path d="M615 96 L615 140 L340 140 L340 130" stroke="#3fb950" stroke-width="1.5" fill="none" stroke-dasharray="6,3"/>
+  <text x="460" y="155" text-anchor="middle" fill="#3fb950" font-size="12">通过 → 提交修复 ✓</text>
+
+  <path d="M105 96 L105 115 L275 115 L275 130" stroke="#f85149" stroke-width="1.5" fill="none" stroke-dasharray="6,3"/>
+  <text x="190" y="170" text-anchor="middle" fill="#f85149" font-size="12">失败 → 重新解析/定位</text>
+
+  <rect x="140" y="190" width="190" height="28" rx="6" fill="rgba(162,113,247,.12)" stroke="#a371f7" stroke-width="1"/>
+  <text x="235" y="209" text-anchor="middle" fill="#a371f7" font-size="11">最大重试 N 次后上报人工</text>
+</svg>
+<div class="caption">图4：自动修复工作流 — 错误驱动下的闭环迭代</div>
+</div>
+
+<h3>4.1 编译错误解析示例</h3>
+<pre>
+<span class="kw">package</span> errorfix
+
+<span class="kw">import</span> (
+    <span class="str">"regexp"</span>
+    <span class="str">"strconv"</span>
+)
+
+<span class="cm">// CompileError 编译错误</span>
+<span class="kw">type</span> CompileError <span class="kw">struct</span> {
+    File    <span class="tp">string</span>
+    Line    <span class="tp">int</span>
+    Column  <span class="tp">int</span>
+    Message <span class="tp">string</span>
+}
+
+<span class="kw">var</span> goErrorRe = regexp.<span class="fn">MustCompile</span>(
+    <span class="str">`^([^:]+):(\d+):(\d+):\s*(.+)$`</span>,
+)
+
+<span class="kw">func</span> <span class="fn">ParseGoError</span>(output <span class="tp">string</span>) []CompileError {
+    <span class="kw">var</span> errors []CompileError
+    <span class="kw">for</span> _, match := <span class="kw">range</span> goErrorRe.<span class="fn">FindAllStringSubmatch</span>(output, <span class="op">-</span><span class="num">1</span>) {
+        line, _ := strconv.<span class="fn">Atoi</span>(match[<span class="num">2</span>])
+        col, _ := strconv.<span class="fn">Atoi</span>(match[<span class="num">3</span>])
+        errors = <span class="fn">append</span>(errors, CompileError{
+            File:    match[<span class="num">1</span>],
+            Line:    line,
+            Column:  col,
+            Message: match[<span class="num">4</span>],
+        })
+    }
+    <span class="kw">return</span> errors
+}
+</pre>
+
+<!-- ==================== 第5章 ==================== -->
+<h2 id="ch5">5. SDK 和 API 适配</h2>
+<p>代码生成 Agent 另一个强大能力是自动学习第三方 API 并生成调用代码。核心技术是 <strong>RAG over 文档</strong>：</p>
+
+<ol>
+<li><strong>文档索引</strong>：爬取官方文档，分块并向量化</li>
+<li><strong>检索增强</strong>：用户需求 → 检索相关文档片段</li>
+<li><strong>代码生成</strong>：LLM 根据文档片段 + 用户需求生成 API 调用代码</li>
+<li><strong>验证</strong>：可选运行测试检查 API 调用是否正确</li>
+</ol>
+
+<div class="info-card">
+<strong>📚 示例场景</strong>：用户想使用 Stripe API 创建订阅。Agent 检索 Stripe 文档中关于 <code>checkout.sessions.create</code> 的章节，理解参数要求，然后生成完整的 Go 调用代码，包括错误处理和重试逻辑。
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="10" width="680" height="180" rx="10" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="350" y="35" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="bold">RAG 驱动 API 适配流程</text>
+
+  <rect x="30" y="60" width="130" height="36" rx="6" fill="#0f1117" stroke="#58a6ff" stroke-width="1"/>
+  <text x="95" y="82" text-anchor="middle" fill="#58a6ff" font-size="11">用户需求描述</text>
+
+  <path d="M160 78 L200 78" stroke="#58a6ff" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+
+  <rect x="200" y="60" width="130" height="36" rx="6" fill="#0f1117" stroke="#3fb950" stroke-width="1"/>
+  <text x="265" y="82" text-anchor="middle" fill="#3fb950" font-size="11">向量检索文档</text>
+
+  <path d="M330 78 L370 78" stroke="#58a6ff" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+
+  <rect x="370" y="60" width="130" height="36" rx="6" fill="#0f1117" stroke="#d29922" stroke-width="1"/>
+  <text x="435" y="82" text-anchor="middle" fill="#d29922" font-size="11">LLM 理解 API</text>
+
+  <path d="M500 78 L540 78" stroke="#58a6ff" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+
+  <rect x="540" y="60" width="130" height="36" rx="6" fill="#0f1117" stroke="#a371f7" stroke-width="1"/>
+  <text x="605" y="82" text-anchor="middle" fill="#a371f7" font-size="11">生成调用代码</text>
+
+  <rect x="30" y="120" width="620" height="40" rx="6" fill="rgba(57,197,207,.08)" stroke="#39c5cf" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="340" y="139" text-anchor="middle" fill="#39c5cf" font-size="11">支持增量更新：文档变更时自动刷新索引</text>
+  <text x="340" y="152" text-anchor="middle" fill="#c9d1d9" font-size="10" opacity=".7">文档版本管理 | 多语言支持 | 参数校验</text>
+</svg>
+<div class="caption">图5：RAG 驱动的 API 适配流程</div>
+</div>
+
+<!-- ==================== 第6章 ==================== -->
+<h2 id="ch6">6. Cursor / Devin / SWE-Agent 架构解析</h2>
+<p>三种主流的代码生成 Agent 实现有着不同的设计哲学：</p>
+
+<table>
+<tr>
+<th>维度</th>
+<th>SWE-Agent</th>
+<th>Cursor</th>
+<th>Devin</th>
+</tr>
+<tr>
+<td><strong>架构风格</strong></td>
+<td>Agent-SW 交互协议</td>
+<td>IDE 集成 Agent</td>
+<td>云端自主 Agent</td>
+</tr>
+<tr>
+<td><strong>交互方式</strong></td>
+<td>命令行 + 编辑器</td>
+<td>VS Code 插件</td>
+<td>Web IDE / Slack</td>
+</tr>
+<tr>
+<td><strong>基础模型</strong></td>
+<td>GPT-4o / Claude 3.5</td>
+<td>专属模型 + Claude/GPT</td>
+<td>定制多模型系统</td>
+</tr>
+<tr>
+<td><strong>代码理解</strong></td>
+<td>AST + 语法树</td>
+<td>索引 + 语义搜索</td>
+<td>全仓库理解引擎</td>
+</tr>
+<tr>
+<td><strong>成本</strong></td>
+<td>中 (~$0.3/任务)</td>
+<td>低 (订阅制 $20/月)</td>
+<td>高 (~$10-50/任务)</td>
+</tr>
+<tr>
+<td><strong>适用场景</strong></td>
+<td>开源 Issue 修复</td>
+<td>日常编码辅助</td>
+<td>复杂全栈任务</td>
+</tr>
+<tr>
+<td><strong>自主程度</strong></td>
+<td>半自主 (需审批)</td>
+<td>交互式</td>
+<td>全自主</td>
+</tr>
+<tr>
+<td><strong>错误修复</strong></td>
+<td>自动修复循环</td>
+<td>手动触发</td>
+<td>全自动修复</td>
+</tr>
+</table>
+
+<div class="diagram">
+<svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="10" width="680" height="280" rx="10" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="350" y="35" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="bold">三种架构对比</text>
+
+  <rect x="25" y="55" width="200" height="60" rx="8" fill="#0f1117" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="125" y="75" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="bold">SWE-Agent</text>
+  <text x="125" y="95" text-anchor="middle" fill="#c9d1d9" font-size="11">命令 + 编辑器交互</text>
+  <text x="125" y="108" text-anchor="middle" fill="#c9d1d9" font-size="10" opacity=".7">半自主 · 中成本</text>
+
+  <rect x="250" y="55" width="200" height="60" rx="8" fill="#0f1117" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="350" y="75" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">Cursor</text>
+  <text x="350" y="95" text-anchor="middle" fill="#c9d1d9" font-size="11">IDE 插件集成</text>
+  <text x="350" y="108" text-anchor="middle" fill="#c9d1d9" font-size="10" opacity=".7">交互式 · 低成本</text>
+
+  <rect x="475" y="55" width="200" height="60" rx="8" fill="#0f1117" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="575" y="75" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="bold">Devin</text>
+  <text x="575" y="95" text-anchor="middle" fill="#c9d1d9" font-size="11">云端全自主 Agent</text>
+  <text x="575" y="108" text-anchor="middle" fill="#c9d1d9" font-size="10" opacity=".7">全自主 · 高成本</text>
+
+  <text x="350" y="155" text-anchor="middle" fill="#d29922" font-size="12" font-weight="bold">核心差异对比</text>
+
+  <text x="50" y="180" fill="#c9d1d9" font-size="11">自主程度：</text>
+  <rect x="150" y="170" width="150" height="16" rx="8" fill="#0f1117" stroke="#58a6ff" stroke-width="1"/>
+  <rect x="150" y="170" width="50" height="16" rx="8" fill="#58a6ff" opacity=".6"/>
+  <text x="225" y="182" text-anchor="middle" fill="#c9d1d9" font-size="10">部分自主</text>
+  <rect x="310" y="170" width="80" height="16" rx="8" fill="#0f1117" stroke="#3fb950" stroke-width="1"/>
+  <rect x="310" y="170" width="30" height="16" rx="8" fill="#3fb950" opacity=".6"/>
+  <text x="350" y="182" text-anchor="middle" fill="#c9d1d9" font-size="10">交互</text>
+  <rect x="400" y="170" width="150" height="16" rx="8" fill="#0f1117" stroke="#a371f7" stroke-width="1"/>
+  <rect x="400" y="170" width="120" height="16" rx="8" fill="#a371f7" opacity=".6"/>
+  <text x="475" y="182" text-anchor="middle" fill="#c9d1d9" font-size="10">完全自主</text>
+
+  <text x="50" y="210" fill="#c9d1d9" font-size="11">上下文窗口：</text>
+  <rect x="150" y="200" width="150" height="16" rx="8" fill="#0f1117" stroke="#58a6ff" stroke-width="1"/>
+  <rect x="150" y="200" width="70" height="16" rx="8" fill="#58a6ff" opacity=".6"/>
+  <text x="225" y="212" text-anchor="middle" fill="#c9d1d9" font-size="10">100K tokens</text>
+  <rect x="310" y="200" width="150" height="16" rx="8" fill="#0f1117" stroke="#3fb950" stroke-width="1"/>
+  <rect x="310" y="200" width="80" height="16" rx="8" fill="#3fb950" opacity=".6"/>
+  <text x="385" y="212" text-anchor="middle" fill="#c9d1d9" font-size="10">适应当前文件</text>
+  <rect x="470" y="200" width="150" height="16" rx="8" fill="#0f1117" stroke="#a371f7" stroke-width="1"/>
+  <rect x="470" y="200" width="130" height="16" rx="8" fill="#a371f7" opacity=".6"/>
+  <text x="535" y="212" text-anchor="middle" fill="#c9d1d9" font-size="10">全仓库索引</text>
+
+  <text x="350" y="245" text-anchor="middle" fill="#c9d1d9" font-size="11" opacity=".7">没有银弹 — 选择适合你团队工作流和预算的方案</text>
+
+  <rect x="220" y="255" width="260" height="18" rx="4" fill="rgba(57,197,207,.1)" stroke="#39c5cf" stroke-width="1"/>
+  <text x="350" y="268" text-anchor="middle" fill="#39c5cf" font-size="10">未来趋势：三种架构正在融合</text>
+</svg>
+<div class="caption">图6：三种代码生成 Agent 架构的多维度对比</div>
+</div>
+
+<!-- ==================== 第7章 ==================== -->
+<h2 id="ch7">7. MCP 在代码场景的应用</h2>
+<p><strong>MCP (Model Context Protocol)</strong> 为 Agent 提供了标准化的工具接口。在代码场景中，三个 MCP 服务器至关重要：</p>
+
+<ul>
+<li><strong>FileSystem MCP</strong>：读写文件、目录遍历、文件搜索</li>
+<li><strong>Git MCP</strong>：提交、分支、diff、log</li>
+<li><strong>Terminal MCP</strong>：执行命令、编译、运行测试</li>
+</ul>
+
+<h3>7.1 代码编辑 MCP Server (Go)</h3>
+<pre>
+<span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"encoding/json"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"os"</span>
+    <span class="str">"os/exec"</span>
+)
+
+<span class="cm">// MCP 工具定义</span>
+<span class="kw">type</span> Tool <span class="kw">struct</span> {
+    Name        <span class="tp">string</span>          <span class="cm">`json:"name"`</span>
+    Description <span class="tp">string</span>          <span class="cm">`json:"description"`</span>
+    InputSchema map[<span class="tp">string</span>]<span class="kw">interface</span>{} <span class="cm">`json:"inputSchema"`</span>
+}
+
+<span class="kw">type</span> MCPServer <span class="kw">struct</span> {
+    tools []Tool
+}
+
+<span class="kw">func</span> <span class="fn">NewCodeEditorMCP</span>() <span class="op">*</span>MCPServer {
+    <span class="kw">return</span> <span class="op">&amp;</span>MCPServer{
+        tools: []Tool{
+            {
+                Name:        <span class="str">"read_file"</span>,
+                Description: <span class="str">"读取文件内容"</span>,
+                InputSchema: <span class="kw">map</span>[<span class="tp">string</span>]<span class="kw">interface{}</span>{
+                    <span class="str">"type"</span>: <span class="str">"object"</span>,
+                    <span class="str">"properties"</span>: <span class="kw">map</span>[<span class="tp">string</span>]<span class="kw">interface{}</span>{
+                        <span class="str">"path"</span>: <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">string</span>{<span class="str">"type"</span>: <span class="str">"string"</span>},
+                    },
+                },
+            },
+            {
+                Name:        <span class="str">"write_file"</span>,
+                Description: <span class="str">"写入文件（覆盖）"</span>,
+                InputSchema: <span class="kw">map</span>[<span class="tp">string</span>]<span class="kw">interface{}</span>{
+                    <span class="str">"type"</span>: <span class="str">"object"</span>,
+                    <span class="str">"properties"</span>: <span class="kw">map</span>[<span class="tp">string</span>]<span class="kw">interface{}</span>{
+                        <span class="str">"path"</span>:    <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">string</span>{<span class="str">"type"</span>: <span class="str">"string"</span>},
+                        <span class="str">"content"</span>: <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">string</span>{<span class="str">"type"</span>: <span class="str">"string"</span>},
+                    },
+                },
+            },
+            {
+                Name:        <span class="str">"git_diff"</span>,
+                Description: <span class="str">"查看当前变更"</span>,
+            },
+            {
+                Name:        <span class="str">"run_test"</span>,
+                Description: <span class="str">"运行测试"</span>,
+                InputSchema: <span class="kw">map</span>[<span class="tp">string</span>]<span class="kw">interface{}</span>{
+                    <span class="str">"type"</span>: <span class="str">"object"</span>,
+                    <span class="str">"properties"</span>: <span class="kw">map</span>[<span class="tp">string</span>]<span class="kw">interface{}</span>{
+                        <span class="str">"pkg"</span>: <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">string</span>{<span class="str">"type"</span>: <span class="str">"string"</span>},
+                    },
+                },
+            },
+        },
+    }
+}
+
+<span class="cm">// HandleToolCall 处理工具调用请求</span>
+<span class="kw">func</span> (s <span class="op">*</span>MCPServer) <span class="fn">HandleToolCall</span>(name <span class="tp">string</span>, args json.RawMessage) (<span class="tp">string</span>, <span class="tp">error</span>) {
+    <span class="kw">switch</span> name {
+    <span class="kw">case</span> <span class="str">"read_file"</span>:
+        <span class="kw">var</span> params <span class="kw">struct</span> { Path <span class="tp">string</span> <span class="cm">`json:"path"`</span> }
+        json.<span class="fn">Unmarshal</span>(args, <span class="op">&amp;</span>params)
+        data, err := os.<span class="fn">ReadFile</span>(params.Path)
+        <span class="kw">if</span> err != <span class="kw">nil</span> { <span class="kw">return</span> <span class="str">""</span>, err }
+        <span class="kw">return</span> <span class="fn">string</span>(data), <span class="kw">nil</span>
+
+    <span class="kw">case</span> <span class="str">"write_file"</span>:
+        <span class="kw">var</span> params <span class="kw">struct</span> {
+            Path    <span class="tp">string</span> <span class="cm">`json:"path"`</span>
+            Content <span class="tp">string</span> <span class="cm">`json:"content"`</span>
+        }
+        json.<span class="fn">Unmarshal</span>(args, <span class="op">&amp;</span>params)
+        err := os.<span class="fn">WriteFile</span>(params.Path, []<span class="fn">byte</span>(params.Content), <span class="num">0644</span>)
+        <span class="kw">if</span> err != <span class="kw">nil</span> { <span class="kw">return</span> <span class="str">""</span>, err }
+        <span class="kw">return</span> fmt.<span class="fn">Sprintf</span>(<span class="str">"written %d bytes to %s"</span>, <span class="fn">len</span>(params.Content), params.Path), <span class="kw">nil</span>
+
+    <span class="kw">case</span> <span class="str">"git_diff"</span>:
+        out, _ := exec.<span class="fn">Command</span>(<span class="str">"git"</span>, <span class="str">"diff"</span>).<span class="fn">Output</span>()
+        <span class="kw">return</span> <span class="fn">string</span>(out), <span class="kw">nil</span>
+
+    <span class="kw">case</span> <span class="str">"run_test"</span>:
+        <span class="kw">var</span> params <span class="kw">struct</span> { Pkg <span class="tp">string</span> <span class="cm">`json:"pkg"`</span> }
+        json.<span class="fn">Unmarshal</span>(args, <span class="op">&amp;</span>params)
+        cmd := exec.<span class="fn">Command</span>(<span class="str">"go"</span>, <span class="str">"test"</span>, <span class="str">"-v"</span>, <span class="str">"-run"</span>, params.Pkg)
+        out, _ := cmd.<span class="fn">CombinedOutput</span>()
+        <span class="kw">return</span> <span class="fn">string</span>(out), <span class="kw">nil</span>
+    }
+    <span class="kw">return</span> <span class="str">""</span>, fmt.<span class="fn">Errorf</span>(<span class="str">"unknown tool: %s"</span>, name)
+}
+</pre>
+
+<div class="diagram">
+<svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrowM" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/></marker>
+  </defs>
+  <rect x="10" y="10" width="680" height="240" rx="10" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="350" y="35" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="bold">MCP 工具在编程中的集成</text>
+
+  <rect x="270" y="55" width="160" height="42" rx="10" fill="#0f1117" stroke="#a371f7" stroke-width="1.8"/>
+  <text x="350" y="80" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="bold">🧠 LLM Agent</text>
+
+  <path d="M210 97 L210 120 L120 120 L120 140" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowM)"/>
+  <path d="M350 97 L350 120" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowM)"/>
+  <path d="M490 97 L490 120 L580 120 L580 140" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowM)"/>
+
+  <rect x="30" y="140" width="180" height="50" rx="8" fill="#0f1117" stroke="#39c5cf" stroke-width="1"/>
+  <text x="120" y="162" text-anchor="middle" fill="#39c5cf" font-size="12" font-weight="bold">📁 FileSystem MCP</text>
+  <text x="120" y="180" text-anchor="middle" fill="#c9d1d9" font-size="10">read / write / search</text>
+
+  <rect x="260" y="140" width="180" height="50" rx="8" fill="#0f1117" stroke="#d29922" stroke-width="1"/>
+  <text x="350" y="162" text-anchor="middle" fill="#d29922" font-size="12" font-weight="bold">🔗 Git MCP</text>
+  <text x="350" y="180" text-anchor="middle" fill="#c9d1d9" font-size="10">diff / commit / branch</text>
+
+  <rect x="490" y="140" width="180" height="50" rx="8" fill="#0f1117" stroke="#f85149" stroke-width="1"/>
+  <text x="580" y="162" text-anchor="middle" fill="#f85149" font-size="12" font-weight="bold">💻 Terminal MCP</text>
+  <text x="580" y="180" text-anchor="middle" fill="#c9d1d9" font-size="10">compile / test / run</text>
+
+  <rect x="120" y="210" width="200" height="24" rx="6" fill="rgba(63,185,80,.1)" stroke="#3fb950" stroke-width="1"/>
+  <text x="220" y="226" text-anchor="middle" fill="#3fb950" font-size="11">标准化协议 · 可组合 · 可替换</text>
+
+  <rect x="380" y="210" width="200" height="24" rx="6" fill="rgba(57,197,207,.1)" stroke="#39c5cf" stroke-width="1"/>
+  <text x="480" y="226" text-anchor="middle" fill="#39c5cf" font-size="11">安全隔离 · 权限可控</text>
+</svg>
+<div class="caption">图7：MCP 工具在编程场景中的集成架构 — LLM Agent 通过三个 MCP 服务器操作代码仓库</div>
+</div>
+
+<!-- ==================== 第8章 ==================== -->
+<h2 id="ch8">8. 安全考量</h2>
+<p>代码生成 Agent 涉及 <strong>代码执行</strong>，安全风险不容忽视：</p>
+
+<div class="info-card">
+<strong>🛡️ 代码执行沙箱</strong>
+<p>Agent 生成的代码不应直接在宿主机执行。推荐使用 Docker 容器、gVisor、Firecracker 微VM 等隔离技术。每次任务启动独立的沙箱环境，任务结束销毁。</p>
+</div>
+
+<div class="info-card">
+<strong>🔑 权限控制</strong>
+<p>遵循最小权限原则：Git MCP 只给仓库写权限，FileSystem MCP 限制可操作的目录范围，Terminal MCP 禁止网络访问除非显式授权。</p>
+</div>
+
+<div class="info-card">
+<strong>📦 供应链安全</strong>
+<p>Agent 可能自动安装依赖。需要：依赖来源校验（checksum）、已知漏洞扫描、许可合规检查、安装前审批流程。</p>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 700 170" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="10" width="680" height="150" rx="10" fill="#1a1d27" stroke="#2a2d3a" stroke-width="1"/>
+  <text x="350" y="35" text-anchor="middle" fill="#f85149" font-size="14" font-weight="bold">代码 Agent 安全三原则</text>
+
+  <rect x="30" y="55" width="190" height="80" rx="8" fill="rgba(57,197,207,.08)" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="125" y="78" text-anchor="middle" fill="#39c5cf" font-size="13" font-weight="bold">🛡️ 沙箱隔离</text>
+  <text x="125" y="98" text-anchor="middle" fill="#c9d1d9" font-size="11">Docker / gVisor</text>
+  <text x="125" y="115" text-anchor="middle" fill="#c9d1d9" font-size="11">单次任务 + 销毁</text>
+
+  <rect x="255" y="55" width="190" height="80" rx="8" fill="rgba(210,153,34,.08)" stroke="#d29922" stroke-width="1.5"/>
+  <text x="350" y="78" text-anchor="middle" fill="#d29922" font-size="13" font-weight="bold">🔑 权限最小化</text>
+  <text x="350" y="98" text-anchor="middle" fill="#c9d1d9" font-size="11">目录范围限制</text>
+  <text x="350" y="115" text-anchor="middle" fill="#c9d1d9" font-size="11">网络访问控制</text>
+
+  <rect x="480" y="55" width="190" height="80" rx="8" fill="rgba(248,81,73,.08)" stroke="#f85149" stroke-width="1.5"/>
+  <text x="575" y="78" text-anchor="middle" fill="#f85149" font-size="13" font-weight="bold">📦 供应链安全</text>
+  <text x="575" y="98" text-anchor="middle" fill="#c9d1d9" font-size="11">Checksum 校验</text>
+  <text x="575" y="115" text-anchor="middle" fill="#c9d1d9" font-size="11">漏洞扫描 + 许可检查</text>
+</svg>
+<div class="caption">图8：代码 Agent 安全三原则</div>
+</div>
+
+<!-- ==================== 第9章 ==================== -->
+<h2 id="ch9">9. QA & 总结</h2>
+
+<h3>常见问题</h3>
+
+<div class="qa">
+<details class="socratic">
+<summary>代码生成 Agent 和 Copilot 有什么区别？</summary>
+<div class="qa-body">
+<p><strong>Copilot 是补全工具，Agent 是编程伙伴。</strong> Copilot 根据上下文预测下一段代码，但不会主动理解仓库结构、不会运行测试、不会修复错误。而 Agent 像一位 junior developer 实习生：给它一个 Issue，它能自主定位代码、修改、运行测试、提交 PR。</p>
+<p>打个比方：Copilot 是智能输入法，Agent 是写作助理。</p>
+</div>
+</details>
+</div>
+
+<div class="qa">
+<details class="socratic">
+<summary>SWE-Agent 的 Agent-SW 交互协议是什么？</summary>
+<div class="qa-body">
+<p>Agent-SW (Agent-Computer Interface) 是 SWE-Agent 团队提出的一种人机交互协议，定义了 Agent 与软件环境交互的标准化操作集，包括：</p>
+<ul>
+<li><strong>查看</strong>：<code>view_file</code>、<code>search_dir</code>、<code>grep</code></li>
+<li><strong>编辑</strong>：<code>edit_file</code>（基于行号的替换）</li>
+<li><strong>执行</strong>：<code>run_command</code>（沙箱内）</li>
+</ul>
+<p>相比 MCP，Agent-SW 更关注代码场景的专有操作，而 MCP 是通用协议。</p>
+</div>
+</details>
+</div>
+
+<div class="qa">
+<details class="socratic">
+<summary>如何评估代码生成 Agent 的能力？</summary>
+<div class="qa-body">
+<p>目前最权威的评测基准是 <strong>SWE-bench</strong>（以及 SWE-bench Multilingual）：</p>
+<ul>
+<li>从真实 GitHub 仓库中提取 Issue + 关联 PR</li>
+<li>Agent 需要理解 Issue、定位代码、生成修改、通过测试</li>
+<li>评分方式：修改后的代码是否通过所有单元测试</li>
+</ul>
+<p>其他评测：<strong>HumanEval</strong>（函数补全）、<strong>RepoBench</strong>（仓库级任务）、<strong>CodeEditorBench</strong>（编辑类任务）。</p>
+</div>
+</details>
+</div>
+
+<div class="qa">
+<details class="socratic">
+<summary>Go 语言适合实现代码生成 Agent 吗？</summary>
+<div class="qa-body">
+<p><strong>非常适合。</strong> 原因：</p>
+<ul>
+<li><strong>标准库 AST 支持</strong>：<code>go/ast</code>、<code>go/parser</code>、<code>go/token</code> 让 Go 代码分析开箱即用</li>
+<li><strong>编译速度快</strong>：Agent 需要频繁编译验证，Go 的秒级编译是巨大优势</li>
+<li><strong>并发模型</strong>：goroutine 天然适合并行搜索、多文件分析</li>
+<li><strong>静态链接</strong>：单二进制部署，便于沙箱分发</li>
+</ul>
+<p>不过，如果 Agent 需要分析多语言（Python/JS/TS），Go 需要借助 Tree-sitter 等通用解析器。</p>
+</div>
+</details>
+</div>
+
+<div class="qa">
+<details class="socratic">
+<summary>代码生成 Agent 的 token 成本大概多少？</summary>
+<div class="qa-body">
+<p>以 SWE-Agent 使用 GPT-4o 为例：</p>
+<ul>
+<li>平均每次任务：<strong>~200K 输入 token + ~10K 输出 token</strong></li>
+<li>成本：约 <strong>$0.3-$0.5/任务</strong>（GPT-4o 价格）</li>
+<li>使用 Claude 3.5 Sonnet：约 <strong>$0.2-$0.4/任务</strong></li>
+<li>复杂任务（跨多个文件、多次迭代）：可达 $1-$2</li>
+</ul>
+<p>相比人工开发者数小时的工作，这个成本非常有竞争力。Cursor 的订阅制 ($20/月) 则适合日常高频使用。</p>
+</div>
+</details>
+</div>
+
+<div class="qa">
+<details class="socratic">
+<summary>MCP 协议在代码场景中最大的挑战是什么？</summary>
+<div class="qa-body">
+<p>主要有三个挑战：</p>
+<ol>
+<li><strong>原子性</strong>：多步编辑操作需要事务支持——要么全部成功要么全部回滚。目前 MCP 没有内建事务语义</li>
+<li><strong>上下文管理</strong>：Agent 可能同时打开多个文件、执行多个命令，MCP 目前缺乏请求追踪能力</li>
+<li><strong>安全边界</strong>：Terminal MCP 如果暴露给不信任的模型，可能造成严重安全风险。需要严格的授权和审计</li>
+</ol>
+<p>社区正在推动 MCP 规范增加批处理和安全相关扩展。</p>
+</div>
+</details>
+</div>
+
+<div class="qa">
+<details class="socratic">
+<summary>代码生成 Agent 会取代程序员吗？</summary>
+<div class="qa-body">
+<p><strong>不会取代，但会重塑工作方式。</strong></p>
+<p>就像 IDE 没有取代程序员、版本控制没有取代程序员一样，Agent 是生产力的又一次跃升。它会：</p>
+<ul>
+<li>接管重复性编码（CRUD、样板代码、测试编写）</li>
+<li>加速 Bug 修复和调试</li>
+<li>帮助新成员快速理解代码仓库</li>
+<li>让程序员聚焦于架构设计、系统思考、用户理解</li>
+</ul>
+<p>引用一位 SWE-Agent 用户的话："Agent 不是来抢工作的，是来消除无聊的。"</p>
+</div>
+</details>
+</div>
+
+<h3>📺 口播总结</h3>
+
+<div class="feynman">
+<p>大家好，今天我们一起深入探讨了<strong>代码生成 Agent</strong> 的原理与实践。</p>
+<p>我们从<strong>为什么需要 Agent</strong> 开始——传统 AI 编程助手就像只会写 Hello World 的实习生，而 Agent 是能独立解决问题的高级工匠。两者的差距在于：<strong>工具调用 → 目标驱动</strong>。</p>
+<p>然后我们看了 <strong>SWE-Agent</strong> 是如何通过 <strong>Agent-SW 协议</strong> 理解仓库、定位代码、生成修复的；<strong>Cursor</strong> 是如何在 IDE 中提供丝滑的交互体验的；<strong>Devin</strong> 是如何在云端全自主完成复杂任务的。</p>
+<p>我们用 Go 代码实现了 <strong>AST 解析 + 调用图构建</strong>、<strong>代码搜索与编辑引擎</strong>、以及 <strong>MCP 代码编辑 Server</strong>——这些是构建你自己的代码 Agent 的基础组件。</p>
+<p><strong>MCP 协议</strong> 正在成为 Agent 工具调用的标准——FileSystem、Git、Terminal 三个 MCP Server 就能覆盖大部分代码场景。而 <strong>安全</strong> 始终是底线：沙箱隔离、最小权限、供应链检查，缺一不可。</p>
+<p>最后，如果你对这个方向感兴趣，推荐去 SWE-bench 上跑跑你的 Agent，也关注 <strong>Anthropic 的 Computer Use</strong>、<strong>OpenAI 的 Codex</strong> 以及 <strong>MCP 规范</strong> 的演进。</p>
+<p>代码生成 Agent 不是科幻——它正在改变我们写软件的方式。感谢观看！</p>
+</div>
+
+<p style="text-align:center;margin:48px 0 24px;color:var(--text);opacity:.5;font-size:13px">
+© 2025 · 代码生成 Agent 技术全景 · 持续更新中
+</p>
+
+</div>
+
+<script>
+document.querySelectorAll('pre').forEach(block => {
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = '📋 复制';
+  btn.onclick = () => {
+    navigator.clipboard.writeText(block.textContent);
+    btn.textContent = '✅ 已复制';
+    setTimeout(() => btn.textContent = '📋 复制', 2000);
+  };
+  block.style.position = 'relative';
+  block.appendChild(btn);
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📖 开源 Agent 项目源码分析 — AutoGPT/BabyAGI/Dify/Superagent 架构拆解</title>
+<style>
+:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3a;--text:#c9d1d9;--accent:#58a6ff;--green:#3fb950;--orange:#d29922;--red:#f85149;--purple:#a371f7;--cyan:#39c5cf}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans SC',sans-serif;line-height:1.7;overflow-x:hidden}
+.sidebar{position:fixed;top:0;left:0;width:260px;height:100vh;background:var(--card);border-right:1px solid var(--border);padding:28px 16px;overflow-y:auto;z-index:100}
+.sidebar h3{color:var(--accent);font-size:14px;margin-bottom:18px;padding-left:8px;border-left:3px solid var(--accent)}
+.sidebar nav a{display:block;color:var(--text);text-decoration:none;font-size:13px;padding:7px 12px;border-radius:6px;margin-bottom:2px;transition:all .2s}
+.sidebar nav a:hover{background:rgba(88,166,255,.12);color:var(--accent);padding-left:16px}
+.sidebar .back-link{display:block;margin-top:24px;padding:8px 12px;color:var(--cyan);text-decoration:none;font-size:14px;border-top:1px solid var(--border);padding-top:16px}
+.sidebar .back-link:hover{color:#fff}
+.main{margin-left:260px;padding:40px 48px 80px;max-width:960px}
+h1{font-size:32px;margin-bottom:8px;color:#fff;letter-spacing:-.5px}
+.subtitle{color:var(--text);font-size:15px;margin-bottom:40px;opacity:.7}
+h2{font-size:24px;color:#fff;margin-top:52px;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+h3{font-size:18px;color:var(--accent);margin-top:28px;margin-bottom:12px}
+h4{font-size:15px;color:var(--purple);margin-top:20px;margin-bottom:8px}
+p{font-size:15px;margin-bottom:14px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+ul,ol{padding-left:22px;margin-bottom:16px}
+li{margin-bottom:5px;font-size:14px}
+code{background:rgba(255,255,255,.06);color:var(--cyan);padding:2px 7px;border-radius:4px;font-size:13px;font-family:'JetBrains Mono','Fira Code',monospace}
+pre{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:18px;overflow-x:auto;margin:16px 0;font-size:13px;line-height:1.6}
+pre .kw{color:var(--purple)}pre .fn{color:var(--accent)}pre .str{color:var(--green)}pre .num{color:var(--orange)}pre .cm{color:var(--text);opacity:.5}pre .tp{color:var(--cyan)}pre .op{color:var(--red)}
+
+/* Feynman style blockquote */
+.feynman{background:var(--card);border-left:4px solid var(--orange);border-radius:8px;padding:18px 22px;margin:20px 0}
+.feynman strong{color:var(--orange)}
+.feynman p{margin-bottom:0;font-size:14px}
+
+/* SVG containers */
+.diagram{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:20px 0;overflow-x:auto;text-align:center}
+.diagram svg{max-width:100%;height:auto}
+.diagram figcaption{text-align:center;font-size:13px;color:var(--text);opacity:.6;margin-top:8px}
+
+/* Info cards */
+.info-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:14px 0}
+.info-card strong{color:var(--accent)}
+.info-card .tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;margin-right:4px}
+.tag-blue{background:rgba(88,166,255,.15);color:var(--accent)}
+.tag-green{background:rgba(63,185,80,.15);color:var(--green)}
+.tag-orange{background:rgba(210,153,34,.15);color:var(--orange)}
+.tag-purple{background:rgba(163,113,247,.15);color:var(--purple)}
+.tag-cyan{background:rgba(57,197,207,.15);color:var(--cyan)}
+
+/* Compare tables */
+.compare{width:100%;border-collapse:separate;border-spacing:0;margin:18px 0;font-size:13px}
+.compare th{background:rgba(88,166,255,.1);color:var(--accent);padding:10px 12px;text-align:left;font-weight:600;border-bottom:2px solid var(--accent)}
+.compare td{padding:10px 12px;border-bottom:1px solid var(--border)}
+.compare tr:hover td{background:rgba(255,255,255,.02)}
+.compare .good{color:var(--green)}.compare .mid{color:var(--orange)}.compare .bad{color:var(--red)}
+.compare .good::before{content:"✓ ";color:var(--green)}.compare .mid::before{content:"~ ";color:var(--orange)}.compare .bad::before{content:"✗ ";color:var(--red)}
+
+/* QA Details */
+details.socratic{border:1px solid var(--border);border-radius:8px;margin:10px 0;background:var(--card);overflow:hidden}
+details.socratic summary{padding:14px 18px;cursor:pointer;font-weight:600;font-size:14px;color:#fff;background:rgba(88,166,255,.04);border-bottom:1px solid transparent;transition:all .2s}
+details.socratic summary:hover{background:rgba(88,166,255,.08);color:var(--accent)}
+details.socratic[open] summary{border-bottom-color:var(--border)}
+details.socratic .qa-body{padding:14px 18px;font-size:14px}
+
+/* Tags */
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;margin-right:4px;font-weight:500}
+
+/* Animation */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.diagram,.info-card,details.socratic,.feynman{animation:fadeUp .5s ease-out}
+
+/* Responsive */
+@media(max-width:768px){
+.sidebar{display:none}
+.main{margin-left:0;padding:24px 18px}
+h1{font-size:24px}
+h2{font-size:20px}
+.compare{font-size:12px}
+.compare th,.compare td{padding:6px 8px}
+}
+
+/* Utility */
+.notice{background:rgba(57,197,207,.08);border:1px solid rgba(57,197,207,.25);border-radius:8px;padding:12px 16px;margin:14px 0;font-size:13px}
+.notice strong{color:var(--cyan)}
+</style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<aside class="sidebar">
+  <h3>📖 目录导航</h3>
+  <nav>
+    <a href="#why">1. 为什么读开源 Agent 源码</a>
+    <a href="#autogpt">2. AutoGPT 架构分析</a>
+    <a href="#babyagi">3. BabyAGI 架构分析</a>
+    <a href="#dify">4. Dify 架构分析</a>
+    <a href="#superagent">5. Superagent 架构分析</a>
+    <a href="#compare">6. 架构模式对比</a>
+    <a href="#learn">7. 从开源项目能学到什么</a>
+    <a href="#contribute">8. 如何参与开源 Agent 项目</a>
+    <a href="#qa">9. QA &amp; 总结</a>
+  </nav>
+  <a class="back-link" href="../index.html">← 返回首页</a>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<div class="main">
+
+<h1>📖 开源 Agent 项目源码分析</h1>
+<p class="subtitle">AutoGPT · BabyAGI · Dify · Superagent — 四种主流架构的源码级拆解</p>
+
+<!-- ============================================================ -->
+<!-- 1. 为什么读开源 Agent 源码 -->
+<!-- ============================================================ -->
+<h2 id="why">1. 为什么读开源 Agent 源码</h2>
+
+<div class="feynman">
+<strong>🧑‍🍳 费曼类比：</strong>读文档就像拿着菜谱学做菜——知道要放多少克盐、煎几分钟；读源码就像站在大厨身后看他颠勺——看到手法如何变通、火候如何判断、翻车了怎么补救。<strong>菜谱告诉你「做什么」，源码告诉你「为什么这样做」。</strong>真正理解一个 Agent 系统，必须打开它的引擎盖。
+</div>
+
+<p>截至 2026 年，GitHub 上 Agent 类开源项目已超过 2000 个，累计 Star 数突破 40 万。AutoGPT、BabyAGI、Dify、Superagent 是其中最具有代表性的四个项目，分别代表了<strong>自主 Agent、极简框架、平台级编排、API 化服务</strong>四种截然不同的设计哲学。</p>
+
+<p>通过源码分析，你可以学到：</p>
+<ul>
+  <li><strong>循环控制</strong>：Agent 如何决定"下一步做什么"——是 while(true) 还是事件驱动？</li>
+  <li><strong>记忆管理</strong>：短期记忆（上下文窗口）和长期记忆（向量存储）如何协同工作？</li>
+  <li><strong>工具调用</strong>：Function Calling 的注册、匹配、执行链路如何设计？</li>
+  <li><strong>扩展性</strong>：插件系统、Provider 抽象、多租户隔离如何从源码层面实现？</li>
+</ul>
+
+<div class="diagram">
+<figure>
+<svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#a371f7"/></linearGradient>
+    <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#39c5cf"/></linearGradient>
+    <linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#d29922"/><stop offset="100%" stop-color="#f85149"/></linearGradient>
+    <linearGradient id="g4" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#a371f7"/><stop offset="100%" stop-color="#58a6ff"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".25"/></filter>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="800" height="340" rx="10" fill="#1a1d27"/>
+
+  <!-- Title -->
+  <text x="400" y="36" text-anchor="middle" fill="#fff" font-size="18" font-weight="bold">开源 Agent 生态全景图</text>
+
+  <!-- Orbit rings -->
+  <ellipse cx="400" cy="180" rx="140" ry="70" fill="none" stroke="#2a2d3a" stroke-width="1" stroke-dasharray="4,3"/>
+  <ellipse cx="400" cy="180" rx="220" ry="110" fill="none" stroke="#2a2d3a" stroke-width="1" stroke-dasharray="4,3"/>
+  <ellipse cx="400" cy="180" rx="300" ry="150" fill="none" stroke="#2a2d3a" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- Center -->
+  <circle cx="400" cy="180" r="36" fill="url(#g1)" filter="url(#shadow)"/>
+  <text x="400" y="174" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">LLM</text>
+  <text x="400" y="189" text-anchor="middle" fill="#fff" font-size="10">Agent Core</text>
+
+  <!-- 4 Project Nodes -->
+  <!-- AutoGPT -->
+  <g transform="translate(400,75)">
+    <rect x="-72" y="-22" width="144" height="44" rx="22" fill="url(#g1)" filter="url(#shadow)"/>
+    <text x="0" y="-2" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">AutoGPT</text>
+    <text x="0" y="13" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">自主 Agent · 目标驱动</text>
+  </g>
+
+  <!-- BabyAGI -->
+  <g transform="translate(560,160)">
+    <rect x="-72" y="-22" width="144" height="44" rx="22" fill="url(#g2)" filter="url(#shadow)"/>
+    <text x="0" y="-2" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">BabyAGI</text>
+    <text x="0" y="13" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">极简 · 三 Agent 三角</text>
+  </g>
+
+  <!-- Dify -->
+  <g transform="translate(400,280)">
+    <rect x="-62" y="-22" width="124" height="44" rx="22" fill="url(#g3)" filter="url(#shadow)"/>
+    <text x="0" y="-2" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">Dify</text>
+    <text x="0" y="13" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">平台化 · 可视化编排</text>
+  </g>
+
+  <!-- Superagent -->
+  <g transform="translate(240,160)">
+    <rect x="-72" y="-22" width="144" height="44" rx="22" fill="url(#g4)" filter="url(#shadow)"/>
+    <text x="0" y="-2" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">Superagent</text>
+    <text x="0" y="13" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">API 化 · Agent-as-a-Service</text>
+  </g>
+
+  <!-- Connecting lines -->
+  <line x1="400" y1="111" x2="400" y2="144" stroke="url(#g1)" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="504" y1="164" x2="462" y2="172" stroke="url(#g2)" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="400" y1="222" x2="400" y2="258" stroke="url(#g3)" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="296" y1="164" x2="338" y2="172" stroke="url(#g4)" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <!-- Attributes around ring -->
+  <text x="660" y="200" fill="#58a6ff" font-size="11">🧠 记忆系统</text>
+  <text x="660" y="216" fill="#3fb950" font-size="11">🔧 工具调用</text>
+  <text x="130" y="200" fill="#d29922" font-size="11">🗂️ 插件机制</text>
+  <text x="130" y="216" fill="#a371f7" font-size="11">🏗️ 多租户</text>
+  <text x="400" y="320" fill="#39c5cf" font-size="11">🌐 RAG Pipeline</text>
+  <text x="400" y="60" fill="#f85149" font-size="11">⚡ 自主循环</text>
+
+  <!-- Legend -->
+  <rect x="24" y="298" width="8" height="8" rx="2" fill="#58a6ff"/>
+  <text x="38" y="306" fill="#c9d1d9" font-size="10">自主决策</text>
+  <rect x="120" y="298" width="8" height="8" rx="2" fill="#3fb950"/>
+  <text x="134" y="306" fill="#c9d1d9" font-size="10">极简设计</text>
+  <rect x="216" y="298" width="8" height="8" rx="2" fill="#d29922"/>
+  <text x="230" y="306" fill="#c9d1d9" font-size="10">平台生态</text>
+  <rect x="312" y="298" width="8" height="8" rx="2" fill="#a371f7"/>
+  <text x="326" y="306" fill="#c9d1d9" font-size="10">API 服务</text>
+</svg>
+<figcaption>图1：开源 Agent 生态全景图 — 四个项目在"自主性 vs 平台化"光谱上的位置</figcaption>
+</figure>
+</div>
+
+<!-- ============================================================ -->
+<!-- 2. AutoGPT 架构分析 -->
+<!-- ============================================================ -->
+<h2 id="autogpt">2. AutoGPT 架构分析 — 最经典的自主 Agent</h2>
+
+<p>AutoGPT 发布于 2023 年 3 月，巅峰时期 16 万 Star，是第一个让大众真正感受到"AI 自主完成任务"的项目。它的核心设计理念是：<strong>给定一个高层的 Goal，Agent 自主拆解、执行、评估，直到目标达成</strong>。</p>
+
+<div class="info-card">
+  <span class="tag tag-blue">GitHub: Significant-Gravitas/AutoGPT</span>
+  <span class="tag tag-green">语言: Python</span>
+  <span class="tag tag-orange">最新: v0.5.x</span>
+  <span class="tag tag-purple">核心概念: AgentLoop</span>
+</div>
+
+<h3>2.1 核心循环 — AgentLoop</h3>
+
+<p>AutoGPT 最核心的代码位于 <code>autogpt/core/agent_loop.py</code>，其本质是一个有限状态机驱动的 while 循环：</p>
+
+<pre><code><span class="kw">class</span> <span class="fn">AgentLoop</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="tp">self</span>, <span class="tp">goal</span>, <span class="tp">storage</span>, <span class="tp">plugins</span>):
+        <span class="tp">self</span>.goal = goal
+        <span class="tp">self</span>.storage = storage
+        <span class="tp">self</span>.plugins = plugins
+        <span class="tp">self</span>.task_queue = []
+
+    <span class="kw">async def</span> <span class="fn">run</span>(<span class="tp">self</span>):
+        <span class="kw">while</span> <span class="kw">not</span> <span class="tp">self</span>.<span class="fn">_goal_achieved</span>():
+            <span class="fn">task</span> = <span class="kw">await</span> <span class="tp">self</span>.<span class="fn">_get_next_task</span>()
+            <span class="fn">result</span> = <span class="kw">await</span> <span class="tp">self</span>.<span class="fn">_execute_task</span>(task)
+            <span class="fn">evaluation</span> = <span class="kw">await</span> <span class="tp">self</span>.<span class="fn">_evaluate</span>(result)
+            <span class="kw">await</span> <span class="tp">self</span>.<span class="fn">_update_memory</span>(task, result, evaluation)
+        <span class="kw">return</span> <span class="tp">self</span>.<span class="fn">_summarize</span>()</code></pre>
+
+<p>这个循环的五个阶段构成了 AutoGPT 的骨架：</p>
+<ol>
+  <li><strong>Goal Parsing</strong> — 将用户输入的 Goal 分解为可执行的子任务</li>
+  <li><strong>Task Prioritization</strong> — 从任务队列中选出"最重要/最相关"的下一个任务</li>
+  <li><strong>Execution</strong> — 调用 LLM + 工具执行具体任务</li>
+  <li><strong>Evaluation</strong> — 检查执行结果是否符合预期，是否需要重新尝试</li>
+  <li><strong>Memory Update</strong> — 将结果存入短期（上下文）和长期（向量数据库）存储</li>
+</ol>
+
+<div class="diagram">
+<figure>
+<svg viewBox="0 0 760 380" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ac" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#3fb950"/></linearGradient>
+    <filter id="sh"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity=".3"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="760" height="380" rx="10" fill="#1a1d27"/>
+
+  <!-- Title -->
+  <text x="380" y="32" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">AutoGPT 核心循环 — AgentLoop</text>
+
+  <!-- Nodes -->
+  <g transform="translate(380,70)">
+    <rect x="-80" y="-24" width="160" height="48" rx="24" fill="#58a6ff" filter="url(#sh)"/>
+    <text x="0" y="-2" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">🎯 Goal 解析</text>
+    <text x="0" y="12" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">目标 → 子任务列表</text>
+  </g>
+
+  <g transform="translate(150,180)">
+    <rect x="-80" y="-24" width="160" height="48" rx="24" fill="#3fb950" filter="url(#sh)"/>
+    <text x="0" y="-2" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">📋 任务优先级排序</text>
+    <text x="0" y="12" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">选出下一个任务</text>
+  </g>
+
+  <g transform="translate(380,290)">
+    <rect x="-80" y="-24" width="160" height="48" rx="24" fill="#d29922" filter="url(#sh)"/>
+    <text x="0" y="-2" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">⚡ 任务执行</text>
+    <text x="0" y="12" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">LLM + Tools</text>
+  </g>
+
+  <g transform="translate(610,180)">
+    <rect x="-80" y="-24" width="160" height="48" rx="24" fill="#a371f7" filter="url(#sh)"/>
+    <text x="0" y="-2" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">🔍 结果评估</text>
+    <text x="0" y="12" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="10">是否符合预期？</text>
+  </g>
+
+  <!-- Arrows -->
+  <path d="M380,94 L380,118 Q380,130 368,130 L230,130 Q150,130 150,156" stroke="#58a6ff" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M150,204 L150,228 Q150,240 162,240 L300,240 Q380,240 380,266" stroke="#3fb950" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M380,314 L380,338 Q380,350 392,350 L530,350 Q610,350 610,324" stroke="#d29922" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M610,204 L610,228 Q610,240 598,240 L530,240 Q380,240 380,240" stroke="#a371f7" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Feedback loop label -->
+  <path d="M530,240 Q460,240 460,210 L460,130 Q460,100 430,94" stroke="rgba(255,255,255,.2)" stroke-width="1.5" stroke-dasharray="5,3" fill="none"/>
+  <text x="525" y="150" fill="rgba(255,255,255,.4)" font-size="10" transform="rotate(-30,525,150)">未完成 → 重新入队</text>
+
+  <!-- Side annotations -->
+  <text x="28" y="110" fill="#58a6ff" font-size="10">① Goal → Tasks</text>
+  <text x="28" y="126" fill="#3fb950" font-size="10">② 排序</text>
+  <text x="28" y="142" fill="#d29922" font-size="10">③ 执行</text>
+  <text x="28" y="158" fill="#a371f7" font-size="10">④ 评估</text>
+  <text x="28" y="174" fill="rgba(255,255,255,.4)" font-size="10">⑤ 记忆更新</text>
+
+  <!-- Memory box -->
+  <g transform="translate(640,290)">
+    <rect x="-60" y="-20" width="120" height="40" rx="8" fill="rgba(57,197,207,.15)" stroke="#39c5cf" stroke-width="1" stroke-dasharray="3,2"/>
+    <text x="0" y="-3" text-anchor="middle" fill="#39c5cf" font-size="11">💾 记忆存储</text>
+    <text x="0" y="11" text-anchor="middle" fill="rgba(57,197,207,.6)" font-size="9">Vector DB / JSON</text>
+  </g>
+  <path d="M540,290 Q580,290 580,285" stroke="#39c5cf" stroke-width="1" stroke-dasharray="3,2" fill="none"/>
+</svg>
+<figcaption>图2：AutoGPT 核心循环 — 从 Goal 到执行的五阶段闭环</figcaption>
+</figure>
+</div>
+
+<h3>2.2 存储系统</h3>
+
+<p>AutoGPT 的存储系统分为三层：</p>
+<ul>
+  <li><strong>Short-term Memory</strong> — 当前对话的上下文窗口（LLM 的 prompt 内），只保留最近的 N 条交互</li>
+  <li><strong>Long-term Memory</strong> — 使用 <code>Pinecone</code> 或 <code>Weaviate</code> 等向量数据库，存储 embedding 后的任务结果</li>
+  <li><strong>File-based Memory</strong> — JSON 文件备份，包含 task_history.json、goal_progress.json 等</li>
+</ul>
+
+<div class="info-card">
+<strong>📁 关键文件结构：</strong><br>
+<code>autogpt/core/agent_loop.py</code> — 主循环<br>
+<code>autogpt/core/memory/</code> — 存储抽象基类及实现<br>
+<code>autogpt/core/plugin/</code> — 插件系统<br>
+<code>autogpt/llm/prompt_strategies/</code> — Prompt 模板策略
+</div>
+
+<h3>2.3 插件机制</h3>
+
+<p>AutoGPT 的插件系统设计模式是典型的 <strong>Chain of Responsibility</strong>（职责链模式）。每个插件可以 Hook 到 Agent 循环的各个生命周期点：</p>
+
+<pre><code><span class="cm"># autogpt/core/plugin/base.py (简化)</span>
+<span class="kw">class</span> <span class="fn">AgentPlugin</span>(<span class="tp">ABC</span>):
+    <span class="fn">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">can_handle</span>(<span class="tp">self</span>, <span class="tp">event</span>: <span class="tp">AgentEvent</span>) <span class="op">-></span> <span class="tp">bool</span>: ...
+
+    <span class="fn">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">handle</span>(<span class="tp">self</span>, <span class="tp">event</span>: <span class="tp">AgentEvent</span>) <span class="op">-></span> <span class="tp">AgentEvent</span>: ...
+
+<span class="cm"># 注册点示例：执行前修改 prompt</span>
+<span class="kw">async def</span> <span class="fn">_build_execution_prompt</span>(<span class="tp">self</span>, <span class="tp">context</span>):
+    <span class="tp">event</span> = <span class="fn">BeforeExecuteEvent</span>(<span class="tp">context</span>)
+    <span class="kw">for</span> <span class="tp">plugin</span> <span class="kw">in</span> <span class="tp">self</span>.plugins:
+        <span class="kw">if</span> <span class="tp">plugin</span>.<span class="fn">can_handle</span>(<span class="tp">event</span>):
+            <span class="tp">event</span> = <span class="kw">await</span> <span class="tp">plugin</span>.<span class="fn">handle</span>(<span class="tp">event</span>)</code></pre>
+
+<h3>2.4 Prompt 模板策略</h3>
+
+<p>AutoGPT 的一大特色是其丰富的 Prompt 模板体系：</p>
+<ul>
+  <li><code>goal_creation</code> — 从用户输入解析 Goal</li>
+  <li><code>task_creation</code> — 根据 Goal 生成子任务</li>
+  <li><code>prioritization</code> — 对任务列表排序</li>
+  <li><code>execution</code> — 实际执行任务</li>
+  <li><code>evaluation</code> — 检查执行结果</li>
+  <li><code>summarization</code> — 生成的最终汇总</li>
+</ul>
+<p>每个策略都可以通过插件热替换，这也是 AutoGPT 灵活性最强的设计点之一。</p>
+
+<!-- ============================================================ -->
+<!-- 3. BabyAGI 架构分析 -->
+<!-- ============================================================ -->
+<h2 id="babyagi">3. BabyAGI 架构分析 — 最简洁的 Agent 框架</h2>
+
+<div class="feynman">
+<strong>🧠 费曼说：</strong>"我不能理解的东西，说明我没有真正学会。" BabyAGI 的核心代码不到 300 行，但实现了完整的 Agent 循环。<strong>它用最少的代码展示了 Agent 系统的本质</strong>——如果你能理解 BabyAGI，你就能理解所有 Agent 框架。
+</div>
+
+<p>BabyAGI 由 Yohei Nakajima 创作，最初只是一个 200 行的 Python 脚本。它的设计哲学是 <strong>KISS（Keep It Simple, Stupid）</strong>，使用三个 Agent 角色构成一个三角循环：</p>
+
+<div class="info-card">
+  <span class="tag tag-blue">GitHub: yoheinakajima/babyagi</span>
+  <span class="tag tag-green">语言: Python</span>
+  <span class="tag tag-orange">核心文件: babyagi.py</span>
+  <span class="tag tag-cyan">3 个 Agent · 1 个 Vector Store</span>
+</div>
+
+<h3>3.1 三 Agent 三角</h3>
+
+<pre><code><span class="cm"># babyagi.py 核心逻辑 （简化）</span>
+<span class="kw">def</span> <span class="fn">run_babyagi</span>(<span class="tp">objective</span>):
+    <span class="tp">task_list</span> = [<span class="fn">Task</span>(<span class="str">"Develop a task list"</span>)]
+    <span class="kw">while</span> <span class="tp">task_list</span>:
+        <span class="cm"># Agent 1: Task Execution Agent</span>
+        <span class="tp">task</span> = <span class="tp">task_list</span>.<span class="fn">pop</span>(<span class="num">0</span>)
+        <span class="tp">result</span> = <span class="kw">await</span> <span class="fn">llm_execute</span>(<span class="tp">objective</span>, <span class="tp">task</span>)
+
+        <span class="cm"># Agent 2: Task Creation Agent</span>
+        <span class="tp">new_tasks</span> = <span class="kw">await</span> <span class="fn">llm_create_tasks</span>(<span class="tp">objective</span>, <span class="tp">result</span>)
+
+        <span class="cm"># Agent 3: Task Prioritization Agent</span>
+        <span class="tp">task_list</span> = <span class="kw">await</span> <span class="fn">llm_prioritize</span>(<span class="tp">task_list</span> + <span class="tp">new_tasks</span>)</code></pre>
+
+<div class="diagram">
+<figure>
+<svg viewBox="0 0 660 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="sh2"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".3"/></filter>
+    <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="660" height="400" rx="10" fill="#1a1d27"/>
+
+  <!-- Title -->
+  <text x="330" y="32" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">BabyAGI 三 Agent 三角</text>
+
+  <!-- Objective center -->
+  <circle cx="330" cy="200" r="28" fill="rgba(57,197,207,.2)" stroke="#39c5cf" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <text x="330" y="196" text-anchor="middle" fill="#39c5cf" font-size="11">🎯</text>
+  <text x="330" y="210" text-anchor="middle" fill="#39c5cf" font-size="10">Objective</text>
+
+  <!-- Agent 1 - Execution -->
+  <g transform="translate(330,78)">
+    <rect x="-96" y="-32" width="192" height="64" rx="12" fill="rgba(88,166,255,.12)" stroke="#58a6ff" stroke-width="2" filter="url(#sh2)"/>
+    <text x="0" y="-12" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="bold">🤖 Agent 1: 任务执行</text>
+    <text x="0" y="6" text-anchor="middle" fill="#c9d1d9" font-size="11">Task Execution Agent</text>
+    <text x="0" y="20" text-anchor="middle" fill="rgba(255,255,255,.5)" font-size="10">执行任务 → 返回结果</text>
+  </g>
+
+  <!-- Agent 2 - Creation -->
+  <g transform="translate(506,268)">
+    <rect x="-96" y="-32" width="192" height="64" rx="12" fill="rgba(63,185,80,.12)" stroke="#3fb950" stroke-width="2" filter="url(#sh2)"/>
+    <text x="0" y="-12" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold">🤖 Agent 2: 任务创建</text>
+    <text x="0" y="6" text-anchor="middle" fill="#c9d1d9" font-size="11">Task Creation Agent</text>
+    <text x="0" y="20" text-anchor="middle" fill="rgba(255,255,255,.5)" font-size="10">结果 → 衍生新任务</text>
+  </g>
+
+  <!-- Agent 3 - Prioritization -->
+  <g transform="translate(154,268)">
+    <rect x="-96" y="-32" width="192" height="64" rx="12" fill="rgba(210,153,34,.12)" stroke="#d29922" stroke-width="2" filter="url(#sh2)"/>
+    <text x="0" y="-12" text-anchor="middle" fill="#d29922" font-size="13" font-weight="bold">🤖 Agent 3: 任务排序</text>
+    <text x="0" y="6" text-anchor="middle" fill="#c9d1d9" font-size="11">Task Prioritization Agent</text>
+    <text x="0" y="20" text-anchor="middle" fill="rgba(255,255,255,.5)" font-size="10">排序任务列表</text>
+  </g>
+
+  <!-- Arrows forming triangle -->
+  <path d="M330,110 L330,134 Q330,148 342,148 L428,148 Q506,148 506,236" stroke="#58a6ff" stroke-width="2" fill="none" marker-end="url(#ar2)"/>
+  <path d="M506,300 L506,324 Q506,338 494,338 L330,338 Q154,338 154,300" stroke="#3fb950" stroke-width="2" fill="none" marker-end="url(#ar2)"/>
+  <path d="M154,236 L154,162 Q154,148 166,148 L252,148 Q330,148 330,110" stroke="#d29922" stroke-width="2" fill="none" marker-end="url(#ar2)"/>
+
+  <!-- Vector Store node -->
+  <g transform="translate(330,335)">
+    <rect x="-70" y="-18" width="140" height="36" rx="18" fill="rgba(163,113,247,.12)" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="0" y="0" text-anchor="middle" fill="#a371f7" font-size="11">🗄️ Vector Store</text>
+    <text x="0" y="12" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">Chroma / Pinecone</text>
+  </g>
+  <line x1="330" y1="228" x2="330" y2="317" stroke="#a371f7" stroke-width="1" stroke-dasharray="4,2"/>
+
+  <!-- Labels on arrows -->
+  <text x="418" y="180" fill="rgba(255,255,255,.5)" font-size="10" transform="rotate(25,418,180)">结果</text>
+  <text x="330" y="310" fill="rgba(255,255,255,.5)" font-size="10">存储到记忆</text>
+  <text x="160" y="180" fill="rgba(255,255,255,.5)" font-size="10" transform="rotate(-25,160,180)">新任务</text>
+</svg>
+<figcaption>图3：BabyAGI 三 Agent 三角 — 任务执行 → 创建 → 排序的闭环</figcaption>
+</figure>
+</div>
+
+<h3>3.2 为什么只用 Vector Store 就能工作？</h3>
+
+<p>BabyAGI 的巧妙之处在于：<strong>它不需要复杂的记忆管理，因为 Vector Store 本身就是记忆</strong>。具体来说：</p>
+<ul>
+  <li>每个任务执行的结果被 embedding 后存入向量数据库</li>
+  <li>Task Creation Agent 会根据"与 Objective 最相似的结果"来生成新任务</li>
+  <li>Task Prioritization Agent 会根据任务的"紧急度 + 相关性"得分排序</li>
+  <li>整个过程中，没有显式的状态管理 — 状态隐含在 Vector Store 的相似度搜索中</li>
+</ul>
+
+<div class="notice">
+<strong>✨ 核心洞察：</strong>BabyAGI 证明了 <strong>Agent = LLM + Task Queue + Vector Store</strong> 这个最小公式。所有更复杂的框架（AutoGPT、Dify 等）都是在"如何更好地管理任务队列"和"如何更有效地使用向量存储"上做文章。
+</div>
+
+<h3>3.3 与 AutoGPT 的关键差异</h3>
+
+<table class="compare">
+  <tr><th>维度</th><th>AutoGPT</th><th>BabyAGI</th></tr>
+  <tr><td>代码量</td><td>~20000 行</td><td>~300 行</td></tr>
+  <tr><td>循环控制</td><td>有限状态机</td><td>简单的 while 循环</td></tr>
+  <tr><td>记忆系统</td><td>三层：短期+长期+文件</td><td>单层：Vector Store</td></tr>
+  <tr><td>插件系统</td><td>插件链（职责链模式）</td><td>无</td></tr>
+  <tr><td>可扩展性</td><td>高（插件+策略模式）</td><td>低（直接修改代码）</td></tr>
+  <tr><td>最适合</td><td>复杂、长期任务</td><td>学习、快速原型</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<!-- 4. Dify 架构分析 -->
+<!-- ============================================================ -->
+<h2 id="dify">4. Dify 架构分析 — 最完整的开源 Agent 平台</h2>
+
+<p>Dify 是目前最活跃的开源 LLMOps 平台之一，GitHub 上超过 70k Star。与 AutoGPT 和 BabyAGI 不同，Dify 不是一个"运行 Agent"的库，而是一个<strong>打造 Agent 应用的平台</strong>。从源码角度看，Dify 的核心是三个引擎的组合：</p>
+
+<div class="info-card">
+  <span class="tag tag-blue">GitHub: langgenius/dify</span>
+  <span class="tag tag-green">语言: TypeScript/Python</span>
+  <span class="tag tag-orange">前端: Next.js + React</span>
+  <span class="tag tag-purple">后端: Flask + Celery</span>
+  <span class="tag tag-cyan">数据库: PostgreSQL + Redis + Weaviate</span>
+</div>
+
+<h3>4.1 Workflow Engine — 可视化的 Agent 编排</h3>
+
+<p>Dify 的 Workflow Engine 是其核心创新。在源码层面，它定义了一套 <strong>DAG（有向无环图）节点系统</strong>：</p>
+
+<pre><code><span class="cm">// api/core/workflow/nodes/base.py （简化）</span>
+<span class="kw">class</span> <span class="fn">WorkflowNode</span>(<span class="tp">ABC</span>):
+    <span class="tp">node_id</span>: <span class="tp">str</span>
+    <span class="tp">node_type</span>: <span class="tp">NodeType</span>  <span class="cm"># LLM, Code, Tool, Condition, etc.</span>
+    <span class="tp">inputs</span>: <span class="tp">dict</span>
+    <span class="tp">config</span>: <span class="tp">NodeConfig</span>
+
+    <span class="fn">@abstractmethod</span>
+    <span class="kw">async def</span> <span class="fn">execute</span>(<span class="tp">self</span>, <span class="tp">context</span>: <span class="tp">ExecutionContext</span>) <span class="op">-></span> <span class="tp">NodeResult</span>: ...
+
+<span class="kw">class</span> <span class="fn">WorkflowEngine</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="tp">self</span>, <span class="tp">dag</span>: <span class="tp">DAG</span>[<span class="tp">WorkflowNode</span>]):
+        <span class="tp">self</span>.dag = dag
+
+    <span class="kw">async def</span> <span class="fn">run</span>(<span class="tp">self</span>, <span class="tp">inputs</span>: <span class="tp">dict</span>):
+        <span class="kw">return await</span> <span class="tp">self</span>.dag.<span class="fn">topological_execute</span>(<span class="tp">inputs</span>)</code></pre>
+
+<p>Dify 支持的节点类型包括：</p>
+<ul>
+  <li><code>LLM Node</code> — 调用大模型</li>
+  <li><code>Code Node</code> — 执行 Python/JS 代码片段</li>
+  <li><code>Tool Node</code> — 调用内置或第三方工具</li>
+  <li><code>Knowledge Retrieval Node</code> — 从知识库检索</li>
+  <li><code>Condition Node</code> — 分支判断</li>
+  <li><code>Variable Aggregation Node</code> — 多路结果合并</li>
+</ul>
+
+<h3>4.2 RAG Pipeline</h3>
+
+<p>Dify 的 RAG（Retrieval-Augmented Generation）管道是企业级强度：</p>
+<ol>
+  <li><strong>Document Ingestion</strong> — 支持 PDF/DOCX/MD/HTML/TXT 等格式解析</li>
+  <li><strong>Chunking</strong> — 可配置的分块策略（按段落/按 token/按句子）</li>
+  <li><strong>Embedding</strong> — 支持 OpenAI/BAAI/M3E 等多种 embedding 模型</li>
+  <li><strong>Indexing</strong> — 存入 Weaviate/Qdrant/MySQL 等多种向量存储</li>
+  <li><strong>Retrieval</strong> — 混合搜索（向量 + 关键词 BM25）</li>
+</ol>
+
+<h3>4.3 Plugin System</h3>
+
+<p>Dify 的插件系统与 AutoGPT 不同：它采用 <strong>Provider + Tool 双层抽象</strong>：</p>
+
+<pre><code><span class="cm"># api/core/plugin/provider/base.py</span>
+<span class="kw">class</span> <span class="fn">PluginProvider</span>(<span class="tp">ABC</span>):
+    <span class="tp">name</span>: <span class="tp">str</span>
+    <span class="tp">tools</span>: <span class="tp">list</span>[<span class="tp">ToolMeta</span>]
+
+    <span class="fn">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">validate_credentials</span>(<span class="tp">self</span>, <span class="tp">config</span>: <span class="tp">dict</span>) <span class="op">-></span> <span class="tp">bool</span>: ...
+
+<span class="kw">class</span> <span class="fn">Tool</span>(<span class="tp">ABC</span>):
+    <span class="tp">name</span>: <span class="tp">str</span>
+    <span class="tp">parameters</span>: <span class="tp">list</span>[<span class="tp">ParameterDef</span>]
+
+    <span class="fn">@abstractmethod</span>
+    <span class="kw">async def</span> <span class="fn">invoke</span>(<span class="tp">self</span>, <span class="tp">params</span>: <span class="tp">dict</span>) <span class="op">-></span> <span class="tp">Any</span>: ...</code></pre>
+
+<div class="diagram">
+<figure>
+<svg viewBox="0 0 780 420" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="s3"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".25"/></filter>
+  </defs>
+  <rect x="0" y="0" width="780" height="420" rx="10" fill="#1a1d27"/>
+
+  <text x="390" y="32" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">Dify 架构总览</text>
+
+  <!-- Top row: User Interface -->
+  <g transform="translate(390,60)">
+    <rect x="-100" y="-18" width="200" height="36" rx="8" fill="rgba(88,166,255,.15)" stroke="#58a6ff" stroke-width="1.5" filter="url(#s3)"/>
+    <text x="0" y="4" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="bold">🌐 Web UI / API 入口</text>
+  </g>
+
+  <!-- Row 2: App Layer -->
+  <g transform="translate(120,120)">
+    <rect x="-80" y="-16" width="160" height="32" rx="6" fill="rgba(57,197,207,.12)" stroke="#39c5cf" stroke-width="1"/>
+    <text x="0" y="4" text-anchor="middle" fill="#39c5cf" font-size="11">Chat App</text>
+  </g>
+  <g transform="translate(390,120)">
+    <rect x="-80" y="-16" width="160" height="32" rx="6" fill="rgba(57,197,207,.12)" stroke="#39c5cf" stroke-width="1"/>
+    <text x="0" y="4" text-anchor="middle" fill="#39c5cf" font-size="11">Workflow App</text>
+  </g>
+  <g transform="translate(660,120)">
+    <rect x="-80" y="-16" width="160" height="32" rx="6" fill="rgba(57,197,207,.12)" stroke="#39c5cf" stroke-width="1"/>
+    <text x="0" y="4" text-anchor="middle" fill="#39c5cf" font-size="11">Agent App</text>
+  </g>
+
+  <!-- Row 3: Core Engine -->
+  <g transform="translate(240,190)">
+    <rect x="-90" y="-28" width="180" height="56" rx="8" fill="rgba(163,113,247,.1)" stroke="#a371f7" stroke-width="1.5" filter="url(#s3)"/>
+    <text x="0" y="-10" text-anchor="middle" fill="#a371f7" font-size="12" font-weight="bold">🧩 Workflow Engine</text>
+    <text x="0" y="8" text-anchor="middle" fill="rgba(255,255,255,.6)" font-size="10">DAG 执行引擎</text>
+    <text x="0" y="20" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">拓扑排序 · 并行执行</text>
+  </g>
+  <g transform="translate(540,190)">
+    <rect x="-90" y="-28" width="180" height="56" rx="8" fill="rgba(210,153,34,.1)" stroke="#d29922" stroke-width="1.5" filter="url(#s3)"/>
+    <text x="0" y="-10" text-anchor="middle" fill="#d29922" font-size="12" font-weight="bold">📚 RAG Pipeline</text>
+    <text x="0" y="8" text-anchor="middle" fill="rgba(255,255,255,.6)" font-size="10">检索增强生成</text>
+    <text x="0" y="20" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">Ingest → Chunk → Embed → Search</text>
+  </g>
+
+  <!-- Row 4: LLM & Storage -->
+  <g transform="translate(140,280)">
+    <rect x="-80" y="-22" width="160" height="44" rx="8" fill="rgba(63,185,80,.08)" stroke="#3fb950" stroke-width="1"/>
+    <text x="0" y="-4" text-anchor="middle" fill="#3fb950" font-size="11">🤖 LLM Provider Layer</text>
+    <text x="0" y="12" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">OpenAI / Claude / LLama / Ollama</text>
+  </g>
+  <g transform="translate(390,280)">
+    <rect x="-70" y="-22" width="140" height="44" rx="8" fill="rgba(57,197,207,.08)" stroke="#39c5cf" stroke-width="1"/>
+    <text x="0" y="-4" text-anchor="middle" fill="#39c5cf" font-size="11">🗄️ Vector Store</text>
+    <text x="0" y="12" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">Weaviate / Qdrant</text>
+  </g>
+  <g transform="translate(640,280)">
+    <rect x="-70" y="-22" width="140" height="44" rx="8" fill="rgba(163,113,247,.08)" stroke="#a371f7" stroke-width="1"/>
+    <text x="0" y="-4" text-anchor="middle" fill="#a371f7" font-size="11">💾 Relational DB</text>
+    <text x="0" y="12" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">PostgreSQL + Redis</text>
+  </g>
+
+  <!-- Row 5: Plugin System -->
+  <g transform="translate(390,350)">
+    <rect x="-140" y="-22" width="280" height="44" rx="8" fill="rgba(248,81,73,.06)" stroke="#f85149" stroke-width="1" stroke-dasharray="4,2"/>
+    <text x="0" y="-4" text-anchor="middle" fill="#f85149" font-size="11">🔌 插件系统 — Provider + Tool 双层抽象</text>
+    <text x="0" y="12" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">50+ 内置工具 · 自定义插件 · Marketplace</text>
+  </g>
+
+  <!-- Lines -->
+  <line x1="390" y1="96" x2="200" y2="120" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
+  <line x1="390" y1="96" x2="390" y2="120" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
+  <line x1="390" y1="96" x2="580" y2="120" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
+  <line x1="200" y1="152" x2="280" y2="175" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+  <line x1="580" y1="152" x2="500" y2="175" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+  <line x1="280" y1="246" x2="200" y2="268" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+  <line x1="280" y1="246" x2="420" y2="268" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+  <line x1="500" y1="246" x2="540" y2="268" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+  <line x1="500" y1="246" x2="660" y2="268" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+  <line x1="390" y1="302" x2="390" y2="328" stroke="rgba(248,81,73,.2)" stroke-width="1"/>
+</svg>
+<figcaption>图4：Dify 架构总览 — 从 UI 到存储的五层架构</figcaption>
+</figure>
+</div>
+
+<!-- ============================================================ -->
+<!-- 5. Superagent 架构分析 -->
+<!-- ============================================================ -->
+<h2 id="superagent">5. Superagent 架构分析 — 最实用的 Agent API</h2>
+
+<p>Superagent 的定位与前三者完全不同：它不是让你自己跑 Agent，而是<strong>把 Agent 能力做成 API 卖给你</strong>。它最值得学习的源码设计是 Multi-tenant（多租户）隔离和 Provider 抽象层。</p>
+
+<div class="info-card">
+  <span class="tag tag-blue">GitHub: homanp/superagent</span>
+  <span class="tag tag-green">语言: TypeScript</span>
+  <span class="tag tag-orange">后端: Next.js API Routes</span>
+  <span class="tag tag-purple">数据库: Prisma + PostgreSQL</span>
+  <span class="tag tag-cyan">核心概念: Agent-as-a-Service</span>
+</div>
+
+<h3>5.1 Agent-as-a-Service 模式</h3>
+
+<p>Superagent 的 API 设计遵循 <strong>CRUD for Agents</strong> 的思路：</p>
+
+<pre><code><span class="cm">// lib/api/agent.ts （简化）</span>
+<span class="kw">export async function</span> <span class="fn">createAgent</span>(<span class="tp">params</span>: {
+  <span class="tp">name</span>: <span class="tp">string</span>;
+  <span class="tp">description</span>?: <span class="tp">string</span>;
+  <span class="tp">llmProvider</span>: <span class="tp">LLMProviderType</span>;
+  <span class="tp">tools</span>: <span class="tp">ToolDef</span>[];
+  <span class="tp">promptTemplate</span>?: <span class="tp">string</span>;
+  <span class="tp">sessionId</span>: <span class="tp">string</span>;       <span class="cm">// 多租户隔离</span>
+}): <span class="tp">Promise</span>&lt;<span class="tp">Agent</span>&gt; {
+  <span class="kw">const</span> <span class="tp">agent</span> = <span class="kw">await</span> <span class="tp">prisma</span>.agent.<span class="fn">create</span>({
+    <span class="tp">data</span>: { ...<span class="tp">params</span>, <span class="tp">userId</span>: <span class="tp">getCurrentUser</span>() }
+  });
+  <span class="kw">return</span> <span class="tp">agent</span>;
+}
+
+<span class="kw">export async function</span> <span class="fn">runAgent</span>(<span class="tp">agentId</span>: <span class="tp">string</span>, <span class="tp">input</span>: <span class="tp">string</span>) {
+  <span class="kw">const</span> <span class="tp">agent</span> = <span class="kw">await</span> <span class="tp">prisma</span>.agent.<span class="fn">findUniqueOrThrow</span>({
+    <span class="tp">where</span>: { <span class="tp">id</span>: <span class="tp">agentId</span> }
+  });
+  <span class="kw">const</span> <span class="tp">executor</span> = <span class="kw">await</span> <span class="fn">AgentExecutor</span>.<span class="fn">fromAgent</span>(<span class="tp">agent</span>);
+  <span class="kw">return await</span> <span class="tp">executor</span>.<span class="fn">run</span>(<span class="tp">input</span>);
+}</code></pre>
+
+<h3>5.2 Multi-tenant 隔离</h3>
+
+<p>Superagent 的 Multi-tenant 实现非常优雅：</p>
+<ul>
+  <li>每个 Agent 实例绑定一个 <code>userId</code> 和 <code>sessionId</code></li>
+  <li>LLM API Key 存储在 Agent 级别（每个用户可以配置不同的 Provider 和 Key）</li>
+  <li>工具访问权限通过 Agent 级别的 <code>ToolDef</code> 白名单控制</li>
+  <li>向量存储也按 userId 分库/分 collection</li>
+</ul>
+
+<h3>5.3 可插拔 LLM Provider</h3>
+
+<pre><code><span class="cm">// lib/llm/providers/base.ts</span>
+<span class="kw">export interface</span> <span class="fn">LLMProvider</span> {
+  <span class="tp">name</span>: <span class="tp">string</span>;
+  <span class="fn">completions</span>(<span class="tp">params</span>: <span class="tp">CompletionParams</span>): <span class="tp">Promise</span>&lt;<span class="tp">CompletionResult</span>&gt;;
+  <span class="fn">completionsStream</span>(<span class="tp">params</span>: <span class="tp">CompletionParams</span>): <span class="tp">ReadableStream</span>;
+  <span class="fn">embeddings</span>(<span class="tp">input</span>: <span class="tp">string</span>[]): <span class="tp">Promise</span>&lt;<span class="tp">number</span>[][]&gt;;
+}
+
+<span class="cm">// Provider Registry</span>
+<span class="kw">const</span> <span class="tp">providerRegistry</span> = <span class="kw">new</span> <span class="fn">Map</span>&lt;<span class="tp">LLMProviderType</span>, <span class="tp">LLMProvider</span>&gt;();
+<span class="tp">providerRegistry</span>.<span class="fn">set</span>(<span class="str">'openai'</span>, <span class="kw">new</span> <span class="fn">OpenAIProvider</span>());
+<span class="tp">providerRegistry</span>.<span class="fn">set</span>(<span class="str">'anthropic'</span>, <span class="kw">new</span> <span class="fn">AnthropicProvider</span>());
+<span class="tp">providerRegistry</span>.<span class="fn">set</span>(<span class="str">'ollama'</span>, <span class="kw">new</span> <span class="fn">OllamaProvider</span>());</code></pre>
+
+<div class="diagram">
+<figure>
+<svg viewBox="0 0 760 370" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="s4"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".25"/></filter>
+  </defs>
+  <rect x="0" y="0" width="760" height="370" rx="10" fill="#1a1d27"/>
+
+  <text x="380" y="32" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">Superagent API 架构 — Agent-as-a-Service</text>
+
+  <!-- Left: API Client -->
+  <g transform="translate(100,100)">
+    <rect x="-70" y="-22" width="140" height="44" rx="10" fill="rgba(88,166,255,.15)" stroke="#58a6ff" stroke-width="1.5" filter="url(#s4)"/>
+    <text x="0" y="0" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="bold">📱 API 客户端</text>
+    <text x="0" y="16" text-anchor="middle" fill="rgba(255,255,255,.5)" font-size="9">REST / WebSocket</text>
+  </g>
+
+  <!-- Middle: API Layer -->
+  <g transform="translate(300,70)">
+    <rect x="-80" y="-18" width="160" height="36" rx="8" fill="rgba(57,197,207,.12)" stroke="#39c5cf" stroke-width="1"/>
+    <text x="0" y="4" text-anchor="middle" fill="#39c5cf" font-size="11">Next.js API Routes</text>
+  </g>
+  <g transform="translate(300,130)">
+    <rect x="-80" y="-20" width="160" height="40" rx="8" fill="rgba(163,113,247,.1)" stroke="#a371f7" stroke-width="1"/>
+    <text x="0" y="-4" text-anchor="middle" fill="#a371f7" font-size="11">🔐 Auth &amp; RBAC</text>
+    <text x="0" y="10" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">Clerk / JWT</text>
+  </g>
+  <g transform="translate(300,200)">
+    <rect x="-80" y="-20" width="160" height="40" rx="8" fill="rgba(210,153,34,.1)" stroke="#d29922" stroke-width="1"/>
+    <text x="0" y="-4" text-anchor="middle" fill="#d29922" font-size="11">🔧 Agent Executor</text>
+    <text x="0" y="10" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">LLM + Tools 编排</text>
+  </g>
+
+  <!-- Right: Services -->
+  <g transform="translate(540,70)">
+    <rect x="-65" y="-62" width="130" height="52" rx="8" fill="rgba(63,185,80,.08)" stroke="#3fb950" stroke-width="1"/>
+    <text x="0" y="-46" text-anchor="middle" fill="#3fb950" font-size="10">🤖 LLM Provider</text>
+    <text x="0" y="-34" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="8">OpenAI · Claude</text>
+    <text x="0" y="-22" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="8">Ollama · Azure</text>
+  </g>
+  <g transform="translate(540,140)">
+    <rect x="-65" y="-22" width="130" height="44" rx="8" fill="rgba(57,197,207,.08)" stroke="#39c5cf" stroke-width="1"/>
+    <text x="0" y="-4" text-anchor="middle" fill="#39c5cf" font-size="10">🗄️ Vector Store</text>
+    <text x="0" y="10" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="8">Pinecone · PG Vector</text>
+  </g>
+  <g transform="translate(540,210)">
+    <rect x="-65" y="-22" width="130" height="44" rx="8" fill="rgba(248,81,73,.08)" stroke="#f85149" stroke-width="1"/>
+    <text x="0" y="-4" text-anchor="middle" fill="#f85149" font-size="10">💾 PostgreSQL</text>
+    <text x="0" y="10" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="8">Agents · Sessions · Logs</text>
+  </g>
+
+  <!-- Bottom: Multi-tenant -->
+  <g transform="translate(380,290)">
+    <rect x="-180" y="-22" width="360" height="44" rx="8" fill="rgba(255,255,255,.03)" stroke="#2a2d3a" stroke-width="1" stroke-dasharray="4,2"/>
+    <text x="0" y="-4" text-anchor="middle" fill="rgba(255,255,255,.5)" font-size="11">👥 Multi-tenant 隔离层 — userId + sessionId + API Key 三级隔离</text>
+    <text x="0" y="12" text-anchor="middle" fill="rgba(255,255,255,.3)" font-size="9">每个 Agent 独立配置、独立存储、独立计费</text>
+  </g>
+
+  <!-- Horizontal arrows -->
+  <path d="M170,110 Q220,110 220,80" stroke="rgba(255,255,255,.15)" stroke-width="1.5" fill="none" marker-end="url(#ar2)"/>
+  <path d="M460,90 L475,90" stroke="rgba(255,255,255,.15)" stroke-width="1.5" fill="none"/>
+  <path d="M460,150 L475,150" stroke="rgba(255,255,255,.15)" stroke-width="1.5" fill="none"/>
+  <path d="M460,220 L475,220" stroke="rgba(255,255,255,.15)" stroke-width="1.5" fill="none"/>
+</svg>
+<figcaption>图5：Superagent API 架构 — 从客户端到多租户隔离的完整链路</figcaption>
+</figure>
+</div>
+
+<h3>5.4 Superagent 的 Tool Registry 模式</h3>
+
+<p>Superagent 的工具注册模式也很值得学习：</p>
+<pre><code><span class="cm">// lib/tools/registry.ts</span>
+<span class="kw">class</span> <span class="fn">ToolRegistry</span> {
+  <span class="kw">private</span> <span class="tp">tools</span> = <span class="kw">new</span> <span class="fn">Map</span>&lt;<span class="tp">string</span>, <span class="tp">Tool</span>&gt;();
+
+  <span class="fn">register</span>(<span class="tp">tool</span>: <span class="tp">Tool</span>) {
+    <span class="tp">this</span>.tools.<span class="fn">set</span>(<span class="tp">tool</span>.name, <span class="tp">tool</span>);
+  }
+
+  <span class="fn">getToolForAgent</span>(<span class="tp">agentId</span>: <span class="tp">string</span>): <span class="tp">Tool</span>[] {
+    <span class="kw">return</span> <span class="tp">this</span>.tools.<span class="fn">filterByMetadata</span>({ <span class="tp">allowedAgents</span>: [<span class="tp">agentId</span>, <span class="str">'*'</span>] });
+  }
+}</code></pre>
+
+<!-- ============================================================ -->
+<!-- 6. 架构模式对比 -->
+<!-- ============================================================ -->
+<h2 id="compare">6. 架构模式对比</h2>
+
+<p>从源码层面，这四种架构代表了四种完全不同的设计哲学。我们从六个关键维度系统对比：</p>
+
+<div class="diagram">
+<figure>
+<svg viewBox="0 0 780 440" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="s5"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".2"/></filter>
+  </defs>
+  <rect x="0" y="0" width="780" height="440" rx="10" fill="#1a1d27"/>
+
+  <text x="390" y="32" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">四种架构模式对比雷达图</text>
+
+  <!-- Radar chart -->
+  <g transform="translate(390,260)">
+    <!-- Pentagon -->
+    <polygon points="0,-130 124,-40 76,105 -76,105 -124,-40" fill="none" stroke="#2a2d3a" stroke-width="1"/>
+    <polygon points="0,-97 93,-30 57,79 -57,79 -93,-30" fill="none" stroke="#2a2d3a" stroke-width="1"/>
+    <polygon points="0,-65 62,-20 38,52 -38,52 -62,-20" fill="none" stroke="#2a2d3a" stroke-width="1"/>
+    <polygon points="0,-32 31,-10 19,26 -19,26 -31,-10" fill="none" stroke="#2a2d3a" stroke-width="1"/>
+
+    <!-- Axis labels -->
+    <text x="0" y="-142" text-anchor="middle" fill="#58a6ff" font-size="11">自主性</text>
+    <text x="152" y="-38" text-anchor="middle" fill="#3fb950" font-size="11">扩展性</text>
+    <text x="96" y="128" text-anchor="middle" fill="#d29922" font-size="11">工具生态</text>
+    <text x="-96" y="128" text-anchor="middle" fill="#a371f7" font-size="11">易用性</text>
+    <text x="-152" y="-38" text-anchor="middle" fill="#39c5cf" font-size="11">工程化</text>
+
+    <!-- AutoGPT -->
+    <polygon points="0,-110 90,-25 50,60 -50,55 -110,-25" fill="rgba(88,166,255,.15)" stroke="#58a6ff" stroke-width="2" filter="url(#s5)"/>
+    <text x="-60" y="-100" fill="#58a6ff" font-size="10" font-weight="bold">AutoGPT</text>
+
+    <!-- BabyAGI -->
+    <polygon points="0,-50 60,-15 35,40 -35,35 -60,-10" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="2" filter="url(#s5)"/>
+    <text x="50" y="-85" fill="#3fb950" font-size="10" font-weight="bold">BabyAGI</text>
+
+    <!-- Dify -->
+    <polygon points="0,-80 115,-30 65,90 -65,90 -115,-30" fill="rgba(210,153,34,.15)" stroke="#d29922" stroke-width="2" filter="url(#s5)"/>
+    <text x="30" y="60" fill="#d29922" font-size="10" font-weight="bold">Dify</text>
+
+    <!-- Superagent -->
+    <polygon points="0,-40 75,-20 55,75 -55,70 -75,-20" fill="rgba(163,113,247,.15)" stroke="#a371f7" stroke-width="2" filter="url(#s5)"/>
+    <text x="-30" y="70" fill="#a371f7" font-size="10" font-weight="bold">Superagent</text>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(24,390)">
+    <rect x="0" y="0" width="10" height="10" rx="2" fill="#58a6ff"/>
+    <text x="16" y="9" fill="#c9d1d9" font-size="10">AutoGPT — 高自主性</text>
+    <rect x="160" y="0" width="10" height="10" rx="2" fill="#3fb950"/>
+    <text x="176" y="9" fill="#c9d1d9" font-size="10">BabyAGI — 极简</text>
+    <rect x="300" y="0" width="10" height="10" rx="2" fill="#d29922"/>
+    <text x="316" y="9" fill="#c9d1d9" font-size="10">Dify — 平台化</text>
+    <rect x="440" y="0" width="10" height="10" rx="2" fill="#a371f7"/>
+    <text x="456" y="9" fill="#c9d1d9" font-size="10">Superagent — API 化</text>
+  </g>
+</svg>
+<figcaption>图6：四种架构模式对比雷达图 — 五个维度的相对优劣势</figcaption>
+</figure>
+</div>
+
+<h3>6.1 详细对比表</h3>
+
+<table class="compare">
+  <tr><th>维度</th><th>AutoGPT</th><th>BabyAGI</th><th>Dify</th><th>Superagent</th></tr>
+  <tr>
+    <td><strong>核心循环</strong></td>
+    <td>有限状态机</td>
+    <td>while 队列</td>
+    <td>DAG 拓扑排序</td>
+    <td>请求-响应</td>
+  </tr>
+  <tr>
+    <td><strong>记忆系统</strong></td>
+    <td class="good">三层：短期+长期+文件</td>
+    <td class="mid">单层：向量存储</td>
+    <td class="good">RAG Pipeline + 会话记忆</td>
+    <td class="mid">向量存储 + DB</td>
+  </tr>
+  <tr>
+    <td><strong>工具调用</strong></td>
+    <td class="good">插件链</td>
+    <td class="bad">无内置工具</td>
+    <td class="good">50+ 内置工具</td>
+    <td class="good">Registry 模式</td>
+  </tr>
+  <tr>
+    <td><strong>插件/扩展性</strong></td>
+    <td class="good">职责链模式</td>
+    <td class="bad">代码修改</td>
+    <td class="good">Provider+Tool 抽象</td>
+    <td class="mid">Provider 可插拔</td>
+  </tr>
+  <tr>
+    <td><strong>多租户</strong></td>
+    <td class="bad">无</td>
+    <td class="bad">无</td>
+    <td class="mid">workspace 隔离</td>
+    <td class="good">三级隔离</td>
+  </tr>
+  <tr>
+    <td><strong>部署复杂度</strong></td>
+    <td class="mid">本地运行</td>
+    <td class="good">单脚本</td>
+    <td class="mid">Docker Compose</td>
+    <td class="good">Serverless 友好</td>
+  </tr>
+  <tr>
+    <td><strong>最佳场景</strong></td>
+    <td>复杂长期自主任务</td>
+    <td>学习/快速原型</td>
+    <td>企业级 AI 平台</td>
+    <td>SaaS API 产品</td>
+  </tr>
+</table>
+
+<!-- ============================================================ -->
+<!-- 7. 从开源项目能学到什么 -->
+<!-- ============================================================ -->
+<h2 id="learn">7. 从开源项目能学到什么 — 可复用的设计模式</h2>
+
+<p>阅读这四个项目的源码，可以提炼出多个可复用的设计模式。以下是最有价值的五个：</p>
+
+<h3>7.1 插件系统设计模式 — Chain of Responsibility</h3>
+
+<p>AutoGPT 和 Dify 都使用职责链模式实现插件系统：</p>
+
+<pre><code><span class="cm"># 通用插件接口模式</span>
+<span class="kw">class</span> <span class="fn">AgentPlugin</span>(<span class="tp">ABC</span>):
+    <span class="fn">@property</span>
+    <span class="kw">def</span> <span class="fn">priority</span>(<span class="tp">self</span>) <span class="op">-></span> <span class="tp">int</span>: ...  <span class="cm"># 执行顺序控制</span>
+
+    <span class="fn">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">pre_execute</span>(<span class="tp">self</span>, <span class="tp">prompt</span>: <span class="tp">str</span>) <span class="op">-></span> <span class="tp">str</span>: ...
+
+    <span class="fn">@abstractmethod</span>
+    <span class="kw">def</span> <span class="fn">post_execute</span>(<span class="tp">self</span>, <span class="tp">result</span>: <span class="tp">str</span>) <span class="op">-></span> <span class="tp">str</span>: ...</code></pre>
+
+<p><strong>关键设计决策</strong>：使用 <code>priority</code> 排序而非注册顺序，确保插件之间的依赖关系可控。</p>
+
+<h3>7.2 Agent 状态持久化 — Event Sourcing 模式</h3>
+
+<p>所有四个项目都面临同一个问题：<strong>Agent 运行到一半挂了怎么办？</strong> 最佳实践是将 Agent 的每一步都作为事件持久化：</p>
+
+<pre><code><span class="cm"># 状态持久化的事件模式</span>
+<span class="kw">class</span> <span class="fn">AgentEvent</span>:
+    <span class="tp">event_id</span>: <span class="tp">str</span>
+    <span class="tp">agent_id</span>: <span class="tp">str</span>
+    <span class="tp">event_type</span>: <span class="tp">str</span>  <span class="cm"># task_created, task_executed, error, etc.</span>
+    <span class="tp">payload</span>: <span class="tp">dict</span>
+    <span class="tp">timestamp</span>: <span class="tp">datetime</span>
+    <span class="tp">parent_event_id</span>: <span class="tp">str</span> | <span class="tp">None</span>  <span class="cm"># 形成事件链</span></code></pre>
+
+<p>这样，即使 Agent 崩溃，也可以通过重放事件链恢复状态。</p>
+
+<h3>7.3 Tool Registry 模式 — Strategy + Factory</h3>
+
+<p>Superagent 和 Dify 的 Tool Registry 本质是 <strong>Strategy Pattern + Factory Pattern</strong> 的组合：</p>
+
+<pre><code><span class="cm"># 工具注册 + 工厂模式</span>
+<span class="kw">class</span> <span class="fn">ToolRegistry</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="tp">self</span>):
+        <span class="tp">self</span>.<span class="tp">_builders</span> = {}
+
+    <span class="kw">def</span> <span class="fn">register</span>(<span class="tp">self</span>, <span class="tp">name</span>, <span class="tp">builder</span>: <span class="tp">Callable</span>[[<span class="tp">dict</span>], <span class="tp">Tool</span>]):
+        <span class="tp">self</span>.<span class="tp">_builders</span>[<span class="tp">name</span>] = <span class="tp">builder</span>
+
+    <span class="kw">def</span> <span class="fn">create_tool</span>(<span class="tp">self</span>, <span class="tp">name</span>, <span class="tp">config</span>):
+        <span class="kw">if</span> <span class="tp">name</span> <span class="kw">not in</span> <span class="tp">self</span>.<span class="tp">_builders</span>:
+            <span class="kw">raise</span> <span class="fn">ToolNotFoundError</span>(<span class="tp">name</span>)
+        <span class="kw">return</span> <span class="tp">self</span>.<span class="tp">_builders</span>[<span class="tp">name</span>](<span class="tp">config</span>)</code></pre>
+
+<h3>7.4 错误处理与重试策略</h3>
+
+<p>从 AutoGPT 和 Dify 的源码中，可以看到三种级别的错误处理：</p>
+
+<ol>
+  <li><strong>LLM Level</strong> — 模型返回空/格式错误 → 重试 + 降级 prompt</li>
+  <li><strong>Tool Level</strong> — API 调用超时/失败 → 指数退避重试</li>
+  <li><strong>Agent Loop Level</strong> — 连续失败超过阈值 → 发送告警/暂停 Agent</li>
+</ol>
+
+<pre><code><span class="cm"># 指数退避重试（AutoGPT 源码风格）</span>
+<span class="kw">async def</span> <span class="fn">execute_with_retry</span>(<span class="tp">fn</span>, <span class="tp">max_retries</span>=<span class="num">3</span>, <span class="tp">base_delay</span>=<span class="num">1.0</span>):
+    <span class="kw">for</span> <span class="tp">attempt</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="tp">max_retries</span>):
+        <span class="kw">try</span>:
+            <span class="kw">return await</span> <span class="fn">fn</span>()
+        <span class="kw">except</span> <span class="fn">ToolExecutionError</span> <span class="kw">as</span> <span class="tp">e</span>:
+            <span class="kw">if</span> <span class="tp">attempt</span> == <span class="tp">max_retries</span> - <span class="num">1</span>:
+                <span class="kw">raise</span>
+            <span class="kw">await</span> <span class="fn">asyncio.sleep</span>(<span class="tp">base_delay</span> * (<span class="num">2</span> ** <span class="tp">attempt</span>))</code></pre>
+
+<h3>7.5 记忆压缩与摘要技术</h3>
+
+<p>长期运行的 Agent 面临上下文窗口溢出的问题。AutoGPT 和 Dify 都使用了 <strong>记忆压缩</strong> 策略：</p>
+<ul>
+  <li><strong>Summary-based</strong> — 定期将历史对话摘要为一段文字，替换原始内容</li>
+  <li><strong>Sliding Window</strong> — 只保留最近的 N 条交互</li>
+  <li><strong>Hybrid</strong> — 保留最近交互 + 从向量存储中检索相关历史</li>
+</ul>
+
+<div class="diagram">
+<figure>
+<svg viewBox="0 0 780 320" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="s7"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity=".25"/></filter>
+    <marker id="ar7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="780" height="320" rx="10" fill="#1a1d27"/>
+
+  <text x="390" y="30" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">可复用的 Agent 设计模式总览</text>
+
+  <!-- Pattern 1: Plugin Chain -->
+  <g transform="translate(130,70)">
+    <rect x="-110" y="-28" width="220" height="56" rx="10" fill="rgba(88,166,255,.12)" stroke="#58a6ff" stroke-width="1.5" filter="url(#s7)"/>
+    <text x="0" y="-10" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="bold">🔗 职责链模式 — Plugin Chain</text>
+    <text x="0" y="6" text-anchor="middle" fill="#c9d1d9" font-size="10">Hook 到生命周期：pre_execute → execute → post_execute</text>
+    <text x="0" y="18" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">AutoGPT · Dify</text>
+  </g>
+
+  <!-- Pattern 2: Event Sourcing -->
+  <g transform="translate(390,70)">
+    <rect x="-110" y="-28" width="220" height="56" rx="10" fill="rgba(63,185,80,.12)" stroke="#3fb950" stroke-width="1.5" filter="url(#s7)"/>
+    <text x="0" y="-10" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="bold">📜 事件溯源 — Event Sourcing</text>
+    <text x="0" y="6" text-anchor="middle" fill="#c9d1d9" font-size="10">持久化每一步事件，支持崩溃恢复</text>
+    <text x="0" y="18" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">AutoGPT · Superagent</text>
+  </g>
+
+  <!-- Pattern 3: Tool Registry -->
+  <g transform="translate(650,70)">
+    <rect x="-110" y="-28" width="220" height="56" rx="10" fill="rgba(210,153,34,.12)" stroke="#d29922" stroke-width="1.5" filter="url(#s7)"/>
+    <text x="0" y="-10" text-anchor="middle" fill="#d29922" font-size="12" font-weight="bold">🧰 策略+工厂 — Tool Registry</text>
+    <text x="0" y="6" text-anchor="middle" fill="#c9d1d9" font-size="10">name → builder 映射，运行时创建工具实例</text>
+    <text x="0" y="18" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">Superagent · Dify</text>
+  </g>
+
+  <!-- Pattern 4: Retry Strategy -->
+  <g transform="translate(130,160)">
+    <rect x="-110" y="-28" width="220" height="56" rx="10" fill="rgba(163,113,247,.12)" stroke="#a371f7" stroke-width="1.5" filter="url(#s7)"/>
+    <text x="0" y="-10" text-anchor="middle" fill="#a371f7" font-size="12" font-weight="bold">🔄 指数退避重试</text>
+    <text x="0" y="6" text-anchor="middle" fill="#c9d1d9" font-size="10">LLM Level / Tool Level / Loop Level 三级处理</text>
+    <text x="0" y="18" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">AutoGPT · Dify</text>
+  </g>
+
+  <!-- Pattern 5: Memory Compression -->
+  <g transform="translate(390,160)">
+    <rect x="-110" y="-28" width="220" height="56" rx="10" fill="rgba(57,197,207,.12)" stroke="#39c5cf" stroke-width="1.5" filter="url(#s7)"/>
+    <text x="0" y="-10" text-anchor="middle" fill="#39c5cf" font-size="12" font-weight="bold">🧠 记忆压缩 — Memory Compression</text>
+    <text x="0" y="6" text-anchor="middle" fill="#c9d1d9" font-size="10">Summary / Sliding Window / Hybrid 三种策略</text>
+    <text x="0" y="18" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">AutoGPT · Dify</text>
+  </g>
+
+  <!-- Pattern 6: Provider Abstraction -->
+  <g transform="translate(650,160)">
+    <rect x="-110" y="-28" width="220" height="56" rx="10" fill="rgba(248,81,73,.12)" stroke="#f85149" stroke-width="1.5" filter="url(#s7)"/>
+    <text x="0" y="-10" text-anchor="middle" fill="#f85149" font-size="12" font-weight="bold">🏭 Provider 抽象层</text>
+    <text x="0" y="6" text-anchor="middle" fill="#c9d1d9" font-size="10">统一接口 + 多实现，可插拔 LLM Provider</text>
+    <text x="0" y="18" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9">所有四个项目</text>
+  </g>
+
+  <!-- Bottom: core formula -->
+  <g transform="translate(390,250)">
+    <rect x="-200" y="-24" width="400" height="48" rx="24" fill="rgba(255,255,255,.04)" stroke="#2a2d3a" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <text x="0" y="-6" text-anchor="middle" fill="#c9d1d9" font-size="13" font-weight="bold">🧮 核心公式：Agent = LLM + 循环控制 + 记忆 + 工具</text>
+    <text x="0" y="12" text-anchor="middle" fill="rgba(255,255,255,.3)" font-size="10">掌握这 6 种模式，就能设计自己的 Agent 系统</text>
+  </g>
+
+  <!-- Connecting -->
+  <line x1="390" y1="126" x2="390" y2="132" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+</svg>
+<figcaption>图7：可复用的 Agent 设计模式 — 6 种从开源项目中提炼的通用架构模式</figcaption>
+</figure>
+</div>
+
+<!-- ============================================================ -->
+<!-- 8. 如何参与开源 Agent 项目 -->
+<!-- ============================================================ -->
+<h2 id="contribute">8. 如何参与开源 Agent 项目 — 贡献指南</h2>
+
+<p>读完源码，最好的学习方式就是参与贡献。以下是从四个项目的实际贡献流程总结出的通用路径：</p>
+
+<h3>8.1 找 Issue</h3>
+
+<div class="info-card">
+<strong>🔍 筛选策略：</strong><br>
+<span class="tag tag-green">good first issue</span>
+<span class="tag tag-blue">help wanted</span>
+<span class="tag tag-orange">bug</span>
+<span class="tag tag-purple">documentation</span>
+</div>
+
+<p>四个项目都维护了 <code>good first issue</code> 标签。具体来说：</p>
+<ul>
+  <li><strong>AutoGPT</strong> — 搜索 <code>area: plugins</code> 或 <code>area: memory</code></li>
+  <li><strong>Dify</strong> — 搜索 <code>status: ready</code> + <code>difficulty: easy</code></li>
+  <li><strong>Superagent</strong> — 搜索 <code>p: low</code> + <code>type: enhancement</code></li>
+  <li><strong>BabyAGI</strong> — 直接贡献新功能（项目小，活跃度高）</li>
+</ul>
+
+<h3>8.2 理解代码 → 提交 PR</h3>
+
+<pre><code><span class="cm"># 贡献流程（所有项目通用）</span>
+<span class="num">1</span>. Fork 仓库 → git clone → git checkout -b feature/xxx
+<span class="num">2</span>. 运行本地测试：<span class="fn">make test</span> <span class="op">||</span> <span class="fn">npm run test</span>
+<span class="num">3</span>. 编写代码 + 添加测试（覆盖率不低于 80%）
+<span class="num">4</span>. Commit 信息规范：
+    <span class="kw">feat</span>(agent_loop): 支持自定义终止条件
+    <span class="kw">fix</span>(memory): 修复向量搜索返回空结果
+    <span class="kw">docs</span>(README): 更新插件开发指南
+<span class="num">5</span>. PR 描述格式：
+    - **问题**: #123
+    - **改动**: 修改了哪些文件
+    - **测试**: 手动测试 / 单元测试覆盖</code></pre>
+
+<h3>8.3 贡献范围建议</h3>
+
+<table class="compare">
+  <tr><th>项目</th><th>推荐首次贡献方向</th><th>难度</th></tr>
+  <tr><td>AutoGPT</td><td>插件文档、新的 Tool 插件</td><td>⭐⭐</td></tr>
+  <tr><td>BabyAGI</td><td>新的 LLM Provider 支持</td><td>⭐</td></tr>
+  <tr><td>Dify</td><td>工具集成（如新的搜索工具）</td><td>⭐⭐⭐</td></tr>
+  <tr><td>Superagent</td><td>API 文档完善、测试用例</td><td>⭐</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<!-- 9. QA + 口播总结 -->
+<!-- ============================================================ -->
+<h2 id="qa">9. QA &amp; 口播总结</h2>
+
+<h3>常见问题</h3>
+
+<details class="socratic">
+  <summary>🤔 Q1：AutoGPT 还活跃吗？现在学它还有意义吗？</summary>
+  <div class="qa-body">
+    <p>AutoGPT 的 Star 增长虽然放缓，但它的<strong>架构设计理念</strong>至今仍然是 Agent 系统设计的参照标准。它的有限状态机循环、三层记忆体系、插件链模式，被后续几乎所有 Agent 框架借鉴。学 AutoGPT 源码，学的是"设计思路"而非"项目本身"。</p>
+  </div>
+</details>
+
+<details class="socratic">
+  <summary>🤔 Q2：BabyAGI 才 300 行，真的能解决实际问题吗？</summary>
+  <div class="qa-body">
+    <p>BabyAGI 本身确实不是一个生产级工具，但它的<strong>教学价值无可替代</strong>。它用最少的代码展示了 Agent 系统的本质：任务队列 + LLM 调用 + 向量存储。实际上，很多生产级 Agent 系统（包括 AutoGPT 的早期版本）都是基于 BabyAGI 的架构扩展而来。</p>
+  </div>
+</details>
+
+<details class="socratic">
+  <summary>🤔 Q3：Dify 和 LangFlow 有什么区别？</summary>
+  <div class="qa-body">
+    <p>两者都是可视化 Agent 编排平台，但设计理念不同：<strong>Dify 更偏向产品化</strong>，开箱即用，内置 RAG、Prompt 管理、监控面板；<strong>LangFlow 更偏向开发</strong>，底层直接操作 LangChain 组件，灵活性更高。从源码角度，Dify 的 Workflow Engine 是自研的 DAG 引擎，而 LangFlow 直接依赖 LangChain 的 LCEL。</p>
+  </div>
+</details>
+
+<details class="socratic">
+  <summary>🤔 Q4：我想自己造一个 Agent 框架，应该参考哪个？</summary>
+  <div class="qa-body">
+    <p>分场景：</p>
+    <ul>
+      <li><strong>如果你想做一个教学/实验框架</strong> → 参考 BabyAGI（最简架构）</li>
+      <li><strong>如果你想做一个自主 Agent 产品</strong> → 参考 AutoGPT 的循环 + 插件设计</li>
+      <li><strong>如果你想做一个企业 Agent 平台</strong> → 参考 Dify 的 Workflow Engine + RAG Pipeline</li>
+      <li><strong>如果你想做一个 Agent API 服务</strong> → 参考 Superagent 的多租户 + Provider 抽象</li>
+    </ul>
+  </div>
+</details>
+
+<details class="socratic">
+  <summary>🤔 Q5：这些项目都用什么 LLM？能接入国产大模型吗？</summary>
+  <div class="qa-body">
+    <p>四个项目都通过 <strong>Provider 抽象层</strong>支持多模型：</p>
+    <ul>
+      <li>AutoGPT / BabyAGI — 通过 LangChain 或直接 API 调用，可接文心、通义千问</li>
+      <li>Dify — 官方支持 OpenAI、Claude、Llama、文心、通义、百川等 20+ 模型</li>
+      <li>Superagent — Provider 接口统一，只需要实现 <code>LLMProvider</code> 接口即可接入国产模型</li>
+    </ul>
+  </div>
+</details>
+
+<details class="socratic">
+  <summary>🤔 Q6：Agent 系统如何处理 Token 消耗过大的问题？</summary>
+  <div class="qa-body">
+    <p>从源码中可以看到三种主要策略：</p>
+    <ol>
+      <li><strong>Prompt 压缩</strong> — AutoGPT/Dify 都会在每次迭代中截断非关键上下文</li>
+      <li><strong>记忆摘要</strong> — 定期用 LLM 将历史对话生成摘要，丢弃原始内容</li>
+      <li><strong>Map-Reduce 模式</strong> — Dify 对长文档使用 Map-Reduce 分片处理，避免一次性塞满上下文</li>
+    </ol>
+  </div>
+</details>
+
+<details class="socratic">
+  <summary>🤔 Q7：Agent 开源项目的前景如何？</summary>
+  <div class="qa-body">
+    <p>2026 年 Agent 开源生态正在快速分化：</p>
+    <ul>
+      <li><strong>框架层</strong> 趋于收敛，LangChain/AutoGPT 确立主流范式</li>
+      <li><strong>平台层</strong> Dify 等补齐企业级能力（审计、监控、权限）</li>
+      <li><strong>应用层</strong> 垂直领域 Agent（代码、客服、数据）成为新热点</li>
+    </ul>
+    <p>建议：平台层选 Dify，应用层关注 AutoGPT 的新插件生态，API 层关注 Superagent 的发展方向。</p>
+  </div>
+</details>
+
+<h3>🎙️ 口播总结</h3>
+
+<div class="feynman">
+<strong>🎙️ 一句话总结：</strong> 读开源 Agent 源码就像去大厨的后厨——<strong>AutoGPT 给你看的是米其林三星的完整厨房流程</strong>，<strong>BabyAGI 是路边摊的极简三轮车</strong>，<strong>Dify 是中央厨房的流水线管理系统</strong>，<strong>Superagent 是外卖平台的 API 调度中心</strong>。四个项目，四种哲学，但核心公式都是：<strong>Agent = LLM + 循环控制 + 记忆 + 工具</strong>。理解了这一点，你就掌握了所有 Agent 系统的钥匙。
+</div>
+
+<div class="notice">
+<strong>📌 本文涉及的四个开源项目仓库：</strong><br>
+🔗 <a href="https://github.com/Significant-Gravitas/AutoGPT" target="_blank">AutoGPT</a> ·
+🔗 <a href="https://github.com/yoheinakajima/babyagi" target="_blank">BabyAGI</a> ·
+🔗 <a href="https://github.com/langgenius/dify" target="_blank">Dify</a> ·
+🔗 <a href="https://github.com/homanp/superagent" target="_blank">Superagent</a>
+</div>
+
+</div><!-- /main -->
+
+</body>
+</html>

@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔧 AI Agent 框架对比与选型 | LangChain/CrewAI/AutoGen/Dify/Coze</title>
+<style>
+:root {
+  --bg:#0f1117;
+  --card:#1a1d27;
+  --border:#2a2d3a;
+  --text:#c9d1d9;
+  --accent:#58a6ff;
+  --green:#3fb950;
+  --orange:#d29922;
+  --red:#f85149;
+  --purple:#a371f7;
+  --cyan:#39c5cf;
+  --font:'Inter','SF Pro','Segoe UI',system-ui,-apple-system,sans-serif;
+  --radius:12px;
+  --shadow:0 4px 24px rgba(0,0,0,.3);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.7;padding:0}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+h1{font-size:2.2rem;margin-bottom:.5rem;background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+h2{font-size:1.5rem;margin:2rem 0 1rem;padding-bottom:.5rem;border-bottom:1px solid var(--border);color:var(--accent)}
+h3{font-size:1.15rem;margin:1.5rem 0 .75rem;color:var(--cyan)}
+p{margin:.75rem 0}
+code{font-family:'JetBrains Mono','Fira Code',monospace;font-size:.9em;background:rgba(88,166,255,.1);padding:.15em .4em;border-radius:4px;color:var(--cyan)}
+pre{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;overflow-x:auto;margin:1rem 0;font-size:.9rem;line-height:1.55}
+pre code{background:transparent;padding:0;color:var(--text)}
+blockquote{border-left:3px solid var(--accent);padding:.5rem 1rem;margin:1rem 0;background:rgba(88,166,255,.05);border-radius:0 var(--radius) var(--radius) 0}
+ul,ol{margin:.75rem 0;padding-left:1.5rem}
+li{margin:.4rem 0}
+
+/* ---- Layout ---- */
+.layout{display:flex;max-width:1400px;margin:0 auto;min-height:100vh}
+
+/* ---- Sidebar ---- */
+.sidebar{width:260px;position:fixed;top:0;left:0;height:100vh;background:var(--card);border-right:1px solid var(--border);padding:2rem 1rem;overflow-y:auto;z-index:100}
+.sidebar h3{font-size:1rem;color:var(--text);margin:0 0 .75rem;border:none;font-weight:600}
+.sidebar nav{display:flex;flex-direction:column;gap:.35rem}
+.sidebar a{color:var(--text);font-size:.85rem;padding:.35rem .6rem;border-radius:6px;transition:all .15s;display:block}
+.sidebar a:hover{background:rgba(88,166,255,.1);color:var(--accent);text-decoration:none}
+.sidebar a.active{background:rgba(88,166,255,.15);color:var(--accent);font-weight:500}
+
+/* ---- Main ---- */
+.main{margin-left:260px;flex:1;padding:2.5rem 3rem;max-width:calc(1400px - 260px)}
+
+/* ---- Cards ---- */
+.info-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin:1rem 0;box-shadow:var(--shadow)}
+.info-card h4{color:var(--accent);margin-bottom:.5rem}
+.info-card .tag{display:inline-block;font-size:.75rem;padding:.15rem .55rem;border-radius:4px;margin-right:.3rem;font-weight:500}
+.tag-lc{background:rgba(88,166,255,.15);color:var(--accent)}
+.tag-cr{background:rgba(163,113,247,.15);color:var(--purple)}
+.tag-ag{background:rgba(57,197,207,.15);color:var(--cyan)}
+.tag-df{background:rgba(61,185,80,.15);color:var(--green)}
+.tag-cz{background:rgba(210,153,34,.15);color:var(--orange)}
+
+/* ---- Feynman ---- */
+.feynman{background:linear-gradient(135deg,rgba(88,166,255,.05),rgba(163,113,247,.08));border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin:1.5rem 0}
+.feynman .label{display:inline-block;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:.4rem;font-weight:600}
+.feynman p{font-style:italic;color:rgba(201,209,217,.9)}
+
+/* ---- Compare table ---- */
+.compare{width:100%;border-collapse:collapse;margin:1.2rem 0;font-size:.9rem}
+.compare th,.compare td{padding:.6rem .8rem;border:1px solid var(--border);text-align:left}
+.compare th{background:var(--card);color:var(--accent);font-weight:600;white-space:nowrap}
+.compare tr:nth-child(even){background:rgba(26,29,39,.4)}
+.compare td:first-child{font-weight:500;color:var(--cyan);white-space:nowrap}
+
+/* ---- QA ---- */
+.qa{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin:1rem 0}
+.qa .q{color:var(--accent);font-weight:600;margin-bottom:.4rem}
+.qa .q::before{content:"Q: ";color:var(--orange);font-weight:700}
+.qa .a{margin-left:0;color:var(--text)}
+.qa .a::before{content:"A: ";color:var(--green);font-weight:700}
+
+details.socratic{border:1px solid var(--border);border-radius:var(--radius);padding:.8rem 1rem;margin:.6rem 0;background:var(--card)}
+details.socratic summary{cursor:pointer;font-weight:500;color:var(--accent);outline:none}
+details.socratic[open]{padding-bottom:1rem}
+details.socratic[open] summary{margin-bottom:.6rem;border-bottom:1px solid var(--border);padding-bottom:.4rem}
+
+/* ---- Diagram wrapper ---- */
+.diagram{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin:1.2rem 0;text-align:center;overflow:hidden}
+.diagram svg{max-width:100%;height:auto;display:block;margin:0 auto}
+.diagram .caption{font-size:.8rem;color:rgba(201,209,217,.6);margin-top:.6rem;font-style:italic}
+
+/* ---- Syntax Highlight ---- */
+.kw{color:var(--purple);font-weight:600}
+.fn{color:var(--accent)}
+.str{color:var(--green)}
+.num{color:var(--orange)}
+.cm{color:rgba(201,209,217,.4);font-style:italic}
+.tp{color:var(--cyan)}
+.op{color:var(--orange)}
+
+/* ---- Responsive ---- */
+@media(max-width:768px){
+  .sidebar{display:none}
+  .main{margin-left:0;padding:1.5rem 1rem;max-width:100%}
+  h1{font-size:1.6rem}
+  .compare{font-size:.8rem}
+  .compare th,.compare td{padding:.4rem .5rem}
+}
+
+/* ---- Misc ---- */
+.highlight-box{background:rgba(57,197,207,.08);border-left:3px solid var(--cyan);padding:.75rem 1rem;margin:1rem 0;border-radius:0 var(--radius) var(--radius) 0}
+.toc-mobile{display:none}
+@media(max-width:768px){
+  .toc-mobile{display:block;margin-bottom:1rem}
+  .toc-mobile details summary{color:var(--accent);font-weight:500;cursor:pointer}
+  .toc-mobile details[open]{background:var(--card);padding:.8rem;border-radius:var(--radius);border:1px solid var(--border)}
+  .toc-mobile nav{display:flex;flex-direction:column;gap:.25rem;margin-top:.5rem}
+  .toc-mobile nav a{font-size:.85rem;padding:.25rem 0}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- ============ SIDEBAR ============ -->
+<aside class="sidebar">
+  <h3>📋 目录</h3>
+  <nav id="toc-nav">
+    <a href="#intro">1. 为什么需要框架</a>
+    <a href="#langchain">2. LangChain + LangGraph</a>
+    <a href="#crewai">3. CrewAI</a>
+    <a href="#autogen">4. AutoGen</a>
+    <a href="#dify">5. Dify</a>
+    <a href="#coze">6. Coze</a>
+    <a href="#comparison">7. 对比总表</a>
+    <a href="#decision">8. 选型决策树</a>
+    <a href="#go-ecosystem">9. Go 生态</a>
+    <a href="#qa">10. QA & 总结</a>
+  </nav>
+  <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);font-size:.8rem;color:rgba(201,209,217,.4)">
+    V4A · 2026
+  </div>
+</aside>
+
+<!-- ============ MAIN ============ -->
+<main class="main">
+
+<!-- Mobile TOC -->
+<div class="toc-mobile">
+  <details>
+    <summary>📋 目录导航</summary>
+    <nav>
+      <a href="#intro">1. 为什么需要框架</a>
+      <a href="#langchain">2. LangChain + LangGraph</a>
+      <a href="#crewai">3. CrewAI</a>
+      <a href="#autogen">4. AutoGen</a>
+      <a href="#dify">5. Dify</a>
+      <a href="#coze">6. Coze</a>
+      <a href="#comparison">7. 对比总表</a>
+      <a href="#decision">8. 选型决策树</a>
+      <a href="#go-ecosystem">9. Go 生态</a>
+      <a href="#qa">10. QA & 总结</a>
+    </nav>
+  </details>
+</div>
+
+<!-- ============================== HEADER ============================== -->
+<h1>🔧 AI Agent 框架对比与选型</h1>
+<p style="font-size:1.05rem;color:rgba(201,209,217,.7);margin-bottom:2rem">
+  LangChain · CrewAI · AutoGen · Dify · Coze — 深度对比与场景化选型指南
+</p>
+
+<!-- ============================== 1 ============================== -->
+<h2 id="intro">1. 为什么需要框架</h2>
+
+<div class="feynman">
+  <div class="label">🧠 费曼类比</div>
+  <p>搭乐高 vs 从零捏泥巴。框架给你预先制造的标准化组件——只要拼在一起就运转；从零开始你得和泥、塑形、烧制——自由度高但在生产线上每块砖都要手搓，零件多了根本管不过来。</p>
+</div>
+
+<p>构建 AI Agent 跟盖房子一样：你可以从挖地基开始每块砖都自己烧，也可以用框架提供的预制构件——<span class="kw">Chain</span>、<span class="fn">Tool</span>、<span class="tp">Memory</span>、<span class="kw">RAG</span> Pipeline、<span class="kw">Multi-Agent</span> Orchestration。框架帮你处理了最脏最累的活：</p>
+<ul>
+  <li><strong>LLM 调用抽象</strong> — 统一接口对接 OpenAI / Claude / Gemini / 本地模型</li>
+  <li><strong>提示词管理</strong> — 模板化、版本化、变量注入</li>
+  <li><strong>工具注册与执行</strong> — 自动生成 Tool Schema，错误重试，结果解析</li>
+  <li><strong>记忆与上下文</strong> — 窗口 / 摘要 / 向量记忆，自动裁剪</li>
+  <li><strong>Multi-Agent 编排</strong> — 角色分配、任务路由、状态管理、异步通信</li>
+</ul>
+
+<!-- SVG 1: 从零实现 vs 用框架 -->
+<div class="diagram">
+  <svg viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg" style="font-family:'Inter','SF Pro',system-ui,sans-serif">
+    <defs>
+      <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#58a6ff" stop-opacity=".5"/><stop offset="100%" stop-color="#a371f7" stop-opacity=".8"/></linearGradient>
+      <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3fb950" stop-opacity=".5"/><stop offset="100%" stop-color="#39c5cf" stop-opacity=".8"/></linearGradient>
+      <linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#f85149" stop-opacity=".4"/><stop offset="100%" stop-color="#d29922" stop-opacity=".7"/></linearGradient>
+      <filter id="shadow"><feDropShadow dx="1" dy="2" stdDeviation="3" flood-opacity=".25"/></filter>
+    </defs>
+    <!-- Background -->
+    <rect width="720" height="320" rx="10" fill="#1a1d27"/>
+    <!-- Title -->
+    <text x="360" y="32" text-anchor="middle" fill="#c9d1d9" font-size="16" font-weight="600">⚡ 开发效率对比：从零实现 vs 使用框架</text>
+    <!-- Left side - 从零实现 -->
+    <rect x="30" y="50" width="310" height="240" rx="8" fill="#0f1117" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="185" y="78" text-anchor="middle" fill="#f85149" font-size="14" font-weight="600">🪨 从零实现</text>
+    <!-- Blocks -->
+    <rect x="50" y="95" width="270" height="28" rx="5" fill="rgba(248,81,73,.15)" stroke="#f85149" stroke-width="1"/>
+    <text x="185" y="114" text-anchor="middle" fill="#f85149" font-size="11">LLM API 调用封装</text>
+    <rect x="50" y="130" width="270" height="28" rx="5" fill="rgba(248,81,73,.15)" stroke="#f85149" stroke-width="1"/>
+    <text x="185" y="149" text-anchor="middle" fill="#f85149" font-size="11">提示词模板引擎</text>
+    <rect x="50" y="165" width="270" height="28" rx="5" fill="rgba(248,81,73,.15)" stroke="#f85149" stroke-width="1"/>
+    <text x="185" y="184" text-anchor="middle" fill="#f85149" font-size="11">Tool Schema 生成与解析</text>
+    <rect x="50" y="200" width="270" height="28" rx="5" fill="rgba(248,81,73,.15)" stroke="#f85149" stroke-width="1"/>
+    <text x="185" y="219" text-anchor="middle" fill="#f85149" font-size="11">记忆管理（窗口 + 摘要）</text>
+    <rect x="50" y="235" width="270" height="28" rx="5" fill="rgba(248,81,73,.15)" stroke="#f85149" stroke-width="1"/>
+    <text x="185" y="254" text-anchor="middle" fill="#f85149" font-size="11">错误重试 & 结构化输出</text>
+    <!-- Arrow -->
+    <text x="185" y="285" text-anchor="middle" fill="#f85149" font-size="12" font-weight="600">⏱ 开发周期：3~8 周</text>
+    <!-- Right side - 框架 -->
+    <rect x="380" y="50" width="310" height="240" rx="8" fill="#0f1117" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="535" y="78" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="600">🧩 使用框架</text>
+    <rect x="400" y="95" width="270" height="28" rx="5" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="1"/>
+    <text x="535" y="114" text-anchor="middle" fill="#3fb950" font-size="11">from langchain import ...</text>
+    <rect x="400" y="130" width="270" height="28" rx="5" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="1"/>
+    <text x="535" y="149" text-anchor="middle" fill="#3fb950" font-size="11">Agent(role="researcher", tools=[...])</text>
+    <rect x="400" y="165" width="270" height="28" rx="5" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="1"/>
+    <text x="535" y="184" text-anchor="middle" fill="#3fb950" font-size="11">Process(sequential, tasks=[...])</text>
+    <rect x="400" y="200" width="270" height="28" rx="5" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="1"/>
+    <text x="535" y="219" text-anchor="middle" fill="#3fb950" font-size="11">内置 ReAct / Plan-and-Execute</text>
+    <rect x="400" y="235" width="270" height="28" rx="5" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="1"/>
+    <text x="535" y="254" text-anchor="middle" fill="#3fb950" font-size="11">Memory, RAG, 监控开箱即用</text>
+    <text x="535" y="285" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">⏱ 开发周期：1~3 天</text>
+    <!-- Center arrow -->
+    <line x1="345" y1="170" x2="375" y2="170" stroke="#d29922" stroke-width="2" stroke-dasharray="4,3"/>
+    <polygon points="375,164 385,170 375,176" fill="#d29922"/>
+    <text x="360" y="160" text-anchor="middle" fill="#d29922" font-size="10">10x</text>
+  </svg>
+  <div class="caption">图1：从零实现与使用框架的开发效率对比。框架将数周的工作压缩到数天</div>
+</div>
+
+<p>框架不是魔法——它是一套经过业界验证的 <strong>抽象层 + 胶水代码</strong>。选对框架，你的 Agent 项目从"能不能跑"变成"跑得多好"。</p>
+
+<!-- ============================== 2 ============================== -->
+<h2 id="langchain">2. LangChain + LangGraph — 最成熟但学习曲线陡</h2>
+
+<p>LangChain 是 AI Agent 生态的"Linux 内核"——市场占有率最高、组件最全、但也是最让人头疼的框架。截至 2026 年，LangChain 已经进化到 v0.5，核心从 Chain 转向了 <span class="kw">LangGraph</span> 的有状态图计算模型。</p>
+
+<h3>核心组件体系</h3>
+
+<table class="compare">
+  <tr><th>组件</th><th>功能</th><th>学习难度</th></tr>
+  <tr><td>ChatModel</td><td>LLM 统一接口（OpenAI / Claude / Ollama / vLLM）</td><td>⭐</td></tr>
+  <tr><td>PromptTemplate</td><td>模板化提示词，支持 few-shot / 变量注入</td><td>⭐</td></tr>
+  <tr><td>Tool</td><td>函数→LLM Schema 自动转换，@tool 装饰器</td><td>⭐⭐</td></tr>
+  <tr><td>Chain (LCEL)</td><td>管道式调用组合：<span class="op">|</span> 操作符链式调用</td><td>⭐⭐</td></tr>
+  <tr><td>Runnable</td><td>Chain / Tool / Retriever 的统一基类 (.invoke / .batch / .stream)</td><td>⭐⭐</td></tr>
+  <tr><td>Agent</td><td>ReAct / OpenAI Tool / Structured Chat 等内置 Agent</td><td>⭐⭐⭐</td></tr>
+  <tr><td>Memory</td><td>Buffer / Summary / VectorStore / Zep 记忆后端</td><td>⭐⭐</td></tr>
+  <tr><td>LangGraph</td><td>有状态图：StateGraph → Node → Edge → Conditional 编排</td><td>⭐⭐⭐⭐</td></tr>
+  <tr><td>LangSmith</td><td>Trace / Debug / Evaluation / 监控平台</td><td>⭐⭐</td></tr>
+</table>
+
+<div class="highlight-box">
+  <strong>💡 经验之谈：</strong> 如果你从零开始学 LangChain，跳过 Chain 直接学 LangGraph。v0.5 已经把 Chain 标记为遗留 API，Graph 才是未来。
+</div>
+
+<h3>LangGraph 代码示例</h3>
+<pre><code><span class="kw">from</span> langgraph.graph <span class="kw">import</span> <span class="tp">StateGraph</span>, <span class="tp">END</span>
+<span class="kw">from</span> langgraph.checkpoint <span class="kw">import</span> <span class="tp">MemorySaver</span>
+<span class="kw">from</span> typing <span class="kw">import</span> <span class="tp">TypedDict</span>, <span class="tp">Literal</span>
+
+<span class="cm"># 定义状态类型</span>
+<span class="kw">class</span> <span class="tp">AgentState</span>(<span class="tp">TypedDict</span>):
+    messages: <span class="tp">list</span>
+    next_agent: <span class="tp">str</span>
+    research_done: <span class="kw">bool</span>
+
+<span class="cm"># 构建图</span>
+builder = <span class="tp">StateGraph</span>(<span class="tp">AgentState</span>)
+
+<span class="cm"># 定义节点</span>
+builder.add_node(<span class="str">"researcher"</span>, researcher_node)
+builder.add_node(<span class="str">"writer"</span>, writer_node)
+builder.add_node(<span class="str">"reviewer"</span>, reviewer_node)
+
+<span class="cm"># 定义边</span>
+builder.add_edge(<span class="str">"__start__"</span>, <span class="str">"researcher"</span>)
+builder.add_conditional_edges(
+    <span class="str">"researcher"</span>,
+    <span class="kw">lambda</span> state: <span class="str">"writer"</span> <span class="kw">if</span> state[<span class="str">"research_done"</span>] <span class="kw">else</span> <span class="str">"researcher"</span>,
+)
+builder.add_edge(<span class="str">"writer"</span>, <span class="str">"reviewer"</span>)
+builder.add_edge(<span class="str">"reviewer"</span>, <span class="tp">END</span>)
+
+<span class="cm"># 编译并运行</span>
+graph = builder.compile(checkpointer=<span class="tp">MemorySaver</span>())
+result = graph.invoke({<span class="str">"messages"</span>: [], <span class="str">"next_agent"</span>: <span class="str">"researcher"</span>})</code></pre>
+
+<p>LangChain 的优势和劣势同样明显：</p>
+<ul>
+  <li>✅ <strong>生态最大</strong> — 5000+ 集成，几乎任何工具都有现成封装</li>
+  <li>✅ <strong>LangSmith 监控</strong> — trace、eval、prompt 管理一体化</li>
+  <li>✅ <strong>高度灵活</strong> — 从简单 Chain 到复杂多 Agent Graph 都能做</li>
+  <li>❌ <strong>学习曲线陡峭</strong> — API 版本更迭快，v0.3 → v0.5 几乎重写</li>
+  <li>❌ <strong>调试困难</strong> — 隐式调用链、抽象层次深、错误信息不友好</li>
+  <li>❌ <strong>过度抽象</strong> — 简单功能也需要理解 Runnable / RunnableConfig / Callback</li>
+</ul>
+
+<!-- ============================== 3 ============================== -->
+<h2 id="crewai">3. CrewAI — 多角色编排，最"Agent-native"</h2>
+
+<p>CrewAI 的设计哲学很纯粹：<strong>把 Agent 当公民</strong>。每个 Agent 有一个角色（Role）、一个目标（Goal）、一组工具（Tools），通过 Process（Sequential / Hierarchical）组合成 Crew。它不像 LangChain 那样从 Chain 抽象出发，而是从"人是怎么协作的"出发。</p>
+
+<!-- SVG 2: CrewAI Workflow -->
+<div class="diagram">
+  <svg viewBox="0 0 720 380" xmlns="http://www.w3.org/2000/svg" style="font-family:'Inter','SF Pro',system-ui,sans-serif">
+    <defs>
+      <linearGradient id="cr1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#a371f7" stop-opacity=".6"/><stop offset="100%" stop-color="#58a6ff" stop-opacity=".9"/></linearGradient>
+      <linearGradient id="cr2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#39c5cf" stop-opacity=".6"/><stop offset="100%" stop-color="#3fb950" stop-opacity=".9"/></linearGradient>
+      <linearGradient id="cr3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#d29922" stop-opacity=".6"/><stop offset="100%" stop-color="#f85149" stop-opacity=".9"/></linearGradient>
+    </defs>
+    <rect width="720" height="380" rx="10" fill="#1a1d27"/>
+    <text x="360" y="32" text-anchor="middle" fill="#c9d1d9" font-size="16" font-weight="600">🤝 CrewAI 多角色协作工作流</text>
+    <!-- Crew box -->
+    <rect x="30" y="50" width="660" height="300" rx="8" fill="rgba(163,113,247,.08)" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <text x="360" y="75" text-anchor="middle" fill="#a371f7" font-size="14" font-weight="600">🏢 Crew: 研究写作团队</text>
+    <!-- Agent 1 -->
+    <rect x="50" y="95" width="180" height="90" rx="8" fill="rgba(57,197,207,.1)" stroke="#39c5cf" stroke-width="1.5"/>
+    <text x="140" y="120" text-anchor="middle" fill="#39c5cf" font-size="13" font-weight="600">🔬 Researcher</text>
+    <text x="140" y="140" text-anchor="middle" fill="#c9d1d9" font-size="10">Role: 研究专家</text>
+    <text x="140" y="156" text-anchor="middle" fill="#c9d1d9" font-size="10">Tools: 搜索 · 爬虫</text>
+    <text x="140" y="172" text-anchor="middle" fill="#c9d1d9" font-size="10">Goal: 收集高质量资料</text>
+    <!-- Agent 2 -->
+    <rect x="270" y="95" width="180" height="90" rx="8" fill="rgba(63,185,80,.1)" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="360" y="120" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="600">✍️ Writer</text>
+    <text x="360" y="140" text-anchor="middle" fill="#c9d1d9" font-size="10">Role: 写作专家</text>
+    <text x="360" y="156" text-anchor="middle" fill="#c9d1d9" font-size="10">Tools: 文档生成</text>
+    <text x="360" y="172" text-anchor="middle" fill="#c9d1d9" font-size="10">Goal: 输出高质量报告</text>
+    <!-- Agent 3 -->
+    <rect x="490" y="95" width="180" height="90" rx="8" fill="rgba(210,153,34,.1)" stroke="#d29922" stroke-width="1.5"/>
+    <text x="580" y="120" text-anchor="middle" fill="#d29922" font-size="13" font-weight="600">✅ Reviewer</text>
+    <text x="580" y="140" text-anchor="middle" fill="#c9d1d9" font-size="10">Role: 质量审核</text>
+    <text x="580" y="156" text-anchor="middle" fill="#c9d1d9" font-size="10">Tools: 语法检查</text>
+    <text x="580" y="172" text-anchor="middle" fill="#c9d1d9" font-size="10">Goal: 保证质量达标</text>
+    <!-- Arrows -->
+    <defs><marker id="arw" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0,0 8,3 0,6" fill="#a371f7"/></marker></defs>
+    <line x1="230" y1="140" x2="268" y2="140" stroke="#a371f7" stroke-width="2" marker-end="url(#arw)"/>
+    <line x1="450" y1="140" x2="488" y2="140" stroke="#a371f7" stroke-width="2" marker-end="url(#arw)"/>
+    <!-- Task list -->
+    <rect x="50" y="200" width="620" height="60" rx="6" fill="rgba(163,113,247,.05)" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="360" y="222" text-anchor="middle" fill="#c9d1d9" font-size="12" font-weight="500">📋 Task 队列（Sequential 模式）</text>
+    <text x="360" y="244" text-anchor="middle" fill="rgba(201,209,217,.6)" font-size="11">Task 1: 调研选题 → Task 2: 撰写初稿 → Task 3: 审核修改 → Task 4: 终稿输出</text>
+    <!-- Output -->
+    <rect x="200" y="275" width="320" height="45" rx="22" fill="rgba(57,197,207,.12)" stroke="#39c5cf" stroke-width="1.5"/>
+    <text x="360" y="303" text-anchor="middle" fill="#39c5cf" font-size="13" font-weight="600">📄 最终输出：高质量报告</text>
+    <line x1="360" y1="260" x2="360" y2="273" stroke="#a371f7" stroke-width="1.5" marker-end="url(#arw)"/>
+  </svg>
+  <div class="caption">图2：CrewAI 的多 Agent 协作模式 — Agent 各有角色、工具和目标，通过 Sequential 或 Hierarchical Process 串联</div>
+</div>
+
+<h3>Go 语言风格的 CrewAI 编排示例</h3>
+<pre><code><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"fmt"</span>
+    <span class="str">"github.com/crewai-community/crewai-go"</span>
+)
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    <span class="cm">// 定义 Researcher Agent</span>
+    researcher := &amp;crewai.<span class="tp">Agent</span>{
+        Role:        <span class="str">"资深研究专家"</span>,
+        Goal:        <span class="str">"收集并整理最新的 AI Agent 框架技术趋势"</span>,
+        Backstory:   <span class="str">"你在技术研究领域有10年经验，擅长快速找到高质量信息源"</span>,
+        Tools:       []<span class="tp">string</span>{<span class="str">"web_search"</span>, <span class="str">"fetch_content"</span>},
+        LLM:         crewai.<span class="tp">OpenAI</span>(model: <span class="str">"gpt-4o"</span>),
+        AllowDeleg:  <span class="kw">false</span>,
+    }
+
+    <span class="cm">// 定义 Writer Agent</span>
+    writer := &amp;crewai.<span class="tp">Agent</span>{
+        Role:      <span class="str">"技术写作专家"</span>,
+        Goal:      <span class="str">"基于调研结果撰写结构清晰的技术对比报告"</span>,
+        Backstory: <span class="str">"你擅长将复杂技术概念转化为易读的内容"</span>,
+        LLM:       crewai.<span class="tp">OpenAI</span>(model: <span class="str">"gpt-4o"</span>),
+    }
+
+    <span class="cm">// 定义 Task</span>
+    researchTask := &amp;crewai.<span class="tp">Task</span>{
+        Description: <span class="str">"调研当前主流的 AI Agent 框架，输出对比分析"</span>,
+        Agent:       researcher,
+        OutputFile:  <span class="str">"research.md"</span>,
+    }
+    writeTask := &amp;crewai.<span class="tp">Task</span>{
+        Description: <span class="str">"根据调研结果撰写 2000 字的对比报告"</span>,
+        Agent:       writer,
+        OutputFile:  <span class="str">"report.md"</span>,
+    }
+
+    <span class="cm">// 定义 Crew 并执行</span>
+    crew := crewai.<span class="tp">Crew</span>{
+        Agents:     []*crewai.<span class="tp">Agent</span>{researcher, writer},
+        Tasks:      []*crewai.<span class="tp">Task</span>{researchTask, writeTask},
+        Process:    crewai.<span class="tp">ProcessSequential</span>,
+        Verbose:    <span class="kw">true</span>,
+    }
+    result, err := crew.<span class="fn">Run</span>()
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        fmt.<span class="fn">Printf</span>(<span class="str">"Error: %v\n"</span>, err)
+        <span class="kw">return</span>
+    }
+    fmt.<span class="fn">Println</span>(result)
+}</code></pre>
+
+<h3>CrewAI 的核心概念</h3>
+<table class="compare">
+  <tr><th>概念</th><th>说明</th><th>类似类比</th></tr>
+  <tr><td><span class="kw">Agent</span></td><td>具有角色、目标、背故事和工具的独立实体</td><td>一个员工</td></tr>
+  <tr><td><span class="kw">Task</span></td><td>分配给 Agent 的具体任务，含描述和期望输出</td><td>一个工单</td></tr>
+  <tr><td><span class="kw">Crew</span></td><td>Agent 和 Task 的集合，定义协作方式</td><td>一个项目团队</td></tr>
+  <tr><td><span class="kw">Process</span></td><td>执行模式：Sequential / Hierarchical / Consensual</td><td>工作流模式</td></tr>
+  <tr><td><span class="kw">Tool</span></td><td>Agent 可调用的外部能力（API / 搜索 / 代码执行）</td><td>员工工具</td></tr>
+  <tr><td><span class="kw">Memory</span></td><td>短期 / 长期 / 共享记忆，支持上下文传递</td><td>团队知识库</td></tr>
+</table>
+
+<div class="info-card">
+  <h4>🏆 CrewAI 最适合</h4>
+  <p>多角色协作任务：研究报告生成、客户支持工单处理、内容创作流水线。它的抽象层刚好卡在"够用"和"不复杂"之间——比 LangChain 易学，比直接调 API 强大。</p>
+</div>
+
+<!-- ============================== 4 ============================== -->
+<h2 id="autogen">4. AutoGen (Microsoft) — 多 Agent 对话驱动</h2>
+
+<p>AutoGen 是微软推出的多 Agent 对话框架，核心理念是：<strong>Agent 之间通过对话协作，而不是通过预定义 pipeline</strong>。每个 Agent 有自己的角色和 LLM 配置，Agent 之间可以发送消息、请求工具执行、甚至邀请人类介入。</p>
+
+<!-- SVG 3: AutoGen 对话模式 -->
+<div class="diagram">
+  <svg viewBox="0 0 720 400" xmlns="http://www.w3.org/2000/svg" style="font-family:'Inter','SF Pro',system-ui,sans-serif">
+    <defs>
+      <linearGradient id="ag1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#39c5cf" stop-opacity=".7"/><stop offset="100%" stop-color="#58a6ff" stop-opacity=".9"/></linearGradient>
+      <linearGradient id="ag2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3fb950" stop-opacity=".7"/><stop offset="100%" stop-color="#d29922" stop-opacity=".9"/></linearGradient>
+    </defs>
+    <rect width="720" height="400" rx="10" fill="#1a1d27"/>
+    <text x="360" y="32" text-anchor="middle" fill="#c9d1d9" font-size="16" font-weight="600">💬 AutoGen 异步对话模式</text>
+    <!-- User Proxy -->
+    <rect x="30" y="55" width="160" height="60" rx="8" fill="rgba(210,153,34,.1)" stroke="#d29922" stroke-width="1.5"/>
+    <text x="110" y="78" text-anchor="middle" fill="#d29922" font-size="12" font-weight="600">👤 UserProxyAgent</text>
+    <text x="110" y="98" text-anchor="middle" fill="#c9d1d9" font-size="10">人类输入代理</text>
+    <!-- Assistant -->
+    <rect x="280" y="55" width="160" height="60" rx="8" fill="rgba(88,166,255,.1)" stroke="#58a6ff" stroke-width="1.5"/>
+    <text x="360" y="78" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="600">🤖 AssistantAgent</text>
+    <text x="360" y="98" text-anchor="middle" fill="#c9d1d9" font-size="10">主助手 Agent</text>
+    <!-- Coder -->
+    <rect x="530" y="55" width="160" height="60" rx="8" fill="rgba(57,197,207,.1)" stroke="#39c5cf" stroke-width="1.5"/>
+    <text x="610" y="78" text-anchor="middle" fill="#39c5cf" font-size="12" font-weight="600">💻 CoderAgent</text>
+    <text x="610" y="98" text-anchor="middle" fill="#c9d1d9" font-size="10">代码编写专家</text>
+    <!-- Dialogue bubbles -->
+    <rect x="50" y="140" width="280" height="40" rx="18" fill="rgba(210,153,34,.1)" stroke="#d29922" stroke-width="1"/>
+    <text x="190" y="165" text-anchor="middle" fill="#d29922" font-size="11">"写一个爬虫抓取框架对比数据"</text>
+    <rect x="390" y="195" width="280" height="40" rx="18" fill="rgba(88,166,255,.1)" stroke="#58a6ff" stroke-width="1"/>
+    <text x="530" y="220" text-anchor="middle" fill="#58a6ff" font-size="11">"我让 CoderAgent 来写代码"</text>
+    <rect x="50" y="250" width="280" height="40" rx="18" fill="rgba(57,197,207,.1)" stroke="#39c5cf" stroke-width="1"/>
+    <text x="190" y="275" text-anchor="middle" fill="#39c5cf" font-size="11">"已写好爬虫代码，开始执行..."</text>
+    <rect x="390" y="305" width="280" height="40" rx="18" fill="rgba(88,166,255,.1)" stroke="#58a6ff" stroke-width="1"/>
+    <text x="530" y="330" text-anchor="middle" fill="#58a6ff" font-size="11">"结果已汇总，需要人工审核吗？"</text>
+    <!-- Arrows between bubbles -->
+    <line x1="330" y1="160" x2="388" y2="195" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arw)"/>
+    <line x1="530" y1="235" x2="330" y2="250" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arw)"/>
+    <line x1="330" y1="270" x2="388" y2="305" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arw)"/>
+    <!-- Human in loop -->
+    <rect x="200" y="350" width="320" height="35" rx="6" fill="rgba(248,81,73,.08)" stroke="#f85149" stroke-width="1" stroke-dasharray="5,3"/>
+    <text x="360" y="373" text-anchor="middle" fill="#f85149" font-size="11">🔄 Human-in-the-Loop: 人工审核确认最终输出</text>
+  </svg>
+  <div class="caption">图3：AutoGen 的异步对话模式 — Agent 之间自由交换消息，UserProxyAgent 作为人类接口，支持 Human-in-the-Loop</div>
+</div>
+
+<h3>AutoGen 代码示例</h3>
+<pre><code><span class="kw">import</span> autogen
+
+<span class="cm"># 配置 LLM</span>
+llm_config = {
+    <span class="str">"config_list"</span>: [{<span class="str">"model"</span>: <span class="str">"gpt-4o"</span>, <span class="str">"api_key"</span>: <span class="str">"..."</span>}],
+}
+
+<span class="cm"># 创建 Agent</span>
+assistant = autogen.<span class="tp">AssistantAgent</span>(
+    name=<span class="str">"Assistant"</span>,
+    llm_config=llm_config,
+    system_message=<span class="str">"你是高级 AI 助手，可协调多个专业 Agent 协作完成任务。"</span>,
+)
+
+coder = autogen.<span class="tp">AssistantAgent</span>(
+    name=<span class="str">"Coder"</span>,
+    llm_config=llm_config,
+    system_message=<span class="str">"你是 Python 专家，只写代码，不执行。"</span>,
+)
+
+executor = autogen.<span class="tp">UserProxyAgent</span>(
+    name=<span class="str">"Executor"</span>,
+    human_input_mode=<span class="str">"NEVER"</span>,
+    code_execution_config={<span class="str">"work_dir"</span>: <span class="str">"coding"</span>, <span class="str">"use_docker"</span>: <span class="kw">False</span>},
+)
+
+<span class="cm"># 发起群组对话</span>
+groupchat = autogen.<span class="tp">GroupChat</span>(
+    agents=[assistant, coder, executor],
+    messages=[],
+    max_round=<span class="num">12</span>,
+)
+manager = autogen.<span class="tp">GroupChatManager</span>(groupchat=groupchat)
+
+<span class="cm"># 启动对话</span>
+result = executor.initiate_chat(
+    manager,
+    message=<span class="str">"用 Python 抓取 GitHub 上 AI Agent 框架的 star 数据并生成图表"</span>,
+)</code></pre>
+
+<div class="info-card">
+  <h4>🎯 AutoGen 的核心特点</h4>
+  <ul>
+    <li><strong>对话驱动</strong> — 没有固定的 pipeline，Agent 通过消息自由协作</li>
+    <li><strong>Human-in-the-loop</strong> — UserProxyAgent 可在任意环节引入人工审核</li>
+    <li><strong>代码执行沙箱</strong> — 内置 Docker 隔离的代码执行环境</li>
+    <li><strong>GroupChat 模式</strong> — 多 Agent 群聊，支持轮询 / 随机 / 手动指定发言人</li>
+    <li><strong>嵌套对话</strong> — Agent 之间可以发起子对话</li>
+  </ul>
+</div>
+
+<!-- ============================== 5 ============================== -->
+<h2 id="dify">5. Dify — 可视化的低代码平台</h2>
+
+<p>Dify 走的是完全不同的路线：<strong>面向非开发者</strong>。它是一个可视化的 AI 应用开发平台，提供拖拽式 Workflow 编辑器、内置 RAG Pipeline、以及丰富的插件市场。如果说 LangChain 是乐高积木块，Dify 就是乐高套装——已经搭好了大部分结构，你只需要拧几颗螺丝。</p>
+
+<!-- SVG 4: Dify 工作流 -->
+<div class="diagram">
+  <svg viewBox="0 0 720 380" xmlns="http://www.w3.org/2000/svg" style="font-family:'Inter','SF Pro',system-ui,sans-serif">
+    <defs>
+      <linearGradient id="df1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3fb950" stop-opacity=".6"/><stop offset="100%" stop-color="#39c5cf" stop-opacity=".9"/></linearGradient>
+      <linearGradient id="df2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#58a6ff" stop-opacity=".6"/><stop offset="100%" stop-color="#a371f7" stop-opacity=".9"/></linearGradient>
+    </defs>
+    <rect width="720" height="380" rx="10" fill="#1a1d27"/>
+    <text x="360" y="32" text-anchor="middle" fill="#c9d1d9" font-size="16" font-weight="600">🖱️ Dify 可视化 Workflow 编辑器</text>
+    <!-- Start -->
+    <rect x="310" y="50" width="100" height="36" rx="18" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="360" y="73" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">▶ 开始</text>
+    <!-- Arrow down -->
+    <line x1="360" y1="86" x2="360" y2="106" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arw)"/>
+    <!-- LLM Node -->
+    <rect x="285" y="108" width="150" height="44" rx="8" fill="rgba(88,166,255,.1)" stroke="#58a6ff" stroke-width="1.5"/>
+    <text x="360" y="128" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">🧠 LLM 节点</text>
+    <text x="360" y="144" text-anchor="middle" fill="rgba(201,209,217,.6)" font-size="9">gpt-4o · 0.7 temperature</text>
+    <!-- Arrow -->
+    <line x1="360" y1="152" x2="360" y2="172" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arw)"/>
+    <!-- Knowledge Retrieval -->
+    <rect x="270" y="174" width="180" height="44" rx="8" fill="rgba(57,197,207,.1)" stroke="#39c5cf" stroke-width="1.5"/>
+    <text x="360" y="194" text-anchor="middle" fill="#39c5cf" font-size="11" font-weight="600">📚 知识库检索</text>
+    <text x="360" y="210" text-anchor="middle" fill="rgba(201,209,217,.6)" font-size="9">Top-K: 5 · 向量引擎</text>
+    <!-- Arrow -->
+    <line x1="360" y1="218" x2="360" y2="238" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arw)"/>
+    <!-- Code Node -->
+    <rect x="285" y="240" width="150" height="44" rx="8" fill="rgba(210,153,34,.1)" stroke="#d29922" stroke-width="1.5"/>
+    <text x="360" y="260" text-anchor="middle" fill="#d29922" font-size="11" font-weight="600">⚙️ 代码执行</text>
+    <text x="360" y="276" text-anchor="middle" fill="rgba(201,209,217,.6)" font-size="9">Python · 后处理</text>
+    <!-- Arrow -->
+    <line x1="360" y1="284" x2="360" y2="304" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arw)"/>
+    <!-- End -->
+    <rect x="310" y="310" width="100" height="36" rx="18" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="360" y="333" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600">■ 结束</text>
+    <!-- Side panel mock -->
+    <rect x="490" y="50" width="200" height="310" rx="6" fill="rgba(26,29,39,.5)" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="590" y="75" text-anchor="middle" fill="#c9d1d9" font-size="11" font-weight="600">📋 节点属性</text>
+    <line x1="495" y1="82" x2="685" y2="82" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="500" y="102" fill="rgba(201,209,217,.6)" font-size="10">Prompt Template:</text>
+    <rect x="500" y="110" width="180" height="60" rx="4" fill="rgba(15,17,23,.6)" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="510" y="130" fill="#c9d1d9" font-size="9">你是一个 AI 专家...</text>
+    <text x="510" y="145" fill="#c9d1d9" font-size="9">基于 {{context}} 回答</text>
+    <text x="510" y="160" fill="#c9d1d9" font-size="9">用户的问题：{{query}}</text>
+    <text x="500" y="185" fill="rgba(201,209,217,.6)" font-size="10">变量映射:</text>
+    <rect x="500" y="193" width="180" height="60" rx="4" fill="rgba(15,17,23,.6)" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="510" y="213" fill="#58a6ff" font-size="9">context → $knowledge.output</text>
+    <text x="510" y="228" fill="#58a6ff" font-size="9">query → $start.input</text>
+    <text x="510" y="243" fill="#58a6ff" font-size="9">temperature → 0.7</text>
+    <text x="500" y="268" fill="rgba(201,209,217,.6)" font-size="10">输出格式:</text>
+    <rect x="500" y="276" width="180" height="36" rx="4" fill="rgba(15,17,23,.6)" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="510" y="296" fill="#c9d1d9" font-size="9">Markdown · 自动分段</text>
+  </svg>
+  <div class="caption">图4：Dify 可视化 Workflow 编辑器 — 拖拽节点即可构建复杂的 RAG + LLM + 后处理管线</div>
+</div>
+
+<h3>Dify 的核心能力</h3>
+<table class="compare">
+  <tr><th>功能</th><th>说明</th><th>适用人群</th></tr>
+  <tr><td>Workflow 编排</td><td>可视化的 DAG 节点编辑器，支持 LLM / 知识库 / 代码 / HTTP 请求 / 条件分支</td><td>所有人</td></tr>
+  <tr><td>RAG Pipeline</td><td>文档导入 → 分段 → 向量化 → 检索 → 重排 全流程配置</td><td>非开发者</td></tr>
+  <tr><td>插件系统</td><td>市场安装插件：浏览器工具 / 数据分析 / 图像生成</td><td>所有人</td></tr>
+  <tr><td>对话管理</td><td>多轮对话历史、变量记忆、会话隔离</td><td>非开发者</td></tr>
+  <tr><td>API / SDK</td><td>REST API + Python / JS SDK，支持集成到现有系统</td><td>开发者</td></tr>
+  <tr><td>模型管理</td><td>统一管理 OpenAI / Claude / 开源模型 / 本地部署</td><td>运维</td></tr>
+</table>
+
+<div class="highlight-box">
+  <strong>⚠️ 注意：</strong> Dify 适合<strong>快速验证和中小规模部署</strong>。如果要做大规模定制或深度 Multi-Agent 编排，它的灵活性不如 LangChain / CrewAI。此外，自托管 Dify 需要一定的运维资源（PostgreSQL + Redis + Weaviate/Qdrant）。
+</div>
+
+<!-- ============================== 6 ============================== -->
+<h2 id="coze">6. Coze — 字节跳动的 Agent 平台</h2>
+
+<p>Coze（扣子）是字节跳动推出的 AI Agent 构建平台，定位是"下一代 Bot 商店"。它跟 Dify 类似是低代码平台，但更偏向<strong>消费端 Bot 分发</strong>——你可以在 Coze 上创建 Bot，发布到飞书、微信、网页等渠道，甚至上架 Bot Store。</p>
+
+<h3>Coze 四件套</h3>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin:1rem 0">
+  <div class="info-card">
+    <h4>🤖 Bot</h4>
+    <p>Agent 实体的基本单位。配置 Persona、语气、知识库、技能（插件）、对话开场白。一个 Bot 就是一个可发布的智能助理。</p>
+    <span class="tag tag-cz">低代码</span>
+  </div>
+  <div class="info-card">
+    <h4>🔌 Plugin</h4>
+    <p>Bot 的能力扩展。内置插件：搜索、图片理解、代码执行、RSS 订阅。也支持自定义 OpenAPI 插件和 Marketplace。</p>
+    <span class="tag tag-cz">扩展性</span>
+  </div>
+  <div class="info-card">
+    <h4>📚 Knowledge</h4>
+    <p>Bot 的知识库。支持上传文档、网页抓取、表格、API 实时接入。自动分段 + 向量化 + 混合检索。</p>
+    <span class="tag tag-cz">RAG</span>
+  </div>
+  <div class="info-card">
+    <h4>⚙️ Workflow</h4>
+    <p>可视化工作流（类似 Dify）。支持 LLM 节点 / 条件分支 / 代码执行 / 循环 / HTTP 请求。可被 Bot 作为技能调用。</p>
+    <span class="tag tag-cz">编排</span>
+  </div>
+</div>
+
+<h3>Coze vs Dify 关键差异</h3>
+<table class="compare">
+  <tr><th>维度</th><th>Coze</th><th>Dify</th></tr>
+  <tr><td>开发商</td><td>字节跳动</td><td>开源社区 / 自托管</td></tr>
+  <tr><td>部署方式</td><td>SaaS 为主，企业版私有化</td><td>SaaS + 开源自托管</td></tr>
+  <tr><td>Bot 分发</td><td>飞书 / 微信 / 网页 / Bot Store</td><td>API / WebApp 嵌入</td></tr>
+  <tr><td>定价</td><td>免费额度 + 按量付费</td><td>社区版免费 / 云版付费</td></tr>
+  <tr><td>插件生态</td><td>官方 + Marketplace</td><td>社区 + 自定义</td></tr>
+  <tr><td>Multi-Agent</td><td>Workflow 内建多节点</td><td>Workflow + 插件</td></tr>
+  <tr><td>适合场景</td><td>快速上线 Bot 到 IM 平台</td><td>深度定制 + 企业内部</td></tr>
+</table>
+
+<!-- ============================== 7 ============================== -->
+<h2 id="comparison">7. 对比总表</h2>
+
+<p>以下从 <strong>架构 / 部署 / 扩展性 / 学习曲线 / 生态 / 适用场景</strong> 六个维度横向对比五大框架：</p>
+
+<!-- SVG 5: 雷达图 -->
+<div class="diagram">
+  <svg viewBox="0 0 720 480" xmlns="http://www.w3.org/2000/svg" style="font-family:'Inter','SF Pro',system-ui,sans-serif">
+    <defs>
+      <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    </defs>
+    <rect width="720" height="480" rx="10" fill="#1a1d27"/>
+    <text x="360" y="30" text-anchor="middle" fill="#c9d1d9" font-size="16" font-weight="600">📊 六维雷达图对比</text>
+    <!-- Radar chart at center (360, 270) radius 160 -->
+    <g transform="translate(360, 270)">
+      <!-- Grid -->
+      <circle r="160" fill="none" stroke="#2a2d3a" stroke-width="1"/>
+      <circle r="120" fill="none" stroke="#2a2d3a" stroke-width=".5" stroke-dasharray="3,3"/>
+      <circle r="80" fill="none" stroke="#2a2d3a" stroke-width=".5" stroke-dasharray="3,3"/>
+      <circle r="40" fill="none" stroke="#2a2d3a" stroke-width=".5" stroke-dasharray="3,3"/>
+      <!-- Axis labels -->
+      <text x="0" y="-170" text-anchor="middle" fill="#c9d1d9" font-size="11" font-weight="500">架构灵活度</text>
+      <text x="170" y="5" text-anchor="start" fill="#c9d1d9" font-size="11" font-weight="500">生态丰富度</text>
+      <text x="0" y="185" text-anchor="middle" fill="#c9d1d9" font-size="11" font-weight="500">易用性</text>
+      <text x="-170" y="5" text-anchor="end" fill="#c9d1d9" font-size="11" font-weight="500">扩展性</text>
+      <text x="120" y="-125" text-anchor="start" fill="#c9d1d9" font-size="11" font-weight="500">部署便利性</text>
+      <text x="-120" y="-125" text-anchor="end" fill="#c9d1d9" font-size="11" font-weight="500">性能效率</text>
+      <!-- Helper lines -->
+      <line x1="0" y1="-160" x2="0" y2="160" stroke="#2a2d3a" stroke-width=".5"/>
+      <line x1="-160" y1="0" x2="160" y2="0" stroke="#2a2d3a" stroke-width=".5"/>
+      <line x1="-113" y1="-113" x2="113" y2="113" stroke="#2a2d3a" stroke-width=".5"/>
+      <line x1="113" y1="-113" x2="-113" y2="113" stroke="#2a2d3a" stroke-width=".5"/>
+      <!-- Functions to compute points: angle = i*60°, r = value*1.6 -->
+      <!-- LangChain: flex=140, eco=150, easy=60, ext=130, dep=80, perf=90 -->
+      <polygon points="0,-224 240,0 0,96 -208,0 96,-96 -72,-138" fill="rgba(88,166,255,.15)" stroke="#58a6ff" stroke-width="2" filter="url(#glow)"/>
+      <text x="10" y="-215" fill="#58a6ff" font-size="10" font-weight="600">LangChain</text>
+      <!-- CrewAI: flex=110, eco=100, easy=110, ext=100, dep=100, perf=110 -->
+      <polygon points="0,-176 160,0 0,176 -160,0 110,-110 -82,-110" fill="rgba(163,113,247,.15)" stroke="#a371f7" stroke-width="2" filter="url(#glow)"/>
+      <text x="20" y="-135" fill="#a371f7" font-size="10" font-weight="600">CrewAI</text>
+      <!-- AutoGen: flex=120, eco=90, easy=80, ext=120, dep=90, perf=120 -->
+      <polygon points="0,-192 144,0 0,128 -192,0 108,-108 -90,-120" fill="rgba(57,197,207,.15)" stroke="#39c5cf" stroke-width="2" filter="url(#glow)"/>
+      <text x="-170" y="-40" fill="#39c5cf" font-size="10" font-weight="600">AutoGen</text>
+      <!-- Dify: flex=70, eco=110, easy=140, ext=80, dep=120, perf=100 -->
+      <polygon points="0,-112 176,0 0,224 -128,0 144,-144 -72,-100" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="2" filter="url(#glow)"/>
+      <text x="-30" y="175" fill="#3fb950" font-size="10" font-weight="600">Dify</text>
+      <!-- Coze: flex=60, eco=120, easy=145, ext=70, dep=130, perf=85 -->
+      <polygon points="0,-96 192,0 0,232 -112,0 156,-156 -64,-85" fill="rgba(210,153,34,.15)" stroke="#d29922" stroke-width="2" filter="url(#glow)"/>
+      <text x="55" y="155" fill="#d29922" font-size="10" font-weight="600">Coze</text>
+    </g>
+    <!-- Legend -->
+    <g transform="translate(30, 420)">
+      <rect x="0" y="0" width="12" height="12" rx="2" fill="#58a6ff"/>
+      <text x="16" y="10" fill="#58a6ff" font-size="10">LangChain</text>
+      <rect x="100" y="0" width="12" height="12" rx="2" fill="#a371f7"/>
+      <text x="116" y="10" fill="#a371f7" font-size="10">CrewAI</text>
+      <rect x="200" y="0" width="12" height="12" rx="2" fill="#39c5cf"/>
+      <text x="216" y="10" fill="#39c5cf" font-size="10">AutoGen</text>
+      <rect x="300" y="0" width="12" height="12" rx="2" fill="#3fb950"/>
+      <text x="316" y="10" fill="#3fb950" font-size="10">Dify</text>
+      <rect x="400" y="0" width="12" height="12" rx="2" fill="#d29922"/>
+      <text x="416" y="10" fill="#d29922" font-size="10">Coze</text>
+    </g>
+  </svg>
+  <div class="caption">图5：六维雷达图 — LangChain 在灵活性和生态上有显著优势，Dify/Coze 在易用性和部署便利性领先</div>
+</div>
+
+<h3>详细对比表</h3>
+<table class="compare">
+  <tr><th>维度</th><th>LangChain</th><th>CrewAI</th><th>AutoGen</th><th>Dify</th><th>Coze</th></tr>
+  <tr><td>开源</td><td>✅ MIT</td><td>✅ MIT</td><td>✅ MIT</td><td>✅ Apache 2.0</td><td>❌ 闭源</td></tr>
+  <tr><td>编程语言</td><td>Python / JS / Go</td><td>Python / Go</td><td>Python</td><td>Python (后端)</td><td>SaaS (无代码)</td></tr>
+  <tr><td>部署方式</td><td>库引入，无基础设施</td><td>库引入</td><td>库引入</td><td>SaaS / Docker 自托管</td><td>SaaS / 企业私有化</td></tr>
+  <tr><td>Multi-Agent</td><td>LangGraph 图编排</td><td>原生多 Agent</td><td>对话驱动</td><td>Workflow 多节点</td><td>Workflow</td></tr>
+  <tr><td>学习曲线</td><td>⭐⭐⭐⭐ 陡</td><td>⭐⭐ 平缓</td><td>⭐⭐⭐ 中等</td><td>⭐ 平缓</td><td>⭐ 极平缓</td></tr>
+  <tr><td>生态规模</td><td>⭐⭐⭐⭐⭐ 最大</td><td>⭐⭐⭐ 中等</td><td>⭐⭐ 发展中</td><td>⭐⭐⭐⭐ 丰富</td><td>⭐⭐⭐ 中等</td></tr>
+  <tr><td>适用规模</td><td>原型到生产</td><td>中小型团队</td><td>研究 / 原型</td><td>SMB / 企业</td><td>SMB / Bot 商店</td></tr>
+  <tr><td>RAG 能力</td><td>LangChain 生态</td><td>外部集成</td><td>外部集成</td><td>内置完整</td><td>内置完整</td></tr>
+  <tr><td>监控调试</td><td>LangSmith ✅</td><td>基本日志</td><td>基本日志</td><td>内置监控</td><td>平台内置</td></tr>
+  <tr><td>定价模型</td><td>免费（库）</td><td>免费（库）</td><td>免费（库）</td><td>免费社区版</td><td>免费额度 / 付费</td></tr>
+</table>
+
+<!-- ============================== 8 ============================== -->
+<h2 id="decision">8. 选型决策树</h2>
+
+<!-- SVG 6: 决策树 -->
+<div class="diagram">
+  <svg viewBox="0 0 720 520" xmlns="http://www.w3.org/2000/svg" style="font-family:'Inter','SF Pro',system-ui,sans-serif">
+    <defs>
+      <marker id="arrw" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0,0 8,3 0,6" fill="#58a6ff"/></marker>
+    </defs>
+    <rect width="720" height="520" rx="10" fill="#1a1d27"/>
+    <text x="360" y="28" text-anchor="middle" fill="#c9d1d9" font-size="16" font-weight="600">🌳 AI Agent 框架选型决策树</text>
+    <!-- Root -->
+    <rect x="280" y="42" width="160" height="36" rx="18" fill="rgba(88,166,255,.15)" stroke="#58a6ff" stroke-width="1.5"/>
+    <text x="360" y="65" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="600">🤔 你需要什么？</text>
+    <!-- Level 1 -->
+    <line x1="360" y1="78" x2="360" y2="100" stroke="#c9d1d9" stroke-width="1.5"/>
+    <text x="375" y="96" fill="rgba(201,209,217,.5)" font-size="9">编程能力?</text>
+    <rect x="180" y="102" width="140" height="32" rx="6" fill="rgba(248,81,73,.1)" stroke="#f85149" stroke-width="1"/>
+    <text x="250" y="122" text-anchor="middle" fill="#f85149" font-size="11" font-weight="500">👨‍💻 会编程</text>
+    <rect x="400" y="102" width="140" height="32" rx="6" fill="rgba(63,185,80,.1)" stroke="#3fb950" stroke-width="1"/>
+    <text x="470" y="122" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="500">🔧 不会编程</text>
+    <!-- Left branch -->
+    <line x1="250" y1="134" x2="250" y2="158" stroke="#f85149" stroke-width="1.5" marker-end="url(#arrw)"/>
+    <rect x="160" y="160" width="180" height="32" rx="6" fill="rgba(210,153,34,.1)" stroke="#d29922" stroke-width="1"/>
+    <text x="250" y="180" text-anchor="middle" fill="#d29922" font-size="11">多 Agent 协作?</text>
+    <line x1="250" y1="192" x2="110" y2="220" stroke="#d29922" stroke-width="1" marker-end="url(#arrw)"/>
+    <text x="130" y="210" fill="rgba(201,209,217,.5)" font-size="9">是</text>
+    <line x1="250" y1="192" x2="390" y2="220" stroke="#d29922" stroke-width="1" marker-end="url(#arrw)"/>
+    <text x="350" y="210" fill="rgba(201,209,217,.5)" font-size="9">否</text>
+    <!-- Left-left -->
+    <rect x="20" y="222" width="180" height="36" rx="8" fill="rgba(163,113,247,.12)" stroke="#a371f7" stroke-width="1.5"/>
+    <text x="110" y="238" text-anchor="middle" fill="#a371f7" font-size="11" font-weight="600">CrewAI</text>
+    <text x="110" y="252" text-anchor="middle" fill="rgba(201,209,217,.6)" font-size="9">角色驱动 · 易上手</text>
+    <!-- Left-right -->
+    <rect x="310" y="222" width="180" height="36" rx="8" fill="rgba(57,197,207,.12)" stroke="#39c5cf" stroke-width="1.5"/>
+    <text x="400" y="238" text-anchor="middle" fill="#39c5cf" font-size="11" font-weight="600">LangChain</text>
+    <text x="400" y="252" text-anchor="middle" fill="rgba(201,209,217,.6)" font-size="9">工具链最大 · 灵活</text>
+    <!-- Right branch -->
+    <line x1="470" y1="134" x2="470" y2="158" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arrw)"/>
+    <rect x="380" y="160" width="180" height="32" rx="6" fill="rgba(210,153,34,.1)" stroke="#d29922" stroke-width="1"/>
+    <text x="470" y="180" text-anchor="middle" fill="#d29922" font-size="11">发布到 IM 平台?</text>
+    <line x1="470" y1="192" x2="560" y2="220" stroke="#d29922" stroke-width="1" marker-end="url(#arrw)"/>
+    <text x="540" y="210" fill="rgba(201,209,217,.5)" font-size="9">是</text>
+    <line x1="470" y1="192" x2="380" y2="220" stroke="#d29922" stroke-width="1" marker-end="url(#arrw)"/>
+    <text x="395" y="210" fill="rgba(201,209,217,.5)" font-size="9">否</text>
+    <!-- Right-right -->
+    <rect x="310" y="290" width="180" height="36" rx="8" fill="rgba(63,185,80,.12)" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="400" y="306" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">Dify</text>
+    <text x="400" y="320" text-anchor="middle" fill="rgba(201,209,217,.6)" font-size="9">企业级 · 自托管</text>
+    <!-- Right-left -->
+    <rect x="480" y="290" width="180" height="36" rx="8" fill="rgba(210,153,34,.12)" stroke="#d29922" stroke-width="1.5"/>
+    <text x="570" y="306" text-anchor="middle" fill="#d29922" font-size="11" font-weight="600">Coze</text>
+    <text x="570" y="320" text-anchor="middle" fill="rgba(201,209,217,.6)" font-size="9">Bot 商店 · IM 分发</text>
+    <!-- Bottom recommendations -->
+    <rect x="40" y="290" width="240" height="80" rx="8" fill="rgba(88,166,255,.05)" stroke="#2a2d3a" stroke-width="1"/>
+    <text x="160" y="312" text-anchor="middle" fill="#58a6ff" font-size="12" font-weight="600">💡 高级选择</text>
+    <text x="160" y="332" text-anchor="middle" fill="rgba(201,209,217,.7)" font-size="10">需要对话驱动 + Human-in-loop?</text>
+    <text x="160" y="352" text-anchor="middle" fill="#39c5cf" font-size="11" font-weight="500">→ AutoGen (微软)</text>
+    <!-- Second level questions -->
+    <line x1="110" y1="258" x2="110" y2="288" stroke="#a371f7" stroke-width=".5" stroke-dasharray="3,3"/>
+    <line x1="400" y1="258" x2="400" y2="288" stroke="#39c5cf" stroke-width=".5" stroke-dasharray="3,3"/>
+    <!-- Summary box -->
+    <rect x="40" y="390" width="640" height="110" rx="8" fill="rgba(163,113,247,.05)" stroke="#a371f7" stroke-width="1" stroke-dasharray="5,3"/>
+    <text x="360" y="412" text-anchor="middle" fill="#a371f7" font-size="12" font-weight="600">🎯 总结建议</text>
+    <text x="360" y="432" text-anchor="middle" fill="rgba(201,209,217,.8)" font-size="10.5">• <b>快速验证 / 个人项目</b> → Dify (自托管) 或 Coze (SaaS)</text>
+    <text x="360" y="448" text-anchor="middle" fill="rgba(201,209,217,.8)" font-size="10.5">• <b>多角色流水线</b> → CrewAI (易学) 或 LangChain (高定制)</text>
+    <text x="360" y="464" text-anchor="middle" fill="rgba(201,209,217,.8)" font-size="10.5">• <b>研究 / 探索型</b> → AutoGen (对话驱动 + 人机协作)</text>
+    <text x="360" y="480" text-anchor="middle" fill="rgba(201,209,217,.8)" font-size="10.5">• <b>企业生产环境</b> → LangChain + LangSmith 或 Dify 企业版</text>
+  </svg>
+  <div class="caption">图6：选型决策树 — 根据编程能力、多 Agent 需求和分发渠道选择最适合的框架</div>
+</div>
+
+<!-- ============================== 9 ============================== -->
+<h2 id="go-ecosystem">9. Go 生态的 Agent 框架</h2>
+
+<p>虽然 Python 在 AI Agent 领域占绝对主导，但 Go 生态也在快速追赶。<strong>Go 的优势在于并发、部署简单和低延迟</strong>，适合构建 Agent 的运行时引擎和基础设施层。</p>
+
+<h3>当前 Go Agent 框架一览</h3>
+<table class="compare">
+  <tr><th>框架</th><th>Star ⭐</th><th>特点</th><th>成熟度</th></tr>
+  <tr><td><a href="https://github.com/tmc/langchaingo" target="_blank">LangChain Go</a></td><td>5k+</td><td>LangChain 的 Go 移植版，支持 Chain / Agent / Tool / Memory</td><td>⭐⭐⭐ 可用</td></tr>
+  <tr><td><a href="https://github.com/crewai-community/crewai-go" target="_blank">CrewAI-Go</a></td><td>1k+</td><td>CrewAI 的 Go 实现，支持多 Agent 编排和角色系统</td><td>⭐⭐ 发展中</td></tr>
+  <tr><td><a href="https://github.com/nicholasgasior/gollm" target="_blank">GoLLM</a></td><td>1k+</td><td>Go 原生 LLM 调用库，支持函数调用和结构化输出</td><td>⭐⭐⭐ 可用</td></tr>
+  <tr><td><a href="https://github.com/neurocult/agency" target="_blank">Agency</a></td><td>1k+</td><td>轻量级 Agent 框架，专注于 Tool 和 Chain 模式</td><td>⭐⭐ 发展中</td></tr>
+  <tr><td><a href="https://github.com/thinkerAI/thinker" target="_blank">Thinker</a></td><td>500+</td><td>Go 版本的 ReAct Agent 实现，支持多模型</td><td>⭐ 早期</td></tr>
+  <tr><td><a href="https://github.com/maxmcd/gen" target="_blank">Gen</a></td><td>300+</td><td>Go Agent SDK，支持工具调用和流式输出</td><td>⭐ 早期</td></tr>
+</table>
+
+<div class="highlight-box">
+  <strong>🔮 Go Agent 的定位：</strong> 在 Python 做 Agent 编排的"大脑"时，Go 适合做"肌肉"——高性能的 Tool 执行引擎、实时流式处理、边缘端部署。典型的架构是 <strong>Python (LangChain/CrewAI) + Go (微服务/工具网关)</strong> 混合使用。
+</div>
+
+<h3>Go 生态适用场景</h3>
+<ul>
+  <li><strong>高性能 Tool 服务器</strong> — 用 Go 实现工具执行微服务，Python Agent 通过 gRPC / HTTP 调用</li>
+  <li><strong>实时流处理</strong> — SSE / WebSocket 流式响应，Go 的 goroutine 模型天然优势</li>
+  <li><strong>边缘部署</strong> — 单一二进制部署，无 Python 依赖版本冲突</li>
+  <li><strong>API 网关 / 路由层</strong> — Agent 请求的负载均衡、速率限制、鉴权</li>
+</ul>
+
+<!-- ============================== 10 ============================== -->
+<h2 id="qa">10. QA & 口播总结</h2>
+
+<!-- SVG 7: 总结图 -->
+<div class="diagram">
+  <svg viewBox="0 0 720 200" xmlns="http://www.w3.org/2000/svg" style="font-family:'Inter','SF Pro',system-ui,sans-serif">
+    <rect width="720" height="200" rx="10" fill="#1a1d27"/>
+    <text x="360" y="35" text-anchor="middle" fill="#c9d1d9" font-size="16" font-weight="600">🎬 一句话总结</text>
+    <rect x="40" y="55" width="640" height="120" rx="12" fill="rgba(88,166,255,.06)" stroke="#58a6ff" stroke-width="1" stroke-dasharray="6,3"/>
+    <text x="360" y="85" text-anchor="middle" fill="#c9d1d9" font-size="13">• <span style="fill:#58a6ff;font-weight:600">LangChain</span> — 瑞士军刀，功能最强但最复杂，适合有经验的团队</text>
+    <text x="360" y="108" text-anchor="middle" fill="#c9d1d9" font-size="13">• <span style="fill:#a371f7;font-weight:600">CrewAI</span> — 最"人味"的多 Agent 框架，角色驱动，上手快</text>
+    <text x="360" y="131" text-anchor="middle" fill="#c9d1d9" font-size="13">• <span style="fill:#3fb950;font-weight:600">Dify / Coze</span> — 低代码可视化，快速出活，适合非开发者</text>
+    <text x="360" y="154" text-anchor="middle" fill="#c9d1d9" font-size="13">• <span style="fill:#39c5cf;font-weight:600">AutoGen</span> — 对话驱动 + Human-in-loop，适合原型和研究场景</text>
+  </svg>
+  <div class="caption">图7：五个框架的一句话总结</div>
+</div>
+
+<h3>常见问题</h3>
+
+<div class="qa">
+  <div class="q">哪个框架最适合生产环境？</div>
+  <div class="a">如果是<strong>单 Agent + RAG + 工具调用</strong>，Dify 企业版或 LangChain + LangSmith 是不错的选择。如果是<strong>多 Agent 协作</strong>，CrewAI（简单场景）或 LangChain + LangGraph（复杂场景）。Dify 由于内置了完整的监控和日志系统，对运维友好。</div>
+</div>
+
+<div class="qa">
+  <div class="q">我想用 Go 写 Agent，目前选哪个框架？</div>
+  <div class="a"><strong>LangChain Go (langchaingo)</strong> 是最成熟的选择，Agent / Tool / Chain 都有现成实现。CrewAI-Go 在发展中也值得关注。但坦率地说，Go 生态的 Agent 框架远不如 Python 成熟——如果对性能没有极端要求，建议 Python 编排 + Go 工具网关的混合方案。</div>
+</div>
+
+<div class="qa">
+  <div class="q">CrewAI 和 AutoGen 的区别是什么？</div>
+  <div class="a">核心区别在于<strong>协作模型</strong>：CrewAI 是<strong>角色驱动的 Pipeline</strong>——你定义 Agent 的角色、工具、任务，按 Sequential / Hierarchical 流程执行，结构清晰。AutoGen 是<strong>对话驱动的自由协作</strong>——Agent 之间像群聊一样自由发消息，支持嵌套对话和 Human-in-the-loop，更灵活但也更难控制。简单任务用 CrewAI，复杂探索用 AutoGen。</div>
+</div>
+
+<div class="qa">
+  <div class="q">Coze 和 Dify 哪个更好？</div>
+  <div class="a">没有绝对的好，取决于场景：<strong>Coze</strong> 胜在<strong>分发渠道</strong>——一键发布到飞书 / 微信 / Bot Store，适合快速上线 To C 的 Bot。<strong>Dify</strong> 胜在<strong>开源和可定制</strong>——你可以自托管，深度改造 Workflow Engine，集成到内部系统。To B / 企业场景选 Dify，To C / IM 渠道选 Coze。</div>
+</div>
+
+<div class="qa">
+  <div class="q">LangChain 那么复杂，值得学吗？</div>
+  <div class="a">值得。LangChain 是整个 AI Agent 生态的<strong>事实标准</strong>——它的 API 设计、抽象层次和组件划分已经成为行业参考。即使你最终用 CrewAI 或 Dify，理解 LangChain 的概念（Chain / Runnable / Tool / Memory / Graph）也能帮你更好地理解其他框架。不过建议直接从 v0.5 LangGraph 开始学，跳过旧版 Chain API。</div>
+</div>
+
+<div class="qa">
+  <div class="q">多 Agent 框架的扩展性如何？</div>
+  <div class="a"><strong>LangChain + LangGraph</strong> 扩展性最好——StateGraph 支持复杂的分支、循环、并行和条件跳转，可以模拟任意拓扑。<strong>CrewAI</strong> 在 5-10 个 Agent 的规模内表现良好，再大就要考虑性能优化。<strong>AutoGen</strong> 的对话模型在 Agent 数量增多时，消息风暴和收敛问题会凸显。<strong>Dify / Coze</strong> 的 Workflow 是 DAG 模型，复杂环路支持有限。如果需要 50+ Agent 的大规模编排，建议在 LangGraph 基础上自研调度层。</div>
+</div>
+
+<h3>🎙️ 口播总结</h3>
+
+<details class="socratic">
+  <summary>点击展开/收起口播文案</summary>
+
+  <p><strong>主持人：</strong>好了，我们来快速总结一下今天的内容。AI Agent 框架到底怎么选？</p>
+
+  <p><strong>嘉宾：</strong>其实很简单。先问自己三个问题：<strong>第一，你会不会写代码？</strong>不会——Dify 或 Coze 二选一，老板和运营都能拖出来。会——往下看。<strong>第二，你需要几个 Agent？</strong>一个 Agent + 工具——LangChain 或者直接调 API 都行，别杀鸡用牛刀。多个 Agent——CrewAI 或 AutoGen。<strong>第三，你的场景是多角色流水线还是自由对话？</strong>流水线——CrewAI，结构清晰，五分钟上手。自由对话 + Human-in-loop——AutoGen，微软出品，对话驱动。</p>
+
+  <p><strong>主持人：</strong>那 LangChain 呢？流量最大但人人喊难。</p>
+
+  <p><strong>嘉宾：</strong>LangChain 是"真香定律"——入门骂得多，深入了离不开。它的生态就是 AI Agent 的 Linux——LangSmith 监控、LangGraph 图编排、5000+ 集成，生产环境真要搞复杂场景还是得用它。我的建议：<strong>新手从 CrewAI 或 Dify 入门，用 LangChain 兜底</strong>。</p>
+
+  <p><strong>主持人：</strong>Go 呢？Go 能不能打？</p>
+
+  <p><strong>嘉宾：</strong>Go 适合做 Agent 的"基础设施层"——高性能 Tool 执行器、流式网关。但纯 Go 做 Agent 编排目前还不成熟。最佳实践是<strong>Python 编排 + Go 工具</strong>混合架构。LangChain Go 和 CrewAI-Go 可以关注，但别指望一个月内达到 Python 的生态水平。</p>
+
+  <p><strong>主持人：</strong>最后一个问题——未来趋势？</p>
+
+  <p><strong>嘉宾：</strong>两个方向：<strong>一是低代码化</strong>——Dify / Coze 为代表，Agent 开发会越来越像搭积木。<strong>二是标准化</strong>——就像 K8s 统一了容器编排，AI Agent 领域也正在出现事实标准。MCP (Model Context Protocol) 就是工具调用的标准化尝试。不管选哪个框架，<strong>理解 Agent 的设计模式（ReAct / Plan-and-Execute / Reflection / Tool-Use）比选框架本身更重要</strong>。框架会过时，但设计思想不会。</p>
+</details>
+
+<!-- ============================== FOOTER ============================== -->
+<div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);text-align:center;font-size:.85rem;color:rgba(201,209,217,.4)">
+  <p>📝 本文档由 V4A Agent 生成 · 2026 · 基于公开资料整理</p>
+  <p style="margin-top:.3rem">框架版本：LangChain v0.5 · CrewAI v0.80 · AutoGen v0.8 · Dify v1.0 · Coze 2026</p>
+</div>
+
+</main>
+</div>
+
+<script>
+// Active sidebar link highlighting
+(function() {
+  const nav = document.getElementById('toc-nav');
+  const links = nav.querySelectorAll('a');
+  const sections = [];
+  links.forEach(a => {
+    const id = a.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if (el) sections.push({el, a});
+  });
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(({el, a}) => {
+      const rect = el.getBoundingClientRect();
+      if (rect.top <= 120) current = a;
+    });
+    links.forEach(a => a.classList.remove('active'));
+    if (current) current.classList.add('active');
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>📚 RAG 实战深度解析 — Chunking/Embedding/混合检索/Reranking/RAGAS</title>
+<style>
+:root{
+  --bg:#0f1117;
+  --card:#1a1d27;
+  --border:#2a2d3a;
+  --text:#c9d1d9;
+  --accent:#58a6ff;
+  --green:#3fb950;
+  --orange:#d29922;
+  --red:#f85149;
+  --purple:#a371f7;
+  --cyan:#39c5cf;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans SC',sans-serif;line-height:1.7;font-size:16px}
+.sidebar{
+  position:fixed;top:0;left:0;width:260px;height:100vh;
+  background:var(--card);border-right:1px solid var(--border);
+  padding:24px 16px;overflow-y:auto;z-index:100;
+  display:flex;flex-direction:column
+}
+.sidebar h2{font-size:15px;color:var(--accent);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.sidebar nav{flex:1}
+.sidebar nav a{
+  display:block;padding:6px 10px;font-size:13px;color:var(--text);
+  text-decoration:none;border-radius:6px;margin-bottom:2px;
+  transition:background .2s,color .2s
+}
+.sidebar nav a:hover{background:rgba(88,166,255,.12);color:var(--accent)}
+.sidebar .back-home{
+  display:block;padding:10px 12px;margin-top:auto;
+  background:rgba(88,166,255,.08);border:1px solid var(--border);
+  border-radius:8px;color:var(--accent);text-decoration:none;
+  font-size:14px;text-align:center;transition:background .2s
+}
+.sidebar .back-home:hover{background:rgba(88,166,255,.18)}
+.main{margin-left:260px;padding:40px 48px 80px;max-width:960px}
+.main h1{
+  font-size:32px;margin-bottom:8px;color:#e6edf3;
+  background:linear-gradient(135deg,var(--accent),var(--purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text
+}
+.main .subtitle{color:#8b949e;font-size:15px;margin-bottom:40px}
+.main h2{
+  font-size:24px;color:#e6edf3;margin:48px 0 16px;
+  padding-bottom:8px;border-bottom:2px solid var(--accent)
+}
+.main h3{font-size:18px;color:var(--accent);margin:28px 0 12px}
+.main p{margin:12px 0;color:var(--text)}
+.main ul,.main ol{margin:10px 0 10px 24px}
+.main li{margin:4px 0}
+.main strong{color:#e6edf3}
+
+/* Feynman */
+.feynman{
+  border:1px solid var(--accent);border-radius:10px;
+  background:linear-gradient(135deg,rgba(88,166,255,.06),rgba(163,113,247,.06));
+  padding:18px 20px;margin:20px 0;position:relative
+}
+.feynman::before{
+  content:"💡 费曼理解";display:block;
+  font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px
+}
+.feynman p{margin:4px 0}
+
+/* Diagram */
+.diagram{
+  background:#0a0c13;border-radius:10px;border:1px solid var(--border);
+  overflow-x:auto;text-align:center;padding:16px;margin:20px 0
+}
+.diagram svg{max-width:100%;height:auto;min-width:420px}
+
+/* Compare */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+
+/* Info Card */
+.info-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:16px 20px;margin:16px 0
+}
+.info-card h4{color:var(--accent);margin-bottom:6px;font-size:15px}
+
+/* QA */
+.qa{
+  border-left:3px solid var(--cyan);padding:12px 16px;
+  margin:14px 0;background:rgba(57,197,207,.04);border-radius:0 8px 8px 0
+}
+.qa strong{color:var(--cyan)}
+
+/* Socratic */
+details.socratic{
+  border:1px solid var(--purple);border-radius:10px;
+  background:linear-gradient(135deg,rgba(163,113,247,.06),rgba(88,166,255,.04));
+  padding:12px 16px;margin:14px 0
+}
+details.socratic summary{
+  cursor:pointer;font-weight:600;color:var(--purple);font-size:15px
+}
+details.socratic summary::before{content:"🤔 ";margin-right:4px}
+details.socratic .inner{padding:12px 0 4px 8px}
+
+/* Code */
+pre{
+  background:#0a0c13;border:1px solid var(--border);
+  border-radius:8px;padding:16px 20px;overflow-x:auto;margin:14px 0;
+  font-size:14px;line-height:1.6;font-family:'JetBrains Mono','Fira Code','Cascadia Code',monospace
+}
+code{font-family:'JetBrains Mono','Fira Code','Cascadia Code',monospace}
+p code{background:rgba(88,166,255,.1);padding:2px 6px;border-radius:4px;font-size:14px;color:var(--cyan)}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.num{color:#79c0ff}.cm{color:#8b949e;font-style:italic}.tp{color:#ffa657}.op{color:#ff7b72}
+
+/* Table */
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px}
+th{background:#21242c;color:#e6edf3;padding:10px 14px;text-align:left;font-weight:600}
+td{padding:10px 14px;border-bottom:1px solid var(--border)}
+tr:hover td{background:rgba(88,166,255,.03)}
+
+/* Mobile */
+@media(max-width:768px){
+  .sidebar{display:none}
+  .main{margin-left:0;padding:24px 20px}
+  .diagram svg{min-width:420px}
+  .compare{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+  .diagram svg{min-width:340px}
+  .main h1{font-size:26px}
+  pre{font-size:13px;padding:12px}
+}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <h2>📑 目录导航</h2>
+  <nav>
+    <a href="#ch1">1. RAG 为什么需要</a>
+    <a href="#ch2">2. Chunking 策略</a>
+    <a href="#ch3">3. Embedding 选型</a>
+    <a href="#ch4">4. 向量检索</a>
+    <a href="#ch5">5. 混合检索</a>
+    <a href="#ch6">6. Reranking</a>
+    <a href="#ch7">7. RAG 评估</a>
+    <a href="#ch8">8. 高级策略</a>
+    <a href="#ch9">9. Go 实现完整 Pipeline</a>
+    <a href="#ch10">10. QA &amp; 总结</a>
+  </nav>
+  <a class="back-home" href="/">← 返回首页</a>
+</aside>
+
+<div class="main">
+
+<h1>📚 RAG 实战深度解析</h1>
+<p class="subtitle">Chunking / Embedding / 混合检索 / Reranking / RAGAS — 从原理到 Go 落地的完整指南</p>
+
+<!-- ==================== 第一章 ==================== -->
+<h2 id="ch1">1. RAG 为什么需要</h2>
+
+<p>大语言模型存在固有缺陷：<strong>知识截止日期</strong>、<strong>幻觉</strong>、<strong>缺乏领域专精</strong>。Retrieval-Augmented Generation（RAG）通过引入外部知识检索来弥补这些不足。</p>
+
+<div class="feynman">
+<p>想象你是一个图书馆管理员。读者问："2025 年诺贝尔物理学奖颁给了谁？"</p>
+<p>你不需要自己记住答案——你只需要知道<strong>去哪本书里找</strong>（检索），然后<strong>把那段话读给读者听</strong>（生成）。这就是 RAG 的本质：<strong>先查资料，再回答问题</strong>。</p>
+<p>LLM 是阅读者，向量数据库是书架，Embedding 是图书分类标签。</p>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#a371f7"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3fb950"/><stop offset="100%" stop-color="#39c5cf"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <rect x="30" y="80" width="120" height="60" rx="10" fill="rgba(88,166,255,.15)" stroke="#58a6ff" stroke-width="2"/>
+  <text x="90" y="116" text-anchor="middle" fill="#58a6ff" font-size="15" font-weight="700">🔍 Query</text>
+
+  <line x1="150" y1="110" x2="210" y2="110" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="210" y="70" width="140" height="80" rx="10" fill="rgba(163,113,247,.15)" stroke="#a371f7" stroke-width="2"/>
+  <text x="280" y="104" text-anchor="middle" fill="#a371f7" font-size="14" font-weight="700">📦 Retrieve</text>
+  <text x="280" y="126" text-anchor="middle" fill="#8b949e" font-size="11">向量检索 + BM25</text>
+
+  <line x1="350" y1="110" x2="410" y2="110" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="410" y="70" width="140" height="80" rx="10" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="2"/>
+  <text x="480" y="104" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">🧩 Augment</text>
+  <text x="480" y="126" text-anchor="middle" fill="#8b949e" font-size="11">Prompt 拼接</text>
+
+  <line x1="550" y1="110" x2="610" y2="110" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="610" y="70" width="140" height="80" rx="10" fill="rgba(210,153,34,.15)" stroke="#d29922" stroke-width="2"/>
+  <text x="680" y="104" text-anchor="middle" fill="#d29922" font-size="14" font-weight="700">🤖 Generate</text>
+  <text x="680" y="126" text-anchor="middle" fill="#8b949e" font-size="11">LLM 推理</text>
+
+  <!-- 知识库 -->
+  <rect x="210" y="180" width="540" height="40" rx="8" fill="rgba(57,197,207,.1)" stroke="#39c5cf" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="480" y="206" text-anchor="middle" fill="#39c5cf" font-size="13">📓 知识库（文档 → Chunk → Embedding → 向量索引）</text>
+
+  <line x1="280" y1="150" x2="280" y2="180" stroke="#39c5cf" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+
+  <text x="480" y="44" text-anchor="middle" fill="#8b949e" font-size="13">RAG 整体架构：Query → Retrieve → Augment → Generate</text>
+</svg>
+</div>
+
+<p>传统微调（Fine-tuning）成本高、周期长、每次更新需要重新训练。RAG 的核心理念是<strong>让 LLM 学会"查资料"，而不是"背资料"</strong>。它在不改变模型权重的前提下，通过检索增强实现：</p>
+<ul>
+  <li>✅ 实时知识更新</li>
+  <li>✅ 减少幻觉</li>
+  <li>✅ 领域定制无训练成本</li>
+  <li>✅ 可追溯信息来源</li>
+</ul>
+
+<!-- ==================== 第二章 ==================== -->
+<h2 id="ch2">2. Chunking 策略</h2>
+
+<p>Chunking（分块）是 RAG Pipeline 的第一步，也是最被低估的一步。块的大小和切分方式直接决定了检索质量。</p>
+
+<h3>2.1 四种主流分块策略</h3>
+
+<table>
+<thead><tr><th>策略</th><th>原理</th><th>优点</th><th>缺点</th><th>适用场景</th></tr></thead>
+<tbody>
+<tr><td><strong>固定大小</strong></td><td>按固定 token 数切分，可重叠</td><td>实现简单、速度快</td><td>语义割裂严重</td><td>日志、结构化文本</td></tr>
+<tr><td><strong>递归字符</strong></td><td>按分隔符层级回退切分</td><td>保留语义边界</td><td>中文分隔符需要自定义</td><td>通用文档、代码</td></tr>
+<tr><td><strong>语义分块</strong></td><td>利用 Embedding 相似度检测语义边界</td><td>语义完整度高</td><td>耗时长、需要额外模型</td><td>学术论文、技术文档</td></tr>
+<tr><td><strong>特殊文档</strong></td><td>按 Markdown/HTML/代码结构切分</td><td>结构感知</td><td>格式依赖强</td><td>Markdown、PDF、代码库</td></tr>
+</tbody>
+</table>
+
+<div class="diagram">
+<svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <text x="400" y="24" text-anchor="middle" fill="#8b949e" font-size="13">三种 Chunking 策略对比</text>
+
+  <!-- 固定大小 -->
+  <text x="50" y="52" fill="#ff7b72" font-size="13" font-weight="700">固定大小 (Fixed Size)</text>
+  <rect x="50" y="62" width="700" height="30" rx="4" fill="rgba(248,81,73,.1)" stroke="#f85149" stroke-width="1"/>
+  <rect x="50" y="62" width="140" height="30" rx="4" fill="rgba(248,81,73,.3)" stroke="#f85149" stroke-width="1.5"/>
+  <rect x="200" y="62" width="140" height="30" rx="4" fill="rgba(248,81,73,.3)" stroke="#f85149" stroke-width="1.5"/>
+  <rect x="350" y="62" width="140" height="30" rx="4" fill="rgba(248,81,73,.3)" stroke="#f85149" stroke-width="1.5"/>
+  <rect x="500" y="62" width="140" height="30" rx="4" fill="rgba(248,81,73,.3)" stroke="#f85149" stroke-width="1.5"/>
+  <text x="120" y="81" text-anchor="middle" fill="#fff" font-size="11">Chunk 1</text>
+  <text x="270" y="81" text-anchor="middle" fill="#fff" font-size="11">Chunk 2</text>
+  <text x="420" y="81" text-anchor="middle" fill="#fff" font-size="11">Chunk 3</text>
+  <text x="570" y="81" text-anchor="middle" fill="#fff" font-size="11">Chunk 4</text>
+
+  <!-- 重叠 -->
+  <line x1="190" y1="78" x2="210" y2="78" stroke="#f85149" stroke-width="2" stroke-dasharray="3,2"/>
+  <line x1="340" y1="78" x2="350" y2="78" stroke="#f85149" stroke-width="2" stroke-dasharray="3,2"/>
+  <line x1="490" y1="78" x2="500" y2="78" stroke="#f85149" stroke-width="2" stroke-dasharray="3,2"/>
+
+  <!-- 箭头 -->
+  <line x1="400" y1="98" x2="400" y2="118" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow2)"/>
+
+  <!-- 递归字符 -->
+  <text x="50" y="138" fill="#3fb950" font-size="13" font-weight="700">递归字符 (Recursive Character)</text>
+  <rect x="50" y="148" width="700" height="24" rx="4" fill="rgba(57,197,207,.08)" stroke="#39c5cf" stroke-width="0.5"/>
+  <rect x="50" y="148" width="200" height="24" rx="4" fill="rgba(63,185,80,.2)" stroke="#3fb950" stroke-width="1"/>
+  <rect x="260" y="148" width="240" height="24" rx="4" fill="rgba(63,185,80,.2)" stroke="#3fb950" stroke-width="1"/>
+  <rect x="510" y="148" width="240" height="24" rx="4" fill="rgba(63,185,80,.2)" stroke="#3fb950" stroke-width="1"/>
+  <text x="150" y="164" text-anchor="middle" fill="#3fb950" font-size="11">段落边界保留</text>
+  <text x="380" y="164" text-anchor="middle" fill="#3fb950" font-size="11">语义单元完整</text>
+  <text x="630" y="164" text-anchor="middle" fill="#3fb950" font-size="11">句子不被截断</text>
+
+  <!-- 箭头 -->
+  <line x1="400" y1="180" x2="400" y2="200" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrow2)"/>
+
+  <!-- 语义分块 -->
+  <text x="50" y="220" fill="#a371f7" font-size="13" font-weight="700">语义分块 (Semantic Chunking)</text>
+  <rect x="50" y="230" width="160" height="28" rx="6" fill="rgba(163,113,247,.15)" stroke="#a371f7" stroke-width="1"/>
+  <text x="130" y="249" text-anchor="middle" fill="#a371f7" font-size="11">主题 A</text>
+  <rect x="240" y="230" width="250" height="28" rx="6" fill="rgba(163,113,247,.15)" stroke="#a371f7" stroke-width="1"/>
+  <text x="365" y="249" text-anchor="middle" fill="#a371f7" font-size="11">主题 B（Embedding 突变点）</text>
+  <rect x="520" y="230" width="230" height="28" rx="6" fill="rgba(163,113,247,.15)" stroke="#a371f7" stroke-width="1"/>
+  <text x="635" y="249" text-anchor="middle" fill="#a371f7" font-size="11">主题 C</text>
+  <text x="240" y="278" fill="#8b949e" font-size="11">↑ 语义边界由余弦相似度突变检测</text>
+  <line x1="238" y1="258" x2="238" y2="268" stroke="#a371f7" stroke-width="1" stroke-dasharray="3,2"/>
+</svg>
+</div>
+
+<h3>2.2 Go 实现：递归字符分割器</h3>
+
+<pre><code><span class="kw">package</span> <span class="fn">chunker</span>
+
+<span class="kw">import</span> <span class="str">"strings"</span>
+
+<span class="cm">// RecursiveCharacterSplitter 递归字符分割器</span>
+<span class="kw">type</span> <span class="fn">RecursiveCharacterSplitter</span> <span class="kw">struct</span> {
+    ChunkSize    <span class="tp">int</span>
+    ChunkOverlap <span class="tp">int</span>
+    Separators   []<span class="tp">string</span>
+}
+
+<span class="cm">// NewSplitter 默认使用常见分隔符层级</span>
+<span class="kw">func</span> <span class="fn">NewSplitter</span>(chunkSize, overlap <span class="tp">int</span>) *<span class="fn">RecursiveCharacterSplitter</span> {
+    <span class="kw">return</span> &<span class="fn">RecursiveCharacterSplitter</span>{
+        ChunkSize:    chunkSize,
+        ChunkOverlap: overlap,
+        Separators:   []<span class="tp">string</span>{<span class="str">"\n\n"</span>, <span class="str">"\n"</span>, <span class="str">"."</span>, <span class="str">" "</span>, <span class="str">""</span>},
+    }
+}
+
+<span class="cm">// Split 递归分割文本</span>
+<span class="kw">func</span> (s *<span class="fn">RecursiveCharacterSplitter</span>) <span class="fn">Split</span>(text <span class="tp">string</span>) []<span class="tp">string</span> {
+    <span class="kw">return</span> s.<span class="fn">splitWithSep</span>(text, s.Separators)
+}
+
+<span class="kw">func</span> (s *<span class="fn">RecursiveCharacterSplitter</span>) <span class="fn">splitWithSep</span>(text <span class="tp">string</span>, seps []<span class="tp">string</span>) []<span class="tp">string</span> {
+    chunks := []<span class="tp">string</span>{}
+    sep := seps[0]
+    parts := <span class="fn">strings.Split</span>(text, sep)
+
+    <span class="kw">for</span> _, part := <span class="kw">range</span> parts {
+        <span class="kw">if</span> <span class="fn">len</span>(part) &lt;= s.ChunkSize {
+            chunks = <span class="fn">append</span>(chunks, part)
+        } <span class="kw">else</span> <span class="kw">if</span> <span class="fn">len</span>(seps) &gt; 1 {
+            <span class="cm">// 递归更深层级分隔符</span>
+            sub := s.<span class="fn">splitWithSep</span>(part, seps[1:])
+            chunks = <span class="fn">append</span>(chunks, sub...)
+        }
+    }
+    <span class="kw">return</span> s.<span class="fn">applyOverlap</span>(chunks)
+}
+
+<span class="kw">func</span> (s *<span class="fn">RecursiveCharacterSplitter</span>) <span class="fn">applyOverlap</span>(chunks []<span class="tp">string</span>) []<span class="tp">string</span> {
+    <span class="kw">if</span> s.ChunkOverlap == 0 {
+        <span class="kw">return</span> chunks
+    }
+    result := []<span class="tp">string</span>{chunks[0]}
+    <span class="kw">for</span> i := 1; i &lt; <span class="fn">len</span>(chunks); i++ {
+        prev := chunks[i-1]
+        overlap := prev
+        <span class="kw">if</span> <span class="fn">len</span>(prev) &gt; s.ChunkOverlap {
+            overlap = prev[<span class="fn">len</span>(prev)-s.ChunkOverlap:]
+        }
+        result = <span class="fn">append</span>(result, overlap+chunks[i])
+    }
+    <span class="kw">return</span> result
+}
+</code></pre>
+
+<p>递归字符分割器的核心思想：<strong>按分隔符优先级从高到低尝试</strong>，先按段落（<code>\n\n</code>）切，不行再按句子（<code>。</code>），最后按字符。这保证了语义完整性优先。</p>
+
+<!-- ==================== 第三章 ==================== -->
+<h2 id="ch3">3. Embedding 选型</h2>
+
+<p>Embedding 是将文本映射到向量空间的"翻译器"。选型核心考量：<strong>中文理解能力、维度、成本、延迟</strong>。</p>
+
+<div class="info-card">
+<h4>📊 主流 Embedding 模型对比</h4>
+<table>
+<thead><tr><th>模型</th><th>维度</th><th>中文支持</th><th>最大输入</th><th>成本</th><th>推荐场景</th></tr></thead>
+<tbody>
+<tr><td><strong>bge-large-zh-v1.5</strong></td><td>1024</td><td>🌟🌟🌟🌟🌟</td><td>512</td><td>免费</td><td>中文 RAG 首选</td></tr>
+<tr><td><strong>M3E</strong></td><td>768</td><td>🌟🌟🌟🌟</td><td>512</td><td>免费</td><td>中文通用</td></tr>
+<tr><td><strong>text2vec-large-chinese</strong></td><td>768</td><td>🌟🌟🌟🌟</td><td>512</td><td>免费</td><td>兼容 Sentence-Transformers</td></tr>
+<tr><td><strong>text-embedding-3-large</strong></td><td>3072</td><td>🌟🌟🌟</td><td>8191</td><td>$0.13/1M</td><td>英文高质量场景</td></tr>
+<tr><td><strong>embed-multilingual-v3</strong></td><td>1024</td><td>🌟🌟🌟🌟</td><td>512</td><td>$0.1/1K</td><td>多语言企业级</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="center" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(88,166,255,.4)"/>
+      <stop offset="100%" stop-color="rgba(88,166,255,0)"/>
+    </radialGradient>
+  </defs>
+  <text x="400" y="24" text-anchor="middle" fill="#8b949e" font-size="13">嵌入空间可视化 — 语义相近的文本在向量空间中距离更近</text>
+
+  <!-- 背景圈 -->
+  <circle cx="400" cy="190" r="130" fill="none" stroke="rgba(42,45,58,.6)" stroke-width="0.5"/>
+  <circle cx="400" cy="190" r="90" fill="none" stroke="rgba(42,45,58,.4)" stroke-width="0.5"/>
+
+  <!-- 语义区域 -->
+  <ellipse cx="310" cy="170" rx="80" ry="55" fill="rgba(57,197,207,.08)" stroke="#39c5cf" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="310" y="140" text-anchor="middle" fill="#39c5cf" font-size="11">🏥 医疗</text>
+  <circle cx="280" cy="180" r="8" fill="#39c5cf" opacity=".7"/>
+  <circle cx="330" cy="165" r="8" fill="#39c5cf" opacity=".7"/>
+  <circle cx="300" cy="200" r="8" fill="#39c5cf" opacity=".7"/>
+
+  <ellipse cx="520" cy="160" rx="80" ry="55" fill="rgba(163,113,247,.08)" stroke="#a371f7" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="520" y="130" text-anchor="middle" fill="#a371f7" font-size="11">⚖️ 法律</text>
+  <circle cx="490" cy="170" r="8" fill="#a371f7" opacity=".7"/>
+  <circle cx="540" cy="155" r="8" fill="#a371f7" opacity=".7"/>
+  <circle cx="510" cy="190" r="8" fill="#a371f7" opacity=".7"/>
+
+  <ellipse cx="400" cy="260" rx="70" ry="45" fill="rgba(248,81,73,.08)" stroke="#f85149" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="400" y="248" text-anchor="middle" fill="#f85149" font-size="11">🔬 科技</text>
+  <circle cx="380" cy="270" r="8" fill="#f85149" opacity=".7"/>
+  <circle cx="420" cy="265" r="8" fill="#f85149" opacity=".7"/>
+
+  <!-- 查询向量 -->
+  <circle cx="400" cy="190" r="12" fill="none" stroke="#d29922" stroke-width="2.5"/>
+  <circle cx="400" cy="190" r="4" fill="#d29922"/>
+  <text x="400" y="174" text-anchor="middle" fill="#d29922" font-size="11">❓ Query</text>
+
+  <!-- 距离标注 -->
+  <line x1="295" y1="200" x2="380" y2="195" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <text x="338" y="210" text-anchor="middle" fill="#8b949e" font-size="9">cos=0.87</text>
+
+  <line x1="400" y1="195" x2="490" y2="175" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <text x="448" y="180" text-anchor="middle" fill="#8b949e" font-size="9">cos=0.72</text>
+
+  <line x1="400" y1="195" x2="390" y2="260" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <text x="370" y="232" text-anchor="middle" fill="#8b949e" font-size="9">cos=0.65</text>
+</svg>
+</div>
+
+<h3>3.1 选型建议</h3>
+<ul>
+  <li><strong>纯中文场景</strong>：bge-large-zh-v1.5（1024 维，检索精度最高）</li>
+  <li><strong>本地低成本</strong>：M3E 或 text2vec（768 维，推理快）</li>
+  <li><strong>英文为主</strong>：OpenAI text-embedding-3-large（3072 维，但贵）</li>
+  <li><strong>多语言企业</strong>：Cohere embed-multilingual-v3</li>
+</ul>
+
+<div class="feynman">
+<p><strong>维度越高越好？</strong> 不一定。高维度意味着更丰富的表达能力，但也需要更多的存储和计算。1024 维对于大多数 RAG 系统已经足够。OpenAI 的 3072 维主要是为了适配其生态。</p>
+</div>
+
+<!-- ==================== 第四章 ==================== -->
+<h2 id="ch4">4. 向量检索</h2>
+
+<p>将文档转换为向量后，查询向量与库中向量进行<strong>相似度匹配</strong>。这里涉及两个核心选择：<strong>相似度度量</strong>和<strong>索引结构</strong>。</p>
+
+<h3>4.1 相似度度量</h3>
+
+<table>
+<thead><tr><th>度量</th><th>公式</th><th>范围</th><th>特点</th></tr></thead>
+<tbody>
+<tr><td><strong>余弦距离</strong></td><td>1 - cos(A,B)</td><td>[0,2]</td><td>关注方向而非模长，最常用</td></tr>
+<tr><td><strong>内积（IP）</strong></td><td>A·B</td><td>(-∞,+∞)</td><td>适合归一化向量，性能略优</td></tr>
+<tr><td><strong>欧氏距离（L2）</strong></td><td>||A-B||²</td><td>[0,+∞)</td><td>对模长敏感</td></tr>
+</tbody>
+</table>
+
+<h3>4.2 索引结构</h3>
+
+<p>暴力搜索（Flat）在小数据集可行，当数据量超过百万级，必须使用<strong>近似最近邻（ANN）</strong>索引。</p>
+
+<div class="compare">
+<div class="info-card">
+<h4>🔷 HNSW（Hierarchical NSW）</h4>
+<ul>
+  <li>基于分层可导航小世界图</li>
+  <li>搜索速度极快（ms 级）</li>
+  <li>构建慢，内存占用高</li>
+  <li>适合<strong>高召回</strong>在线场景</li>
+</ul>
+</div>
+<div class="info-card">
+<h4>🔶 IVF（Inverted File）</h4>
+<ul>
+  <li>基于聚类+倒排</li>
+  <li>搜索速度中等</li>
+  <li>内存占用低</li>
+  <li>适合<strong>大容量</strong>离线场景</li>
+</ul>
+</div>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 800 380" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrowH" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <text x="400" y="24" text-anchor="middle" fill="#8b949e" font-size="13">HNSW 分层可导航小世界图结构</text>
+
+  <!-- Layer 2（顶层） -->
+  <text x="60" y="56" fill="#ff7b72" font-size="11">Layer 2</text>
+  <circle cx="180" cy="56" r="12" fill="rgba(88,166,255,.3)" stroke="#58a6ff" stroke-width="1.5"/>
+  <circle cx="340" cy="56" r="12" fill="rgba(88,166,255,.3)" stroke="#58a6ff" stroke-width="1.5"/>
+  <circle cx="500" cy="56" r="12" fill="rgba(88,166,255,.3)" stroke="#58a6ff" stroke-width="1.5"/>
+  <circle cx="660" cy="56" r="12" fill="rgba(88,166,255,.3)" stroke="#58a6ff" stroke-width="1.5"/>
+  <line x1="192" y1="56" x2="328" y2="56" stroke="#58a6ff" stroke-width="1.2"/>
+  <line x1="352" y1="56" x2="488" y2="56" stroke="#58a6ff" stroke-width="1.2"/>
+  <line x1="512" y1="56" x2="648" y2="56" stroke="#58a6ff" stroke-width="1.2"/>
+
+  <!-- Layer 1（中层） -->
+  <text x="60" y="130" fill="#3fb950" font-size="11">Layer 1</text>
+  <circle cx="120" cy="130" r="10" fill="rgba(63,185,80,.25)" stroke="#3fb950" stroke-width="1.2"/>
+  <circle cx="240" cy="140" r="10" fill="rgba(63,185,80,.25)" stroke="#3fb950" stroke-width="1.2"/>
+  <circle cx="340" cy="120" r="10" fill="rgba(63,185,80,.25)" stroke="#3fb950" stroke-width="1.2"/>
+  <circle cx="460" cy="140" r="10" fill="rgba(63,185,80,.25)" stroke="#3fb950" stroke-width="1.2"/>
+  <circle cx="560" cy="120" r="10" fill="rgba(63,185,80,.25)" stroke="#3fb950" stroke-width="1.2"/>
+  <circle cx="680" cy="130" r="10" fill="rgba(63,185,80,.25)" stroke="#3fb950" stroke-width="1.2"/>
+
+  <!-- 层间连线 -->
+  <line x1="180" y1="68" x2="120" y2="120" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <line x1="180" y1="68" x2="240" y2="130" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <line x1="340" y1="68" x2="240" y2="135" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <line x1="340" y1="68" x2="340" y2="110" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <line x1="340" y1="68" x2="460" y2="130" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <line x1="500" y1="68" x2="460" y2="130" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <line x1="500" y1="68" x2="560" y2="110" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <line x1="660" y1="68" x2="560" y2="115" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <line x1="660" y1="68" x2="680" y2="120" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="3,2"/>
+
+  <!-- Layer 0（底层） -->
+  <text x="60" y="210" fill="#d29922" font-size="11">Layer 0</text>
+  <circle cx="80" cy="230" r="7" fill="rgba(210,153,34,.2)" stroke="#d29922" stroke-width="1"/>
+  <circle cx="140" cy="210" r="7" fill="rgba(210,153,34,.2)" stroke="#d29922" stroke-width="1"/>
+  <circle cx="200" cy="240" r="7" fill="rgba(210,153,34,.2)" stroke="#d29922" stroke-width="1"/>
+  <circle cx="260" cy="210" r="7" fill="rgba(210,153,34,.2)" stroke="#d29922" stroke-width="1"/>
+  <circle cx="320" cy="230" r="7" fill="rgba(210,153,34,.2)" stroke="#d29922" stroke-width="1"/>
+  <circle cx="380" cy="215" r="7" fill="rgba(210,153,34,.2)" stroke="#d29922" stroke-width="1"/>
+  <circle cx="440" cy="240" r="7" fill="rgba(210,153,34,.2)" stroke="#d29922" stroke-width="1"/>
+  <circle cx="500" cy="210" r="7" fill="rgba(210,153,34,.2)" stroke="#d29922" stroke-width="1"/>
+  <circle cx="560" cy="235" r="7" fill="rgba(210,153,34,.2)" stroke="#d29922" stroke-width="1"/>
+  <circle cx="620" cy="210" r="7" fill="rgba(210,153,34,.2)" stroke="#d29922" stroke-width="1"/>
+  <circle cx="680" cy="240" r="7" fill="rgba(210,153,34,.2)" stroke="#d29922" stroke-width="1"/>
+  <circle cx="740" cy="215" r="7" fill="rgba(210,153,34,.2)" stroke="#d29922" stroke-width="1"/>
+
+  <!-- 层间连线（部分） -->
+  <line x1="120" y1="140" x2="80" y2="225" stroke="#8b949e" stroke-width="0.6" stroke-dasharray="2,2"/>
+  <line x1="120" y1="140" x2="140" y2="205" stroke="#8b949e" stroke-width="0.6" stroke-dasharray="2,2"/>
+  <line x1="240" y1="148" x2="200" y2="235" stroke="#8b949e" stroke-width="0.6" stroke-dasharray="2,2"/>
+  <line x1="240" y1="148" x2="260" y2="205" stroke="#8b949e" stroke-width="0.6" stroke-dasharray="2,2"/>
+  <line x1="340" y1="125" x2="320" y2="225" stroke="#8b949e" stroke-width="0.6" stroke-dasharray="2,2"/>
+  <line x1="340" y1="125" x2="380" y2="210" stroke="#8b949e" stroke-width="0.6" stroke-dasharray="2,2"/>
+  <line x1="460" y1="148" x2="440" y2="235" stroke="#8b949e" stroke-width="0.6" stroke-dasharray="2,2"/>
+  <line x1="460" y1="148" x2="500" y2="205" stroke="#8b949e" stroke-width="0.6" stroke-dasharray="2,2"/>
+  <line x1="560" y1="125" x2="560" y2="230" stroke="#8b949e" stroke-width="0.6" stroke-dasharray="2,2"/>
+  <line x1="560" y1="125" x2="620" y2="205" stroke="#8b949e" stroke-width="0.6" stroke-dasharray="2,2"/>
+  <line x1="680" y1="138" x2="680" y2="235" stroke="#8b949e" stroke-width="0.6" stroke-dasharray="2,2"/>
+  <line x1="680" y1="138" x2="740" y2="210" stroke="#8b949e" stroke-width="0.6" stroke-dasharray="2,2"/>
+
+  <!-- 搜索路径 -->
+  <circle cx="340" cy="56" r="16" fill="none" stroke="#f85149" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="340" y="54" text-anchor="middle" fill="#f85149" font-size="10">→</text>
+
+  <!-- 说明 -->
+  <rect x="80" y="280" width="640" height="80" rx="8" fill="rgba(57,197,207,.06)" stroke="#39c5cf" stroke-width="0.8"/>
+  <text x="400" y="302" text-anchor="middle" fill="#39c5cf" font-size="12">🔍 HNSW 搜索过程：从顶层开始，每层找到最近邻后进入下一层精细搜索</text>
+  <text x="400" y="322" text-anchor="middle" fill="#8b949e" font-size="11">顶层节点稀疏（快速粗筛）→ 底层节点密集（精确查找）</text>
+  <text x="400" y="342" text-anchor="middle" fill="#8b949e" font-size="11">复杂度 O(log N)，百万级数据检索 &lt; 10ms</text>
+</svg>
+</div>
+
+<!-- ==================== 第五章 ==================== -->
+<h2 id="ch5">5. 混合检索</h2>
+
+<p>向量检索擅长<strong>语义匹配</strong>，BM25 擅长<strong>关键词精确匹配</strong>。混合检索将两者结合，取长补短。</p>
+
+<div class="feynman">
+<p><strong>为什么需要混合检索？</strong> 想象搜索"苹果手机保修政策"——向量检索能理解"保修期""售后"等语义相近的词，BM25 能精确命中"iPhone 15 Pro 保修"这样的精确短语。两者互补，效果更好。</p>
+</div>
+
+<h3>5.1 RRF（Reciprocal Rank Fusion）合并</h3>
+
+<p>RRF 是一种无参数的排序融合方法，对每个文档在两个排序中的排名取倒数后求和：</p>
+
+<pre><code>score(d) = 1/(k + rank₁(d)) + 1/(k + rank₂(d))
+</code></pre>
+
+<p>其中 k 通常取 60。这种方法不需要分数归一化，对排名敏感度适中。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrowM" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <text x="400" y="24" text-anchor="middle" fill="#8b949e" font-size="13">混合检索流程 — 向量 + BM25 → RRF 融合</text>
+
+  <!-- Query -->
+  <rect x="340" y="44" width="120" height="36" rx="18" fill="rgba(210,153,34,.15)" stroke="#d29922" stroke-width="1.5"/>
+  <text x="400" y="67" text-anchor="middle" fill="#d29922" font-size="14">🔍 Query</text>
+
+  <!-- 分叉 -->
+  <line x1="400" y1="80" x2="400" y2="100" stroke="#58a6ff" stroke-width="1.5"/>
+  <line x1="400" y1="100" x2="200" y2="140" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowM)"/>
+  <line x1="400" y1="100" x2="600" y2="140" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowM)"/>
+
+  <!-- 向量检索 -->
+  <rect x="120" y="140" width="160" height="50" rx="10" fill="rgba(88,166,255,.12)" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="200" y="168" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">🧬 向量检索</text>
+  <text x="200" y="185" text-anchor="middle" fill="#8b949e" font-size="10">余弦相似度 Top-K</text>
+
+  <!-- BM25 -->
+  <rect x="520" y="140" width="160" height="50" rx="10" fill="rgba(57,197,207,.12)" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="600" y="168" text-anchor="middle" fill="#39c5cf" font-size="13" font-weight="700">📊 BM25 检索</text>
+  <text x="600" y="185" text-anchor="middle" fill="#8b949e" font-size="10">词频逆文档频率</text>
+
+  <!-- 结果列表 -->
+  <line x1="200" y1="190" x2="200" y2="220" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowM)"/>
+  <line x1="600" y1="190" x2="600" y2="220" stroke="#39c5cf" stroke-width="1.5" marker-end="url(#arrowM)"/>
+
+  <rect x="100" y="220" width="200" height="80" rx="6" fill="rgba(88,166,255,.06)" stroke="rgba(88,166,255,.3)" stroke-width="0.8"/>
+  <text x="110" y="242" fill="#58a6ff" font-size="11">Vec 结果</text>
+  <text x="110" y="260" fill="#8b949e" font-size="11">1. Doc_A (0.92)</text>
+  <text x="110" y="278" fill="#8b949e" font-size="11">2. Doc_C (0.85)</text>
+  <text x="110" y="296" fill="#8b949e" font-size="11">3. Doc_E (0.78)</text>
+
+  <rect x="500" y="220" width="200" height="80" rx="6" fill="rgba(57,197,207,.06)" stroke="rgba(57,197,207,.3)" stroke-width="0.8"/>
+  <text x="510" y="242" fill="#39c5cf" font-size="11">BM25 结果</text>
+  <text x="510" y="260" fill="#8b949e" font-size="11">1. Doc_B (12.5)</text>
+  <text x="510" y="278" fill="#8b949e" font-size="11">2. Doc_A (10.2)</text>
+  <text x="510" y="296" fill="#8b949e" font-size="11">3. Doc_D (8.7)</text>
+
+  <!-- RRF 融合 -->
+  <line x1="200" y1="300" x2="340" y2="340" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arrowM)"/>
+  <line x1="600" y1="300" x2="460" y2="340" stroke="#39c5cf" stroke-width="1.5" marker-end="url(#arrowM)"/>
+
+  <rect x="300" y="340" width="200" height="50" rx="10" fill="rgba(163,113,247,.12)" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="400" y="362" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="700">🔄 RRF 融合</text>
+  <text x="400" y="378" text-anchor="middle" fill="#8b949e" font-size="10">score = 1/(k+r₁) + 1/(k+r₂)</text>
+
+  <!-- 最终结果 -->
+  <line x1="400" y1="390" x2="400" y2="410" stroke="#a371f7" stroke-width="1.5" marker-end="url(#arrowM)"/>
+
+  <rect x="320" y="412" width="160" height="36" rx="18" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="400" y="435" text-anchor="middle" fill="#3fb950" font-size="13">✅ 最终排序 Top-K</text>
+</svg>
+</div>
+
+<h3>5.2 Go 实现：混合检索器</h3>
+
+<pre><code><span class="kw">package</span> <span class="fn">retriever</span>
+
+<span class="kw">import</span> (
+    <span class="str">"math"</span>
+    <span class="str">"sort"</span>
+)
+
+<span class="cm">// SearchResult 搜索结果</span>
+<span class="kw">type</span> <span class="fn">SearchResult</span> <span class="kw">struct</span> {
+    DocID <span class="tp">string</span>
+    Score <span class="tp">float64</span>
+}
+
+<span class="cm">// HybridRetriever 混合检索器</span>
+<span class="kw">type</span> <span class="fn">HybridRetriever</span> <span class="kw">struct</span> {
+    VectorRetriever <span class="kw">func</span>(query <span class="tp">string</span>, k <span class="tp">int</span>) []<span class="fn">SearchResult</span>
+    BM25Retriever   <span class="kw">func</span>(query <span class="tp">string</span>, k <span class="tp">int</span>) []<span class="fn">SearchResult</span>
+    K               <span class="tp">int</span> <span class="cm">// 各通道返回数量</span>
+    KRRF            <span class="tp">int</span> <span class="cm">// RRF 常数</span>
+}
+
+<span class="cm">// RRF 融合排序</span>
+<span class="kw">func</span> (h *<span class="fn">HybridRetriever</span>) <span class="fn">RRF</span>(query <span class="tp">string</span>) []<span class="fn">SearchResult</span> {
+    vecResults := h.<span class="fn">VectorRetriever</span>(query, h.K)
+    bm25Results := h.<span class="fn">BM25Retriever</span>(query, h.K)
+
+    <span class="cm">// 构建排名映射</span>
+    scoreMap := <span class="kw">make</span>(<span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">float64</span>)
+
+    <span class="kw">for</span> i, r := <span class="kw">range</span> vecResults {
+        scoreMap[r.DocID] += 1.0 / <span class="tp">float64</span>(h.KRRF+i)
+    }
+    <span class="kw">for</span> i, r := <span class="kw">range</span> bm25Results {
+        scoreMap[r.DocID] += 1.0 / <span class="tp">float64</span>(h.KRRF+i)
+    }
+
+    <span class="cm">// 转换为切片并排序</span>
+    merged := <span class="kw">make</span>([]<span class="fn">SearchResult</span>, 0, <span class="fn">len</span>(scoreMap))
+    <span class="kw">for</span> id, score := <span class="kw">range</span> scoreMap {
+        merged = <span class="fn">append</span>(merged, <span class="fn">SearchResult</span>{DocID: id, Score: score})
+    }
+    sort.<span class="fn">Slice</span>(merged, <span class="kw">func</span>(i, j <span class="tp">int</span>) <span class="tp">bool</span> {
+        <span class="kw">return</span> merged[i].Score > merged[j].Score
+    })
+
+    <span class="kw">return</span> merged
+}
+
+<span class="cm">// NormalizedHybrid 归一化加权融合（另一种策略）</span>
+<span class="kw">func</span> (h *<span class="fn">HybridRetriever</span>) <span class="fn">NormalizedHybrid</span>(query <span class="tp">string</span>, alpha <span class="tp">float64</span>) []<span class="fn">SearchResult</span> {
+    vecResults := h.<span class="fn">VectorRetriever</span>(query, h.K)
+    bm25Results := h.<span class="fn">BM25Retriever</span>(query, h.K)
+
+    <span class="cm">// Min-max 归一化</span>
+    <span class="fn">normalize</span> := <span class="kw">func</span>(results []<span class="fn">SearchResult</span>) {
+        <span class="kw">if</span> <span class="fn">len</span>(results) == 0 { <span class="kw">return</span> }
+        min, max := results[0].Score, results[0].Score
+        <span class="kw">for</span> _, r := <span class="kw">range</span> results {
+            <span class="kw">if</span> r.Score &lt; min { min = r.Score }
+            <span class="kw">if</span> r.Score > max { max = r.Score }
+        }
+        diff := max - min
+        <span class="kw">if</span> diff == 0 { diff = 1 }
+        <span class="kw">for</span> i := <span class="kw">range</span> results {
+            results[i].Score = (results[i].Score - min) / diff
+        }
+    }
+    <span class="fn">normalize</span>(vecResults)
+    <span class="fn">normalize</span>(bm25Results)
+
+    scoreMap := <span class="kw">make</span>(<span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">float64</span>)
+    <span class="kw">for</span> _, r := <span class="kw">range</span> vecResults {
+        scoreMap[r.DocID] += alpha * r.Score
+    }
+    <span class="kw">for</span> _, r := <span class="kw">range</span> bm25Results {
+        scoreMap[r.DocID] += (1 - alpha) * r.Score
+    }
+
+    merged := <span class="kw">make</span>([]<span class="fn">SearchResult</span>, 0, <span class="fn">len</span>(scoreMap))
+    <span class="kw">for</span> id, score := <span class="kw">range</span> scoreMap {
+        merged = <span class="fn">append</span>(merged, <span class="fn">SearchResult</span>{DocID: id, Score: math.<span class="fn">Round</span>(score*1000) / 1000})
+    }
+    sort.<span class="fn">Slice</span>(merged, <span class="kw">func</span>(i, j <span class="tp">int</span>) <span class="tp">bool</span> {
+        <span class="kw">return</span> merged[i].Score > merged[j].Score
+    })
+    <span class="kw">return</span> merged
+}
+</code></pre>
+
+<!-- ==================== 第六章 ==================== -->
+<h2 id="ch6">6. Reranking</h2>
+
+<p>初次检索（Retrieval）通常返回 Top-K 个候选文档。Reranking 使用<strong>更精确但更慢</strong>的模型对候选集重新排序，将最相关的文档提到最前面。</p>
+
+<h3>6.1 Cross-Encoder vs Bi-Encoder</h3>
+
+<table>
+<thead><tr><th>特性</th><th>Bi-Encoder</th><th>Cross-Encoder</th></tr></thead>
+<tbody>
+<tr><td>编码方式</td><td>Query 和 Doc 分别编码</td><td>Query 和 Doc 拼接后编码</td></tr>
+<tr><td>速度</td><td>快（可预计算 Doc 向量）</td><td>慢（必须在线计算）</td></tr>
+<tr><td>精度</td><td>中等</td><td>高（可交互注意力）</td></tr>
+<tr><td>适用阶段</td><td>初筛检索</td><td>精排 Reranking</td></tr>
+</tbody>
+</table>
+
+<div class="diagram">
+<svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrowR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <text x="400" y="24" text-anchor="middle" fill="#8b949e" font-size="13">Reranking 提升效果对比</text>
+
+  <!-- Before -->
+  <text x="200" y="56" text-anchor="middle" fill="#f85149" font-size="14" font-weight="700">❌ Reranking 前</text>
+  <rect x="80" y="70" width="240" height="36" rx="6" fill="rgba(57,197,207,.1)" stroke="#39c5cf" stroke-width="1"/>
+  <text x="96" y="93" fill="#8b949e" font-size="12">Top1: 保修政策（2021版）</text>
+  <rect x="80" y="112" width="240" height="36" rx="6" fill="rgba(57,197,207,.1)" stroke="#39c5cf" stroke-width="1"/>
+  <text x="96" y="135" fill="#8b949e" font-size="12">Top2: iPhone 16 评测</text>
+  <rect x="80" y="154" width="240" height="36" rx="6" fill="rgba(57,197,207,.1)" stroke="#39c5cf" stroke-width="1"/>
+  <text x="96" y="177" fill="#8b949e" font-size="12">Top3: 苹果公司财报</text>
+  <rect x="80" y="196" width="240" height="36" rx="6" fill="rgba(57,197,207,.1)" stroke="#39c5cf" stroke-width="1"/>
+  <text x="96" y="219" fill="#8b949e" font-size="12">Top4: iPad 维修指南</text>
+
+  <circle cx="200" cy="266" r="18" fill="none" stroke="#f85149" stroke-width="2"/>
+  <text x="200" y="272" text-anchor="middle" fill="#f85149" font-size="14" font-weight="700">NDCG=0.42</text>
+
+  <!-- 箭头 -->
+  <line x1="330" y1="150" x2="420" y2="150" stroke="#3fb950" stroke-width="2.5" marker-end="url(#arrowR)"/>
+
+  <!-- After -->
+  <text x="600" y="56" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">✅ Reranking 后</text>
+  <rect x="480" y="70" width="240" height="36" rx="6" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="496" y="93" fill="#3fb950" font-size="12">Top1: iPhone 16 保修政策</text>
+  <rect x="480" y="112" width="240" height="36" rx="6" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="496" y="135" fill="#3fb950" font-size="12">Top2: 保修政策（2021版）</text>
+  <rect x="480" y="154" width="240" height="36" rx="6" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="496" y="177" fill="#3fb950" font-size="12">Top3: iPhone 16 评测</text>
+  <rect x="480" y="196" width="240" height="36" rx="6" fill="rgba(63,185,80,.15)" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="496" y="219" fill="#3fb950" font-size="12">Top4: iPad 维修指南</text>
+
+  <circle cx="600" cy="266" r="18" fill="none" stroke="#3fb950" stroke-width="2"/>
+  <text x="600" y="272" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">NDCG=0.89</text>
+
+  <text x="400" y="296" text-anchor="middle" fill="#8b949e" font-size="11">Cross-Encoder 精确排序让最相关文档进入 Top-1，NDCG 提升 2x+</text>
+</svg>
+</div>
+
+<h3>6.2 常用 Reranker 模型</h3>
+<ul>
+  <li><strong>Cohere Rerank</strong>：商业 API，支持多语言，效果好但有限额</li>
+  <li><strong>bge-reranker-v2-m3</strong>：开源，对中文友好，基于 Cross-Encoder</li>
+  <li><strong>ms-marco-MiniLM</strong>：轻量级英文 Reranker，4 层 Transformer</li>
+  <li><strong>self-implemented</strong>：可用 BERT 微调自己的 Reranker</li>
+</ul>
+
+<!-- ==================== 第七章 ==================== -->
+<h2 id="ch7">7. RAG 评估（RAGAS）</h2>
+
+<p>RAGAS 是评估 RAG 系统最主流的框架，从多个维度量化系统表现。</p>
+
+<div class="info-card">
+<h4>📐 RAGAS 核心评估维度</h4>
+<table>
+<thead><tr><th>维度</th><th>英文</th><th>评估内容</th><th>理想值</th></tr></thead>
+<tbody>
+<tr><td><strong>忠实度</strong></td><td>Faithfulness</td><td>生成内容是否忠实于检索上下文</td><td>≥0.85</td></tr>
+<tr><td><strong>答案相关性</strong></td><td>Answer Relevance</td><td>回答是否回答了用户问题</td><td>≥0.80</td></tr>
+<tr><td><strong>上下文精度</strong></td><td>Context Precision</td><td>检索出来的文档是否包含关键信息</td><td>≥0.75</td></tr>
+<tr><td><strong>上下文召回</strong></td><td>Context Recall</td><td>关键信息是否被检索到</td><td>≥0.80</td></tr>
+<tr><td><strong>有害性</strong></td><td>Harmfulness</td><td>生成内容是否安全</td><td>接近 0</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 800 440" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <polygon id="spider"/>
+  </defs>
+  <text x="400" y="24" text-anchor="middle" fill="#8b949e" font-size="13">RAG 评估维度雷达图</text>
+
+  <!-- 背景网格 -->
+  <g transform="translate(400,230)">
+    <!-- 五边形 -->
+    <polygon points="0,-150 142.5,-46.4 88,121.4 -88,121.4 -142.5,-46.4" fill="none" stroke="rgba(42,45,58,.5)" stroke-width="0.8"/>
+    <polygon points="0,-112.5 106.9,-34.8 66,91 -66,91 -106.9,-34.8" fill="none" stroke="rgba(42,45,58,.4)" stroke-width="0.5"/>
+    <polygon points="0,-75 71.3,-23.2 44,60.7 -44,60.7 -71.3,-23.2" fill="none" stroke="rgba(42,45,58,.4)" stroke-width="0.5"/>
+    <polygon points="0,-37.5 35.6,-11.6 22,30.3 -22,30.3 -35.6,-11.6" fill="none" stroke="rgba(42,45,58,.4)" stroke-width="0.5"/>
+
+    <!-- 数据（示例值） -->
+    <!-- Faithfulness=0.92, AnswerRel=0.85, ContextPrec=0.78, ContextRecall=0.82, Harmlessness=0.95 -->
+    <!-- 归一化到 150: F=138, AR=127.5, CP=117, CR=123, H=142.5 -->
+    <polygon points="0,-138 121.1,-39.4 69.2,95.5 -72.2,99.6 -135.4,-44.1" fill="rgba(88,166,255,.15)" stroke="#58a6ff" stroke-width="2"/>
+
+    <!-- 轴标签 -->
+    <!-- Faithfulness -->
+    <text x="0" y="-162" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">忠实度</text>
+    <text x="0" y="-148" text-anchor="middle" fill="#8b949e" font-size="11">0.92</text>
+
+    <!-- Answer Relevance -->
+    <text x="158" y="-54" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">答案相关性</text>
+    <text x="158" y="-40" text-anchor="middle" fill="#8b949e" font-size="11">0.85</text>
+
+    <!-- Context Precision -->
+    <text x="98" y="140" text-anchor="middle" fill="#d29922" font-size="13" font-weight="700">上下文精度</text>
+    <text x="98" y="154" text-anchor="middle" fill="#8b949e" font-size="11">0.78</text>
+
+    <!-- Context Recall -->
+    <text x="-98" y="140" text-anchor="middle" fill="#a371f7" font-size="13" font-weight="700">上下文召回</text>
+    <text x="-98" y="154" text-anchor="middle" fill="#8b949e" font-size="11">0.82</text>
+
+    <!-- Harmlessness -->
+    <text x="-158" y="-54" text-anchor="middle" fill="#39c5cf" font-size="13" font-weight="700">安全无害性</text>
+    <text x="-158" y="-40" text-anchor="middle" fill="#8b949e" font-size="11">0.95</text>
+  </g>
+
+  <rect x="80" y="340" width="640" height="80" rx="8" fill="rgba(57,197,207,.06)" stroke="#39c5cf" stroke-width="0.8"/>
+  <text x="400" y="364" text-anchor="middle" fill="#39c5cf" font-size="12">💡 使用 RAGAS 评估的最佳实践</text>
+  <text x="400" y="384" text-anchor="middle" fill="#8b949e" font-size="11">1. 准备 200+ 测试样本（Query, Ground Truth, Context）</text>
+  <text x="400" y="402" text-anchor="middle" fill="#8b949e" font-size="11">2. 使用 LLM as Judge 自动打分（GPT-4 / Claude）</text>
+  <text x="400" y="420" text-anchor="middle" fill="#8b949e" font-size="11">3. 关注 Faithfulness + Context Recall，这是 RAG 的核心</text>
+</svg>
+</div>
+
+<!-- ==================== 第八章 ==================== -->
+<h2 id="ch8">8. 高级策略</h2>
+
+<p>基础的 RAG（Naive RAG）在大规模或复杂场景下效果有限。以下是四种常用的高级 RAG 策略。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#58a6ff"/>
+    </marker>
+  </defs>
+  <text x="400" y="24" text-anchor="middle" fill="#8b949e" font-size="13">四种高级 RAG 策略对比</text>
+
+  <!-- HyDE -->
+  <rect x="30" y="50" width="340" height="150" rx="10" fill="rgba(88,166,255,.06)" stroke="#58a6ff" stroke-width="1.2"/>
+  <text x="200" y="78" text-anchor="middle" fill="#58a6ff" font-size="14" font-weight="700">🔮 HyDE（假设文档嵌入）</text>
+  <text x="46" y="104" fill="#8b949e" font-size="12">核心：先用 LLM 根据 Query 生成一个</text>
+  <text x="46" y="122" fill="#8b949e" font-size="12">"假设文档"，再用这个文档嵌入去</text>
+  <text x="46" y="140" fill="#8b949e" font-size="12">检索真实文档。</text>
+  <text x="46" y="166" fill="#39c5cf" font-size="12">💡 零样本检索，弥补 Query-Doc 语义鸿沟</text>
+
+  <!-- Self-RAG -->
+  <rect x="430" y="50" width="340" height="150" rx="10" fill="rgba(163,113,247,.06)" stroke="#a371f7" stroke-width="1.2"/>
+  <text x="600" y="78" text-anchor="middle" fill="#a371f7" font-size="14" font-weight="700">🔄 Self-RAG（自反思 RAG）</text>
+  <text x="446" y="104" fill="#8b949e" font-size="12">核心：引入 Reflection Token，让 LLM</text>
+  <text x="446" y="122" fill="#8b949e" font-size="12">判断是否需要检索、检索结果是否</text>
+  <text x="446" y="140" fill="#8b949e" font-size="12">相关、生成是否充分。</text>
+  <text x="446" y="166" fill="#39c5cf" font-size="12">💡 按需检索，减少噪声</text>
+
+  <!-- Corrective RAG -->
+  <rect x="30" y="230" width="340" height="150" rx="10" fill="rgba(210,153,34,.06)" stroke="#d29922" stroke-width="1.2"/>
+  <text x="200" y="258" text-anchor="middle" fill="#d29922" font-size="14" font-weight="700">🛠️ Corrective RAG（修正型 RAG）</text>
+  <text x="46" y="284" fill="#8b949e" font-size="12">核心：检索后评估文档质量，低质量</text>
+  <text x="46" y="302" fill="#8b949e" font-size="12">的触发重新检索或 Web 搜索。</text>
+  <text x="46" y="328" fill="#39c5cf" font-size="12">💡 抗噪能力强，适合低质量知识库</text>
+
+  <!-- Agentic RAG -->
+  <rect x="430" y="230" width="340" height="150" rx="10" fill="rgba(63,185,80,.06)" stroke="#3fb950" stroke-width="1.2"/>
+  <text x="600" y="258" text-anchor="middle" fill="#3fb950" font-size="14" font-weight="700">🤖 Agentic RAG（智能体 RAG）</text>
+  <text x="446" y="284" fill="#8b949e" font-size="12">核心：Agent 自主决定搜索策略，</text>
+  <text x="446" y="302" fill="#8b949e" font-size="12">多轮检索、工具调用、路由分发。</text>
+  <text x="446" y="328" fill="#39c5cf" font-size="12">💡 最灵活，支持复杂多步推理</text>
+
+  <!-- 对比维度 -->
+  <rect x="30" y="410" width="740" height="56" rx="8" fill="rgba(57,197,207,.06)" stroke="#39c5cf" stroke-width="0.8"/>
+  <text x="400" y="432" text-anchor="middle" fill="#39c5cf" font-size="12">📊 选型建议</text>
+  <text x="400" y="452" text-anchor="middle" fill="#8b949e" font-size="11">简单场景 → HyDE  |  质量敏感 → Self-RAG  |  噪声数据 → Corrective RAG  |  复杂推理 → Agentic RAG</text>
+</svg>
+</div>
+
+<details class="socratic">
+<summary>HyDE 和 Query Rewriting 有什么本质区别？</summary>
+<div class="inner">
+<p><strong>Query Rewriting</strong>：改写用户 Query（如"它"→"iPhone 16"），让检索更精准。属于查询变换。</p>
+<p><strong>HyDE</strong>：不改变 Query，而是生成一个<strong>假设的文档</strong>。核心洞察是："文档-文档"的相似度比"Query-文档"的相似度更可靠。因为 Query 和文档通常不在同一个语义空间（Query 短、文档长），而文档之间的语义空间是统一的。</p>
+<p>简单说：Query Rewriting 改问法，HyDE 改答案。</p>
+</div>
+</details>
+
+<!-- ==================== 第九章 ==================== -->
+<h2 id="ch9">9. Go 实现完整 Pipeline</h2>
+
+<p>以下是一个完整的 Go 语言 RAG Pipeline 实现，整合了 Embedding、向量检索、BM25 混合检索、Reranking 和 LLM 生成。</p>
+
+<pre><code><span class="kw">package</span> <span class="fn">rag</span>
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"encoding/json"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"sort"</span>
+    <span class="str">"strings"</span>
+)
+
+<span class="cm">// Config RAG 配置</span>
+<span class="kw">type</span> <span class="fn">Config</span> <span class="kw">struct</span> {
+    EmbedURL  <span class="tp">string</span> <span class="cm">// Embedding API 地址</span>
+    LLMURL    <span class="tp">string</span> <span class="cm">// LLM API 地址</span>
+    TopK      <span class="tp">int</span>    <span class="cm">// 检索 Top-K</span>
+    RerankTop <span class="tp">int</span>    <span class="cm">// Rerank 后保留数</span>
+    ChunkSize <span class="tp">int</span>
+}
+
+<span class="cm">// Document 文档片段</span>
+<span class="kw">type</span> <span class="fn">Document</span> <span class="kw">struct</span> {
+    ID      <span class="tp">string</span>
+    Content <span class="tp">string</span>
+    Vector  []<span class="tp">float64</span>
+    Meta    <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">string</span>
+}
+
+<span class="cm">// QueryResult 查询结果</span>
+<span class="kw">type</span> <span class="fn">QueryResult</span> <span class="kw">struct</span> {
+    Query      <span class="tp">string</span>
+    Documents  []<span class="fn">Document</span>
+    Context    <span class="tp">string</span>
+    Answer     <span class="tp">string</span>
+    Evaluation <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">float64</span>
+}
+
+<span class="cm">// RAGPipeline 完整 Pipeline</span>
+<span class="kw">type</span> <span class="fn">RAGPipeline</span> <span class="kw">struct</span> {
+    cfg       <span class="fn">Config</span>
+    documents []<span class="fn">Document</span>
+    bm25      *<span class="fn">BM25Index</span>
+}
+
+<span class="cm">// NewRAGPipeline 创建 Pipeline</span>
+<span class="kw">func</span> <span class="fn">NewRAGPipeline</span>(cfg <span class="fn">Config</span>) *<span class="fn">RAGPipeline</span> {
+    <span class="kw">return</span> &<span class="fn">RAGPipeline</span>{
+        cfg:  cfg,
+        bm25: <span class="fn">NewBM25Index</span>(),
+    }
+}
+
+<span class="cm">// Ingestion 数据入库流程</span>
+<span class="kw">func</span> (p *<span class="fn">RAGPipeline</span>) <span class="fn">Ingestion</span>(ctx <span class="fn">context.Context</span>, docs []<span class="fn">Document</span>) <span class="op">error</span> {
+    <span class="kw">for</span> i := <span class="kw">range</span> docs {
+        <span class="cm">// 1. Chunking（此处简化，使用递归分割）</span>
+        chunks := <span class="fn">simpleChunk</span>(docs[i].Content, p.cfg.ChunkSize)
+
+        <span class="kw">for</span> j, chunk := <span class="kw">range</span> chunks {
+            <span class="cm">// 2. Embedding</span>
+            vec, err := p.<span class="fn">embed</span>(ctx, chunk)
+            <span class="kw">if</span> err != <span class="op">nil</span> {
+                <span class="kw">return</span> fmt.<span class="fn">Errorf</span>(<span class="str">"embedding failed: %w"</span>, err)
+            }
+
+            doc := <span class="fn">Document</span>{
+                ID:      fmt.<span class="fn">Sprintf</span>(<span class="str">"%s_%d"</span>, docs[i].ID, j),
+                Content: chunk,
+                Vector:  vec,
+                Meta:    docs[i].Meta,
+            }
+            p.documents = <span class="fn">append</span>(p.documents, doc)
+
+            <span class="cm">// 3. BM25 索引构建</span>
+            p.bm25.<span class="fn">Add</span>(doc.ID, chunk)
+        }
+    }
+    <span class="kw">return</span> <span class="op">nil</span>
+}
+
+<span class="cm">// Query 查询流程</span>
+<span class="kw">func</span> (p *<span class="fn">RAGPipeline</span>) <span class="fn">Query</span>(ctx <span class="fn">context.Context</span>, query <span class="tp">string</span>) (*<span class="fn">QueryResult</span>, <span class="op">error</span>) {
+    <span class="cm">// 1. Embed Query</span>
+    qVec, err := p.<span class="fn">embed</span>(ctx, query)
+    <span class="kw">if</span> err != <span class="op">nil</span> {
+        <span class="kw">return</span> <span class="op">nil</span>, err
+    }
+
+    <span class="cm">// 2. 向量检索</span>
+    vecResults := p.<span class="fn">vectorSearch</span>(qVec, p.cfg.TopK*2)
+
+    <span class="cm">// 3. BM25 检索</span>
+    bm25Results := p.bm25.<span class="fn">Search</span>(query, p.cfg.TopK*2)
+
+    <span class="cm">// 4. RRF 混合融合</span>
+    merged := p.<span class="fn">rrfMerge</span>(vecResults, bm25Results)
+
+    <span class="cm">// 5. Reranking（使用 Cross-Encoder 精排）</span>
+    reranked := p.<span class="fn">rerank</span>(ctx, query, merged, p.cfg.RerankTop)
+
+    <span class="cm">// 6. 构建上下文</span>
+    context := p.<span class="fn">buildContext</span>(reranked)
+
+    <span class="cm">// 7. LLM 生成</span>
+    answer, err := p.<span class="fn">generate</span>(ctx, query, context)
+    <span class="kw">if</span> err != <span class="op">nil</span> {
+        <span class="kw">return</span> <span class="op">nil</span>, err
+    }
+
+    <span class="kw">return</span> &<span class="fn">QueryResult</span>{
+        Query:     query,
+        Documents: reranked,
+        Context:   context,
+        Answer:    answer,
+    }, <span class="op">nil</span>
+}
+
+<span class="cm">// vectorSearch 余弦相似度检索</span>
+<span class="kw">func</span> (p *<span class="fn">RAGPipeline</span>) <span class="fn">vectorSearch</span>(qVec []<span class="tp">float64</span>, k <span class="tp">int</span>) []<span class="fn">Document</span> {
+    <span class="kw">type</span> scoredDoc <span class="kw">struct</span> {
+        doc   <span class="fn">Document</span>
+        score <span class="tp">float64</span>
+    }
+    scored := <span class="kw">make</span>([]scoredDoc, 0, <span class="fn">len</span>(p.documents))
+
+    <span class="kw">for</span> _, doc := <span class="kw">range</span> p.documents {
+        score := <span class="fn">cosineSimilarity</span>(qVec, doc.Vector)
+        scored = <span class="fn">append</span>(scored, scoredDoc{doc, score})
+    }
+
+    sort.<span class="fn">Slice</span>(scored, <span class="kw">func</span>(i, j <span class="tp">int</span>) <span class="tp">bool</span> {
+        <span class="kw">return</span> scored[i].score > scored[j].score
+    })
+
+    <span class="kw">if</span> k > <span class="fn">len</span>(scored) {
+        k = <span class="fn">len</span>(scored)
+    }
+    result := <span class="kw">make</span>([]<span class="fn">Document</span>, k)
+    <span class="kw">for</span> i := 0; i &lt; k; i++ {
+        result[i] = scored[i].doc
+    }
+    <span class="kw">return</span> result
+}
+
+<span class="cm">// cosineSimilarity 余弦相似度</span>
+<span class="kw">func</span> <span class="fn">cosineSimilarity</span>(a, b []<span class="tp">float64</span>) <span class="tp">float64</span> {
+    <span class="kw">var</span> dot, normA, normB <span class="tp">float64</span>
+    <span class="kw">for</span> i := <span class="kw">range</span> a {
+        dot += a[i] * b[i]
+        normA += a[i] * a[i]
+        normB += b[i] * b[i]
+    }
+    <span class="kw">if</span> normA == 0 || normB == 0 {
+        <span class="kw">return</span> 0
+    }
+    <span class="kw">return</span> dot / (<span class="fn">sqrt</span>(normA) * <span class="fn">sqrt</span>(normB))
+}
+
+<span class="cm">// buildContext 构建 LLM 上下文</span>
+<span class="kw">func</span> (p *<span class="fn">RAGPipeline</span>) <span class="fn">buildContext</span>(docs []<span class="fn">Document</span>) <span class="tp">string</span> {
+    var sb strings.<span class="fn">Builder</span>
+    sb.<span class="fn">WriteString</span>(<span class="str">"请根据以下参考资料回答问题：\n\n"</span>)
+    <span class="kw">for</span> i, doc := <span class="kw">range</span> docs {
+        sb.<span class="fn">WriteString</span>(fmt.<span class="fn">Sprintf</span>(<span class="str">"[%d] %s\n"</span>, i+1, doc.Content))
+    }
+    <span class="kw">return</span> sb.<span class="fn">String</span>()
+}
+
+<span class="cm">// generate 调用 LLM 生成回答</span>
+<span class="kw">func</span> (p *<span class="fn">RAGPipeline</span>) <span class="fn">generate</span>(ctx <span class="fn">context.Context</span>, query, context <span class="tp">string</span>) (<span class="tp">string</span>, <span class="op">error</span>) {
+    prompt := fmt.<span class="fn">Sprintf</span>(<span class="str">`%s
+用户问题：%s
+请基于参考资料回答，如果资料中没有相关信息，请说明无法回答。`</span>, context, query)
+    <span class="cm">// 这里调用 LLM API（伪代码）</span>
+    <span class="kw">return</span> p.<span class="fn">callLLM</span>(ctx, prompt)
+}
+
+<span class="cm">// 简化函数：sqrt</span>
+<span class="kw">func</span> <span class="fn">sqrt</span>(x <span class="tp">float64</span>) <span class="tp">float64</span> {
+    <span class="kw">if</span> x == 0 { <span class="kw">return</span> 0 }
+    z := x / 2
+    <span class="kw">for</span> i := 0; i &lt; 100; i++ {
+        z -= (z*z - x) / (2 * z)
+    }
+    <span class="kw">return</span> z
+}
+</code></pre>
+
+<!-- ==================== 第十章 ==================== -->
+<h2 id="ch10">10. QA &amp; 总结</h2>
+
+<h3>常见问题</h3>
+
+<div class="qa">
+<strong>Q1: Chunk Size 应该如何选择？</strong>
+<p>没有唯一答案。经验值：<strong>256-512 tokens</strong> 是通用推荐。需要实验确定：在验证集上调整 Chunk Size，监控 RAGAS 的 Context Precision 指标。小 Chunk（128）适合 Q&A，大 Chunk（1024）适合摘要和长文分析。</p>
+</div>
+
+<div class="qa">
+<strong>Q2: Embedding 模型需要定期更新吗？</strong>
+<p>是的。<strong>Embedding 模型本身不更新</strong>，但文档库需要定期重新 Embedding（re-index），尤其是当新文档引入新领域词汇时。建议每周或每月增量更新索引。</p>
+</div>
+
+<div class="qa">
+<strong>Q3: 混合检索中 RRF 和加权融合哪个更好？</strong>
+<p><strong>RRF</strong> 更鲁棒——因为不需要调权重 α，对分数尺度不敏感。<strong>加权融合</strong>理论上更灵活（通过 α 调节语义 vs 关键词的偏好），但需要实验确定 α。生产环境推荐 RRF 作为基线，再尝试加权调优。</p>
+</div>
+
+<div class="qa">
+<strong>Q4: Reranking 一定要用吗？成本会不会太高？</strong>
+<p>如果 Top-K 结果的前 3 个已经很准，可以不强制加 Reranking。但当 K 较大（≥20）或<strong>精度要求高</strong>时，Reranking 是性价比很高的提升手段。可以用轻量级 Reranker（如 MiniLM）控制成本，单次推理仅需几毫秒。</p>
+</div>
+
+<div class="qa">
+<strong>Q5: RAGAS 评估需要人工标注吗？</strong>
+<p>RAGAS 的核心理念是<strong>使用 LLM 自动评估</strong>（LLM as Judge）。你只需要准备好 (Query, Ground Truth Answer, Context) 三元组。但为确保评估质量，建议人工抽查 10-20% 的样本做校正。Faithfulness 维度用 GPT-4 评估效果最好。</p>
+</div>
+
+<div class="qa">
+<strong>Q6: Go 生态下有没有成熟的向量数据库客户端？</strong>
+<p>主流向量数据库都提供 Go SDK：<strong>Milvus</strong>（milvus-sdk-go）、<strong>Qdrant</strong>（qdrant-go）、<strong>Weaviate</strong>（weaviate-client-go）。如果数据量小于 100 万，也可以用 <strong>hnsw-go</strong> 或 <strong>faiss-go</strong> 在内存中构建索引，省去外部依赖。</p>
+</div>
+
+<div class="qa">
+<strong>Q7: HyDE 生成的假设文档质量不高怎么办？</strong>
+<p>HyDE 对 LLM 的生成质量敏感。改进方法：1）使用更强大的 LLM（GPT-4 优于开源模型）；2）在 Prompt 中要求生成<strong>多视角</strong>假设文档（3-5 个不同角度），取它们的 Embedding 均值。3）将 HyDE 与 Query Rewriting 组合使用。</p>
+</div>
+
+<h3>📺 口播总结</h3>
+
+<div class="info-card" style="border-left:3px solid var(--orange);">
+<p>大家好，今天我们一起深度解析了 RAG 的完整实战链路。</p>
+<p>我们从<strong>为什么需要 RAG</strong> 开始——用一个图书馆管理员的类比讲清楚了"检索增强"的核心理念。然后我们深入了 <strong>Chunking</strong> 的四种策略，给出了 Go 递归分割器的完整代码。接着我们对比了主流 <strong>Embedding</strong> 模型的选型和成本，用可视化展示了向量空间的语义聚集。</p>
+<p>在检索环节，我们不仅讲了余弦相似度、HNSW 索引，还给出了<strong>混合检索</strong>的 RRF 融合实现和完整 Go 代码。<strong>Reranking</strong> 环节对比了 Cross-Encoder 和 Bi-Encoder 的差异，展示了 NDCG 从 0.42 到 0.89 的飞跃。在评估方面，我们介绍了 <strong>RAGAS</strong> 的五维评估体系，并用雷达图直观展示。</p>
+<p>最后我们讲解了 HyDE、Self-RAG、Corrective RAG、Agentic RAG 四种高级策略，给出了一个<strong>完整的 Go RAG Pipeline</strong>，涵盖 Ingestion 到 Query 全流程。</p>
+<p>实践 RAG 的关键心法：<strong>Chunking 是地基，Embedding 是桥梁，混合检索是引擎，Reranking 是精筛，RAGAS 是标尺</strong>。这五步环环相扣，每一步都值得花时间打磨。记住：没有最好的 RAG 系统，只有最适合你场景的 RAG 系统。从简单开始，持续优化，才是工程化的正确姿势。</p>
+<p>感谢观看，欢迎在评论区交流你的 RAG 实践心得！</p>
+</div>
+
+<div class="feynman">
+<p><strong>一句话记住 RAG：</strong></p>
+<p>不要教模型记住一切——让它学会查资料。就像你不必背诵整本百科全书，只需要知道怎么找到答案。</p>
+</div>
+
+<p style="text-align:center;color:#8b949e;font-size:13px;margin-top:60px;padding-top:20px;border-top:1px solid var(--border)">
+📚 RAG 实战深度解析 — 2025 · 持续更新中
+</p>
+
+</div>
+
+</body>
+</html>

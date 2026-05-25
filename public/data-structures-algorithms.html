@@ -1,0 +1,1891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🗃️ 数据结构与算法大全 — 从复杂度到图论，Go 代码实战</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --card: #1a1d27;
+  --border: #2a2d3a;
+  --text: #c9d1d9;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --orange: #d29922;
+  --red: #f85149;
+  --purple: #a371f7;
+  --cyan: #39c5cf;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Noto Sans CJK SC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 15px;
+  display: flex;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Sidebar */
+#sidebar {
+  position: fixed;
+  top: 0; left: 0;
+  width: 260px;
+  height: 100vh;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 20px 0;
+  z-index: 100;
+}
+#sidebar h2 {
+  font-size: 14px;
+  color: var(--accent);
+  padding: 0 20px 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+#sidebar nav a {
+  display: block;
+  padding: 6px 20px 6px 24px;
+  color: var(--text);
+  font-size: 13px;
+  border-left: 3px solid transparent;
+  transition: 0.15s;
+}
+#sidebar nav a:hover {
+  background: rgba(88,166,255,0.08);
+  border-left-color: var(--accent);
+  text-decoration: none;
+  color: #fff;
+}
+#sidebar nav a.c1 { padding-left: 24px; }
+#sidebar nav a.c2 { padding-left: 36px; font-size: 12.5px; color: #8b949e; }
+#sidebar-bottom {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+#sidebar-bottom a {
+  color: var(--green);
+  font-size: 14px;
+}
+
+/* Main Content */
+#main {
+  margin-left: 260px;
+  flex: 1;
+  padding: 40px 48px 80px;
+  max-width: 960px;
+}
+#main h1 {
+  font-size: 28px;
+  margin-bottom: 8px;
+  color: #fff;
+}
+#main .subtitle {
+  color: #8b949e;
+  font-size: 14px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+#main h2 {
+  font-size: 22px;
+  color: #fff;
+  margin: 40px 0 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--accent);
+}
+#main h3 {
+  font-size: 17px;
+  color: var(--accent);
+  margin: 28px 0 12px;
+}
+#main h4 {
+  font-size: 15px;
+  color: var(--cyan);
+  margin: 20px 0 10px;
+}
+#main p { margin: 10px 0; }
+#main ul, #main ol { margin: 8px 0 8px 20px; }
+#main li { margin: 4px 0; }
+
+/* Cards */
+.info-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+.info-card .card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+/* Compare Tables */
+.compare {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 13px;
+}
+.compare th {
+  background: var(--card);
+  color: var(--accent);
+  font-weight: 600;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+.compare td {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+.compare tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+.compare tr:hover { background: rgba(88,166,255,0.06); }
+
+/* Code */
+pre {
+  background: #0d1017;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  margin: 14px 0;
+  font-size: 13px;
+  line-height: 1.55;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+}
+code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+  font-size: 0.92em;
+}
+p code, li code {
+  background: rgba(88,166,255,0.1);
+  color: var(--cyan);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.88em;
+}
+.kw { color: var(--purple); }
+.fn { color: var(--accent); }
+.str { color: var(--green); }
+.num { color: var(--orange); }
+.cm { color: #6e7681; font-style: italic; }
+.tp { color: var(--cyan); }
+.op { color: var(--red); }
+
+/* SVG Container */
+.diagram {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin: 20px 0;
+  overflow-x: auto;
+}
+.diagram svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+/* Q&A / Socratic */
+.qa { margin: 16px 0; }
+details.socratic {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 8px 0;
+}
+details.socratic summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent);
+  outline: none;
+}
+details.socratic summary::-webkit-details-marker { color: var(--accent); }
+details.socratic .answer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: #adbac7;
+}
+
+/* Feynman Technique */
+.feynman {
+  background: linear-gradient(135deg, rgba(163,113,247,0.08), rgba(57,197,207,0.08));
+  border: 1px solid var(--purple);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+.feynman .feynman-title {
+  color: var(--purple);
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+/* Tags */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  margin: 2px;
+}
+.tag-green { background: rgba(63,185,80,0.15); color: var(--green); }
+.tag-orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+.tag-red { background: rgba(248,81,73,0.15); color: var(--red); }
+.tag-blue { background: rgba(88,166,255,0.15); color: var(--accent); }
+.tag-purple { background: rgba(163,113,247,0.15); color: var(--purple); }
+
+/* TOC highlight */
+:target {
+  scroll-margin-top: 20px;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  #sidebar { display: none; }
+  #main {
+    margin-left: 0;
+    padding: 20px 16px 60px;
+  }
+  #main h1 { font-size: 22px; }
+  #main h2 { font-size: 18px; }
+  pre { font-size: 11px; padding: 10px; }
+  .compare { font-size: 11px; }
+  .compare td, .compare th { padding: 5px 6px; }
+  .diagram { padding: 10px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<aside id="sidebar">
+  <h2>📖 目录</h2>
+  <nav>
+    <a href="#ch1" class="c1">1. 复杂度分析</a>
+    <a href="#ch2" class="c1">2. 线性表</a>
+    <a href="#ch2-1" class="c2">数组 vs 链表</a>
+    <a href="#ch2-2" class="c2">链表反转</a>
+    <a href="#ch3" class="c1">3. 字符串匹配</a>
+    <a href="#ch3-1" class="c2">KMP &amp; Trie</a>
+    <a href="#ch4" class="c1">4. 排序与二分</a>
+    <a href="#ch5" class="c1">5. 散列表/Hash</a>
+    <a href="#ch6" class="c1">6. 跳表 Skip List</a>
+    <a href="#ch7" class="c1">7. 二叉树</a>
+    <a href="#ch8" class="c1">8. B/B+ 树</a>
+    <a href="#ch9" class="c1">9. 堆 Heap</a>
+    <a href="#ch10" class="c1">10. 动态规划 DP</a>
+    <a href="#ch11" class="c1">11. 搜索</a>
+    <a href="#ch12" class="c1">12. 图论</a>
+    <a href="#ch13" class="c1">13. 其他经典结构</a>
+    <a href="#ch14" class="c1">14. QA + 总结</a>
+  </nav>
+  <div id="sidebar-bottom">
+    <a href="index.html">← 返回首页</a>
+  </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<div id="main">
+
+<h1>🗃️ 数据结构与算法大全 — 从复杂度到图论，Go 代码实战</h1>
+<p class="subtitle">完整覆盖面试 &amp; 工程必备数据结构与算法 · 14 章 · 10+ SVG 图解 · 大量 Go 代码 · 对比表格助记</p>
+
+<!-- ============================== -->
+<h2 id="ch1">1. 复杂度分析</h2>
+
+<h3>1.1 时间复杂度 — 大 O 表示法</h3>
+<p>大 O 表示法描述算法运行时间随输入规模增长的<b>增长趋势</b>。常见复杂度从快到慢：</p>
+<p>
+<span class="tag tag-green">O(1)</span>
+<span class="tag tag-blue">O(logN)</span>
+<span class="tag tag-orange">O(N)</span>
+<span class="tag tag-red">O(NlogN)</span>
+<span class="tag tag-red" style="background:rgba(248,81,73,0.25)">O(N²)</span>
+</p>
+
+<div class="diagram">
+<!-- SVG 1: 复杂度增长曲线 -->
+<svg viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg">
+  <rect width="700" height="380" fill="#1a1d27" rx="8"/>
+  <text x="350" y="28" fill="#58a6ff" font-size="16" font-weight="bold" text-anchor="middle">常见算法复杂度增长曲线</text>
+  <!-- Axes -->
+  <line x1="60" y1="330" x2="680" y2="330" stroke="#2a2d3a" stroke-width="2"/>
+  <line x1="60" y1="330" x2="60" y2="40" stroke="#2a2d3a" stroke-width="2"/>
+  <text x="680" y="348" fill="#8b949e" font-size="12" text-anchor="end">n (输入规模)</text>
+  <text x="30" y="50" fill="#8b949e" font-size="12" text-anchor="end">T(n)</text>
+  <text x="60" y="348" fill="#6e7681" font-size="10" text-anchor="middle">0</text>
+  <!-- Grid -->
+  <line x1="60" y1="200" x2="680" y2="200" stroke="#2a2d3a" stroke-width="0.5" stroke-dasharray="4,4"/>
+  <line x1="60" y1="100" x2="680" y2="100" stroke="#2a2d3a" stroke-width="0.5" stroke-dasharray="4,4"/>
+  <!-- O(1) -->
+  <line x1="60" y1="100" x2="680" y2="100" stroke="#3fb950" stroke-width="2.5" opacity="0.9"/>
+  <text x="685" y="105" fill="#3fb950" font-size="12">O(1)</text>
+  <!-- O(logN) -->
+  <path d="M 60,240 Q 120,180 200,140 Q 300,110 400,100 Q 500,94 600,90 680,88" stroke="#39c5cf" stroke-width="2.5" fill="none" opacity="0.9"/>
+  <text x="685" y="88" fill="#39c5cf" font-size="12">O(logN)</text>
+  <!-- O(N) -->
+  <line x1="60" y1="290" x2="680" y2="100" stroke="#d29922" stroke-width="2.5" opacity="0.9"/>
+  <text x="685" y="100" fill="#d29922" font-size="12">O(N)</text>
+  <!-- O(NlogN) -->
+  <path d="M 60,310 Q 150,280 250,240 Q 350,200 450,150 Q 550,100 680,70" stroke="#f85149" stroke-width="2.5" fill="none" opacity="0.9"/>
+  <text x="685" y="72" fill="#f85149" font-size="12">O(NlogN)</text>
+  <!-- O(N²) -->
+  <path d="M 60,320 Q 120,310 200,270 Q 280,200 360,130 Q 440,70 520,40 Q 600,20 680,10" stroke="#ff6b6b" stroke-width="2.5" fill="none" opacity="0.8"/>
+  <text x="685" y="12" fill="#ff6b6b" font-size="12">O(N²)</text>
+  <!-- Legend background -->
+  <rect x="460" y="330" width="210" height="42" fill="#0f1117" rx="6" opacity="0.8"/>
+  <text x="470" y="348" fill="#8b949e" font-size="11">✅ 常数 → 对数 → 线性 → 线性对数 → 平方</text>
+  <text x="470" y="364" fill="#6e7681" font-size="10">实际中关注最坏情况时间复杂度</text>
+</svg>
+</div>
+
+<h3>1.2 最好 / 最坏 / 平均 / 均摊</h3>
+<table class="compare">
+<tr><th>类型</th><th>含义</th><th>示例（快排）</th></tr>
+<tr><td>最好</td><td>输入最理想时的复杂度</td><td>O(NlogN) — 每次 pivot 正好中位数</td></tr>
+<tr><td>最坏</td><td>输入最差时的复杂度</td><td>O(N²) — 已有序数组 + 首元素 pivot</td></tr>
+<tr><td>平均</td><td>所有输入概率加权</td><td>O(NlogN)</td></tr>
+<tr><td>均摊</td><td>连续操作的平摊代价</td><td>动态数组扩容：每次 append 均摊 O(1)</td></tr>
+</table>
+
+<h3>1.3 空间复杂度</h3>
+<p>衡量算法运行时额外使用的内存空间。</p>
+<ul>
+  <li><b>原地算法 (In-place)</b>：空间复杂度 O(1) — 如冒泡排序</li>
+  <li><b>额外空间</b>：如归并排序需要 O(N) 辅助数组</li>
+  <li><b>递归栈空间</b>：如快排递归深度平均 O(logN)，最坏 O(N)</li>
+</ul>
+
+<h3>1.4 Go Benchmark 测试复杂度</h3>
+<pre><code><span class="cm">// benchmark_test.go — 验证 O(N) 线性复杂度</span>
+<span class="kw">func</span> <span class="fn">BenchmarkLinear</span>(b *<span class="tp">testing</span>.<span class="tp">B</span>) {
+    n := b.N
+    arr := <span class="kw">make</span>([]<span class="tp">int</span>, n)
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; n; i++ {
+        arr[i] = i  <span class="cm">// O(N) 赋值</span>
+    }
+}
+
+<span class="cm">// 运行: go test -bench=. -benchmem</span>
+<span class="cm">// 输出: BenchmarkLinear-8  1000000  1250 ns/op  说明 O(N)</span>
+</code></pre>
+
+<div class="feynman">
+<div class="feynman-title">📝 费曼要点 — 复杂度</div>
+<p>一句话：大 O 忽略常数和低阶项，只关心<b>增长趋势</b>。O(100N+5000) = O(N)。面试时先分析最坏情况，再考虑能否优化。</p>
+</div>
+
+<!-- ============================== -->
+<h2 id="ch2">2. 线性表</h2>
+
+<h3 id="ch2-1">2.1 数组 vs 链表</h3>
+<table class="compare">
+<tr><th>操作</th><th>数组</th><th>单向链表</th></tr>
+<tr><td>随机访问</td><td><span class="tag tag-green">O(1)</span></td><td><span class="tag tag-red">O(N)</span></td></tr>
+<tr><td>头部插入</td><td><span class="tag tag-red">O(N)</span></td><td><span class="tag tag-green">O(1)</span></td></tr>
+<tr><td>尾部插入</td><td><span class="tag tag-green">均摊 O(1)</span></td><td><span class="tag tag-green">O(1)</span>（有尾指针）</td></tr>
+<tr><td>中间插入</td><td><span class="tag tag-red">O(N)</span></td><td><span class="tag tag-orange">O(N)</span>（需先遍历）</td></tr>
+<tr><td>删除</td><td><span class="tag tag-red">O(N)</span></td><td><span class="tag tag-green">O(1)</span>（已知节点）</td></tr>
+<tr><td>缓存友好性</td><td><span class="tag tag-green">✅ 高（连续内存）</span></td><td><span class="tag tag-red">❌ 低（指针跳跃）</span></td></tr>
+<tr><td>额外内存</td><td>几乎无</td><td>每个节点多存 1~2 个指针</td></tr>
+</table>
+
+<h3>2.2 队列 FIFO &amp; 堆栈 LIFO</h3>
+<div class="info-card">
+<div class="card-title">📌 Go 中的栈和队列</div>
+<p>Go 没有内置的栈/队列容器，通常用 slice 模拟：</p>
+<pre><code><span class="cm">// 栈 (LIFO)</span>
+stack := <span class="kw">make</span>([]<span class="tp">int</span>, <span class="num">0</span>)
+stack = <span class="fn">append</span>(stack, <span class="num">1</span>)     <span class="cm">// push</span>
+top := stack[<span class="fn">len</span>(stack)<span class="num">-1</span>]    <span class="cm">// peek</span>
+stack = stack[:<span class="fn">len</span>(stack)<span class="num">-1</span>] <span class="cm">// pop</span>
+
+<span class="cm">// 队列 (FIFO)  — 用 slice 模拟，或用 list 库</span>
+queue := <span class="kw">make</span>([]<span class="tp">int</span>, <span class="num">0</span>)
+queue = <span class="fn">append</span>(queue, <span class="num">1</span>)     <span class="cm">// enqueue</span>
+front := queue[<span class="num">0</span>]             <span class="cm">// peek</span>
+queue = queue[<span class="num">1</span>:]              <span class="cm">// dequeue (O(1) for slice ref)</span>
+</code></pre>
+<div class="card-title" style="margin-top: 8px;">⚠️ 大量 dequeue 时 slice 头部 pop 会导致内存泄漏，可用 ring buffer 或 container/list</div>
+</div>
+
+<h3 id="ch2-2">2.3 经典题：链表反转</h3>
+<p><b>迭代法</b> — 三指针（prev, curr, next）</p>
+<pre><code><span class="kw">type</span> <span class="tp">ListNode</span> <span class="kw">struct</span> {
+    Val  <span class="tp">int</span>
+    Next *<span class="tp">ListNode</span>
+}
+
+<span class="cm">// 迭代反转</span>
+<span class="kw">func</span> <span class="fn">reverseListIter</span>(head *<span class="tp">ListNode</span>) *<span class="tp">ListNode</span> {
+    <span class="kw">var</span> prev *<span class="tp">ListNode</span>
+    curr := head
+    <span class="kw">for</span> curr != <span class="kw">nil</span> {
+        next := curr.Next  <span class="cm">// 保存下一个</span>
+        curr.Next = prev   <span class="cm">// 反转指针</span>
+        prev = curr        <span class="cm">// 前进</span>
+        curr = next
+    }
+    <span class="kw">return</span> prev  <span class="cm">// 新头</span>
+}
+</code></pre>
+
+<p><b>递归法</b> — 更优雅但使用 O(N) 栈空间</p>
+<pre><code><span class="kw">func</span> <span class="fn">reverseListRecur</span>(head *<span class="tp">ListNode</span>) *<span class="tp">ListNode</span> {
+    <span class="kw">if</span> head == <span class="kw">nil</span> || head.Next == <span class="kw">nil</span> {
+        <span class="kw">return</span> head
+    }
+    newHead := <span class="fn">reverseListRecur</span>(head.Next)
+    head.Next.Next = head  <span class="cm">// 反转当前节点</span>
+    head.Next = <span class="kw">nil</span>
+    <span class="kw">return</span> newHead
+}
+</code></pre>
+
+<div class="diagram">
+<!-- SVG 2: 链表反转过程 -->
+<svg viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg">
+  <rect width="700" height="240" fill="#1a1d27" rx="8"/>
+  <text x="350" y="24" fill="#58a6ff" font-size="14" font-weight="bold" text-anchor="middle">链表反转过程（迭代法）</text>
+  <!-- Step 1: Original -->
+  <text x="40" y="52" fill="#8b949e" font-size="11">原始:</text>
+  <rect x="80" y="38" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#58a6ff"/>
+  <text x="102" y="58" fill="#fff" font-size="13" text-anchor="middle">1</text>
+  <text x="124" y="58" fill="#6e7681" font-size="16">→</text>
+  <rect x="140" y="38" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#58a6ff"/>
+  <text x="162" y="58" fill="#fff" font-size="13" text-anchor="middle">2</text>
+  <text x="184" y="58" fill="#6e7681" font-size="16">→</text>
+  <rect x="200" y="38" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#58a6ff"/>
+  <text x="222" y="58" fill="#fff" font-size="13" text-anchor="middle">3</text>
+  <text x="244" y="58" fill="#6e7681" font-size="16">→</text>
+  <rect x="260" y="38" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="282" y="58" fill="#fff" font-size="13" text-anchor="middle">nil</text>
+  <!-- Step 2: After 1 iteration -->
+  <text x="40" y="110" fill="#8b949e" font-size="11">迭代1:</text>
+  <rect x="80" y="96" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#d29922"/>
+  <text x="102" y="116" fill="#fff" font-size="13" text-anchor="middle">nil</text>
+  <text x="124" y="116" fill="#6e7681" font-size="16">←</text>
+  <rect x="140" y="96" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#39c5cf"/>
+  <text x="162" y="116" fill="#fff" font-size="13" text-anchor="middle">1</text>
+  <text x="184" y="116" fill="#6e7681" font-size="16">→</text>
+  <rect x="200" y="96" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#58a6ff"/>
+  <text x="222" y="116" fill="#fff" font-size="13" text-anchor="middle">2</text>
+  <text x="244" y="116" fill="#6e7681" font-size="16">→</text>
+  <rect x="260" y="96" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="282" y="116" fill="#fff" font-size="13" text-anchor="middle">3</text>
+  <text x="304" y="116" fill="#6e7681" font-size="16">→</text>
+  <rect x="320" y="96" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="342" y="116" fill="#fff" font-size="13" text-anchor="middle">nil</text>
+  <!-- Step 3: After 2 iterations -->
+  <text x="40" y="168" fill="#8b949e" font-size="11">迭代2:</text>
+  <rect x="80" y="154" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#d29922"/>
+  <text x="102" y="174" fill="#fff" font-size="13" text-anchor="middle">nil</text>
+  <text x="124" y="174" fill="#6e7681" font-size="16">←</text>
+  <rect x="140" y="154" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#d29922"/>
+  <text x="162" y="174" fill="#fff" font-size="13" text-anchor="middle">1</text>
+  <text x="184" y="174" fill="#6e7681" font-size="16">←</text>
+  <rect x="200" y="154" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#39c5cf"/>
+  <text x="222" y="174" fill="#fff" font-size="13" text-anchor="middle">2</text>
+  <text x="244" y="174" fill="#6e7681" font-size="16">→</text>
+  <rect x="260" y="154" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="282" y="174" fill="#fff" font-size="13" text-anchor="middle">3</text>
+  <text x="304" y="174" fill="#6e7681" font-size="16">→</text>
+  <rect x="320" y="154" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="342" y="174" fill="#fff" font-size="13" text-anchor="middle">nil</text>
+  <!-- Step 4: Done -->
+  <text x="40" y="228" fill="#8b949e" font-size="11">完成:</text>
+  <rect x="80" y="214" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#d29922"/>
+  <text x="102" y="234" fill="#fff" font-size="13" text-anchor="middle">nil</text>
+  <text x="124" y="234" fill="#6e7681" font-size="16">←</text>
+  <rect x="140" y="214" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#d29922"/>
+  <text x="162" y="234" fill="#fff" font-size="13" text-anchor="middle">1</text>
+  <text x="184" y="234" fill="#6e7681" font-size="16">←</text>
+  <rect x="200" y="214" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#d29922"/>
+  <text x="222" y="234" fill="#fff" font-size="13" text-anchor="middle">2</text>
+  <text x="244" y="234" fill="#6e7681" font-size="16">←</text>
+  <rect x="260" y="214" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#39c5cf"/>
+  <text x="282" y="234" fill="#fff" font-size="13" text-anchor="middle">3</text>
+  <text x="304" y="234" fill="#6e7681" font-size="16">→</text>
+  <rect x="320" y="214" width="44" height="30" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="342" y="234" fill="#fff" font-size="13" text-anchor="middle">nil</text>
+  <!-- arrows -->
+  <defs>
+    <marker id="a2" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6" fill="#6e7681"/>
+    </marker>
+  </defs>
+  <line x1="30" y1="82" x2="30" y2="118" stroke="#6e7681" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#a2)"/>
+  <line x1="30" y1="140" x2="30" y2="176" stroke="#6e7681" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#a2)"/>
+  <line x1="30" y1="200" x2="30" y2="236" stroke="#6e7681" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#a2)"/>
+</svg>
+</div>
+
+<h3>2.4 更多链表高频题</h3>
+<div class="info-card">
+<div class="card-title">🔗 链表必刷题</div>
+<pre><code><span class="cm">// 环检测（快慢指针）</span>
+<span class="kw">func</span> <span class="fn">hasCycle</span>(head *<span class="tp">ListNode</span>) <span class="tp">bool</span> {
+    slow, fast := head, head
+    <span class="kw">for</span> fast != <span class="kw">nil</span> && fast.Next != <span class="kw">nil</span> {
+        slow = slow.Next
+        fast = fast.Next.Next
+        <span class="kw">if</span> slow == fast { <span class="kw">return</span> <span class="kw">true</span> }
+    }
+    <span class="kw">return</span> <span class="kw">false</span>
+}
+
+<span class="cm">// 合并有序链表</span>
+<span class="kw">func</span> <span class="fn">mergeTwoLists</span>(l1, l2 *<span class="tp">ListNode</span>) *<span class="tp">ListNode</span> {
+    dummy := &<span class="tp">ListNode</span>{}
+    cur := dummy
+    <span class="kw">for</span> l1 != <span class="kw">nil</span> && l2 != <span class="kw">nil</span> {
+        <span class="kw">if</span> l1.Val &lt; l2.Val { cur.Next = l1; l1 = l1.Next
+        } <span class="kw">else</span> { cur.Next = l2; l2 = l2.Next }
+        cur = cur.Next
+    }
+    <span class="kw">if</span> l1 != <span class="kw">nil</span> { cur.Next = l1 }
+    <span class="kw">if</span> l2 != <span class="kw">nil</span> { cur.Next = l2 }
+    <span class="kw">return</span> dummy.Next
+}
+
+<span class="cm">// 找中间节点（快慢指针）</span>
+<span class="kw">func</span> <span class="fn">middleNode</span>(head *<span class="tp">ListNode</span>) *<span class="tp">ListNode</span> {
+    slow, fast := head, head
+    <span class="kw">for</span> fast != <span class="kw">nil</span> && fast.Next != <span class="kw">nil</span> {
+        slow = slow.Next
+        fast = fast.Next.Next
+    }
+    <span class="kw">return</span> slow
+}
+</code></pre>
+</div>
+
+<!-- ============================== -->
+<h2 id="ch3">3. 字符串匹配</h2>
+
+<h3 id="ch3-1">3.1 KMP 算法</h3>
+<p>KMP 利用 <b>next 数组</b>（部分匹配表）避免暴力回溯，将匹配时间降到 O(N+M)。</p>
+
+<pre><code><span class="cm">// 构建 next 数组</span>
+<span class="kw">func</span> <span class="fn">buildNext</span>(pat <span class="tp">string</span>) []<span class="tp">int</span> {
+    n := <span class="fn">len</span>(pat)
+    next := <span class="kw">make</span>([]<span class="tp">int</span>, n)
+    j := <span class="num">0</span>
+    <span class="kw">for</span> i := <span class="num">1</span>; i &lt; n; i++ {
+        <span class="kw">for</span> j &gt; <span class="num">0</span> && pat[i] != pat[j] { j = next[j<span class="num">-1</span>] }
+        <span class="kw">if</span> pat[i] == pat[j] { j++; next[i] = j }
+    }
+    <span class="kw">return</span> next
+}
+
+<span class="cm">// KMP 匹配</span>
+<span class="kw">func</span> <span class="fn">kmpSearch</span>(txt, pat <span class="tp">string</span>) []<span class="tp">int</span> {
+    <span class="kw">if</span> <span class="fn">len</span>(pat) == <span class="num">0</span> { <span class="kw">return</span> []<span class="tp">int</span>{<span class="num">0</span>} }
+    next := <span class="fn">buildNext</span>(pat)
+    res := []<span class="tp">int</span>{}
+    j := <span class="num">0</span>
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; <span class="fn">len</span>(txt); i++ {
+        <span class="kw">for</span> j &gt; <span class="num">0</span> && txt[i] != pat[j] { j = next[j<span class="num">-1</span>] }
+        <span class="kw">if</span> txt[i] == pat[j] { j++ }
+        <span class="kw">if</span> j == <span class="fn">len</span>(pat) {
+            res = <span class="fn">append</span>(res, i-j+<span class="num">1</span>)
+            j = next[j<span class="num">-1</span>]
+        }
+    }
+    <span class="kw">return</span> res
+}
+</code></pre>
+
+<h3>3.2 Trie 字典树</h3>
+<p>Trie（前缀树）用于高效存储和检索字符串集合，适合自动补全、拼写检查。</p>
+<pre><code><span class="kw">type</span> <span class="tp">TrieNode</span> <span class="kw">struct</span> {
+    children [<span class="num">26</span>]*<span class="tp">TrieNode</span>
+    isEnd    <span class="tp">bool</span>
+}
+
+<span class="kw">type</span> <span class="tp">Trie</span> <span class="kw">struct</span> { root *<span class="tp">TrieNode</span> }
+
+<span class="kw">func</span> <span class="fn">Constructor</span>() <span class="tp">Trie</span> {
+    <span class="kw">return</span> <span class="tp">Trie</span>{root: &<span class="tp">TrieNode</span>{}}
+}
+
+<span class="kw">func</span> (t *<span class="tp">Trie</span>) <span class="fn">Insert</span>(word <span class="tp">string</span>) {
+    node := t.root
+    <span class="kw">for</span> _, ch := <span class="kw">range</span> word {
+        idx := ch - <span class="str">'a'</span>
+        <span class="kw">if</span> node.children[idx] == <span class="kw">nil</span> {
+            node.children[idx] = &<span class="tp">TrieNode</span>{}
+        }
+        node = node.children[idx]
+    }
+    node.isEnd = <span class="kw">true</span>
+}
+
+<span class="kw">func</span> (t *<span class="tp">Trie</span>) <span class="fn">Search</span>(word <span class="tp">string</span>) <span class="tp">bool</span> {
+    node := t.root
+    <span class="kw">for</span> _, ch := <span class="kw">range</span> word {
+        idx := ch - <span class="str">'a'</span>
+        <span class="kw">if</span> node.children[idx] == <span class="kw">nil</span> { <span class="kw">return</span> <span class="kw">false</span> }
+        node = node.children[idx]
+    }
+    <span class="kw">return</span> node.isEnd
+}
+
+<span class="kw">func</span> (t *<span class="tp">Trie</span>) <span class="fn">StartsWith</span>(prefix <span class="tp">string</span>) <span class="tp">bool</span> {
+    node := t.root
+    <span class="kw">for</span> _, ch := <span class="kw">range</span> prefix {
+        idx := ch - <span class="str">'a'</span>
+        <span class="kw">if</span> node.children[idx] == <span class="kw">nil</span> { <span class="kw">return</span> <span class="kw">false</span> }
+        node = node.children[idx]
+    }
+    <span class="kw">return</span> <span class="kw">true</span>
+}
+</code></pre>
+
+<h3>3.3 AC 自动机</h3>
+<p>AC 自动机 = Trie + fail 指针，用于多模式串匹配。在 Trie 树上构建失败指针（类似 KMP 的 next），匹配时沿 fail 指针回溯。</p>
+<ul>
+  <li><b>构建</b>：BFS 遍历 Trie 树，为每个节点设置 fail 指针</li>
+  <li><b>匹配</b>：遍历文本，用 fail 指针处理失配</li>
+  <li><b>复杂度</b>：O(N + M + K) — N 文本长，M 模式串总长，K 匹配次数</li>
+</ul>
+
+<div class="diagram">
+<!-- SVG 3: Trie 树 + KMP next 数组 -->
+<svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg">
+  <rect width="700" height="260" fill="#1a1d27" rx="8"/>
+  <text x="350" y="22" fill="#58a6ff" font-size="14" font-weight="bold" text-anchor="middle">Trie 树结构（含 "cat","car","dog"）</text>
+  <!-- root -->
+  <circle cx="350" cy="55" r="18" fill="#0f1117" stroke="#58a6ff" stroke-width="2"/>
+  <text x="350" y="60" fill="#58a6ff" font-size="10" text-anchor="middle">root</text>
+  <!-- c -->
+  <line x1="350" y1="73" x2="240" y2="110" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="240" cy="120" r="16" fill="#0f1117" stroke="#39c5cf" stroke-width="2"/>
+  <text x="240" y="125" fill="#39c5cf" font-size="13" text-anchor="middle">c</text>
+  <!-- d -->
+  <line x1="350" y1="73" x2="460" y2="110" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="460" cy="120" r="16" fill="#0f1117" stroke="#39c5cf" stroke-width="2"/>
+  <text x="460" y="125" fill="#39c5cf" font-size="13" text-anchor="middle">d</text>
+  <!-- ca -->
+  <line x1="240" y1="136" x2="180" y2="175" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="180" cy="185" r="14" fill="#0f1117" stroke="#d29922" stroke-width="2"/>
+  <text x="180" y="189" fill="#d29922" font-size="11" text-anchor="middle">a</text>
+  <!-- co -->
+  <line x1="240" y1="136" x2="300" y2="175" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="300" cy="185" r="14" fill="#0f1117" stroke="#d29922" stroke-width="2"/>
+  <text x="300" y="189" fill="#d29922" font-size="11" text-anchor="middle">?</text>
+  <!-- cat -->
+  <line x1="180" y1="199" x2="130" y2="230" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="130" cy="240" r="14" fill="#0f1117" stroke="#3fb950" stroke-width="2.5"/>
+  <text x="130" y="244" fill="#3fb950" font-size="11" text-anchor="middle">t</text>
+  <!-- car -->
+  <line x1="180" y1="199" x2="230" y2="230" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="230" cy="240" r="14" fill="#0f1117" stroke="#3fb950" stroke-width="2.5"/>
+  <text x="230" y="244" fill="#3fb950" font-size="11" text-anchor="middle">r</text>
+  <!-- do -->
+  <line x1="460" y1="136" x2="510" y2="175" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="510" cy="185" r="14" fill="#0f1117" stroke="#d29922" stroke-width="2"/>
+  <text x="510" y="189" fill="#d29922" font-size="11" text-anchor="middle">o</text>
+  <!-- dog -->
+  <line x1="510" y1="199" x2="560" y2="230" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="560" cy="240" r="14" fill="#0f1117" stroke="#3fb950" stroke-width="2.5"/>
+  <text x="560" y="244" fill="#3fb950" font-size="11" text-anchor="middle">g</text>
+  <!-- Legend -->
+  <rect x="440" y="50" width="220" height="50" fill="#0f1117" rx="6" opacity="0.8"/>
+  <circle cx="455" cy="65" r="6" fill="#0f1117" stroke="#3fb950" stroke-width="2"/>
+  <text x="467" y="69" fill="#8b949e" font-size="11">= 单词结束</text>
+  <circle cx="455" cy="85" r="6" fill="#0f1117" stroke="#39c5cf" stroke-width="2"/>
+  <text x="467" y="89" fill="#8b949e" font-size="11">= 中间节点</text>
+</svg>
+</div>
+
+<div class="feynman">
+<div class="feynman-title">📝 费曼要点 — 字符串匹配</div>
+<p>暴力匹配 O(NM) → KMP O(N+M) 用 next 数组避免回溯 → Trie O(总长) 前缀匹配 → AC 自动机多模式匹配。KMP 掌握 <b>next 数组构建</b>，Trie 掌握 <b>26 叉树 + isEnd 标记</b>。</p>
+</div>
+
+<!-- ============================== -->
+<h2 id="ch4">4. 排序与二分</h2>
+
+<h3>4.1 二分查找模板</h3>
+<p><b>左闭右闭 [left, right]</b> — 最常用模板</p>
+<pre><code><span class="kw">func</span> <span class="fn">binarySearch</span>(nums []<span class="tp">int</span>, target <span class="tp">int</span>) <span class="tp">int</span> {
+    left, right := <span class="num">0</span>, <span class="fn">len</span>(nums)<span class="num">-1</span>
+    <span class="kw">for</span> left &lt;= right {
+        mid := left + (right-left)/<span class="num">2</span>  <span class="cm">// 防溢出</span>
+        <span class="kw">if</span> nums[mid] == target { <span class="kw">return</span> mid }
+        <span class="kw">if</span> nums[mid] &lt; target { left = mid + <span class="num">1</span>
+        } <span class="kw">else</span> { right = mid - <span class="num">1</span> }
+    }
+    <span class="kw">return</span> <span class="num">-1</span>
+}
+</code></pre>
+
+<p><b>左闭右开 [left, right)</b> — 适用于 lower_bound</p>
+<pre><code><span class="kw">func</span> <span class="fn">lowerBound</span>(nums []<span class="tp">int</span>, target <span class="tp">int</span>) <span class="tp">int</span> {
+    left, right := <span class="num">0</span>, <span class="fn">len</span>(nums)
+    <span class="kw">for</span> left &lt; right {
+        mid := left + (right-left)/<span class="num">2</span>
+        <span class="kw">if</span> nums[mid] &lt; target { left = mid + <span class="num">1</span>
+        } <span class="kw">else</span> { right = mid }
+    }
+    <span class="kw">return</span> left  <span class="cm">// 第一个 ≥ target 的位置</span>
+}
+</code></pre>
+
+<h3>4.2 快速排序</h3>
+<p>核心思路：选 pivot → 分区（左边 ≤ pivot，右边 ≥ pivot）→ 递归左右。</p>
+<pre><code><span class="kw">func</span> <span class="fn">quickSort</span>(arr []<span class="tp">int</span>, left, right <span class="tp">int</span>) {
+    <span class="kw">if</span> left &gt;= right { <span class="kw">return</span> }
+    pivot := <span class="fn">partition</span>(arr, left, right)
+    <span class="fn">quickSort</span>(arr, left, pivot<span class="num">-1</span>)
+    <span class="fn">quickSort</span>(arr, pivot+<span class="num">1</span>, right)
+}
+
+<span class="kw">func</span> <span class="fn">partition</span>(arr []<span class="tp">int</span>, left, right <span class="tp">int</span>) <span class="tp">int</span> {
+    pivot := arr[right]  <span class="cm">// 选最后一个元素为 pivot</span>
+    i := left
+    <span class="kw">for</span> j := left; j &lt; right; j++ {
+        <span class="kw">if</span> arr[j] &lt; pivot {
+            arr[i], arr[j] = arr[j], arr[i]
+            i++
+        }
+    }
+    arr[i], arr[right] = arr[right], arr[i]
+    <span class="kw">return</span> i
+}
+</code></pre>
+
+<div class="diagram">
+<!-- SVG 4: 快排分区过程 -->
+<svg viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg">
+  <rect width="700" height="240" fill="#1a1d27" rx="8"/>
+  <text x="350" y="22" fill="#58a6ff" font-size="14" font-weight="bold" text-anchor="middle">快速排序分区过程（选最后一个元素为 pivot）</text>
+  <!-- Before -->
+  <text x="40" y="55" fill="#8b949e" font-size="11">初始:</text>
+  <rect x="120" y="40" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#6e7681"/>
+  <text x="145" y="61" fill="#fff" font-size="14" text-anchor="middle">4</text>
+  <rect x="175" y="40" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#6e7681"/>
+  <text x="200" y="61" fill="#fff" font-size="14" text-anchor="middle">2</text>
+  <rect x="230" y="40" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#6e7681"/>
+  <text x="255" y="61" fill="#fff" font-size="14" text-anchor="middle">5</text>
+  <rect x="285" y="40" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#6e7681"/>
+  <text x="310" y="61" fill="#fff" font-size="14" text-anchor="middle">1</text>
+  <rect x="340" y="40" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#6e7681"/>
+  <text x="365" y="61" fill="#fff" font-size="14" text-anchor="middle">3</text>
+  <rect x="395" y="40" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#f85149" stroke-width="2.5"/>
+  <text x="420" y="61" fill="#f85149" font-size="14" text-anchor="middle">6</text>
+  <text x="400" y="30" fill="#f85149" font-size="11">pivot</text>
+  <!-- After partition -->
+  <text x="40" y="110" fill="#8b949e" font-size="11">分区后:</text>
+  <rect x="120" y="95" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="145" y="116" fill="#fff" font-size="14" text-anchor="middle">4</text>
+  <rect x="175" y="95" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="200" y="116" fill="#fff" font-size="14" text-anchor="middle">2</text>
+  <rect x="230" y="95" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="255" y="116" fill="#fff" font-size="14" text-anchor="middle">1</text>
+  <rect x="285" y="95" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="310" y="116" fill="#fff" font-size="14" text-anchor="middle">3</text>
+  <rect x="340" y="95" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#d29922" stroke-width="2.5"/>
+  <text x="365" y="116" fill="#d29922" font-size="14" text-anchor="middle">5</text>
+  <text x="365" y="140" fill="#d29922" font-size="10" text-anchor="middle">pivot 归位</text>
+  <rect x="395" y="95" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#6e7681"/>
+  <text x="420" y="116" fill="#fff" font-size="14" text-anchor="middle">6</text>
+  <!-- Next recursion -->
+  <text x="40" y="165" fill="#8b949e" font-size="11">递归:</text>
+  <rect x="120" y="150" width="140" height="32" rx="6" fill="#0f1117" stroke="#39c5cf" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="190" y="170" fill="#39c5cf" font-size="11" text-anchor="middle">递归排序 &lt; pivot 部分</text>
+  <rect x="395" y="150" width="60" height="32" rx="6" fill="#0f1117" stroke="#39c5cf" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="425" y="170" fill="#39c5cf" font-size="11" text-anchor="middle">递归排序 &gt; pivot 部分</text>
+  <line x1="340" y1="127" x2="340" y2="150" stroke="#d29922" stroke-width="1" stroke-dasharray="3,3"/>
+  <!-- Result -->
+  <text x="40" y="220" fill="#8b949e" font-size="11">结果:</text>
+  <rect x="120" y="205" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="145" y="226" fill="#fff" font-size="14" text-anchor="middle">1</text>
+  <rect x="175" y="205" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="200" y="226" fill="#fff" font-size="14" text-anchor="middle">2</text>
+  <rect x="230" y="205" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="255" y="226" fill="#fff" font-size="14" text-anchor="middle">3</text>
+  <rect x="285" y="205" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="310" y="226" fill="#fff" font-size="14" text-anchor="middle">4</text>
+  <rect x="340" y="205" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="365" y="226" fill="#fff" font-size="14" text-anchor="middle">5</text>
+  <rect x="395" y="205" width="50" height="32" rx="4" fill="#2a2d3a" stroke="#3fb950"/>
+  <text x="420" y="226" fill="#fff" font-size="14" text-anchor="middle">6</text>
+</svg>
+</div>
+
+<h3>4.3 Go sort 包</h3>
+<pre><code><span class="kw">import</span> <span class="str">"sort"</span>
+
+<span class="cm">// 基本排序</span>
+arr := []<span class="tp">int</span>{<span class="num">4</span>, <span class="num">2</span>, <span class="num">5</span>, <span class="num">1</span>, <span class="num">3</span>}
+sort.<span class="fn">Ints</span>(arr)        <span class="cm">// 升序</span>
+sort.<span class="fn">Sort</span>(sort.<span class="fn">Reverse</span>(sort.<span class="tp">IntSlice</span>(arr)))  <span class="cm">// 降序</span>
+
+<span class="cm">// 自定义排序</span>
+sort.<span class="fn">Slice</span>(arr, <span class="kw">func</span>(i, j <span class="tp">int</span>) <span class="tp">bool</span> {
+    <span class="kw">return</span> arr[i] &gt; arr[j]  <span class="cm">// 降序</span>
+})
+
+<span class="cm">// 结构体排序</span>
+<span class="kw">type</span> <span class="tp">Person</span> <span class="kw">struct</span> { Name <span class="tp">string</span>; Age <span class="tp">int</span> }
+people := []<span class="tp">Person</span>{{<span class="str">"Alice"</span>, <span class="num">30</span>}, {<span class="str">"Bob"</span>, <span class="num">25</span>}}
+sort.<span class="fn">Slice</span>(people, <span class="kw">func</span>(i, j <span class="tp">int</span>) <span class="tp">bool</span> {
+    <span class="kw">return</span> people[i].Age &lt; people[j].Age  <span class="cm">// 按年龄升序</span>
+})
+</code></pre>
+
+<h3>4.4 排序算法对比</h3>
+<table class="compare">
+<tr><th>算法</th><th>平均</th><th>最坏</th><th>空间</th><th>稳定</th><th>特点</th></tr>
+<tr><td>冒泡 (Bubble)</td><td>O(N²)</td><td>O(N²)</td><td>O(1)</td><td>✅</td><td>最基础，很少用</td></tr>
+<tr><td>插入 (Insertion)</td><td>O(N²)</td><td>O(N²)</td><td>O(1)</td><td>✅</td><td>近乎有序时 O(N)</td></tr>
+<tr><td>归并 (Merge)</td><td>O(NlogN)</td><td>O(NlogN)</td><td>O(N)</td><td>✅</td><td>稳定但需额外空间</td></tr>
+<tr><td>堆 (Heap)</td><td>O(NlogN)</td><td>O(NlogN)</td><td>O(1)</td><td>❌</td><td>利用堆结构</td></tr>
+<tr><td>快排 (Quick)</td><td>O(NlogN)</td><td>O(N²)</td><td>O(logN)</td><td>❌</td><td>工业级默认排序</td></tr>
+</table>
+
+<!-- ============================== -->
+<h2 id="ch5">5. 散列表 / Hash</h2>
+
+<h3>5.1 哈希算法 &amp; 冲突解决</h3>
+<p>哈希表通过哈希函数将 key 映射到数组索引，实现近似 O(1) 的查找。</p>
+
+<table class="compare">
+<tr><th>冲突解决方式</th><th>原理</th><th>优点</th><th>缺点</th></tr>
+<tr><td>拉链法 (Chaining)</td><td>每个槽挂一个链表/红黑树</td><td>实现简单，负载因子可高</td><td>额外指针开销</td></tr>
+<tr><td>开放地址法</td><td>冲突时寻找下一个空位</td><td>无指针，缓存友好</td><td>删除麻烦，性能退化快</td></tr>
+</table>
+
+<div class="diagram">
+<!-- SVG 5: 拉链法解决冲突 -->
+<svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg">
+  <rect width="700" height="260" fill="#1a1d27" rx="8"/>
+  <text x="350" y="22" fill="#58a6ff" font-size="14" font-weight="bold" text-anchor="middle">拉链法解决哈希冲突</text>
+  <!-- Array slots -->
+  <rect x="60" y="45" width="80" height="36" rx="4" fill="#0f1117" stroke="#2a2d3a"/>
+  <text x="100" y="68" fill="#6e7681" font-size="12" text-anchor="middle">0</text>
+  <rect x="60" y="85" width="80" height="36" rx="4" fill="#0f1117" stroke="#2a2d3a"/>
+  <text x="100" y="108" fill="#6e7681" font-size="12" text-anchor="middle">1</text>
+  <rect x="60" y="125" width="80" height="36" rx="4" fill="#0f1117" stroke="#2a2d3a"/>
+  <text x="100" y="148" fill="#6e7681" font-size="12" text-anchor="middle">2</text>
+  <rect x="60" y="165" width="80" height="36" rx="4" fill="#0f1117" stroke="#2a2d3a"/>
+  <text x="100" y="188" fill="#6e7681" font-size="12" text-anchor="middle">3</text>
+  <rect x="60" y="205" width="80" height="36" rx="4" fill="#0f1117" stroke="#2a2d3a"/>
+  <text x="100" y="228" fill="#6e7681" font-size="12" text-anchor="middle">4</text>
+  <!-- Slot 1 chain: ("Alice", 25) -->
+  <line x1="140" y1="106" x2="170" y2="106" stroke="#6e7681" stroke-width="2" marker-end="url(#a2)"/>
+  <rect x="170" y="92" width="100" height="28" rx="4" fill="#2a2d3a" stroke="#39c5cf"/>
+  <text x="220" y="111" fill="#39c5cf" font-size="11" text-anchor="middle">("Alice",25)</text>
+  <line x1="270" y1="106" x2="300" y2="106" stroke="#6e7681" stroke-width="2" marker-end="url(#a2)"/>
+  <rect x="300" y="92" width="100" height="28" rx="4" fill="#2a2d3a" stroke="#d29922"/>
+  <text x="350" y="111" fill="#d29922" font-size="11" text-anchor="middle">("Charlie",30)</text>
+  <text x="430" y="106" fill="#f85149" font-size="14">→ nil</text>
+  <!-- Slot 4 chain: ("Bob", 28) -->
+  <line x1="140" y1="226" x2="170" y2="226" stroke="#6e7681" stroke-width="2" marker-end="url(#a2)"/>
+  <rect x="170" y="212" width="90" height="28" rx="4" fill="#2a2d3a" stroke="#39c5cf"/>
+  <text x="215" y="231" fill="#39c5cf" font-size="11" text-anchor="middle">("Bob",28)</text>
+  <text x="290" y="226" fill="#f85149" font-size="14">→ nil</text>
+  <!-- Legend -->
+  <rect x="450" y="200" width="200" height="50" fill="#0f1117" rx="6" opacity="0.8"/>
+  <text x="460" y="220" fill="#8b949e" font-size="11">"Alice" hash→1, "Charlie" hash→1</text>
+  <text x="460" y="238" fill="#8b949e" font-size="11">"Bob" hash→4</text>
+</svg>
+</div>
+
+<h3>5.2 动态扩容 &amp; 渐进式 Rehash</h3>
+<p>当负载因子（元素数/桶数）超过阈值时，扩容 2 倍并 rehash。</p>
+<ul>
+  <li><b>一次性 rehash</b>：全部重算，会有瞬间卡顿</li>
+  <li><b>渐进式 rehash</b>：将 rehash 分摊到每次操作，每次搬移少量桶</li>
+  <li><b>Redis dict</b> 使用渐进式 rehash，维护两张哈希表</li>
+</ul>
+
+<h3>5.3 Go map vs Java HashMap</h3>
+<table class="compare">
+<tr><th>特性</th><th>Go map</th><th>Java HashMap</th></tr>
+<tr><td>底层结构</td><td>哈希表（桶数组 + 溢出桶）</td><td>数组 + 链表/红黑树</td></tr>
+<tr><td>冲突解决</td><td>拉链法（链表）</td><td>拉链法（链表 → 红黑树 ≥ 8）</td></tr>
+<tr><td>扩容时机</td><td>负载因子 &gt; 6.5</td><td>负载因子 &gt; 0.75</td></tr>
+<tr><td>扩容方式</td><td>渐进式</td><td>一次性</td></tr>
+<tr><td>并发安全</td><td>❌ 非并发安全（需 sync.Map）</td><td>❌（需 ConcurrentHashMap）</td></tr>
+<tr><td>迭代顺序</td><td>随机</td><td>通常有序（按桶遍历）</td></tr>
+</table>
+
+<h3>5.4 手写 Hash 表</h3>
+<pre><code><span class="kw">type</span> <span class="tp">KVPair</span> <span class="kw">struct</span> {
+    key   <span class="tp">string</span>
+    value <span class="tp">int</span>
+}
+
+<span class="kw">type</span> <span class="tp">HashMap</span> <span class="kw">struct</span> {
+    buckets [][]<span class="tp">KVPair</span>
+    size    <span class="tp">int</span>
+}
+
+<span class="kw">const</span> loadFactor = <span class="num">0.75</span>
+
+<span class="kw">func</span> <span class="fn">NewHashMap</span>(cap <span class="tp">int</span>) *<span class="tp">HashMap</span> {
+    <span class="kw">return</span> &<span class="tp">HashMap</span>{buckets: <span class="kw">make</span>([][]<span class="tp">KVPair</span>, cap)}
+}
+
+<span class="kw">func</span> (m *<span class="tp">HashMap</span>) <span class="fn">hash</span>(key <span class="tp">string</span>) <span class="tp">int</span> {
+    h := <span class="num">0</span>
+    <span class="kw">for</span> _, ch := <span class="kw">range</span> key {
+        h = h*<span class="num">31</span> + <span class="tp">int</span>(ch)
+    }
+    <span class="kw">return</span> h % <span class="fn">len</span>(m.buckets)
+}
+
+<span class="kw">func</span> (m *<span class="tp">HashMap</span>) <span class="fn">Put</span>(key <span class="tp">string</span>, val <span class="tp">int</span>) {
+    idx := m.<span class="fn">hash</span>(key)
+    <span class="kw">for</span> i, kv := <span class="kw">range</span> m.buckets[idx] {
+        <span class="kw">if</span> kv.key == key { m.buckets[idx][i].value = val; <span class="kw">return</span> }
+    }
+    m.buckets[idx] = <span class="fn">append</span>(m.buckets[idx], <span class="tp">KVPair</span>{key, val})
+    m.size++
+    <span class="kw">if</span> <span class="tp">float64</span>(m.size)/<span class="tp">float64</span>(<span class="fn">len</span>(m.buckets)) &gt; loadFactor {
+        m.<span class="fn">resize</span>()
+    }
+}
+
+<span class="kw">func</span> (m *<span class="tp">HashMap</span>) <span class="fn">Get</span>(key <span class="tp">string</span>) (<span class="tp">int</span>, <span class="tp">bool</span>) {
+    idx := m.<span class="fn">hash</span>(key)
+    <span class="kw">for</span> _, kv := <span class="kw">range</span> m.buckets[idx] {
+        <span class="kw">if</span> kv.key == key { <span class="kw">return</span> kv.value, <span class="kw">true</span> }
+    }
+    <span class="kw">return</span> <span class="num">0</span>, <span class="kw">false</span>
+}
+
+<span class="kw">func</span> (m *<span class="tp">HashMap</span>) <span class="fn">resize</span>() {
+    old := m.buckets
+    m.buckets = <span class="kw">make</span>([][]<span class="tp">KVPair</span>, <span class="fn">len</span>(old)*<span class="num">2</span>)
+    m.size = <span class="num">0</span>
+    <span class="kw">for</span> _, bucket := <span class="kw">range</span> old {
+        <span class="kw">for</span> _, kv := <span class="kw">range</span> bucket {
+            m.<span class="fn">Put</span>(kv.key, kv.value)
+        }
+    }
+}
+</code></pre>
+
+<!-- ============================== -->
+<h2 id="ch6">6. 跳表 Skip List</h2>
+
+<h3>6.1 跳表原理</h3>
+<p>跳表是在有序链表上增加<b>多层索引</b>，实现 O(logN) 的查找/插入/删除。每层索引以概率 p（通常 1/2）向上提升。</p>
+
+<ul>
+  <li><b>查找</b>：从最高层开始，向右 + 向下</li>
+  <li><b>插入</b>：找到位置后插入底层，随机决定是否提升到上层</li>
+  <li><b>删除</b>：各层删除对应的节点</li>
+</ul>
+
+<div class="diagram">
+<!-- SVG 6: 跳表多层索引 -->
+<svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg">
+  <rect width="700" height="260" fill="#1a1d27" rx="8"/>
+  <text x="350" y="22" fill="#58a6ff" font-size="14" font-weight="bold" text-anchor="middle">跳表多层索引结构</text>
+  <!-- Level 3 -->
+  <text x="40" y="52" fill="#f85149" font-size="11">L3</text>
+  <rect x="80" y="36" width="50" height="26" rx="4" fill="#0f1117" stroke="#f85149" stroke-width="1.5"/>
+  <text x="105" y="53" fill="#f85149" font-size="10" text-anchor="middle">head</text>
+  <text x="135" y="53" fill="#f85149" font-size="14">─────────────────────────</text>
+  <rect x="420" y="36" width="50" height="26" rx="4" fill="#0f1117" stroke="#f85149" stroke-width="1.5"/>
+  <text x="445" y="53" fill="#f85149" font-size="10" text-anchor="middle">31</text>
+  <text x="475" y="53" fill="#f85149" font-size="14">──</text>
+  <rect x="520" y="36" width="50" height="26" rx="4" fill="#0f1117" stroke="#f85149" stroke-width="1.5"/>
+  <text x="545" y="53" fill="#f85149" font-size="10" text-anchor="middle">nil</text>
+  <!-- Level 2 -->
+  <text x="40" y="92" fill="#d29922" font-size="11">L2</text>
+  <rect x="80" y="76" width="50" height="26" rx="4" fill="#0f1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="105" y="93" fill="#d29922" font-size="10" text-anchor="middle">head</text>
+  <text x="135" y="93" fill="#d29922" font-size="14">───────────</text>
+  <rect x="240" y="76" width="50" height="26" rx="4" fill="#0f1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="265" y="93" fill="#d29922" font-size="10" text-anchor="middle">12</text>
+  <text x="295" y="93" fill="#d29922" font-size="14">───────────</text>
+  <rect x="420" y="76" width="50" height="26" rx="4" fill="#0f1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="445" y="93" fill="#d29922" font-size="10" text-anchor="middle">31</text>
+  <text x="475" y="93" fill="#d29922" font-size="14">────────</text>
+  <rect x="560" y="76" width="50" height="26" rx="4" fill="#0f1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="585" y="93" fill="#d29922" font-size="10" text-anchor="middle">nil</text>
+  <!-- Level 1 -->
+  <text x="40" y="132" fill="#39c5cf" font-size="11">L1</text>
+  <rect x="80" y="116" width="50" height="26" rx="4" fill="#0f1117" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="105" y="133" fill="#39c5cf" font-size="10" text-anchor="middle">head</text>
+  <text x="135" y="133" fill="#39c5cf" font-size="14">────</text>
+  <rect x="170" y="116" width="50" height="26" rx="4" fill="#0f1117" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="195" y="133" fill="#39c5cf" font-size="10" text-anchor="middle">7</text>
+  <text x="225" y="133" fill="#39c5cf" font-size="14">────</text>
+  <rect x="260" y="116" width="50" height="26" rx="4" fill="#0f1117" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="285" y="133" fill="#39c5cf" font-size="10" text-anchor="middle">12</text>
+  <text x="315" y="133" fill="#39c5cf" font-size="14">──────</text>
+  <rect x="360" y="116" width="50" height="26" rx="4" fill="#0f1117" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="385" y="133" fill="#39c5cf" font-size="10" text-anchor="middle">19</text>
+  <text x="415" y="133" fill="#39c5cf" font-size="14">──────</text>
+  <rect x="460" y="116" width="50" height="26" rx="4" fill="#0f1117" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="485" y="133" fill="#39c5cf" font-size="10" text-anchor="middle">31</text>
+  <text x="515" y="133" fill="#39c5cf" font-size="14">────</text>
+  <rect x="560" y="116" width="50" height="26" rx="4" fill="#0f1117" stroke="#39c5cf" stroke-width="1.5"/>
+  <text x="585" y="133" fill="#39c5cf" font-size="10" text-anchor="middle">nil</text>
+  <!-- Bottom (data) -->
+  <text x="40" y="175" fill="#3fb950" font-size="11">L0</text>
+  <rect x="80" y="158" width="50" height="26" rx="4" fill="#0f1117" stroke="#3fb950" stroke-width="2"/>
+  <text x="105" y="175" fill="#3fb950" font-size="10" text-anchor="middle">head</text>
+  <text x="135" y="175" fill="#3fb950" font-size="14">──</text>
+  <rect x="155" y="158" width="50" height="26" rx="4" fill="#1a1d27" stroke="#2a2d3a"/>
+  <text x="180" y="175" fill="#c9d1d9" font-size="10" text-anchor="middle">3</text>
+  <text x="205" y="175" fill="#6e7681" font-size="14">──</text>
+  <rect x="225" y="158" width="50" height="26" rx="4" fill="#1a1d27" stroke="#2a2d3a"/>
+  <text x="250" y="175" fill="#c9d1d9" font-size="10" text-anchor="middle">7</text>
+  <text x="275" y="175" fill="#6e7681" font-size="14">──</text>
+  <rect x="295" y="158" width="50" height="26" rx="4" fill="#1a1d27" stroke="#2a2d3a"/>
+  <text x="320" y="175" fill="#c9d1d9" font-size="10" text-anchor="middle">12</text>
+  <text x="345" y="175" fill="#6e7681" font-size="14">──</text>
+  <rect x="365" y="158" width="50" height="26" rx="4" fill="#1a1d27" stroke="#2a2d3a"/>
+  <text x="390" y="175" fill="#c9d1d9" font-size="10" text-anchor="middle">19</text>
+  <text x="415" y="175" fill="#6e7681" font-size="14">──</text>
+  <rect x="435" y="158" width="50" height="26" rx="4" fill="#1a1d27" stroke="#2a2d3a"/>
+  <text x="460" y="175" fill="#c9d1d9" font-size="10" text-anchor="middle">31</text>
+  <text x="485" y="175" fill="#6e7681" font-size="14">──</text>
+  <rect x="505" y="158" width="50" height="26" rx="4" fill="#1a1d27" stroke="#2a2d3a"/>
+  <text x="530" y="175" fill="#c9d1d9" font-size="10" text-anchor="middle">42</text>
+  <text x="555" y="175" fill="#6e7681" font-size="14">──</text>
+  <rect x="575" y="158" width="50" height="26" rx="4" fill="#1a1d27" stroke="#3fb950" stroke-width="2"/>
+  <text x="600" y="175" fill="#3fb950" font-size="10" text-anchor="middle">nil</text>
+  <!-- Vertical connections -->
+  <line x1="105" y1="62" x2="105" y2="76" stroke="#6e7681" stroke-width="1" stroke-dasharray="2,2"/>
+  <line x1="105" y1="102" x2="105" y2="116" stroke="#6e7681" stroke-width="1" stroke-dasharray="2,2"/>
+  <line x1="445" y1="62" x2="445" y2="76" stroke="#6e7681" stroke-width="1" stroke-dasharray="2,2"/>
+  <line x1="285" y1="102" x2="285" y2="116" stroke="#6e7681" stroke-width="1" stroke-dasharray="2,2"/>
+  <line x1="445" y1="102" x2="445" y2="116" stroke="#6e7681" stroke-width="1" stroke-dasharray="2,2"/>
+  <!-- Search path arrow -->
+  <text x="80" y="245" fill="#d29922" font-size="11">搜索路径：head L3 → 31 L3 → 31 L2 → 19 L1 → 19 L0 → 19（命中）</text>
+</svg>
+</div>
+
+<h3>6.2 Redis 为什么用跳表</h3>
+<ul>
+  <li><b>范围查询</b>：跳表在有序链表上可以轻松范围遍历（ZRANGE），红黑树需要中序遍历</li>
+  <li><b>ZRANK</b>：跳表可以记录跨度（span），O(logN) 计算排名</li>
+  <li><b>实现简单</b>：跳表代码量远小于红黑树</li>
+  <li><b>并发友好</b>：跳表可以细粒度加锁</li>
+</ul>
+
+<h3>6.3 跳表 vs 红黑树</h3>
+<table class="compare">
+<tr><th>特性</th><th>跳表</th><th>红黑树</th></tr>
+<tr><td>实现难度</td><td><span class="tag tag-green">易（~200行）</span></td><td><span class="tag tag-red">难（~1000行）</span></td></tr>
+<tr><td>范围查询</td><td><span class="tag tag-green">O(logN+K) 天然支持</span></td><td>O(logN+K) 需中序遍历</td></tr>
+<tr><td>平均查询</td><td>O(logN)</td><td>O(logN)</td></tr>
+<tr><td>内存占用</td><td>略高（多层指针）</td><td>较低（2个指针+颜色）</td></tr>
+<tr><td>并发性能</td><td><span class="tag tag-green">易实现无锁</span></td><td>难实现无锁</td></tr>
+</table>
+
+<h3>6.4 Go 跳表实现（核心）</h3>
+<pre><code><span class="kw">import</span> (
+    <span class="str">"math/rand"</span>
+    <span class="str">"time"</span>
+)
+
+<span class="kw">const</span> maxLevel = <span class="num">16</span>
+<span class="kw">const</span> p = <span class="num">0.5</span>
+
+<span class="kw">type</span> <span class="tp">skipNode</span> <span class="kw">struct</span> {
+    val  <span class="tp">int</span>
+    next []*<span class="tp">skipNode</span>
+}
+
+<span class="kw">type</span> <span class="tp">SkipList</span> <span class="kw">struct</span> {
+    head  *<span class="tp">skipNode</span>
+    level <span class="tp">int</span>
+    rng   *<span class="tp">rand</span>.<span class="tp">Rand</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewSkipList</span>() *<span class="tp">SkipList</span> {
+    <span class="kw">return</span> &<span class="tp">SkipList</span>{
+        head:  &<span class="tp">skipNode</span>{next: <span class="kw">make</span>([]*<span class="tp">skipNode</span>, maxLevel)},
+        level: <span class="num">1</span>,
+        rng:   rand.<span class="fn">New</span>(rand.<span class="fn">NewSource</span>(time.<span class="fn">Now</span>().<span class="fn">UnixNano</span>())),
+    }
+}
+
+<span class="kw">func</span> (sl *<span class="tp">SkipList</span>) <span class="fn">randomLevel</span>() <span class="tp">int</span> {
+    lvl := <span class="num">1</span>
+    <span class="kw">for</span> sl.rng.<span class="fn">Float64</span>() &lt; p && lvl &lt; maxLevel { lvl++ }
+    <span class="kw">return</span> lvl
+}
+
+<span class="kw">func</span> (sl *<span class="tp">SkipList</span>) <span class="fn">Insert</span>(val <span class="tp">int</span>) {
+    update := <span class="kw">make</span>([]*<span class="tp">skipNode</span>, maxLevel)
+    cur := sl.head
+    <span class="kw">for</span> i := sl.level - <span class="num">1</span>; i &gt;= <span class="num">0</span>; i-- {
+        <span class="kw">for</span> cur.next[i] != <span class="kw">nil</span> && cur.next[i].val &lt; val {
+            cur = cur.next[i]
+        }
+        update[i] = cur
+    }
+    lvl := sl.<span class="fn">randomLevel</span>()
+    <span class="kw">if</span> lvl &gt; sl.level {
+        <span class="kw">for</span> i := sl.level; i &lt; lvl; i++ { update[i] = sl.head }
+        sl.level = lvl
+    }
+    newNode := &<span class="tp">skipNode</span>{val: val, next: <span class="kw">make</span>([]*<span class="tp">skipNode</span>, lvl)}
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; lvl; i++ {
+        newNode.next[i] = update[i].next[i]
+        update[i].next[i] = newNode
+    }
+}
+
+<span class="kw">func</span> (sl *<span class="tp">SkipList</span>) <span class="fn">Search</span>(val <span class="tp">int</span>) <span class="tp">bool</span> {
+    cur := sl.head
+    <span class="kw">for</span> i := sl.level - <span class="num">1</span>; i &gt;= <span class="num">0</span>; i-- {
+        <span class="kw">for</span> cur.next[i] != <span class="kw">nil</span> && cur.next[i].val &lt; val {
+            cur = cur.next[i]
+        }
+    }
+    cur = cur.next[<span class="num">0</span>]
+    <span class="kw">return</span> cur != <span class="kw">nil</span> && cur.val == val
+}
+</code></pre>
+
+<!-- ============================== -->
+<h2 id="ch7">7. 二叉树</h2>
+
+<h3>7.1 二叉树基础</h3>
+<p><b>平衡二叉树</b>：左右子树高度差不超过 1（如 AVL、红黑树）<br>
+<b>完全二叉树</b>：除最后一层外全满，最后一层左对齐（如堆）</p>
+
+<h3>7.2 AVL 树 — 四种旋转</h3>
+<table class="compare">
+<tr><th>情况</th><th>条件</th><th>旋转方式</th></tr>
+<tr><td>LL</td><td>左子树的左子树插入</td><td>右旋</td></tr>
+<tr><td>RR</td><td>右子树的右子树插入</td><td>左旋</td></tr>
+<tr><td>LR</td><td>左子树的右子树插入</td><td>左旋 → 右旋</td></tr>
+<tr><td>RL</td><td>右子树的左子树插入</td><td>右旋 → 左旋</td></tr>
+</table>
+
+<h3>7.3 红黑树 — 5 条性质</h3>
+<ol>
+  <li>每个节点非红即黑</li>
+  <li>根节点是黑色</li>
+  <li>叶子（NIL）是黑色</li>
+  <li>红色节点的子节点必为黑色（不能有连续红）</li>
+  <li>任意节点到叶子的所有路径，黑色节点数量相同</li>
+</ol>
+
+<div class="feynman">
+<div class="feynman-title">💡 为什么 Java TreeMap 用红黑树？</div>
+<p>红黑树通过「近似平衡」保证 O(logN) 最坏情况，插入/删除只需 O(1) 旋转（AVL 需 O(logN)）。<b>插入频繁 > 查询频繁</b>的场景红黑树更优。</p>
+</div>
+
+<div class="diagram">
+<!-- SVG 7: AVL 旋转 + 红黑树 -->
+<svg viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg">
+  <rect width="700" height="240" fill="#1a1d27" rx="8"/>
+  <text x="350" y="22" fill="#58a6ff" font-size="14" font-weight="bold" text-anchor="middle">AVL 右旋（LL 情况）</text>
+  <!-- Before -->
+  <text x="60" y="55" fill="#8b949e" font-size="11">旋转前:</text>
+  <circle cx="300" cy="55" r="16" fill="#0f1117" stroke="#f85149" stroke-width="2"/>
+  <text x="300" y="60" fill="#f85149" font-size="13" text-anchor="middle">5</text>
+  <line x1="284" y1="60" x2="250" y2="90" stroke="#2a2d3a" stroke-width="2"/>
+  <line x1="316" y1="60" x2="350" y2="90" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="250" cy="105" r="14" fill="#0f1117" stroke="#d29922" stroke-width="2"/>
+  <text x="250" y="109" fill="#d29922" font-size="11" text-anchor="middle">3</text>
+  <circle cx="350" cy="105" r="14" fill="#0f1117" stroke="#3fb950" stroke-width="2"/>
+  <text x="350" y="109" fill="#3fb950" font-size="11" text-anchor="middle">6</text>
+  <line x1="236" y1="114" x2="210" y2="140" stroke="#2a2d3a" stroke-width="2"/>
+  <line x1="264" y1="114" x2="290" y2="140" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="210" cy="155" r="12" fill="#0f1117" stroke="#39c5cf" stroke-width="2"/>
+  <text x="210" y="159" fill="#39c5cf" font-size="10" text-anchor="middle">2</text>
+  <circle cx="290" cy="155" r="12" fill="#0f1117" stroke="#3fb950" stroke-width="2"/>
+  <text x="290" y="159" fill="#39c5cf" font-size="10" text-anchor="middle">4</text>
+  <!-- Arrow -->
+  <text x="390" y="100" fill="#f85149" font-size="20">→</text>
+  <!-- After -->
+  <text x="430" y="55" fill="#8b949e" font-size="11">旋转后:</text>
+  <circle cx="520" cy="55" r="16" fill="#0f1117" stroke="#d29922" stroke-width="2"/>
+  <text x="520" y="60" fill="#d29922" font-size="13" text-anchor="middle">3</text>
+  <line x1="504" y1="60" x2="470" y2="90" stroke="#2a2d3a" stroke-width="2"/>
+  <line x1="536" y1="60" x2="570" y2="90" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="470" cy="105" r="14" fill="#0f1117" stroke="#39c5cf" stroke-width="2"/>
+  <text x="470" y="109" fill="#39c5cf" font-size="11" text-anchor="middle">2</text>
+  <circle cx="570" cy="105" r="14" fill="#0f1117" stroke="#f85149" stroke-width="2"/>
+  <text x="570" y="109" fill="#f85149" font-size="11" text-anchor="middle">5</text>
+  <line x1="556" y1="114" x2="530" y2="140" stroke="#2a2d3a" stroke-width="2"/>
+  <line x1="584" y1="114" x2="610" y2="140" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="530" cy="155" r="12" fill="#0f1117" stroke="#39c5cf" stroke-width="2"/>
+  <text x="530" y="159" fill="#39c5cf" font-size="10" text-anchor="middle">4</text>
+  <circle cx="610" cy="155" r="12" fill="#0f1117" stroke="#3fb950" stroke-width="2"/>
+  <text x="610" y="159" fill="#3fb950" font-size="10" text-anchor="middle">6</text>
+  <!-- Legend -->
+  <rect x="60" y="200" width="300" height="35" fill="#0f1117" rx="6" opacity="0.8"/>
+  <text x="75" y="222" fill="#8b949e" font-size="11">左子树高度比右子树大 2 → 右旋使树恢复平衡</text>
+</svg>
+</div>
+
+<h3>7.4 对比表：AVL vs 红黑树 vs B 树</h3>
+<table class="compare">
+<tr><th>特性</th><th>AVL</th><th>红黑树</th><th>B树</th></tr>
+<tr><td>平衡性</td><td>严格平衡</td><td>近似平衡</td><td>完全平衡</td></tr>
+<tr><td>查询</td><td><span class="tag tag-green">最快 O(logN)</span></td><td>O(logN)</td><td>O(logN)</td></tr>
+<tr><td>插入/删除</td><td>O(logN) 旋转多</td><td><span class="tag tag-green">O(logN) 旋转少</span></td><td>O(logN)</td></tr>
+<tr><td>适用场景</td><td>查询频繁、插入少</td><td>插入删除频繁</td><td>磁盘 IO 场景</td></tr>
+</table>
+
+<!-- ============================== -->
+<h2 id="ch8">8. 多路查找树 B/B+ 树</h2>
+
+<h3>8.1 B 树 vs B+ 树</h3>
+<table class="compare">
+<tr><th>特性</th><th>B树</th><th>B+树</th></tr>
+<tr><td>内部节点存数据</td><td>✅ 是</td><td>❌ 仅存索引（键）</td></tr>
+<tr><td>叶子节点存数据</td><td>✅ 部分叶子</td><td>✅ 所有数据</td></tr>
+<tr><td>叶子节点链表</td><td>❌ 无</td><td>✅ 有（范围查询加速）</td></tr>
+<tr><td>查询稳定性</td><td>不稳定（可能查到内部就返回）</td><td><span class="tag tag-green">稳定（必须到叶子）</span></td></tr>
+<tr><td>范围查询</td><td>需要中序遍历</td><td><span class="tag tag-green">叶子链表直接遍历</span></td></tr>
+</table>
+
+<h3>8.2 MySQL 为什么用 B+ 树</h3>
+<ul>
+  <li><b>磁盘 IO 友好</b>：每个节点存储更多键（16KB 页），树高度低（3~4 层即可存千万级数据）</li>
+  <li><b>范围查询高效</b>：叶子链表连接，不用多次回溯</li>
+  <li><b>查询稳定</b>：总是到叶子层，IO 次数固定</li>
+  <li><b>聚簇索引</b>：InnoDB 的聚簇索引叶子存整行数据，非聚簇索引叶子存主键</li>
+</ul>
+
+<div class="diagram">
+<!-- SVG 8: B+树索引结构 -->
+<svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg">
+  <rect width="700" height="260" fill="#1a1d27" rx="8"/>
+  <text x="350" y="22" fill="#58a6ff" font-size="14" font-weight="bold" text-anchor="middle">B+树索引结构（MySQL InnoDB）</text>
+  <!-- Root internal node -->
+  <rect x="260" y="40" width="180" height="36" rx="4" fill="#0f1117" stroke="#f85149" stroke-width="2"/>
+  <text x="315" y="63" fill="#f85149" font-size="12" text-anchor="middle">50</text>
+  <text x="357" y="63" fill="#f85149" font-size="12" text-anchor="middle">120</text>
+  <text x="400" y="63" fill="#f85149" font-size="12" text-anchor="middle">...</text>
+  <text x="350" y="90" fill="#8b949e" font-size="9" text-anchor="middle">内部节点（仅存索引键）</text>
+  <!-- Internal level 2 -->
+  <line x1="290" y1="76" x2="110" y2="105" stroke="#6e7681" stroke-width="1.5"/>
+  <line x1="350" y1="76" x2="350" y2="105" stroke="#6e7681" stroke-width="1.5"/>
+  <line x1="410" y1="76" x2="570" y2="105" stroke="#6e7681" stroke-width="1.5"/>
+  <rect x="55" y="105" width="120" height="32" rx="4" fill="#0f1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="90" y="125" fill="#d29922" font-size="11" text-anchor="middle">10</text>
+  <text x="130" y="125" fill="#d29922" font-size="11" text-anchor="middle">30</text>
+  <rect x="290" y="105" width="120" height="32" rx="4" fill="#0f1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="325" y="125" fill="#d29922" font-size="11" text-anchor="middle">60</text>
+  <text x="365" y="125" fill="#d29922" font-size="11" text-anchor="middle">90</text>
+  <rect x="520" y="105" width="120" height="32" rx="4" fill="#0f1117" stroke="#d29922" stroke-width="1.5"/>
+  <text x="555" y="125" fill="#d29922" font-size="11" text-anchor="middle">130</text>
+  <text x="595" y="125" fill="#d29922" font-size="11" text-anchor="middle">200</text>
+  <!-- Leaf level -->
+  <line x1="80" y1="137" x2="40" y2="165" stroke="#6e7681" stroke-width="1.5"/>
+  <line x1="130" y1="137" x2="130" y2="165" stroke="#6e7681" stroke-width="1.5"/>
+  <line x1="170" y1="137" x2="220" y2="165" stroke="#6e7681" stroke-width="1.5"/>
+  <line x1="320" y1="137" x2="280" y2="165" stroke="#6e7681" stroke-width="1.5"/>
+  <line x1="370" y1="137" x2="370" y2="165" stroke="#6e7681" stroke-width="1.5"/>
+  <line x1="410" y1="137" x2="460" y2="165" stroke="#6e7681" stroke-width="1.5"/>
+  <line x1="550" y1="137" x2="510" y2="165" stroke="#6e7681" stroke-width="1.5"/>
+  <line x1="600" y1="137" x2="600" y2="165" stroke="#6e7681" stroke-width="1.5"/>
+  <line x1="640" y1="137" x2="680" y2="165" stroke="#6e7681" stroke-width="1.5"/>
+  <!-- Leaf nodes with data -->
+  <rect x="20" y="165" width="90" height="38" rx="4" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="65" y="182" fill="#3fb950" font-size="10" text-anchor="middle">1,3,5</text>
+  <text x="65" y="196" fill="#6e7681" font-size="9" text-anchor="middle">数据页</text>
+  <rect x="120" y="165" width="90" height="38" rx="4" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="165" y="182" fill="#3fb950" font-size="10" text-anchor="middle">10,15,20</text>
+  <text x="165" y="196" fill="#6e7681" font-size="9" text-anchor="middle">数据页</text>
+  <rect x="225" y="165" width="90" height="38" rx="4" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="270" y="182" fill="#3fb950" font-size="10" text-anchor="middle">30,35,40</text>
+  <text x="270" y="196" fill="#6e7681" font-size="9" text-anchor="middle">数据页</text>
+  <rect x="330" y="165" width="90" height="38" rx="4" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="375" y="182" fill="#3fb950" font-size="10" text-anchor="middle">50,55,58</text>
+  <text x="375" y="196" fill="#6e7681" font-size="9" text-anchor="middle">数据页</text>
+  <rect x="435" y="165" width="90" height="38" rx="4" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="480" y="182" fill="#3fb950" font-size="10" text-anchor="middle">60,65,70</text>
+  <text x="480" y="196" fill="#6e7681" font-size="9" text-anchor="middle">数据页</text>
+  <rect x="540" y="165" width="90" height="38" rx="4" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="585" y="182" fill="#3fb950" font-size="10" text-anchor="middle">90,95,100</text>
+  <text x="585" y="196" fill="#6e7681" font-size="9" text-anchor="middle">数据页</text>
+  <rect x="645" y="165" width="90" height="38" rx="4" fill="#1a1d27" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="690" y="182" fill="#3fb950" font-size="10" text-anchor="middle">120,130</text>
+  <text x="690" y="196" fill="#6e7681" font-size="9" text-anchor="middle">数据页</text>
+  <!-- Leaf chain arrows -->
+  <line x1="110" y1="184" x2="120" y2="184" stroke="#39c5cf" stroke-width="2" marker-end="url(#a2)"/>
+  <line x1="210" y1="184" x2="225" y2="184" stroke="#39c5cf" stroke-width="2" marker-end="url(#a2)"/>
+  <line x1="315" y1="184" x2="330" y2="184" stroke="#39c5cf" stroke-width="2" marker-end="url(#a2)"/>
+  <line x1="420" y1="184" x2="435" y2="184" stroke="#39c5cf" stroke-width="2" marker-end="url(#a2)"/>
+  <line x1="525" y1="184" x2="540" y2="184" stroke="#39c5cf" stroke-width="2" marker-end="url(#a2)"/>
+  <line x1="630" y1="184" x2="645" y2="184" stroke="#39c5cf" stroke-width="2" marker-end="url(#a2)"/>
+  <text x="350" y="240" fill="#39c5cf" font-size="11" text-anchor="middle">叶子节点单向/双向链表 → 高效范围查询（SELECT * FROM t WHERE key BETWEEN 50 AND 90）</text>
+</svg>
+</div>
+
+<!-- ============================== -->
+<h2 id="ch9">9. 堆 Heap</h2>
+
+<h3>9.1 大顶堆 &amp; 小顶堆</h3>
+<p>堆是一棵<b>完全二叉树</b>，满足父节点 ≥ 子节点（大顶堆）或 ≤ 子节点（小顶堆）。</p>
+<ul>
+  <li><b>建堆 heapify</b>：从最后一个非叶子节点开始下沉，O(N)</li>
+  <li><b>上浮 (siftUp)</b>：插入时，新节点和父节点比较并交换</li>
+  <li><b>下沉 (siftDown)</b>：删除堆顶后，将最后一个元素移到堆顶并下沉</li>
+</ul>
+
+<h3>9.2 Go container/heap</h3>
+<pre><code><span class="kw">import</span> <span class="str">"container/heap"</span>
+
+<span class="cm">// 小顶堆实现</span>
+<span class="kw">type</span> <span class="tp">MinHeap</span> []<span class="tp">int</span>
+<span class="kw">func</span> (h <span class="tp">MinHeap</span>) <span class="fn">Len</span>() <span class="tp">int</span>           { <span class="kw">return</span> <span class="fn">len</span>(h) }
+<span class="kw">func</span> (h <span class="tp">MinHeap</span>) <span class="fn">Less</span>(i, j <span class="tp">int</span>) <span class="tp">bool</span> { <span class="kw">return</span> h[i] &lt; h[j] }
+<span class="kw">func</span> (h <span class="tp">MinHeap</span>) <span class="fn">Swap</span>(i, j <span class="tp">int</span>)      { h[i], h[j] = h[j], h[i] }
+<span class="kw">func</span> (h *<span class="tp">MinHeap</span>) <span class="fn">Push</span>(x <span class="kw">any</span>)    { *h = <span class="fn">append</span>(*h, x.(<span class="tp">int</span>)) }
+<span class="kw">func</span> (h *<span class="tp">MinHeap</span>) <span class="fn">Pop</span>() <span class="kw">any</span> {
+    old := *h; n := <span class="fn">len</span>(old); x := old[n<span class="num">-1</span>]; *h = old[:n<span class="num">-1</span>]; <span class="kw">return</span> x
+}
+
+<span class="cm">// 使用</span>
+h := &<span class="tp">MinHeap</span>{<span class="num">3</span>, <span class="num">1</span>, <span class="num">4</span>, <span class="num">1</span>, <span class="num">5</span>}
+heap.<span class="fn">Init</span>(h)
+heap.<span class="fn">Push</span>(h, <span class="num">2</span>)
+<span class="kw">for</span> h.<span class="fn">Len</span>() &gt; <span class="num">0</span> {
+    <span class="fn">fmt</span>.<span class="fn">Print</span>(heap.<span class="fn">Pop</span>(h))  <span class="cm">// 1 1 2 3 4 5</span>
+}
+</code></pre>
+
+<div class="diagram">
+<!-- SVG 9: 堆结构 + 堆排序过程 -->
+<svg viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg">
+  <rect width="700" height="240" fill="#1a1d27" rx="8"/>
+  <text x="350" y="22" fill="#58a6ff" font-size="14" font-weight="bold" text-anchor="middle">大顶堆结构（数组表示）</text>
+  <!-- Root -->
+  <circle cx="350" cy="55" r="18" fill="#0f1117" stroke="#f85149" stroke-width="2.5"/>
+  <text x="350" y="60" fill="#f85149" font-size="16" text-anchor="middle">9</text>
+  <!-- Level 2 -->
+  <line x1="332" y1="65" x2="270" y2="95" stroke="#2a2d3a" stroke-width="2"/>
+  <line x1="368" y1="65" x2="430" y2="95" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="270" cy="105" r="16" fill="#0f1117" stroke="#d29922" stroke-width="2"/>
+  <text x="270" y="110" fill="#d29922" font-size="14" text-anchor="middle">8</text>
+  <circle cx="430" cy="105" r="16" fill="#0f1117" stroke="#d29922" stroke-width="2"/>
+  <text x="430" y="110" fill="#d29922" font-size="14" text-anchor="middle">7</text>
+  <!-- Level 3 -->
+  <line x1="254" y1="115" x2="200" y2="145" stroke="#2a2d3a" stroke-width="2"/>
+  <line x1="286" y1="115" x2="320" y2="145" stroke="#2a2d3a" stroke-width="2"/>
+  <line x1="414" y1="115" x2="380" y2="145" stroke="#2a2d3a" stroke-width="2"/>
+  <line x1="446" y1="115" x2="500" y2="145" stroke="#2a2d3a" stroke-width="2"/>
+  <circle cx="200" cy="160" r="14" fill="#0f1117" stroke="#39c5cf" stroke-width="2"/>
+  <text x="200" y="164" fill="#39c5cf" font-size="12" text-anchor="middle">6</text>
+  <circle cx="320" cy="160" r="14" fill="#0f1117" stroke="#39c5cf" stroke-width="2"/>
+  <text x="320" y="164" fill="#39c5cf" font-size="12" text-anchor="middle">4</text>
+  <circle cx="380" cy="160" r="14" fill="#0f1117" stroke="#39c5cf" stroke-width="2"/>
+  <text x="380" y="164" fill="#39c5cf" font-size="12" text-anchor="middle">5</text>
+  <circle cx="500" cy="160" r="14" fill="#0f1117" stroke="#39c5cf" stroke-width="2"/>
+  <text x="500" y="164" fill="#39c5cf" font-size="12" text-anchor="middle">3</text>
+  <!-- Array representation -->
+  <rect x="60" y="200" width="40" height="28" rx="3" fill="#f85149" opacity="0.3"/>
+  <text x="80" y="219" fill="#f85149" font-size="12" text-anchor="middle">9</text>
+  <rect x="105" y="200" width="40" height="28" rx="3" fill="#d29922" opacity="0.3"/>
+  <text x="125" y="219" fill="#d29922" font-size="12" text-anchor="middle">8</text>
+  <rect x="150" y="200" width="40" height="28" rx="3" fill="#d29922" opacity="0.3"/>
+  <text x="170" y="219" fill="#d29922" font-size="12" text-anchor="middle">7</text>
+  <rect x="195" y="200" width="40" height="28" rx="3" fill="#39c5cf" opacity="0.3"/>
+  <text x="215" y="219" fill="#39c5cf" font-size="12" text-anchor="middle">6</text>
+  <rect x="240" y="200" width="40" height="28" rx="3" fill="#39c5cf" opacity="0.3"/>
+  <text x="260" y="219" fill="#39c5cf" font-size="12" text-anchor="middle">4</text>
+  <rect x="285" y="200" width="40" height="28" rx="3" fill="#39c5cf" opacity="0.3"/>
+  <text x="305" y="219" fill="#39c5cf" font-size="12" text-anchor="middle">5</text>
+  <rect x="330" y="200" width="40" height="28" rx="3" fill="#39c5cf" opacity="0.3"/>
+  <text x="350" y="219" fill="#39c5cf" font-size="12" text-anchor="middle">3</text>
+  <text x="410" y="219" fill="#6e7681" font-size="11">数组索引: 0 1 2 3 4 5 6</text>
+</svg>
+</div>
+
+<h3>9.3 应用：TopK &amp; 中位数</h3>
+<pre><code><span class="cm">// TopK (前 K 大) — 小顶堆</span>
+<span class="kw">func</span> <span class="fn">topK</span>(nums []<span class="tp">int</span>, k <span class="tp">int</span>) []<span class="tp">int</span> {
+    h := &<span class="tp">MinHeap</span>{}
+    <span class="kw">for</span> _, v := <span class="kw">range</span> nums {
+        heap.<span class="fn">Push</span>(h, v)
+        <span class="kw">if</span> h.<span class="fn">Len</span>() &gt; k { heap.<span class="fn">Pop</span>(h) }
+    }
+    res := <span class="kw">make</span>([]<span class="tp">int</span>, h.<span class="fn">Len</span>())
+    <span class="kw">for</span> i := <span class="fn">len</span>(res)<span class="num">-1</span>; i &gt;= <span class="num">0</span>; i-- {
+        res[i] = heap.<span class="fn">Pop</span>(h).(<span class="tp">int</span>)
+    }
+    <span class="kw">return</span> res
+}
+
+<span class="cm">// 中位数（双堆：大顶堆存较小一半，小顶堆存较大一半）</span>
+<span class="kw">type</span> <span class="tp">MedianFinder</span> <span class="kw">struct</span> {
+    small *<span class="tp">MaxHeap</span>  <span class="cm">// 存较小一半</span>
+    large *<span class="tp">MinHeap</span>  <span class="cm">// 存较大一半</span>
+}
+
+<span class="kw">func</span> (mf *<span class="tp">MedianFinder</span>) <span class="fn">AddNum</span>(num <span class="tp">int</span>) {
+    <span class="kw">if</span> mf.small.<span class="fn">Len</span>() == <span class="num">0</span> || num &lt;= (*mf.small)[<span class="num">0</span>] {
+        heap.<span class="fn">Push</span>(mf.small, num)
+    } <span class="kw">else</span> {
+        heap.<span class="fn">Push</span>(mf.large, num)
+    }
+    <span class="cm">// 平衡两个堆的大小</span>
+    <span class="kw">if</span> mf.small.<span class="fn">Len</span>() &gt; mf.large.<span class="fn">Len</span>() + <span class="num">1</span> {
+        heap.<span class="fn">Push</span>(mf.large, heap.<span class="fn">Pop</span>(mf.small))
+    } <span class="kw">else</span> <span class="kw">if</span> mf.large.<span class="fn">Len</span>() &gt; mf.small.<span class="fn">Len</span>() {
+        heap.<span class="fn">Push</span>(mf.small, heap.<span class="fn">Pop</span>(mf.large))
+    }
+}
+
+<span class="kw">func</span> (mf *<span class="tp">MedianFinder</span>) <span class="fn">FindMedian</span>() <span class="tp">float64</span> {
+    <span class="kw">if</span> mf.small.<span class="fn">Len</span>() &gt; mf.large.<span class="fn">Len</span>() {
+        <span class="kw">return</span> <span class="tp">float64</span>((*mf.small)[<span class="num">0</span>])
+    }
+    <span class="kw">return</span> <span class="tp">float64</span>((*mf.small)[<span class="num">0</span>] + (*mf.large)[<span class="num">0</span>]) / <span class="num">2.0</span>
+}
+</code></pre>
+
+<!-- ============================== -->
+<h2 id="ch10">10. 动态规划 DP</h2>
+
+<h3>10.1 核心思想</h3>
+<div class="info-card">
+<div class="card-title">🧩 DP 三步法</div>
+<ol>
+  <li><b>定义状态</b>：dp[i] 表示什么？</li>
+  <li><b>状态转移方程</b>：dp[i] 如何从之前的 dp 算出？</li>
+  <li><b>初始化 + 遍历顺序</b></li>
+</ol>
+</div>
+
+<h3>10.2 0-1 背包问题</h3>
+<pre><code><span class="cm">// 0-1背包：物品只能选或不选，求容量W下最大价值</span>
+<span class="cm">// 状态: dp[j] = 容量j能装的最大价值</span>
+<span class="kw">func</span> <span class="fn">zeroOneKnapsack</span>(weights, values []<span class="tp">int</span>, W <span class="tp">int</span>) <span class="tp">int</span> {
+    dp := <span class="kw">make</span>([]<span class="tp">int</span>, W+<span class="num">1</span>)
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; <span class="fn">len</span>(weights); i++ {
+        <span class="cm">// 逆序遍历避免重复选同一个物品</span>
+        <span class="kw">for</span> j := W; j &gt;= weights[i]; j-- {
+            val := dp[j-weights[i]] + values[i]
+            <span class="kw">if</span> val &gt; dp[j] { dp[j] = val }
+        }
+    }
+    <span class="kw">return</span> dp[W]
+}
+
+<span class="cm">// 完全背包：物品无限数量，正序遍历</span>
+<span class="kw">func</span> <span class="fn">completeKnapsack</span>(weights, values []<span class="tp">int</span>, W <span class="tp">int</span>) <span class="tp">int</span> {
+    dp := <span class="kw">make</span>([]<span class="tp">int</span>, W+<span class="num">1</span>)
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; <span class="fn">len</span>(weights); i++ {
+        <span class="kw">for</span> j := weights[i]; j &lt;= W; j++ {  <span class="cm">// 正序！</span>
+            val := dp[j-weights[i]] + values[i]
+            <span class="kw">if</span> val &gt; dp[j] { dp[j] = val }
+        }
+    }
+    <span class="kw">return</span> dp[W]
+}
+</code></pre>
+
+<h3>10.3 DP vs 贪心 vs 分治</h3>
+<div class="diagram">
+<!-- SVG 10: DP vs 贪心 vs 分治 -->
+<svg viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg">
+  <rect width="700" height="240" fill="#1a1d27" rx="8"/>
+  <text x="350" y="22" fill="#58a6ff" font-size="14" font-weight="bold" text-anchor="middle">DP vs 贪心 vs 分治</text>
+  <!-- Greedy -->
+  <rect x="30" y="45" width="200" height="170" rx="8" fill="#0f1117" stroke="#d29922" stroke-width="2"/>
+  <text x="130" y="70" fill="#d29922" font-size="14" font-weight="bold" text-anchor="middle">贪心 Greedy</text>
+  <text x="130" y="95" fill="#8b949e" font-size="11" text-anchor="middle">局部最优 → 全局最优</text>
+  <text x="50" y="120" fill="#8b949e" font-size="11">• 每一步选当前最优</text>
+  <text x="50" y="140" fill="#8b949e" font-size="11">• 不回溯，不保存状态</text>
+  <text x="50" y="160" fill="#8b949e" font-size="11">• 适用：最小生成树</text>
+  <text x="50" y="180" fill="#8b949e" font-size="11">• Dijkstra, Huffman</text>
+  <text x="50" y="200" fill="#f85149" font-size="11">❌ 不一定全局最优</text>
+  <!-- DP -->
+  <rect x="250" y="45" width="200" height="170" rx="8" fill="#0f1117" stroke="#39c5cf" stroke-width="2"/>
+  <text x="350" y="70" fill="#39c5cf" font-size="14" font-weight="bold" text-anchor="middle">DP 动态规划</text>
+  <text x="350" y="95" fill="#8b949e" font-size="11" text-anchor="middle">子问题重叠 → 最优子结构</text>
+  <text x="270" y="120" fill="#8b949e" font-size="11">• 保存子问题最优解</text>
+  <text x="270" y="140" fill="#8b949e" font-size="11">• 状态转移方程</text>
+  <text x="270" y="160" fill="#8b949e" font-size="11">• 适用：背包/LCS/编辑距离</text>
+  <text x="270" y="180" fill="#8b949e" font-size="11">• 最长上升子序列</text>
+  <text x="270" y="200" fill="#3fb950" font-size="11">✅ 保证全局最优</text>
+  <!-- Divide & Conquer -->
+  <rect x="470" y="45" width="200" height="170" rx="8" fill="#0f1117" stroke="#a371f7" stroke-width="2"/>
+  <text x="570" y="70" fill="#a371f7" font-size="14" font-weight="bold" text-anchor="middle">分治 Divide</text>
+  <text x="570" y="95" fill="#8b949e" font-size="11" text-anchor="middle">子问题独立 → 合并结果</text>
+  <text x="490" y="120" fill="#8b949e" font-size="11">• 分解 → 解决 → 合并</text>
+  <text x="490" y="140" fill="#8b949e" font-size="11">• 子问题不重叠</text>
+  <text x="490" y="160" fill="#8b949e" font-size="11">• 适用：归并排序</text>
+  <text x="490" y="180" fill="#8b949e" font-size="11">• 快速排序，二分查找</text>
+  <text x="490" y="200" fill="#6e7681" font-size="11">⚡ 通常用递归实现</text>
+</svg>
+</div>
+
+<div class="feynman">
+<div class="feynman-title">📝 费曼要点 — DP 辨识</div>
+<p>遇到「求最值」且「子问题重叠」→ 用 DP。贪心是 DP 的特例（贪心选择性质）。分治是子问题<b>独立</b>不重叠（如归并排序），DP 是子问题<b>重叠</b>（如斐波那契）。</p>
+</div>
+
+<!-- ============================== -->
+<h2 id="ch11">11. 搜索</h2>
+
+<h3>11.1 回溯 — 八皇后</h3>
+<pre><code><span class="kw">func</span> <span class="fn">solveNQueens</span>(n <span class="tp">int</span>) [][]<span class="tp">string</span> {
+    res := [][]<span class="tp">string</span>{}
+    board := <span class="kw">make</span>([][]<span class="tp">byte</span>, n)
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; n; i++ {
+        row := <span class="kw">make</span>([]<span class="tp">byte</span>, n)
+        <span class="kw">for</span> j := <span class="num">0</span>; j &lt; n; j++ { row[j] = <span class="str">'.'</span> }
+        board[i] = row
+    }
+    cols := <span class="kw">make</span>([]<span class="tp">bool</span>, n)
+    diag1 := <span class="kw">make</span>([]<span class="tp">bool</span>, <span class="num">2</span>*n)  <span class="cm">// r+c</span>
+    diag2 := <span class="kw">make</span>([]<span class="tp">bool</span>, <span class="num">2</span>*n)  <span class="cm">// r-c+n</span>
+    <span class="kw">var</span> backtrack <span class="kw">func</span>(r <span class="tp">int</span>)
+    backtrack = <span class="kw">func</span>(r <span class="tp">int</span>) {
+        <span class="kw">if</span> r == n {
+            sol := <span class="kw">make</span>([]<span class="tp">string</span>, n)
+            <span class="kw">for</span> i := <span class="num">0</span>; i &lt; n; i++ { sol[i] = <span class="tp">string</span>(board[i]) }
+            res = <span class="fn">append</span>(res, sol)
+            <span class="kw">return</span>
+        }
+        <span class="kw">for</span> c := <span class="num">0</span>; c &lt; n; c++ {
+            <span class="kw">if</span> cols[c] || diag1[r+c] || diag2[r-c+n] { <span class="kw">continue</span> }
+            board[r][c] = <span class="str">'Q'</span>
+            cols[c], diag1[r+c], diag2[r-c+n] = <span class="kw">true</span>, <span class="kw">true</span>, <span class="kw">true</span>
+            <span class="fn">backtrack</span>(r + <span class="num">1</span>)
+            board[r][c] = <span class="str">'.'</span>
+            cols[c], diag1[r+c], diag2[r-c+n] = <span class="kw">false</span>, <span class="kw">false</span>, <span class="kw">false</span>
+        }
+    }
+    <span class="fn">backtrack</span>(<span class="num">0</span>)
+    <span class="kw">return</span> res
+}
+</code></pre>
+
+<h3>11.2 DFS vs BFS 模板</h3>
+<pre><code><span class="cm">// DFS（递归/栈）</span>
+<span class="kw">func</span> <span class="fn">dfs</span>(graph [][]<span class="tp">int</span>, start <span class="tp">int</span>, visited []<span class="tp">bool</span>) {
+    visited[start] = <span class="kw">true</span>
+    <span class="fn">fmt</span>.<span class="fn">Printf</span>(<span class="str">"访问 %d\n"</span>, start)
+    <span class="kw">for</span> _, neighbor := <span class="kw">range</span> graph[start] {
+        <span class="kw">if</span> !visited[neighbor] {
+            <span class="fn">dfs</span>(graph, neighbor, visited)
+        }
+    }
+}
+
+<span class="cm">// BFS（队列）</span>
+<span class="kw">func</span> <span class="fn">bfs</span>(graph [][]<span class="tp">int</span>, start <span class="tp">int</span>) {
+    visited := <span class="kw">make</span>([]<span class="tp">bool</span>, <span class="fn">len</span>(graph))
+    queue := []<span class="tp">int</span>{start}
+    visited[start] = <span class="kw">true</span>
+    <span class="kw">for</span> <span class="fn">len</span>(queue) &gt; <span class="num">0</span> {
+        cur := queue[<span class="num">0</span>]
+        queue = queue[<span class="num">1</span>:]
+        <span class="fn">fmt</span>.<span class="fn">Printf</span>(<span class="str">"访问 %d\n"</span>, cur)
+        <span class="kw">for</span> _, neighbor := <span class="kw">range</span> graph[cur] {
+            <span class="kw">if</span> !visited[neighbor] {
+                visited[neighbor] = <span class="kw">true</span>
+                queue = <span class="fn">append</span>(queue, neighbor)
+            }
+        }
+    }
+}
+</code></pre>
+
+<table class="compare">
+<tr><th>特性</th><th>DFS</th><th>BFS</th></tr>
+<tr><td>数据结构</td><td>栈（递归/显式）</td><td>队列</td></tr>
+<tr><td>空间</td><td>O(树高)</td><td>O(宽度)</td></tr>
+<tr><td>最短路径</td><td>❌ 不保证</td><td><span class="tag tag-green">✅ 保证</span></td></tr>
+<tr><td>适用</td><td>拓扑排序、连通性</td><td>最短路径、层序遍历</td></tr>
+</table>
+
+<h3>11.3 A* 启发式搜索</h3>
+<p>A* 使用 <b>f(n) = g(n) + h(n)</b>，其中 g(n) 是起点到 n 的实际代价，h(n) 是 n 到终点的估算代价（启发函数）。</p>
+<ul>
+  <li>h(n) ≤ 真实距离 → A* 保证最优（可采纳）</li>
+  <li>常见启发函数：曼哈顿距离、欧几里得距离</li>
+  <li>比 Dijkstra 更快（Dijkstra 是 h(n)=0 的特例）</li>
+</ul>
+
+<h3>11.4 记忆化搜索</h3>
+<pre><code><span class="cm">// 斐波那契 — 记忆化搜索（自顶向下 DP）</span>
+<span class="kw">var</span> memo = <span class="kw">make</span>(<span class="kw">map</span>[<span class="tp">int</span>]<span class="tp">int</span>)
+
+<span class="kw">func</span> <span class="fn">fib</span>(n <span class="tp">int</span>) <span class="tp">int</span> {
+    <span class="kw">if</span> n &lt;= <span class="num">1</span> { <span class="kw">return</span> n }
+    <span class="kw">if</span> v, ok := memo[n]; ok { <span class="kw">return</span> v }
+    memo[n] = <span class="fn">fib</span>(n<span class="num">-1</span>) + <span class="fn">fib</span>(n<span class="num">-2</span>)
+    <span class="kw">return</span> memo[n]
+}
+</code></pre>
+
+<!-- ============================== -->
+<h2 id="ch12">12. 图论</h2>
+
+<h3>12.1 邻接矩阵 vs 邻接表</h3>
+<table class="compare">
+<tr><th>特性</th><th>邻接矩阵</th><th>邻接表</th></tr>
+<tr><td>空间</td><td>O(V²)</td><td><span class="tag tag-green">O(V+E)</span></td></tr>
+<tr><td>判断边存在</td><td><span class="tag tag-green">O(1)</span></td><td>O(degree)</td></tr>
+<tr><td>遍历邻居</td><td>O(V)</td><td><span class="tag tag-green">O(degree)</span></td></tr>
+<tr><td>适用</td><td>稠密图</td><td>稀疏图</td></tr>
+<tr><td>多存重边</td><td>❌</td><td>✅</td></tr>
+</table>
+
+<h3>12.2 拓扑排序</h3>
+<pre><code><span class="cm">// Kahn 算法（BFS）</span>
+<span class="kw">func</span> <span class="fn">topoSort</span>(n <span class="tp">int</span>, edges [][]<span class="tp">int</span>) []<span class="tp">int</span> {
+    graph := <span class="kw">make</span>([][]<span class="tp">int</span>, n)
+    inDeg := <span class="kw">make</span>([]<span class="tp">int</span>, n)
+    <span class="kw">for</span> _, e := <span class="kw">range</span> edges {
+        graph[e[<span class="num">0</span>]] = <span class="fn">append</span>(graph[e[<span class="num">0</span>]], e[<span class="num">1</span>])
+        inDeg[e[<span class="num">1</span>]]++
+    }
+    queue := []<span class="tp">int</span>{}
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; n; i++ {
+        <span class="kw">if</span> inDeg[i] == <span class="num">0</span> { queue = <span class="fn">append</span>(queue, i) }
+    }
+    res := []<span class="tp">int</span>{}
+    <span class="kw">for</span> <span class="fn">len</span>(queue) &gt; <span class="num">0</span> {
+        u := queue[<span class="num">0</span>]; queue = queue[<span class="num">1</span>:]
+        res = <span class="fn">append</span>(res, u)
+        <span class="kw">for</span> _, v := <span class="kw">range</span> graph[u] {
+            inDeg[v]--
+            <span class="kw">if</span> inDeg[v] == <span class="num">0</span> { queue = <span class="fn">append</span>(queue, v) }
+        }
+    }
+    <span class="kw">if</span> <span class="fn">len</span>(res) != n { <span class="kw">return</span> []<span class="tp">int</span>{} }  <span class="cm">// 有环</span>
+    <span class="kw">return</span> res
+}
+</code></pre>
+
+<h3>12.3 Dijkstra 最短路径</h3>
+<pre><code><span class="kw">import</span> (<span class="str">"container/heap"</span>; <span class="str">"math"</span>)
+
+<span class="kw">type</span> <span class="tp">Item</span> <span class="kw">struct</span> {
+    node, dist <span class="tp">int</span>
+}
+<span class="kw">type</span> <span class="tp">PriorityQueue</span> []<span class="tp">Item</span>
+<span class="kw">func</span> (pq <span class="tp">PriorityQueue</span>) <span class="fn">Len</span>() <span class="tp">int</span> { <span class="kw">return</span> <span class="fn">len</span>(pq) }
+<span class="kw">func</span> (pq <span class="tp">PriorityQueue</span>) <span class="fn">Less</span>(i, j <span class="tp">int</span>) <span class="tp">bool</span> { <span class="kw">return</span> pq[i].dist &lt; pq[j].dist }
+<span class="kw">func</span> (pq <span class="tp">PriorityQueue</span>) <span class="fn">Swap</span>(i, j <span class="tp">int</span>) { pq[i], pq[j] = pq[j], pq[i] }
+<span class="kw">func</span> (pq *<span class="tp">PriorityQueue</span>) <span class="fn">Push</span>(x <span class="kw">any</span>) { *pq = <span class="fn">append</span>(*pq, x.(<span class="tp">Item</span>)) }
+<span class="kw">func</span> (pq *<span class="tp">PriorityQueue</span>) <span class="fn">Pop</span>() <span class="kw">any</span> {
+    old := *pq; n := <span class="fn">len</span>(old); it := old[n<span class="num">-1</span>]; *pq = old[:n<span class="num">-1</span>]; <span class="kw">return</span> it
+}
+
+<span class="kw">func</span> <span class="fn">dijkstra</span>(graph [][][]<span class="tp">int</span>, start <span class="tp">int</span>) []<span class="tp">int</span> {
+    n := <span class="fn">len</span>(graph)
+    dist := <span class="kw">make</span>([]<span class="tp">int</span>, n)
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; n; i++ { dist[i] = math.<span class="tp">MaxInt32</span> }
+    dist[start] = <span class="num">0</span>
+    pq := &<span class="tp">PriorityQueue</span>{}
+    heap.<span class="fn">Init</span>(pq)
+    heap.<span class="fn">Push</span>(pq, <span class="tp">Item</span>{start, <span class="num">0</span>})
+    <span class="kw">for</span> pq.<span class="fn">Len</span>() &gt; <span class="num">0</span> {
+        cur := heap.<span class="fn">Pop</span>(pq).(<span class="tp">Item</span>)
+        <span class="kw">if</span> cur.dist &gt; dist[cur.node] { <span class="kw">continue</span> }
+        <span class="kw">for</span> _, edge := <span class="kw">range</span> graph[cur.node] {
+            to, w := edge[<span class="num">0</span>], edge[<span class="num">1</span>]
+            nd := cur.dist + w
+            <span class="kw">if</span> nd &lt; dist[to] {
+                dist[to] = nd
+                heap.<span class="fn">Push</span>(pq, <span class="tp">Item</span>{to, nd})
+            }
+        }
+    }
+    <span class="kw">return</span> dist
+}
+</code></pre>
+
+<div class="info-card">
+<div class="card-title">📌 Floyd 算法</div>
+<p>多源最短路径，O(V³)。核心：dp[k][i][j] = min(dp[k-1][i][j], dp[k-1][i][k] + dp[k-1][k][j])，压缩后：</p>
+<pre><code><span class="kw">for</span> k := <span class="num">0</span>; k &lt; n; k++ {
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; n; i++ {
+        <span class="kw">for</span> j := <span class="num">0</span>; j &lt; n; j++ {
+            <span class="kw">if</span> dist[i][k] + dist[k][j] &lt; dist[i][j] {
+                dist[i][j] = dist[i][k] + dist[k][j]
+            }
+        }
+    }
+}
+</code></pre>
+</div>
+
+<!-- ============================== -->
+<h2 id="ch13">13. 其他经典结构</h2>
+
+<h3>13.1 位图 Bitmap &amp; 布隆过滤器</h3>
+<p><b>位图</b>：用 bit 数组表示集合，节省内存。1 个 byte 能标记 8 个元素是否存在。</p>
+<p><b>布隆过滤器</b>：使用 k 个哈希函数 + 位数组，判断元素<b>一定不在</b>或<b>可能在</b>集合中。</p>
+<ul>
+  <li>优点：空间极省，O(k) 查询</li>
+  <li>缺点：有误判率（假阳性），不能删除</li>
+  <li>应用：Redis 缓存穿透防护、垃圾邮件过滤</li>
+</ul>
+
+<h3>13.2 并查集 Union-Find</h3>
+<pre><code><span class="kw">type</span> <span class="tp">UnionFind</span> <span class="kw">struct</span> {
+    parent []<span class="tp">int</span>
+    rank   []<span class="tp">int</span>
+}
+
+<span class="kw">func</span> <span class="fn">NewUnionFind</span>(n <span class="tp">int</span>) *<span class="tp">UnionFind</span> {
+    parent := <span class="kw">make</span>([]<span class="tp">int</span>, n)
+    rank := <span class="kw">make</span>([]<span class="tp">int</span>, n)
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; n; i++ { parent[i] = i; rank[i] = <span class="num">1</span> }
+    <span class="kw">return</span> &<span class="tp">UnionFind</span>{parent, rank}
+}
+
+<span class="cm">// 路径压缩</span>
+<span class="kw">func</span> (uf *<span class="tp">UnionFind</span>) <span class="fn">Find</span>(x <span class="tp">int</span>) <span class="tp">int</span> {
+    <span class="kw">if</span> uf.parent[x] != x {
+        uf.parent[x] = uf.<span class="fn">Find</span>(uf.parent[x])  <span class="cm">// 路径压缩</span>
+    }
+    <span class="kw">return</span> uf.parent[x]
+}
+
+<span class="cm">// 按秩合并</span>
+<span class="kw">func</span> (uf *<span class="tp">UnionFind</span>) <span class="fn">Union</span>(x, y <span class="tp">int</span>) {
+    rx, ry := uf.<span class="fn">Find</span>(x), uf.<span class="fn">Find</span>(y)
+    <span class="kw">if</span> rx == ry { <span class="kw">return</span> }
+    <span class="kw">if</span> uf.rank[rx] &lt; uf.rank[ry] {
+        uf.parent[rx] = ry
+    } <span class="kw">else</span> <span class="kw">if</span> uf.rank[rx] &gt; uf.rank[ry] {
+        uf.parent[ry] = rx
+    } <span class="kw">else</span> {
+        uf.parent[ry] = rx
+        uf.rank[rx]++
+    }
+}
+
+<span class="kw">func</span> (uf *<span class="tp">UnionFind</span>) <span class="fn">Connected</span>(x, y <span class="tp">int</span>) <span class="tp">bool</span> {
+    <span class="kw">return</span> uf.<span class="fn">Find</span>(x) == uf.<span class="fn">Find</span>(y)
+}
+
+<span class="cm">// 应用：朋友圈数量、岛屿数量、Kruskal 最小生成树</span>
+</code></pre>
+
+<div class="info-card">
+<div class="card-title">🔧 并查集复杂度</div>
+<p>路径压缩 + 按秩合并后，单次操作<b>近似 O(1)</b>（反阿克曼函数 α(N)）。理论最坏 O(α(N))，实际几乎常数。</p>
+</div>
+
+<!-- ============================== -->
+<h2 id="ch14">14. QA + 总结</h2>
+
+<div class="qa">
+
+<details class="socratic">
+<summary>❓ Q1: 编程时如何选择数据结构？</summary>
+<div class="answer">
+<p><b>费曼回答：</b>先确定你的核心操作是什么——查找、插入、删除、范围查询？</p>
+<ul>
+  <li>快速查找 → 哈希表（无序）或二叉查找树（有序）</li>
+  <li>范围查询 → B+树 或 跳表</li>
+  <li>FIFO 顺序处理 → 队列</li>
+  <li>优先级处理 → 堆</li>
+  <li>需要回溯 → 栈</li>
+  <li>图关系 → 邻接表</li>
+  <li>判断连通性 → 并查集</li>
+</ul>
+</div>
+</details>
+
+<details class="socratic">
+<summary>❓ Q2: 面试中算法题的思考框架？</summary>
+<div class="answer">
+<p>三步走：</p>
+<ol>
+  <li><b>暴力想出来</b> → 先确保正确性</li>
+  <li><b>分析瓶颈</b> → 哪一步最慢？（嵌套循环？重复计算？）</li>
+  <li><b>针对性优化</b> → 空间换时间（哈希）、分治、DP、双指针</li>
+</ol>
+<p>例：两数之和。暴力 O(N²) → 用哈希表 O(N)。</p>
+</div>
+</details>
+
+<details class="socratic">
+<summary>❓ Q3: 什么时候不能用哈希表？</summary>
+<div class="answer">
+<ul>
+  <li>需要<b>有序遍历</b> — 用红黑树/TreeMap</li>
+  <li>需要<b>范围查询</b> — 用 B+树/跳表</li>
+  <li>需要<b>前缀匹配</b> — 用 Trie</li>
+  <li>内存极度受限且可接受误判 — 用布隆过滤器</li>
+  <li>需要<b>最小/最大值</b> — 用堆</li>
+</ul>
+</div>
+</details>
+
+<details class="socratic">
+<summary>❓ Q4: 回溯 vs DP vs 贪心怎么区分？</summary>
+<div class="answer">
+<table class="compare">
+<tr><th></th><th>回溯</th><th>DP</th><th>贪心</th></tr>
+<tr><td>核心</td><td>枚举所有可能</td><td>最优子结构 + 重叠子问题</td><td>局部最优</td></tr>
+<tr><td>确定性</td><td>全部解</td><td>全局最优</td><td>可能不是最优</td></tr>
+<tr><td>复杂度</td><td>指数级</td><td>多项式</td><td>线性/对数</td></tr>
+<tr><td>剪枝</td><td>可以剪枝优化</td><td>状态表天然剪枝</td><td>不需要剪枝</td></tr>
+</table>
+</div>
+</details>
+
+<details class="socratic">
+<summary>❓ Q5: Go 中 map 遍历为什么是无序的？</summary>
+<div class="answer">
+<p>Go map 底层是哈希表，扩容后桶的位置会重排。为了强制开发者不依赖遍历顺序，Go 在遍历时引入了<b>随机起始位置</b>。如果需要有序，用 <code>sort.Strings(keys)</code> 或使用第三方有序 map。</p>
+</div>
+</details>
+
+</div>
+
+<div class="feynman">
+<div class="feynman-title">🎯 最终总结 — 数据结构与算法速记表</div>
+<table class="compare">
+<tr><th>场景</th><th>数据结构</th><th>算法</th></tr>
+<tr><td>查找频繁</td><td>哈希表、BST</td><td>二分查找</td></tr>
+<tr><td>排序</td><td>数组、堆</td><td>快排、归并、堆排序</td></tr>
+<tr><td>字符串匹配</td><td>Trie、AC 自动机</td><td>KMP、Rabin-Karp</td></tr>
+<tr><td>最短路径</td><td>邻接表</td><td>Dijkstra、Floyd、Bellman-Ford</td></tr>
+<tr><td>连通性</td><td>并查集</td><td>Union-Find</td></tr>
+<tr><td>优先级</td><td>堆</td><td>heapify、上浮、下沉</td></tr>
+<tr><td>范围查询</td><td>B+树、跳表</td><td>二分</td></tr>
+<tr><td>最优解</td><td>DP 表</td><td>状态转移方程</td></tr>
+</table>
+</div>
+
+<p style="text-align:center;margin:40px 0;color:#6e7681;font-size:13px;">
+🗃️ 数据结构与算法大全 · Go 代码实战 · 14 章 · 10+ SVG 图解<br>
+记忆是理解的影子 — 多写代码，多画图，面试不慌 🚀
+</p>
+
+</div><!-- end main -->
+
+</body>
+</html>

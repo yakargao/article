@@ -115,19 +115,29 @@ h1{font-size:1.5rem}
   }
   .lightbox-overlay.open { display: flex; }
   .lightbox-overlay .lb-content {
-    max-width: 95vw; max-height: 95vh;
+    max-width: 98vw; max-height: 98vh;
     background: #0a0c13; border: 1px solid var(--border);
-    border-radius: 12px; padding: 16px; overflow: auto; position: relative;
+    border-radius: 8px; padding: 8px; overflow: auto; position: relative;
+    -webkit-overflow-scrolling: touch;
   }
-  .lightbox-overlay .lb-content svg { display: block; max-width: 100%; height: auto; }
+  .lightbox-overlay .lb-content svg {
+    display: block; max-width: 100%; height: auto; width: 100%;
+  }
   .lightbox-overlay .lb-close {
-    position: absolute; top:4px; right:10px; font-size:24px; color:var(--muted);
-    cursor: pointer; background: rgba(0,0,0,0.6); width:32px; height:32px;
+    position: fixed; top:12px; right:12px; font-size:20px; font-weight:700;
+    color:#fff; cursor:pointer;
+    background: rgba(0,0,0,0.7); width:44px; height:44px;
     border-radius: 50%; display:flex; align-items:center; justify-content:center;
-    border: none; z-index: 1;
+    border: 1px solid rgba(255,255,255,0.15); z-index: 10000;
+    -webkit-tap-highlight-color: transparent;
   }
-  .lightbox-overlay .lb-close:hover { color: #fff; }
-  .diagram { cursor: zoom-in; }
+  .lightbox-overlay .lb-close:active { background: rgba(255,255,255,0.2); }
+  .diagram { cursor: zoom-in; -webkit-tap-highlight-color: transparent; }
+  @media (max-width: 480px) {
+    .lightbox-overlay .lb-content { padding: 4px; border-radius: 4px; }
+    .lightbox-overlay .lb-close { width:48px; height:48px; font-size:22px; top:8px; right:8px; }
+    .diagram { cursor: default; }
+  }
 </style>
 </head>
 <body>

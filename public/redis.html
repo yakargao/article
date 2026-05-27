@@ -579,6 +579,19 @@ _, err := pipe.Exec(ctx)  <span class="cm">// 一次 RTT 发 100 条命令</span
   <p><code>PUBLISH channel msg</code> → 所有 <code>SUBSCRIBE channel</code> 的客户端收到。<span class="badge badge-red">注意：</span>消息不持久化，离线后消息丢失。需要可靠消息用 Stream。</p>
 </section>
 
+<section class="section" id="update-2026">
+  <h2>📢 2026 动态更新</h2>
+  <div class="info-card">
+    <p><strong>Redis 8.0</strong>（2026 年 3 月发布）重要更新：</p>
+    <ul>
+      <li><strong>原生向量搜索</strong> — RediSearch 合并进内核，支持 HNSW 索引</li>
+      <li><strong>Data Tiering</strong> — 自动将冷数据迁移到 NVMe/SSD，降低内存成本</li>
+      <li><strong>客户端缓存 v3</strong> — 减少了网络开销</li>
+      <li>Redis Stack 已不再单独发布，所有扩展集成进社区版</li>
+    </ul>
+  </div>
+</section>
+
 <!-- ═══════ 核心题 ═══════ -->
 <section id="redis-qa" class="section">
   <h2>❓ 高频考题</h2>

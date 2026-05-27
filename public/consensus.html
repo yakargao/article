@@ -74,6 +74,27 @@
     .main { margin-left: 0; padding: 16px; }
     .compare { grid-template-columns: 1fr; }
   }
+  /* SVG Lightbox */
+  .lightbox-overlay {
+    display: none; position: fixed; top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.85); z-index: 9999;
+    justify-content: center; align-items: center; cursor: zoom-out;
+  }
+  .lightbox-overlay.open { display: flex; }
+  .lightbox-overlay .lb-content {
+    max-width: 95vw; max-height: 95vh;
+    background: #0a0c13; border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; overflow: auto; position: relative;
+  }
+  .lightbox-overlay .lb-content svg { display: block; max-width: 100%; height: auto; }
+  .lightbox-overlay .lb-close {
+    position: absolute; top:4px; right:10px; font-size:24px; color:var(--muted);
+    cursor: pointer; background: rgba(0,0,0,0.6); width:32px; height:32px;
+    border-radius: 50%; display:flex; align-items:center; justify-content:center;
+    border: none; z-index: 1;
+  }
+  .lightbox-overlay .lb-close:hover { color: #fff; }
+  .diagram { cursor: zoom-in; }
 </style>
 </head>
 <body>
@@ -710,5 +731,20 @@ accepted_value = None     <span class="cm"># 上次接受的值</span></code></p
 })();
 </script>
 
+<script>
+(function(){var o=document.createElement('div');o.className='lightbox-overlay';
+o.innerHTML='<div class="lb-content"><button class="lb-close" onclick="closeLightbox()">\u2715</button><div class="lb-svg-wrap"></div></div>';
+document.body.appendChild(o);
+window.openLightbox=function(e){var s=e.tagName==='svg'?e:e.querySelector('svg');if(!s)return;
+var w=o.querySelector('.lb-svg-wrap');w.innerHTML='';
+var c=s.cloneNode(true);c.removeAttribute('style');c.setAttribute('style','max-width:100%;height:auto;');
+w.appendChild(c);o.classList.add('open');document.body.style.overflow='hidden'};
+window.closeLightbox=function(){o.classList.remove('open');document.body.style.overflow=''};
+o.addEventListener('click',function(e){if(e.target===o)closeLightbox()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&o.classList.contains('open'))closeLightbox()});
+document.addEventListener('DOMContentLoaded',function(){
+document.querySelectorAll('.diagram').forEach(function(el){el.addEventListener('click',function(){openLightbox(this)})})});
+})();
+</script>
 </body>
 </html>

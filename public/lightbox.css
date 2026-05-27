@@ -1,0 +1,48 @@
+/* SVG Lightbox — click to enlarge */
+.lightbox-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 9999;
+  justify-content: center;
+  align-items: center;
+  cursor: zoom-out;
+}
+.lightbox-overlay.open { display: flex; }
+.lightbox-overlay .lb-content {
+  max-width: 95vw;
+  max-height: 95vh;
+  background: #0a0c13;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  overflow: auto;
+  position: relative;
+}
+.lightbox-overlay .lb-content svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.lightbox-overlay .lb-close {
+  position: absolute;
+  top: 4px;
+  right: 10px;
+  font-size: 24px;
+  color: var(--muted);
+  cursor: pointer;
+  background: rgba(0,0,0,0.6);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  z-index: 1;
+}
+.lightbox-overlay .lb-close:hover { color: #fff; }
+.diagram {
+  cursor: zoom-in;
+}

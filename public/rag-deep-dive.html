@@ -474,16 +474,96 @@ tr:hover td{background:rgba(88,166,255,.03)}
 
 <p>将文档转换为向量后，查询向量与库中向量进行<strong>相似度匹配</strong>。这里涉及两个核心选择：<strong>相似度度量</strong>和<strong>索引结构</strong>。</p>
 
-<h3>4.1 相似度度量</h3>
+<h3>4.1 相似度度量 — 三种核心方法深度解析</h3>
+
+<p>将文档转换为向量后，查询向量与库中向量进行<strong>相似度匹配</strong>。这里的核心问题是：<strong>怎么衡量两个向量"像不像"？</strong></p>
+
+<div class="feynman">
+  <p><span class="analogy">📍 类比：</span>向量就是高维空间中的一个"地址"。相似度度量就是"查两个地址有多近"。但"近"有不同的定义——<strong>余弦</strong>是问"方向是不是一致"（住在同一条街上），<strong>内积</strong>是问"沿着那个方向走多远"，<strong>欧氏距离</strong>是问"直线距离多远"。这三种度量在不同场景下结果截然不同。</p>
+</div>
+
+<h4>① 余弦相似度（Cosine Similarity）</h4>
+
+<p><strong>公式：</strong><code>cos(A,B) = (A·B) / (||A|| × ||B||)</code></p>
+<p><strong>范围：</strong>[-1, 1]。1 表示方向完全相同，-1 表示方向完全相反，0 表示正交（无关）。</p>
+
+<p><strong>几何意义：</strong>余弦相似度只关心两个向量的<strong>方向夹角</strong>，不关心它们的长度（模长）。在二维平面上，两个向量画出来，夹角越小越相似。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 600 220" style="max-width:600px;width:100%">
+  <defs><marker id="mc1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#22d3ee"/></marker></defs>
+  <rect x="10" y="10" width="580" height="200" rx="8" fill="rgba(255,255,255,0.02)" stroke="#2a2d3a" stroke-width="1"/>
+  <!-- Origin --><circle cx="80" cy="170" r="3" fill="#c9d1d9"/>
+  <text x="40" y="195" fill="#8b949e" font-size="10">原点</text>
+  <!-- Vector A (long) --><line x1="80" y1="170" x2="220" y2="50" stroke="#22d3ee" stroke-width="2.5" marker-end="url(#mc1)"/>
+  <text x="160" y="45" fill="#22d3ee" font-size="12" font-weight="600">A</text>
+  <!-- Vector B (short, same direction) --><line x1="80" y1="170" x2="150" y2="110" stroke="#3fb950" stroke-width="2.5" marker-end="url(#mc1)"/>
+  <text x="120" y="100" fill="#3fb950" font-size="12" font-weight="600">B</text>
+  <!-- Angle arc --><path d="M 120 145 A 50 50 0 0 1 150 110" fill="none" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <text x="110" y="138" fill="#fbbf24" font-size="11">θ</text>
+  <!-- Cosine = 1 explanation -->
+  <text x="320" y="55" fill="#22d3ee" font-size="11">cos(A,B) = 1（同方向）</text>
+  <!-- Vector C (opposite) --><line x1="80" y1="170" x2="50" y2="220" stroke="#f85149" stroke-width="2" marker-end="url(#mc1)" opacity="0.3"/>
+  <text x="30" y="230" fill="#f85149" font-size="11" opacity="0.5">C: cos=-1</text>
+  <text x="320" y="85" fill="#3fb950" font-size="11">即使 |A|≠|B|，cos=1</text>
+  <text x="320" y="105" fill="#8b949e" font-size="10">因为长度不同没关系</text>
+  <text x="320" y="130" fill="#fbbf24" font-size="11">θ 越小 → 越相似</text>
+  <text x="320" y="170" fill="#8b949e" font-size="10">💡 文本 Embedding 常用余弦</text>
+  <text x="320" y="188" fill="#8b949e" font-size="10">因为词频差异不应影响语义</text>
+</svg>
+<div class="diagram-caption">图 4a · 余弦相似度：只关心方向夹角，A 和 B 即使长度不同但方向一致，cos(A,B)=1</div>
+</div>
+
+<p><strong>为什么文本 Embedding 最常用余弦？</strong>文本向量的模长往往反映的是<strong>文档长度或词频</strong>（同样的内容写成短句 vs 长文，向量模长可能差几倍），而语义相似度应该由"说了什么"（方向）决定，不是"说了多少字"（模长）。余弦相似度天然不受文档长度影响——这正是 Embedding 模型设计时的对齐目标。</p>
+
+<h4>② 内积 / 点积（Dot Product / Inner Product）</h4>
+
+<p><strong>公式：</strong><code>A·B = Σ(Aᵢ × Bᵢ)</code></p>
+<p><strong>范围：</strong>(-∞, +∞)，没有固定上界。值越大表示越相似。</p>
+
+<p><strong>几何意义：</strong>内积同时衡量<strong>方向一致性</strong>和<strong>模长大小</strong>。A·B = ||A|| × ||B|| × cos(θ)。同一个方向下，模长越大的向量得到的内积越大。</p>
+
+<div class="info-card">
+  <h4>内积的隐藏含义</h4>
+  <p>内积可以分解成两部分：<strong>方向 × 长度</strong>。所以它不仅仅是"像不像"——它还隐含了"这个文档有多重要"。</p>
+  <p>举例：向量 A=[1,0]（短）、B=[10,0]（长，同方向）。内积 A·B=10，但 A·A=1。B 的模长是 A 的 10 倍，内积也大 10 倍。如果套用余弦，cos(A,B)=1 不管长度。这就是关键差异。</p>
+</div>
+
+<p><strong>为什么有时候选内积而不是余弦？</strong></p>
+<ul>
+  <li><strong>归一化后等价于余弦：</strong>如果所有向量都已经做过 L2 归一化（||A||=1），那么 A·B = cos(θ)。所以内积在归一化向量上就是余弦——但计算少一次除法，性能略优</li>
+  <li><strong>某些 Embedding 模型针对内积训练：</strong>如 Cohere 的 Embedding 模型默认为内积优化，不需要额外归一化</li>
+  <li><strong>Milvus/Qdrant 默认使用内积：</strong>向量数据库的内积实现通常比余弦快 5-10%（少一次模长计算开销）</li>
+</ul>
+
+<h4>③ 欧氏距离 / L2 距离（Euclidean Distance / L2）</h4>
+
+<p><strong>公式：</strong><code>L2(A,B) = √(Σ(Aᵢ-Bᵢ)²)</code></p>
+<p><strong>范围：</strong>[0, +∞)。值越小表示越相似（注意：它是<strong>距离</strong>，不是相似度）。</p>
+
+<p><strong>几何意义：</strong>就是两点之间的<strong>直线距离</strong>。在二维平面上就是勾股定理：√((x₁-x₂)²+(y₁-y₂)²)。扩展到高维空间同理——各维度差的平方和再开方。</p>
+
+<div class="info-card">
+  <h4>⚠️ 欧氏距离的隐患：维数灾难（Curse of Dimensionality）</h4>
+  <p>随着维度增加，欧氏距离的<strong>区分度急剧下降</strong>。原因是：在高维空间中，几乎所有点之间的距离都趋向于相等——最远距离和最近距离的比值趋近于 1。这就是著名的"维数灾难"。</p>
+  <p>数学上可以证明：在 d 维空间中，如果各维度独立同分布，距离的方差与 1/√d 成正比。d=768（典型 Embedding 维度）时，95% 的点对距离相差不到 10%。</p>
+  <p><strong>结论：</strong>高维 Embedding（768d 以上）<strong>不推荐</strong>直接使用欧氏距离。但低维向量（<128d）或已经降维后的向量可以。</p>
+</div>
+
+<h4>三种度量的选型决策</h4>
 
 <table>
-<thead><tr><th>度量</th><th>公式</th><th>范围</th><th>特点</th></tr></thead>
-<tbody>
-<tr><td><strong>余弦距离</strong></td><td>1 - cos(A,B)</td><td>[0,2]</td><td>关注方向而非模长，最常用</td></tr>
-<tr><td><strong>内积（IP）</strong></td><td>A·B</td><td>(-∞,+∞)</td><td>适合归一化向量，性能略优</td></tr>
-<tr><td><strong>欧氏距离（L2）</strong></td><td>||A-B||²</td><td>[0,+∞)</td><td>对模长敏感</td></tr>
-</tbody>
+  <tr><th>选择条件</th><th>推荐度量</th><th>原因</th></tr>
+  <tr><td>Embedding 已 L2 归一化</td><td><strong>内积</strong></td><td>等价于余弦，但计算最快（少一次除法）</td></tr>
+  <tr><td>Embedding 未归一化，需要长度无关</td><td><strong>余弦相似度</strong></td><td>最安全通用，不受文档长度影响</td></tr>
+  <tr><td>低维向量（≤128d）或降维后</td><td><strong>欧氏距离</strong></td><td>直观可解释，低维下区分度好</td></tr>
+  <tr><td>高维向量（≥768d）</td><td><strong>余弦或内积</strong></td><td>欧氏距离受维数灾难影响严重</td></tr>
+  <tr><td>向量数据库指定了默认度量</td><td><strong>遵循数据库默认</strong></td><td>通常已为存储格式做优化</td></tr>
 </table>
+
+<div class="feynman">
+  <p><span class="analogy">🧮 一句话总结三种度量：</span><strong>余弦</strong>问"方向一样吗" → 适合文本语义搜索。<strong>内积</strong>问"方向一样且够长吗" → 适合推荐系统（长=热门）。<strong>欧氏距离</strong>问"直线多近" → 适合低维空间/聚类场景。<br>实际 RAG 系统中，<strong>90% 的场景选余弦或内积</strong>（归一化后两者等价）。选哪个不重要，重要的是保持训练和推理时一致。</p>
+</div>
 
 <h3>4.2 索引结构</h3>
 
